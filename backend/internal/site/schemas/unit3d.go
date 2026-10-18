@@ -51,7 +51,7 @@ func (u *Unit3D) Search(ctx context.Context, def *site.SiteMetadata,
 		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
 	}
 	if site.LooksLikeJSON(resp.Body) {
-		return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+		return site.ParseJSONSearch(resp.Body, def, baseURL)
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
@@ -114,6 +114,11 @@ func (u *Unit3D) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		if err := fetchUserInfoPages(ctx, &u.BaseHTMLAdapter, def, baseURL, cookie, out); err != nil {
 			return nil, err
 		}
+	}
+	if userInfoParsesEmpty(out) {
+		// 配了 Pages 时上面不报「用户名没找到」，各页又都落空 → 全 0 空结构，
+		// 当成功返回会让上层写进 site_stats 并标 connected。
+		return nil, emptyUserInfoErr(baseURL, "用户页")
 	}
 	return out, nil
 }

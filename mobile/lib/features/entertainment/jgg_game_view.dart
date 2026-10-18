@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'ent_read_fail.dart';
 
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
@@ -67,14 +68,18 @@ class _JggGameViewState extends State<JggGameView> {
   Future<void> _refreshStats() async {
     try {
       _stats = await _api.stats(widget.siteId, 'jgg');
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     if (mounted) setState(() {});
   }
 
   Future<void> _refreshHistory() async {
     try {
       _records = await _api.history(widget.siteId, 'jgg');
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
     if (mounted) setState(() {});
   }
 

@@ -47,7 +47,7 @@ func (h *HxCardHandler) SetSettings(c *gin.Context) {
 func (h *HxCardHandler) Push(c *gin.Context) {
 	if err := h.card.Push(c.Request.Context()); err != nil {
 		// 推送失败多为可自解释的运营态（未配密钥/限流/好学拒绝），把真实原因带给前端
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "已推送到好学"})

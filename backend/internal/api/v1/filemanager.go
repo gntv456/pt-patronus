@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
+	"io/fs"
 	"net/http"
 	"path"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
+	"gorm.io/gorm"
 )
 
 // FileStorageHandler 处理存储后端 CRUD 与文件操作。
@@ -45,11 +47,7 @@ func (h *FileStorageHandler) Create(c *gin.Context) {
 	}
 	f, err := h.op.Create(in)
 	if err != nil {
-		if errors.Is(err, oper.ErrInvalidInput) {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		} else {
-			errcode.Respond(c, errcode.Internal.WithErr(err))
-		}
+		respondInputError(c, err, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -68,11 +66,7 @@ func (h *FileStorageHandler) Update(c *gin.Context) {
 	}
 	f, err := h.op.Update(id, in)
 	if err != nil {
-		if errors.Is(err, oper.ErrInvalidInput) {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		} else {
-			errcode.Respond(c, errcode.Internal.WithErr(err))
-		}
+		respondRecordError(c, err, errcode.FileStorageNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	h.mgr.Invalidate(id)
@@ -83,6 +77,9 @@ func (h *FileStorageHandler) Update(c *gin.Context) {
 func (h *FileStorageHandler) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.op.Get, id, errcode.FileStorageNotFound) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
@@ -105,7 +102,7 @@ func (h *FileStorageHandler) Files(c *gin.Context) {
 	}
 	entries, err := h.fileCh.List(c.Request.Context(), id, path)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"entries": []any{}, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"entries": []any{}, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"entries": entries})
@@ -125,7 +122,7 @@ func (h *FileStorageHandler) Upload(c *gin.Context) {
 	}
 	defer file.Close()
 	if err := h.fileCh.Upload(c.Request.Context(), id, path, file); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -140,6 +137,12 @@ func (h *FileStorageHandler) Download(c *gin.Context) {
 	path := c.Query("path")
 	rc, err := h.fileCh.Download(c.Request.Context(), id, path)
 	if err != nil {
+		// 文件不在磁盘上（列表是旧的）报 404，别报 500「服务内部错误」——
+		// 前者让用户刷新列表，后者让用户以为存储坏了来提 bug。
+		if errors.Is(err, fs.ErrNotExist) {
+			errcode.Respond(c, errcode.FileNotFound.WithErr(err))
+			return
+		}
 		// 下载出错返 500（而非 200+JSON）：客户端按字节流读 body，200 会把错误 JSON 当成文件内容。
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
@@ -157,7 +160,7 @@ func (h *FileStorageHandler) Mkdir(c *gin.Context) {
 	}
 	path := c.Query("path")
 	if err := h.fileCh.Mkdir(c.Request.Context(), id, path); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -170,7 +173,7 @@ func (h *FileStorageHandler) Test(c *gin.Context) {
 		return
 	}
 	if err := h.fileCh.Test(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -184,11 +187,11 @@ func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
 	}
 	path := c.Query("path")
 	if isRootPath(path) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Delete(c.Request.Context(), id, path); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -207,11 +210,11 @@ func (h *FileStorageHandler) Rename(c *gin.Context) {
 	}
 	renamePath := c.Query("path")
 	if isRootPath(renamePath) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Rename(c.Request.Context(), id, renamePath, name); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -225,11 +228,11 @@ func (h *FileStorageHandler) Move(c *gin.Context) {
 	}
 	from := c.Query("from")
 	if isRootPath(from) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Move(c.Request.Context(), id, from, c.Query("to")); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -243,11 +246,11 @@ func (h *FileStorageHandler) Copy(c *gin.Context) {
 	}
 	from := c.Query("from")
 	if isRootPath(from) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Copy(c.Request.Context(), id, from, c.Query("to")); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": fileStorageErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -259,4 +262,16 @@ func (h *FileStorageHandler) Copy(c *gin.Context) {
 func isRootPath(p string) bool {
 	p = strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")
 	return path.Clean("/"+strings.TrimLeft(p, "/")) == "/"
+}
+
+// fileStorageErrText 软失败面（200 + {ok:false,error}）的文案本地化：raw Go 错误
+// "record not found" 会被前端 ElMessage.error 原样弹给中文界面用户。
+// 形状保持 200 是刻意的——文件列表读失败要在原地显示而不是整页抛错（见 #81 口径）。
+func fileStorageErrText(err error) string {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "存储后端不存在"
+	}
+	// 走单一文案源：文件不存在 / SSRF / 超时这些都有明确的中文提示，
+	// 不能把 `remove D:\x: The system cannot find the file specified.` 直接弹给用户。
+	return userErrText(err)
 }

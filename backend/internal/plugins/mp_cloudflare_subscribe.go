@@ -121,6 +121,6 @@ func (cloudflareSubscribePlugin) ExecuteAction(ctx context.Context, rt Runtime, 
 		records, invalid := mpParseHosts(pluginString(input["hosts"]))
 		return map[string]any{"records": len(records), "valid": records, "invalid": invalid}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

@@ -85,7 +85,7 @@ func (webhookTransformerPlugin) HandleEvent(ctx context.Context, rt Runtime, e E
 func (p webhookTransformerPlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	_ = ctx
 	if action != "preview_transform" {
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 	var payload map[string]any
 	if err := pluginDecodeJSON(pluginString(input["payload"]), &payload); err != nil {
@@ -181,7 +181,7 @@ func (keywordAlertPlugin) HandleEvent(ctx context.Context, rt Runtime, e Event) 
 func (keywordAlertPlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	_ = ctx
 	if action != "test_match" {
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 	var payload map[string]any
 	if err := pluginDecodeJSON(pluginString(input["payload"]), &payload); err != nil {

@@ -2,9 +2,7 @@ package chain
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path"
@@ -38,6 +36,7 @@ type CloudChain struct {
 	transferCfgGetter KVGetter            // transfer.config 读取（任务尾部生成 STRM 用）
 	appBaseURL        string              // 服务对外基址（strm 绝对 URL 渲染；空=相对）
 	directSignKey     []byte              // 直链签名密钥（nil=兼容模式不签名不校验）
+	directSignLegacy  []byte              // #406 升级前的原始 SECRET_KEY 字节，只用于**校验**存量 .strm
 	libRefresher      func(name string)   // 媒体库刷新钩子（upload 任务尾部；nil 跳过）
 	mediaSearch       func(ctx context.Context, keyword string, year int, filter string) (*MediaSearchItem, error)
 }
@@ -60,6 +59,8 @@ func NewCloudChain(b Base, op *oper.CloudDriveOper, ruleOp *oper.StrmRuleOper, s
 
 func (c *CloudChain) List() ([]models.CloudDrive, error) { return c.op.List() }
 
+func (c *CloudChain) Get(id uint) (*models.CloudDrive, error) { return c.op.Get(id) }
+
 func (c *CloudChain) Create(in oper.CloudDriveInput) (*models.CloudDrive, error) {
 	return c.op.Create(in)
 }
@@ -72,6 +73,11 @@ func (c *CloudChain) Update(id uint, in oper.CloudDriveInput) (*models.CloudDriv
 // 四轮 P2 修复：三删改单事务——此前分三条 SQL，中间步失败仅 Warn 继续走，SQLite
 // busy 下可留下孤儿规则/记录（残留规则每轮 cron 刷 "record not found" Warn）。
 func (c *CloudChain) Delete(id uint) error {
+	// 存在性判定收在这一处：HTTP 面与插件工具 cloud_delete 都调它。
+	// GORM 删未命中主键不报错，不先查就分不清「删掉了」与「本来就没有」。
+	if _, err := c.op.Get(id); err != nil {
+		return err
+	}
 	return c.op.DB().Transaction(func(tx *gorm.DB) error {
 		if err := c.ruleOp.WithTx(tx).DeleteRulesByDrive(id); err != nil {
 			return err
@@ -91,7 +97,11 @@ func (c *CloudChain) client(id uint) (cloud.Client, *models.CloudDrive, error) {
 	}
 	token, err := c.op.Token(m)
 	if err != nil {
-		return nil, nil, fmt.Errorf("解密凭据失败: %w", err)
+		// 换过主密钥后库里令牌还在却解不开：从前只留一句 "解密凭据失败: %w"，
+		// 接口层把它压成 400「参数有误」，于是拿着**空令牌**去打云盘这条路没人拦——
+		// 整理/修 STRM 是会写云盘的操作，可能改坏一半而用户不知道要重新保存凭据。
+		return nil, nil, fmt.Errorf("%w：网盘「%s」的令牌无法解密（主密钥可能已更换）——请到「云盘」里重新保存该盘凭据；本次没有向云盘发请求（%v）",
+			ErrCloudTokenUnreadable, m.Name, err)
 	}
 	d := cloud.Drive{ID: m.ID, Type: m.Type, Token: token, RootPath: m.RootPath}
 	cli, err := cloud.NewClient(d, c.hc)
@@ -142,40 +152,65 @@ func (c *CloudChain) UploadFile(ctx context.Context, driveID uint, cloudPath, lo
 // transferDefaultStrmTemplate 自动上传链路的 .strm 默认模板。
 const transferDefaultStrmTemplate = "{direct}{cloudpath}"
 
+// strmWrite 单次 .strm 登记+落盘的完整参数（输出定位 + 规则级渲染上下文）。
+type strmWrite struct {
+	OutputDir     string // 空=仅登记记录不落文件
+	Template      string // 空=上传默认模板（{direct}{cloudpath}）
+	MountRoot     string // {mount}（规则/修复路径用）
+	LocalBaseURL  string // {direct} 基址（规则/修复路径用）
+	PublicBaseURL string // {directPublic} 基址（规则/修复路径用）
+	OutPath       string // 非空=直写该路径（repair 沿用既有 .strm 文件名）
+	StructRoot    string // 结构镜像根（{relpath} 相对路径基准）
+	Size          int64  // 记录 size（repair 沿用旧值）
+}
+
 // UpsertStrm 登记云盘文件为 StrmRecord，并按需在本地 outputDir 生成 .strm 文件
 // （内容指向 302 直链端点）。structRoot 非空时镜像云盘目录结构到 outputDir 下；
 // outPath 非空时直写该路径（repair 沿用记录里的既有 .strm 文件名）。
 func (c *CloudChain) UpsertStrm(ctx context.Context, driveID uint, cloudPath, outputDir, template string, structRoot ...string) error {
-	return c.upsertStrm(ctx, driveID, cloudPath, outputDir, template, "", structRoot...)
+	w := strmWrite{OutputDir: outputDir, Template: template}
+	if len(structRoot) > 0 {
+		w.StructRoot = structRoot[0]
+	}
+	return c.upsertStrm(ctx, driveID, cloudPath, w)
 }
 
-func (c *CloudChain) upsertStrm(ctx context.Context, driveID uint, cloudPath, outputDir, template, outPath string, structRoot ...string) error {
+// upsertStrm 先落盘后退一登记记录：.strm 写成功才 upsert，写失败不动记录
+// （此前先 UpsertRecord 清空 strm_path/size 再试写，写失败后记录永久退化为
+// 「登记型」，repair/resign 永不再修）；成功则回填实际 .strm 路径与大小，
+// RepairStrm/ResignAllStrm 才能据此续签（否则上传型 .strm 到期 404 无人重签）。
+func (c *CloudChain) upsertStrm(ctx context.Context, driveID uint, cloudPath string, w strmWrite) error {
 	cloudPath = cloud.CleanPath(cloudPath)
-	if _, err := c.ruleOp.UpsertRecord(driveID, cloudPath, "", 0, 0); err != nil {
-		return err
+	if w.OutputDir == "" {
+		_, err := c.ruleOp.UpsertRecord(driveID, cloudPath, "", 0, 0)
+		return err // 仅登记记录（直链端点可用），不落 .strm 文件
 	}
-	if outputDir == "" {
-		return nil // 仅登记记录（直链端点可用），不落 .strm 文件
+	if w.Template == "" {
+		w.Template = transferDefaultStrmTemplate
 	}
-	if template == "" {
-		template = transferDefaultStrmTemplate
-	}
-	w := cloud.WriteStrmOptions{
-		OutputDir:  outputDir,
+	wo := cloud.WriteStrmOptions{
+		OutputDir:  w.OutputDir,
 		CloudPath:  cloudPath,
-		Template:   template,
+		Template:   w.Template,
 		FileName:   path.Base(cloudPath),
 		DriveID:    driveID,
 		DirectBase: "/api/v1/cloud/direct",
 		AppBaseURL: c.appBaseURL,
-		OutPath:    outPath,
+		OutPath:    w.OutPath,
 		// 限时直链签名：URL 即凭证，防匿名枚举 driveId+路径换全盘直链。
 		SignFunc: c.SignDirectLink,
+		// 规则级渲染上下文（修复链路按记录所属规则原样重渲染）。
+		MountRoot:     w.MountRoot,
+		LocalBaseURL:  w.LocalBaseURL,
+		PublicBaseURL: w.PublicBaseURL,
+		StructRoot:    w.StructRoot,
 	}
-	if len(structRoot) > 0 {
-		w.StructRoot = structRoot[0]
+	strmPath, err := cloud.WriteStrmFile(wo)
+	if err != nil {
+		return err
 	}
-	return cloud.WriteStrmFile(w)
+	_, err = c.ruleOp.UpsertRecord(driveID, cloudPath, strmPath, w.Size, 0)
+	return err
 }
 
 // Start115OpenAuth 发起 115 开放平台设备码授权。
@@ -192,147 +227,12 @@ func (c *CloudChain) Poll115OpenAuth(ctx context.Context, code *cloud.DeviceCode
 	return true, st, cloud.EncodeTokenPair(*tp), nil
 }
 
-// fileManager 为网盘构建文件管理器客户端（不支持的网盘返回明确错误）。
-func (c *CloudChain) fileManager(id uint) (cloud.FileManager, *models.CloudDrive, error) {
-	cli, m, err := c.client(id)
-	if err != nil {
-		return nil, nil, err
-	}
-	fm, ok := cli.(cloud.FileManager)
-	if !ok {
-		return nil, m, fmt.Errorf("网盘类型 %s 不支持文件管理操作", m.Type)
-	}
-	return fm, m, nil
-}
-
-// CloudMkdir 建目录（单层；幂等）。
-func (c *CloudChain) CloudMkdir(ctx context.Context, id uint, parent, name string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.Mkdir(ctx, clampCloudPath(c.rootOf(id), parent), name)
-}
-
-// CloudMove 移动。
-func (c *CloudChain) CloudMove(ctx context.Context, id uint, src, dstDir string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.Move(ctx, clampCloudPath(c.rootOf(id), src), clampCloudPath(c.rootOf(id), dstDir))
-}
-
-// CloudCopy 复制。
-func (c *CloudChain) CloudCopy(ctx context.Context, id uint, src, dstDir string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.Copy(ctx, clampCloudPath(c.rootOf(id), src), clampCloudPath(c.rootOf(id), dstDir))
-}
-
-// CloudRename 重命名。
-func (c *CloudChain) CloudRename(ctx context.Context, id uint, src, newName string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.Rename(ctx, clampCloudPath(c.rootOf(id), src), newName)
-}
-
-// CloudDelete 删除。
-func (c *CloudChain) CloudDelete(ctx context.Context, id uint, src string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.Delete(ctx, clampCloudPath(c.rootOf(id), src))
-}
-
-// CloudOfflineAdd 离线下载（磁力/URL → 云盘目录）。
-func (c *CloudChain) CloudOfflineAdd(ctx context.Context, id uint, dir, rawURL string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.OfflineAdd(ctx, clampCloudPath(c.rootOf(id), dir), rawURL)
-}
-
-// CloudSaveShare 分享链接转存。
-func (c *CloudChain) CloudSaveShare(ctx context.Context, id uint, dir, shareURL, pwd string) error {
-	fm, _, err := c.fileManager(id)
-	if err != nil {
-		return err
-	}
-	return fm.SaveShare(ctx, clampCloudPath(c.rootOf(id), dir), shareURL, pwd)
-}
-
-// rootOf 网盘 RootPath（钳制用；查询失败返 "/"）。
-func (c *CloudChain) rootOf(id uint) string {
-	if m, err := c.op.Get(id); err == nil {
-		return m.RootPath
-	}
-	return "/"
-}
-
 // EnqueueCloudTask 入队云端任务（自动上传链路调用；执行器消费）。
 func (c *CloudChain) EnqueueCloudTask(t *models.CloudTask) error {
 	if c.taskOp == nil {
 		return fmt.Errorf("云端任务队列未启用")
 	}
 	return c.taskOp.Enqueue(t)
-}
-
-// SetAppBaseURL 注入服务对外基址（strm 内容渲染绝对 URL；Emby 远端播放必需）。
-func (c *CloudChain) SetAppBaseURL(u string) { c.appBaseURL = strings.TrimRight(u, "/") }
-
-// SetDirectLinkSignKey 注入直链签名密钥（与 JWT/AES 同源即可）。非空时：
-//   - .strm 内容的 {direct} URL 追加 ?sign=<exp>.<hmac>（默认 12h 有效）；
-//   - 公开 302 端点校验签名，签名缺失/过期/不匹配一律 404。
-//
-// 收敛「匿名枚举 driveId+路径换全盘直链」面：URL 本身即凭证。过期后播放器 404，
-// 由 STRM 重新生成/扫库刷新。兼容：密钥未注入（安全模式/旧库）不签名也不校验。
-func (c *CloudChain) SetDirectLinkSignKey(key []byte) { c.directSignKey = key }
-
-// 二轮 P0-2 修复：TTL 从 12h 延长到 7 天——上传型 .strm 只在上传瞬间写一次，
-// 12h 意味着每天两次全库 404（唯一恢复是管理员手动 repair）。7 天对齐
-// cloud-strm cron（默认 6h 一跑 + RepairStrm 兜底），URL 即凭证的安全模型
-// 不变：泄露的 .strm URL 本来就在媒体库可读范围内。
-const directLinkSignTTL = 7 * 24 * time.Hour
-
-// SignDirectLink 生成 driveId|path|exp 的限时签名「<exp十进制>.<hmac-hex>」。
-// 密钥未注入返回空串（不签名，兼容模式）。
-func (c *CloudChain) SignDirectLink(driveID uint, cloudPath string) string {
-	if len(c.directSignKey) == 0 {
-		return ""
-	}
-	exp := time.Now().Add(directLinkSignTTL).Unix()
-	return fmt.Sprintf("%d.%s", exp, c.directSignMAC(driveID, cloudPath, exp))
-}
-
-func (c *CloudChain) directSignMAC(driveID uint, cloudPath string, exp int64) string {
-	mac := hmac.New(sha256.New, c.directSignKey)
-	fmt.Fprintf(mac, "%d|%s|%d", driveID, cloudPath, exp)
-	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// VerifyDirectLinkSign 校验「<exp>.<hmac>」签名（exp 未过 + 恒定时间 HMAC 匹配）。
-// 密钥未注入时放行（兼容模式——与旧版行为一致）。
-func (c *CloudChain) VerifyDirectLinkSign(driveID uint, cloudPath, sign string) bool {
-	if len(c.directSignKey) == 0 {
-		return true
-	}
-	dot := strings.IndexByte(sign, '.')
-	if dot <= 0 {
-		return false
-	}
-	var exp int64
-	if _, err := fmt.Sscanf(sign[:dot], "%d", &exp); err != nil || time.Now().Unix() > exp {
-		return false
-	}
-	want := c.directSignMAC(driveID, cloudPath, exp)
-	return hmac.Equal([]byte(want), []byte(sign[dot+1:]))
 }
 
 // SetTransferConfigGetter 注入 transfer.config 读取（任务尾部生成 STRM 用）。
@@ -365,6 +265,15 @@ func (c *CloudChain) CloudTasks(status string, limit int) ([]models.CloudTask, e
 		return []models.CloudTask{}, nil
 	}
 	return c.taskOp.List(status, limit)
+}
+
+// CountCloudTasks 任务总数（列表账面用）。未装配 taskOp 时如实交回错误，让上层保守报
+// 「可能被截断」——返回空列表配上「就这些」是把装配缺口渲染成「队列已空」。
+func (c *CloudChain) CountCloudTasks(status string) (int64, error) {
+	if c.taskOp == nil {
+		return 0, errors.New("cloud task store not wired")
+	}
+	return c.taskOp.Count(status)
 }
 
 // RetryCloudTask 手动重试。
@@ -432,11 +341,27 @@ func (c *CloudChain) CreateRule(in oper.StrmRuleInput) (*models.StrmRule, error)
 func (c *CloudChain) UpdateRule(id uint, in oper.StrmRuleInput) (*models.StrmRule, error) {
 	return c.ruleOp.Update(id, in)
 }
-func (c *CloudChain) DeleteRule(id uint) error { return c.ruleOp.Delete(id) }
+func (c *CloudChain) GetRule(id uint) (*models.StrmRule, error) { return c.ruleOp.Get(id) }
+
+// DeleteRule 删 STRM 规则。存在性判定收在这一层：HTTP 面与插件工具 cloud_rule_delete 都调它，
+// 写在 handler 里会让工具面继续把「本来就没有」报成已删除。
+func (c *CloudChain) DeleteRule(id uint) error {
+	if _, err := c.ruleOp.Get(id); err != nil {
+		return err
+	}
+	return c.ruleOp.Delete(id)
+}
 
 // ---- STRM 记录 ----
 
 func (c *CloudChain) ListRecords(driveID uint) ([]models.StrmRecord, error) {
 	return c.ruleOp.ListRecords(driveID)
 }
-func (c *CloudChain) DeleteRecord(id uint) error { return c.ruleOp.DeleteRecord(id) }
+
+// DeleteRecord 删一条 STRM 记录（同上，判定在链层一处）。
+func (c *CloudChain) DeleteRecord(id uint) error {
+	if _, err := c.ruleOp.GetRecord(id); err != nil {
+		return err
+	}
+	return c.ruleOp.DeleteRecord(id)
+}

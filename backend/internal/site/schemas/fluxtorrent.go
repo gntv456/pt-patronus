@@ -26,9 +26,6 @@ import (
 // parseFluxTorrentCredential 解析。所有响应为 {code,message,data} 信封，code!=0 视为业务失败。
 type FluxTorrent struct {
 	hc *httpclient.Client
-	// lastPasskey 缓存最近一次 FetchUserInfo 取到的 passkey（chain 回写钩子经
-	// TakePasskey 读取）。适配器实例跨站点共享，读取后即清空，避免串站。
-	lastPasskey string
 }
 
 func NewFluxTorrent(hc *httpclient.Client) *FluxTorrent {
@@ -147,9 +144,9 @@ func (f *FluxTorrent) Search(ctx context.Context, def *site.SiteMetadata,
 	out := make([]site.Torrent, 0, len(list.Items))
 	for _, it := range list.Items {
 		t := site.Torrent{
-			ID:       strconv.Itoa(it.ID),
-			Title:    it.Name,
-			SubTitle: it.SmallDescr,
+			ID:        strconv.Itoa(it.ID),
+			Title:     it.Name,
+			SubTitle:  it.SmallDescr,
 			DetailURL: joinURL(baseURL, fmt.Sprintf("/torrent/%d", it.ID)),
 			Size:      site.FormatBytes(it.Size),
 			Seeders:   it.Seeders,
@@ -222,7 +219,8 @@ func (t *fluxTime) UnmarshalJSON(b []byte) error {
 }
 
 // FetchUserInfo 走 PT-Plugin-Plus 聚合端点（一次请求拿全量用户数据 + passkey）。
-// 返回的 passkey 经 fluxPasskey 回传 chain 落库（见 chain UserInfo 的回写钩子）。
+// 发现的 passkey 挂在返回值 UserInfo.DiscoveredPasskey 上随本次调用交给 chain 落库
+// （见 chain.SiteChain.maybeAdoptPasskey）——不经实例字段中转，否则多站并发会串站。
 func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	baseURL, credRaw string) (*site.UserInfo, error) {
 	cred := parseFluxTorrentCredential(credRaw)
@@ -272,16 +270,8 @@ func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	if jt := time.Time(d.JoinTime); !jt.IsZero() {
 		u.JoinDate = jt.Format("2006-01-02")
 	}
-	f.lastPasskey = strings.TrimSpace(d.Passkey)
+	u.DiscoveredPasskey = strings.TrimSpace(d.Passkey)
 	return u, nil
-}
-
-// TakePasskey 取走最近一次 FetchUserInfo 缓存的 passkey（读后即清）。
-// 非线程安全的握手式传递：chain 在同一次 UserInfo 调用返回后立即读取。
-func (f *FluxTorrent) TakePasskey() string {
-	pk := f.lastPasskey
-	f.lastPasskey = ""
-	return pk
 }
 
 // fluxBizErr 把信封业务错误转为 error（保留服务端 message）。
@@ -293,20 +283,19 @@ func fluxBizErr(op string, env fluxEnvelope) error {
 }
 
 // fluxPromotionFactors 把 promotion 映射为（下载因子, 上传因子）。
-// 与 nexusPromotionFactor 同口径：0=FREE 1=正常 0.5=半价 2=双倍上传。
+// 与 nexusPromotionFactor 同口径：0=FREE 1=正常 0.5=半价 2=双倍上传；upload 留 0 由
+// 通用层（site/promo.go）归一为 1，表示「非上传倍率促销」。
 func fluxPromotionFactors(promotion string) (download, upload float64) {
 	download, upload = 1, 0
 	switch strings.ToLower(strings.TrimSpace(promotion)) {
-	case "free", "x2free":
+	case "free":
 		download = 0
-		if promotion == "x2free" || strings.EqualFold(promotion, "x2free") {
-			upload = 2
-		}
-	case "half", "2x50":
+	case "x2free":
+		download, upload = 0, 2
+	case "half":
 		download = 0.5
-		if strings.EqualFold(strings.TrimSpace(promotion), "2x50") {
-			upload = 2
-		}
+	case "2x50":
+		download, upload = 0.5, 2
 	case "2x":
 		upload = 2
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -200,5 +201,70 @@ func TestWorkflowHandlerE2E(t *testing.T) {
 	list, _ := op.List()
 	if len(list) != 0 {
 		t.Fatalf("Delete 后应空，got %d", len(list))
+	}
+}
+
+// TestWorkflowCreateSurfacesGraphValidationReason 节点图校验失败必须把「我们自己写的原因」
+// 带回响应：画布编辑器的主人只看到「请求参数有误，请检查后重试」时无从下手，
+// 而原因（节点图为空 / 未知节点类型：xxx）一直只在日志里。
+func TestWorkflowCreateSurfacesGraphValidationReason(t *testing.T) {
+	r, _ := setupWfHandler(t)
+
+	empty := doJSONReq(t, r, http.MethodPost, "/workflows", `{"name":"wf-empty"}`)
+	if empty.Code != http.StatusBadRequest {
+		t.Fatalf("空图应 400，got %d body=%s", empty.Code, empty.Body.String())
+	}
+	if !strings.Contains(empty.Body.String(), "节点图为空") {
+		t.Fatalf("应带「节点图为空」原因，got %s", empty.Body.String())
+	}
+
+	bad := doJSONReq(t, r, http.MethodPost, "/workflows", `{"name":"wf-bad","nodes":[{"id":"n1","type":"no-such-node"}]}`)
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("未知节点应 400，got %d", bad.Code)
+	}
+	if !strings.Contains(bad.Body.String(), "未知节点类型") {
+		t.Fatalf("应带「未知节点类型」原因，got %s", bad.Body.String())
+	}
+
+	// 非图校验类错误（缺名字）仍是泛化文案，不该把 Go 运行时错误原样弹给用户
+	noName := doJSONReq(t, r, http.MethodPost, "/workflows", `{"nodes":[{"id":"n1","type":"h_echo"}]}`)
+	if noName.Code != http.StatusBadRequest {
+		t.Fatalf("缺名字应 400，got %d", noName.Code)
+	}
+	if !strings.Contains(noName.Body.String(), "请求参数有误") && !strings.Contains(noName.Body.String(), "名称") {
+		t.Fatalf("泛化文案应保留，got %s", noName.Body.String())
+	}
+}
+
+// TestWorkflowDeleteMissingIs404 删一条已不存在的工作流：从前回 500「服务内部错误」
+// （chain.Get 的 record-not-found 被兜底成 internal），而同族其它域回 200——
+// 用户看到 500 会以为程序坏了并反复重试。
+func TestWorkflowDeleteMissingIs404(t *testing.T) {
+	r, _ := setupWfHandler(t)
+	rec := doReq(t, r, http.MethodDelete, "/workflows/999995", "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404（body=%s）", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"workflow_not_found"`) {
+		t.Errorf("应报 workflow_not_found，got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "record not found") {
+		t.Errorf("不得把 Go 原文弹给用户：%s", rec.Body.String())
+	}
+}
+
+// TestWorkflowResetMissingIs404 「重置」一条不存在的工作流：从前回 200 {"reset":999995}，
+// 用户以为卡住的 running 状态已被清掉，其实库里什么都没改（同一批里 /subscriptions/:id/reset 已回 404）。
+func TestWorkflowResetMissingIs404(t *testing.T) {
+	r, _ := setupWfHandler(t)
+	rec := doReq(t, r, http.MethodPost, "/workflows/999995/reset", "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404（body=%s）", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"workflow_not_found"`) {
+		t.Errorf("应报 workflow_not_found，got %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"reset"`) {
+		t.Errorf("空操作不得回成功字段：%s", rec.Body.String())
 	}
 }

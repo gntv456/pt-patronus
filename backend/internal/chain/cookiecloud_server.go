@@ -73,8 +73,22 @@ func (c *CookieCloudChain) ServerUpdate(raw []byte) (string, error) {
 	if !c.BuiltinActive() {
 		return "", fmt.Errorf("内置服务端未启用")
 	}
-	if req.UUID != c.GetSettings().UUID {
+	s := c.GetSettings()
+	if req.UUID != s.UUID {
 		// uuid 不匹配：按不存在处理，不泄露端点状态
+		return "", fmt.Errorf("not found")
+	}
+	// /cookiecloud/update 是公网无鉴权端点，只认 uuid 等于本实例——知道（或猜到）uuid 的人
+	// 就能覆盖云端 blob，而紧接着的 triggerSync 会把这份外部输入应用进本地站点 cookie。
+	// 写入门禁改成「能不能用本机配置的口令解密」：合法扩展推送本来就和 builtin 共享同一口令，
+	// 解不开即视为伪造。失败口径与 uuid 不匹配一致，不给枚举者可分辨的信息。
+	password, perr := c.decryptedPassword(s)
+	if perr != nil || password == "" {
+		slog.Warn("cookiecloud push rejected: server password unavailable", "err", perr)
+		return "", fmt.Errorf("not found")
+	}
+	if verr := cookiecloud.VerifyPushProof(req.Encrypted, req.UUID, password); verr != nil {
+		slog.Warn("cookiecloud push rejected: payload not decryptable with configured password")
 		return "", fmt.Errorf("not found")
 	}
 	c.serverStore().Put(req.UUID, cookiecloud.ServerEnvelope{Encrypted: req.Encrypted, CryptoType: req.CryptoType})

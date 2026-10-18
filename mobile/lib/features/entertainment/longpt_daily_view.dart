@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // LongPT 每日抽奖：今日奖品卡片网格 + 立即参与 + 参与人数/开奖时间 + 获奖记录。
 // 每天一次，后端权威防重（join 返回 code/msg）。
@@ -30,7 +31,9 @@ class _LongPTDailyViewState extends State<LongPTDailyView> {
   Future<void> _load() async {
     try {
       _prizes = await _api.prizes(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'prizes', e);
+    }
     await _refresh();
     if (mounted) setState(() {});
   }
@@ -38,10 +41,14 @@ class _LongPTDailyViewState extends State<LongPTDailyView> {
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     try {
       _records = await _api.history(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
   }
 
   // 每日奖品图标按名称关键词推断（奖品名来自站点 desc 字段）

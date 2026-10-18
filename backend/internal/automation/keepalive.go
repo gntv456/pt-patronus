@@ -2,11 +2,13 @@ package automation
 
 import (
 	"context"
+	"errors"
 	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"math/rand"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/notice"
 )
 
@@ -23,6 +25,16 @@ func (s *Service) runCookieKeepAlive() {
 	sites, err := s.siteOp.ListActive()
 	if err != nil {
 		slog.Warn("cookie-keepalive list sites failed", "err", err)
+		// 静默 = 保活整轮跳过，短寿 cookie 会在快照间隙过期，读失败必须自己出声（当天去重）。
+		if s.notice != nil {
+			_ = s.notice.Notice(ctx, notice.Input{
+				Source: notice.SourceSiteOffline,
+				Key:    "keepalive-listfail:" + time.Now().Format("2006-01-02"),
+				Title:  "Cookie 保活",
+				Body:   "本轮保活未能开始：读取站点列表失败 — " + err.Error(),
+				Level:  "warning",
+			}, true)
+		}
 		return
 	}
 
@@ -31,6 +43,12 @@ func (s *Service) runCookieKeepAlive() {
 		st := &sites[i]
 		res, err := s.siteCh.KeepAlive(ctx, st)
 		if err != nil {
+			// 不支持保活的站（mteam 等未实现 KeepAliveCapable）不算失败：否则 fail 指标
+			// 每小时被非 NexusPHP 站刷高，Grafana 保活失败告警误报。
+			if errors.Is(err, chain.ErrNotSupported) || errors.Is(err, chain.ErrNoAdapter) {
+				slog.Debug("cookie-keepalive skipped: unsupported", "site", st.Name)
+				continue
+			}
 			failed++
 			bizmetrics.KeepAliveInc(bizmetrics.KeepAliveFail)
 			slog.Debug("cookie-keepalive failed", "site", st.Name, "err", err)

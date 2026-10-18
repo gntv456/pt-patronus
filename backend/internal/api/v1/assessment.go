@@ -26,7 +26,11 @@ func (h *AssessmentHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	ctx, cancel := aggregateRequestContext(c)
 	defer cancel()
-	cards := h.ch.AssessAll(ctx, force)
+	cards, err := h.ch.AssessAll(ctx, force)
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
 	if cards == nil {
 		cards = []chain.AssessmentCard{}
 	}
@@ -38,10 +42,11 @@ func (h *AssessmentHandler) All(c *gin.Context) {
 func (h *AssessmentHandler) AllStream(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	emit := beginSSE(c.Writer)
-	h.ch.AssessAllStream(c.Request.Context(), force, func(card chain.AssessmentCard) {
+	// done 帧带账面：以前推空对象，读不出站点列表/崩站的轮次与「一切正常」在界面上同形。
+	sum := h.ch.AssessAllStream(c.Request.Context(), force, func(card chain.AssessmentCard) {
 		emit("batch", gin.H{"results": []chain.AssessmentCard{card}})
 	})
-	emit("done", gin.H{})
+	emit("done", sum)
 }
 
 // SyncOne 立即抓取单站考核。
@@ -53,7 +58,7 @@ func (h *AssessmentHandler) SyncOne(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	c.JSON(http.StatusOK, h.ch.AssessOne(c.Request.Context(), s))

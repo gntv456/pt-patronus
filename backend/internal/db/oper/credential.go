@@ -2,6 +2,7 @@ package oper
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
@@ -51,7 +52,7 @@ func (o *CredentialOper) Get(id uint) (*models.OpsCredential, error) {
 
 func (o *CredentialOper) Create(in CredentialInput) (*models.OpsCredential, error) {
 	if strings.TrimSpace(in.Name) == "" {
-		return nil, fmt.Errorf("凭据名称不能为空")
+		return nil, invalidInput("凭据名称不能为空")
 	}
 	c := &models.OpsCredential{
 		Name: strings.TrimSpace(in.Name),
@@ -75,7 +76,7 @@ func (o *CredentialOper) Update(id uint, in CredentialInput) (*models.OpsCredent
 		return nil, err
 	}
 	if strings.TrimSpace(in.Name) == "" {
-		return nil, fmt.Errorf("凭据名称不能为空")
+		return nil, invalidInput("凭据名称不能为空")
 	}
 	c.Name = strings.TrimSpace(in.Name)
 	c.Type = normCredentialType(in.Type)
@@ -138,8 +139,14 @@ func (o *CredentialOper) setSecrets(c *models.OpsCredential, username, password,
 }
 
 func (o *CredentialOper) fill(c *models.OpsCredential) {
+	c.HasUsername = c.UsernameEnc != ""
 	if c.UsernameEnc != "" {
-		if u, err := o.c.Decrypt(c.UsernameEnc); err == nil {
+		u, err := o.c.Decrypt(c.UsernameEnc)
+		if err != nil {
+			// 解不开时 Username 留空是诚实的，但必须出声并给出 HasUsername：
+			// 否则界面只会显示「无用户名」，用户以为这条凭据坏了。
+			slog.Warn("ops credential username undecryptable", "id", c.ID, "err", err)
+		} else {
 			c.Username = u
 		}
 	}

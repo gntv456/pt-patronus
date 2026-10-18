@@ -67,9 +67,17 @@ func (o *WorkflowOper) ResetStuckRunning() error {
 }
 
 func (o *WorkflowOper) ResetState(id uint) error {
-	return o.db.Model(&models.Workflow{}).Where("id = ?", id).Updates(map[string]any{
+	res := o.db.Model(&models.Workflow{}).Where("id = ?", id).Updates(map[string]any{
 		"state": "idle", "last_result": "",
-	}).Error
+	})
+	if res.Error != nil {
+		return res.Error
+	}
+	// 「重置」对一条不存在的工作流是空操作：报 404，别让人以为卡住的状态已被清掉。
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // MarkRun 记录一次执行结果：状态、运行数+1、上次时间、上次结果。
@@ -115,6 +123,31 @@ func (o *WorkflowRunOper) ListByWorkflow(workflowID uint, limit int) ([]models.W
 	}
 	err := q.Find(&rs).Error
 	return rs, err
+}
+
+const (
+	RunListDefault = 20
+	RunListLimit   = 500
+)
+
+// NormalizeRunLimit 留空/非法取默认，超上限取上限（handler 回显生效值，
+// 否则 ?limit=999999 的调用方以为自己拿到了全部历史）。
+func NormalizeRunLimit(n int) int {
+	if n <= 0 {
+		return RunListDefault
+	}
+	if n > RunListLimit {
+		return RunListLimit
+	}
+	return n
+}
+
+// CountByWorkflow 某工作流的运行总数。筛选与 ListByWorkflow 完全一致
+// （含 workflowID=0 时同样按等值匹配），否则 total 与清单不同源、截断判断会失真。
+func (o *WorkflowRunOper) CountByWorkflow(workflowID uint) (int64, error) {
+	var n int64
+	err := o.db.Model(&models.WorkflowRun{}).Where("workflow_id = ?", workflowID).Count(&n).Error
+	return n, err
 }
 
 // ListRecent 全局最近运行（跨工作流，倒序，供统计看板）。

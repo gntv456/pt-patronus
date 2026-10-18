@@ -68,7 +68,7 @@ func (httpProbePlugin) HandleEvent(context.Context, Runtime, Event) error { retu
 
 func (httpProbePlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	if action != "probe" {
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 	cfg := rt.Config()
 	rawURL := strings.TrimSpace(pluginString(input["url"]))

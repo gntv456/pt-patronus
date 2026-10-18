@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -22,21 +21,21 @@ import (
 //
 // 加密备份（manifest.encryption=true）拒绝；重复站点按注册域跳过（CreateMany 统一去重，与自身/MoviePilot 导入一致）。
 // 与旧项目唯一差异：cookie 拼成 header 串（"k=v; k=v"）而非 JSON map（适配新 SiteInput.Cookie）。
-func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
+func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (*ImportResult, error) {
 	entries, err := readPTDZipEntries(zipBytes)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	manifestRaw, ok := entries["manifest.json"]
 	if !ok {
-		return 0, errors.New("不是合法的 PT-Depiler (.ptd) 备份：缺少 manifest.json")
+		return nil, oper.InputReasonf("这不是合法的 PT-Depiler (.ptd) 备份：包里缺 manifest.json")
 	}
 	manifest := parseJSON(manifestRaw)
 	if manifest == nil {
-		return 0, errors.New("PTD manifest.json 解析失败")
+		return nil, oper.InputReasonf(".ptd 里的 manifest.json 读不出内容，文件可能已损坏，请重新导出")
 	}
 	if ptdBool(manifest, "encryption") {
-		return 0, errors.New("PT-Depiler 备份已加密，请先在 PT-Depiler 中导出未加密的备份再导入")
+		return nil, oper.InputReasonf("这份 PT-Depiler 备份是加密的，请先在 PT-Depiler 里导出未加密的备份再导入")
 	}
 
 	files, _ := manifest["files"].(map[string]any)
@@ -45,11 +44,11 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 
 	metadata := parseJSON(entries[metaName])
 	if metadata == nil {
-		return 0, errors.New("PTD 备份缺少 metadata（" + metaName + "）")
+		return nil, oper.InputReasonf("这份 .ptd 备份缺少站点元数据（%s），无法导入", metaName)
 	}
 	sites, _ := metadata["sites"].(map[string]any)
 	if len(sites) == 0 {
-		return 0, errors.New("PTD 备份 metadata 中无站点")
+		return nil, oper.InputReasonf("这份 .ptd 备份的元数据里没有任何站点，没有可导入的内容")
 	}
 	siteNameMap, _ := metadata["siteNameMap"].(map[string]any)
 	lastUserInfo, _ := metadata["lastUserInfo"].(map[string]any)
@@ -58,14 +57,18 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 	cookies := parseJSON(entries[cookieName])
 
 	ins := make([]oper.SiteInput, 0, len(sites))
+	// 缺 config / 无可用 URL 的条目在下面被丢弃：不记账就等于「20 条里 8 条没进来」无人知晓。
+	dropped := 0
 	for ptdSiteID, siteEl := range sites {
 		config, _ := siteEl.(map[string]any)
 		if config == nil {
+			dropped++
 			continue
 		}
 		rawURL := ptdSiteURL(config)
 		if rawURL == "" {
-			continue // 无可用 URL 的站点跳过
+			dropped++
+			continue // 无可用 URL 的站点跳过（但要记进跳过账，不能蒸发）
 		}
 		baseURL := ensureURL(rawURL)
 
@@ -96,19 +99,20 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 	}
 	n, err := s.siteOp.CreateMany(ins) // 单事务批量：N 次 fsync → 1 次
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
+	res := &ImportResult{Sites: n, SitesSkipped: dropped + (len(ins) - n)}
 	if n == 0 {
-		return 0, errors.New("PTD 备份中无可导入的站点（均无有效 URL 或全部重复）")
+		return nil, oper.InputReasonf("这份 .ptd 备份里没有可导入的站点：各站都没有可用 URL，或注册域与现有站点全部重复")
 	}
-	return n, nil
+	return res, nil
 }
 
 // readPTDZipEntries 解压 .ptd（ZIP），收集所有 .json entry 为 map[文件名]UTF-8 内容。
 func readPTDZipEntries(zipBytes []byte) (map[string]string, error) {
 	zr, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
 	if err != nil {
-		return nil, fmt.Errorf("解析 .ptd 失败（非 ZIP 文件）: %w", err)
+		return nil, oper.InputReasonf("打不开这个 .ptd（它不是 ZIP 包）：%v", err)
 	}
 	// 解压炸弹防护：单文件/总量上限 + 解压前按 UncompressedSize64 预拒
 	//（防 64MB 压缩包解压成数十 GB 塞进内存导致 OOM）。
@@ -123,7 +127,7 @@ func readPTDZipEntries(zipBytes []byte) (map[string]string, error) {
 			continue
 		}
 		if f.UncompressedSize64 > uint64(maxPerEntry) {
-			return nil, fmt.Errorf("PTD 条目 %q 解压后过大（%d 字节，上限 %d）", f.Name, f.UncompressedSize64, maxPerEntry)
+			return nil, oper.InputReasonf(".ptd 里的 %q 解压后过大（%d 字节，上限 %d），拒绝导入", f.Name, f.UncompressedSize64, maxPerEntry)
 		}
 		rc, err := f.Open()
 		if err != nil {

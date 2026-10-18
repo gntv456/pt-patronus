@@ -59,6 +59,10 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 				}
 				fi, err := os.Stat(f)
 				if err != nil {
+					// 同一循环里 map path / enqueue 两支都留了痕，只有这里裸 continue：
+					// 本地文件读不到（已被清理/权限/换盘）就静默少传一个文件，
+					// 而通知正文只报「已排队 N 个」，用户无从知道少了哪一个。
+					slog.Warn("cloud upload: stat failed, file skipped", "file", f, "err", err)
 					continue
 				}
 				if err := q.EnqueueCloudTask(&models.CloudTask{
@@ -81,6 +85,7 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 			return
 		}
 		uploaded, failed, strmBlocked := 0, 0, 0
+		uploadedFiles := make(map[string]bool, len(res.Files))
 		for _, f := range res.Files {
 			if !cu.UploadVideos && !isSubtitleOrImage(f) {
 				continue // 仅字幕/图片（视频本体不上传的极简模式）
@@ -103,6 +108,7 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 				continue
 			}
 			uploaded++
+			uploadedFiles[f] = true
 			slog.Info("cloud upload: uploaded", "file", filepath.Base(f), "to", cloudPath)
 			// DeleteLocal 前置 STRM（P1 修复，直传兜底路径）：先登记 StrmRecord+落 .strm，
 			// 成功才删本地——否则本地已删、无 strm 无记录，直链/追更/媒体库全部失明。
@@ -121,7 +127,7 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 			}
 		}
 		if uploaded > 0 {
-			c.emitCloudStrm(actx, cu, res)
+			c.emitCloudStrm(actx, cu, res, uploadedFiles)
 			if c.notice != nil {
 				title := "已上传网盘：" + resTitle(res)
 				body := fmt.Sprintf("%d 个文件 → %s", uploaded, cu.CloudBase)
@@ -146,16 +152,24 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 	}()
 }
 
-// emitCloudStrm 上传后把新文件登记为 StrmRecord 并按需写本地 .strm。
+// emitCloudStrm 上传成功后把新文件登记为 StrmRecord 并按需写本地 .strm。
 // StrmRecord 是 302 直链端点与订阅追更的索引；.strm 文件供 Emby 扫库识别。
-func (c *TransferChain) emitCloudStrm(ctx context.Context, cu transfer.CloudUpload, res *transfer.Result) {
+// 只处理 uploaded 命中的文件——上传失败的文件若也登记，会为云端不存在的对象写
+// .strm（媒体库 404 条目）并触发「订阅资源已就绪」误报。
+func (c *TransferChain) emitCloudStrm(ctx context.Context, cu transfer.CloudUpload, res *transfer.Result, uploaded map[string]bool) {
 	strmGen, ok := c.cloudUp.(CloudStrmSink)
 	if !ok {
 		return
 	}
 	for _, f := range res.Files {
+		if !uploaded[f] {
+			continue
+		}
 		cloudPath, err := cloudPathFor(cu, res.DestDir, f)
 		if err != nil {
+			// 同一个循环里 UpsertStrm 失败有 Warn，这一支却是裸 continue：
+			// 该文件的 .strm 永不生成（媒体库里就此少一部），日志里也找不到线索。
+			slog.Warn("cloud strm: map path failed, file skipped", "file", f, "err", err)
 			continue
 		}
 		if err := strmGen.UpsertStrm(ctx, cu.DriveID, cloudPath, cu.StrmOutputDir, cu.StrmTemplate); err != nil {

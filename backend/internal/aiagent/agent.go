@@ -3,6 +3,7 @@ package aiagent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -67,7 +68,7 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 	out := make(chan llm.Event, 64)
 	safego.Go("agent:64", func() {
 		defer close(out)
-		ac, lc := Load(a.kv, a.crypto)
+		ac, lc, loadErr := Load(a.kv, a.crypto)
 		// 用量统计：仅在实际发起 LLM 调用时计数（配置未启用/无 key 的早返回不计）。
 		start := time.Now()
 		status := "ok"
@@ -98,8 +99,18 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 			}
 			bizmetrics.LLMTokensAdd(inTok, outTok)
 		}()
+		if errors.Is(loadErr, ErrConfigUnreadable) {
+			// 读失败时 ac 是默认值（Enabled=false）：往下判就成了「未启用」这句假话。
+			// loadErr 自身已带哨兵前缀，不能再叠一次。
+			emit(out, llm.Event{Type: llm.EventError, Error: loadErr.Error() + unreadableConfigHint})
+			return
+		}
 		if !ac.Enabled {
 			emit(out, llm.Event{Type: llm.EventError, Error: "AI 助手未启用，请先在「设置 → AI 助手」配置 LLM provider 与 API key"})
+			return
+		}
+		if loadErr != nil {
+			emit(out, llm.Event{Type: llm.EventError, Error: ErrKeyUnreadable.Error() + "（主密钥可能已更换），请在「设置 → AI 助手」重新保存 API key"})
 			return
 		}
 		if lc.APIKey == "" {
@@ -204,7 +215,12 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 							// 行为与非破坏路径一致；取消不计入 toolErrors。
 							full = "已取消：用户中断对话，此危险工具未执行。"
 							emit(out, llm.Event{Type: llm.EventToolResult, ToolCall: tc, Text: full})
-							_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full})
+							// 这条落库就是上面注释说的「保序列完整」，它失败等于那道防线没立住：
+							// 下一轮 provider 会因 assistant(tool_calls) 缺父 tool 结果而 400，
+							// 用户只看到「问一句就报错」且无从归因。按本文件既有口径出声（见下方同款判定）。
+							if err := a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full}); err != nil {
+								emit(out, llm.Event{Type: llm.EventError, Error: "保存工具结果失败: " + err.Error() + "（这条会话的历史已不完整，请新建会话后重试）"})
+							}
 							status = "cancelled"
 							emit(out, llm.Event{Type: llm.EventError, Error: "对话已取消"})
 							return

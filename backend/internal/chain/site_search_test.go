@@ -41,7 +41,7 @@ func TestSiteChainSearchSitesConcurrent(t *testing.T) {
 	ch := NewSiteChain(NewBase(mm, event.New()), siteOp, site.NewRegistry())
 
 	start := time.Now()
-	results := ch.SearchSites(context.Background(), "kw", "", nil)
+	results, _ := ch.SearchSites(context.Background(), "kw", "", nil)
 	elapsed := time.Since(start)
 
 	// 5 站 × 100ms，并发应远小于串行 500ms；阈值留 4× 余量防 CI 抖动。
@@ -85,7 +85,7 @@ func TestSiteChainSearchSitesTimeout(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	results := ch.SearchSites(ctx, "kw", "", nil)
+	results, _ := ch.SearchSites(ctx, "kw", "", nil)
 	elapsed := time.Since(start)
 
 	if elapsed >= 1*time.Second {
@@ -153,5 +153,29 @@ func TestSiteChainSearchSitesStream(t *testing.T) {
 	}
 	if ok != 4 || fail != 1 {
 		t.Errorf("ok=%d fail=%d want ok=4 fail=1 (mteam err isolated)", ok, fail)
+	}
+}
+
+// TestSearchListFailurePropagates 验证站点清单读失败必须交回错误（JSON errcode / SSE done 帧
+// list_error），不能渲染成「全部站无结果」假绿。
+func TestSearchListFailurePropagates(t *testing.T) {
+	db := newChainDB(t)
+	siteOp := oper.NewSiteOper(db, security.NewCrypto("seed"))
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+	if _, e := siteOp.ListActive(); e == nil {
+		t.Fatal("前提不成立：关闭 DB 后 ListActive 仍成功")
+	}
+	ch := NewSiteChain(NewBase(module.New(), event.New()), siteOp, site.NewRegistry())
+
+	if _, err := ch.SearchSites(context.Background(), "kw", "", nil); err == nil {
+		t.Error("SearchSites：ListActive 失败应交回错误，而不是 nil+nil")
+	}
+	emitted := 0
+	if listErr := ch.SearchSitesStream(context.Background(), "kw", "", nil, func(SiteResult) { emitted++ }); listErr == "" {
+		t.Error("SearchSitesStream：ListActive 失败应返回 listErr，供 done 帧带出")
+	}
+	if emitted != 0 {
+		t.Errorf("失败时不应 emit 任何帧，emitted=%d", emitted)
 	}
 }

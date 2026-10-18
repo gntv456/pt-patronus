@@ -115,8 +115,15 @@ func (o *SubscriptionOper) Delete(id uint) error {
 
 // MarkChecked 记录本次检查时间。
 func (o *SubscriptionOper) MarkChecked(id uint) error {
+	return o.MarkCheckedWithResult(id, "")
+}
+
+// MarkCheckedWithResult 记一次检查时刻，并把「本轮哪里没读出来」一起落账。
+// checkErr 为空 ⇒ 清空上一次的原因（否则某次故障会一直挂在卡片上，用户以为还没恢复）。
+func (o *SubscriptionOper) MarkCheckedWithResult(id uint, checkErr string) error {
 	now := time.Now()
-	return o.db.Model(&models.Subscription{}).Where("id = ?", id).Update("last_checked_at", now).Error
+	return o.db.Model(&models.Subscription{}).Where("id = ?", id).
+		Updates(map[string]any{"last_checked_at": now, "last_check_error": checkErr}).Error
 }
 
 // SetStatus 更新状态（subscribed/completed/paused）。
@@ -136,6 +143,15 @@ func (o *SubscriptionOper) HitExists(subID uint, key string) (bool, error) {
 	var count int64
 	err := o.db.Model(&models.SubscriptionHit{}).
 		Where("subscription_id = ? AND torrent_key = ?", subID, key).Count(&count).Error
+	return count > 0, err
+}
+
+// HasAnyHit 该订阅是否推送过任何种子。电影洗版在「候选无画质信息」（未配规则组时
+// PriOrder 全为 0）时用它判断是否已有基线：没有基线才放行首版，有则不再重复下载。
+func (o *SubscriptionOper) HasAnyHit(subID uint) (bool, error) {
+	var count int64
+	err := o.db.Model(&models.SubscriptionHit{}).
+		Where("subscription_id = ?", subID).Count(&count).Error
 	return count > 0, err
 }
 

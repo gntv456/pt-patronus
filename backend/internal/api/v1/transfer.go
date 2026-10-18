@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 
@@ -48,7 +49,18 @@ func (h *TransferHandler) History(c *gin.Context) {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"history": hs}) // oper 保证非 nil
+	// total/truncated travel with the list; when the count fails we report
+	// "maybe truncated" and omit total instead of inventing a number.
+	total, cntErr := h.ch.CountHistory(status)
+	truncated := cntErr != nil || total > int64(len(hs))
+	if cntErr != nil {
+		slog.Warn("transfer history count failed", "status", status, "err", cntErr)
+	}
+	resp := gin.H{"history": hs, "limit": limit, "truncated": truncated} // oper 保证非 nil
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Summary 整理待办汇总：failed 历史数 + 扫下载器得到的真实待入库数（可选 items 明细）。
@@ -137,7 +149,9 @@ func (h *TransferHandler) Organize(c *gin.Context) {
 	}
 	res, err := h.ch.ManualOrganize(c.Request.Context(), in.DownloaderID, in.Hash)
 	if err != nil {
-		errcode.Respond(c, errcode.NotFound.WithErr(err))
+		// #336 原因必须进响应体：链层那句「这台下载器里没有这颗种子，请去『下载器』页」
+		// 从前被 WithErr 整段丢弃，界面只弹「请求的资源不存在」（详见 respondReasonErr）。
+		respondReasonErr(c, err, errcode.NotFound, errcode.NotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -151,7 +165,9 @@ func (h *TransferHandler) Redo(c *gin.Context) {
 	}
 	res, err := h.ch.Redo(c.Request.Context(), id)
 	if err != nil {
-		errcode.Respond(c, errcode.NotFound.WithErr(err))
+		// 同上：Redo 的原因更讲究（区分「压根没问到下载器」与「种子真不在了」），
+		// 更不该被压成一句 404 —— 它还 %w 保留了 ErrCannotConnect 想翻成「去测试连接」。
+		respondReasonErr(c, err, errcode.TransferHistoryNotFound, errcode.NotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -161,6 +177,9 @@ func (h *TransferHandler) Redo(c *gin.Context) {
 func (h *TransferHandler) DeleteHistory(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.ch.GetHistory, id, errcode.TransferHistoryNotFound) {
 		return
 	}
 	if err := h.ch.DeleteHistory(id); err != nil {
@@ -204,6 +223,12 @@ func (h *TransferHandler) ClearFailedHistory(c *gin.Context) {
 // 四轮 P2 修复：单飞守卫——此前连点/前端重试会并发叠多个全量 Sweep（枚举全部
 // 下载器已完成种子 + 文件操作，互抢同一批种子）。进行中直接返回提示。
 func (h *TransferHandler) Sweep(c *gin.Context) {
+	// 总开关关着时 Sweep 直接返回、什么都不会跑：此前照样回执「sweep started」，
+	// 界面（连 res 都不读）报绿。先拒绝，让操作者看到真实原因。
+	if !h.ch.SweepEnabled() {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "msg": "整理功能未启用，扫描不会处理任何种子（请先在整理页开启总开关）"})
+		return
+	}
 	if !h.sweepFlying.CompareAndSwap(false, true) {
 		c.JSON(http.StatusAccepted, gin.H{"ok": false, "msg": "整理扫描已在进行中，请稍候"})
 		return
@@ -217,78 +242,6 @@ func (h *TransferHandler) Sweep(c *gin.Context) {
 
 func transferSweepContext(ctx context.Context) context.Context {
 	return context.WithoutCancel(ctx)
-}
-
-// GetIdentifyWords 识别词表（GET /transfer/identify-words）。
-func (h *TransferHandler) GetIdentifyWords(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"words": transfer.LoadIdentifyWords(h.ch.KV())})
-}
-
-// SetIdentifyWords 保存识别词表（PUT /transfer/identify-words）。
-func (h *TransferHandler) SetIdentifyWords(c *gin.Context) {
-	var in struct {
-		Words []transfer.IdentifyWord `json:"words" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	if err := transfer.SaveIdentifyWords(h.ch.KV(), in.Words); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"saved": len(in.Words)})
-}
-
-// TestIdentifyWords 识别词效果测试（POST：{name} → 规整后名称 + 识别元数据）。
-func (h *TransferHandler) TestIdentifyWords(c *gin.Context) {
-	var in struct {
-		Name string `json:"name" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	ws := transfer.LoadIdentifyWords(h.ch.KV())
-	norm := transfer.ApplyIdentifyWords(ws, in.Name)
-	meta := transfer.ParseMeta(norm)
-	c.JSON(http.StatusOK, gin.H{"normalized": norm, "title": meta.Title, "season": meta.Season, "episode": meta.Episode})
-}
-
-// TestRecognize 名称识别测试（POST：{name, year?, media?} → 本地识别元数据 + 媒体源匹配结果）。
-// 对标 MSaber「名称识别测试」：先本地 ParseMeta（含识别词规整），再可选调媒体源确认能否匹配，
-// 用于验证文件名可识别性与识别词效果。media=true 走媒体源查询（默认仅本地）。
-func (h *TransferHandler) TestRecognize(c *gin.Context) {
-	var in struct {
-		Name  string `json:"name" binding:"required"`
-		Year  int    `json:"year"`
-		Media bool   `json:"media"`
-	}
-	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	ws := transfer.LoadIdentifyWords(h.ch.KV())
-	norm := transfer.ApplyIdentifyWords(ws, in.Name)
-	meta := transfer.ParseMeta(norm)
-	out := gin.H{
-		"normalized": norm,
-		"title":      meta.Title,
-		"year":       meta.Year,
-		"season":     meta.Season,
-		"episode":    meta.Episode,
-		"resolution": meta.Resolution,
-		"group":      meta.ReleaseGroup,
-		"is_tv":      meta.IsTV,
-	}
-	if in.Media && meta.Title != "" {
-		if m, err := h.ch.SearchMedia(c.Request.Context(), meta.Title, in.Year, ""); err == nil && m != nil {
-			out["matched"] = gin.H{"title": m.Title, "year": m.Year, "type": m.Type}
-		} else {
-			out["matched"] = nil
-		}
-	}
-	c.JSON(http.StatusOK, out)
 }
 
 // ---- 目录标签（跨模块目录引用：订阅/STRM/云端整理用标签而非重复填路径） ----
@@ -308,7 +261,9 @@ func (h *TransferHandler) SetDirTags(c *gin.Context) {
 		return
 	}
 	if err := transfer.SaveDirTags(h.ch.KV(), in.Tags); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// #368 链层已逐条写好「标签名重复: 电影」「标签 x 路径为空」，
+		// WithErr 会把它们整段丢进日志，界面只剩「没能指出具体是哪一项」。
+		respondDirCfgErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tags)})
@@ -339,7 +294,16 @@ func (h *TransferHandler) SetSortRules(c *gin.Context) {
 
 // GetDirSync GET /transfer/dir-sync。
 func (h *TransferHandler) GetDirSync(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"tasks": transfer.LoadDirSyncTasks(h.ch.KV())})
+	tasks, err := transfer.LoadDirSyncTasks(h.ch.KV())
+	if err != nil {
+		// 读失败必须报错：此前静默回空列表，界面与「真的没配置任务」同形。
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	if tasks == nil {
+		tasks = []transfer.DirSyncTask{}
+	}
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }
 
 // SetDirSync PUT /transfer/dir-sync（全量保存）。
@@ -352,7 +316,8 @@ func (h *TransferHandler) SetDirSync(c *gin.Context) {
 		return
 	}
 	if err := transfer.SaveDirSyncTasks(h.ch.KV(), in.Tasks); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// #368 同 SetDirTags：链层「任务 t 同步方式非法: bogus」这类人话必须到界面。
+		respondDirCfgErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tasks)})
@@ -367,7 +332,13 @@ func (h *TransferHandler) RunDirSync(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	for _, t := range transfer.LoadDirSyncTasks(h.ch.KV()) {
+	// 读失败必须报 500：此前静默当空清单 → 手动触发被误报「任务不存在」。
+	tasks, err := transfer.LoadDirSyncTasks(h.ch.KV())
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	for _, t := range tasks {
 		if t.Name == in.Name {
 			res := transfer.RunDirSync(t)
 			c.JSON(http.StatusOK, res)

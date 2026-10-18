@@ -66,8 +66,13 @@
     if (filled.has(pw)) return
     filled.add(pw)
     chrome.runtime.sendMessage({ type: 'ptp-cred-autofill', host: location.hostname }, (res) => {
-      if (!res || !res.ok || !res.cred) return
-      fillPair(user, pw, res.cred)
+      if (res && res.ok && res.cred) { fillPair(user, pw, res.cred); return }
+      // #337 填充失败不再完全静默：从前这里 `if (!res || !res.ok || !res.cred) return`，
+      // 库锁着 / 这个站被拉黑 / 服务器读不到 全都一个动静都没有——用户只看到空表单，
+      // 以为扩展没装凭据。现在显示后台给的真原因（credentials.js#credReadFailText）。
+      // 但 no-match（库里确实没这条）是正常状态，message 为空 ⇒ 仍然不打扰。
+      const msg = res && res.message
+      if (msg) showFillHint(msg)
     })
   }
 
@@ -98,12 +103,51 @@
     })
   }
 
-  function offerSave(username, password) {
-    if (document.getElementById('ptp-save-cred')) return
+  // showFillHint 填充失败时的单行提示：复用保存气泡的样式与停留时长，
+  // 只是没有按钮（这里只能给提示，下一步在扩展设置页，不在页面里）。
+  // 空 message（no-match：库里没这条，属正常）时不弹——不打扰登录。
+  // BUBBLE_SLOT 凭据气泡的占位键：同一时刻只允许一个在场。
+  // #337 的 showFillHint 与既有的 offerSave 原本用各自 id 判存在、坐标又完全相同，
+  // 于是两者能同时存在并重叠在同一像素（库锁定时打开登录页就会触发：填充提示 +
+  // 保存气泡叠在一起）。共用一个键、后弹的替换先弹的。
+  const BUBBLE_SLOT = 'ptp-cred-bubble'
+
+  // 右下角注入 UI 的槽位带（详见 content_torrent.js 顶部的槽位约定）：
+  //   批量栏 18px → 菜单 64px（高约 118px，顶到 182px）→ 本气泡 196px（高约 40px，顶到 236px）
+  //   → 浮钮 268px。四层依次向上，互不重叠。
+  // zIndex 同理分层：菜单/批量栏 2147483646 < 气泡 2147483647 < 浮钮 2147483648。
+  // 此前是 bottom:70px + 与浮钮同 zIndex —— 与浮钮重叠，而叠放顺序取决于两个脚本的注入时机，
+  // 表现为「浮钮有时候点得到、有时候点不到」，很难复现。
+
+  // claimBubbleSlot 清掉占位中的旧气泡，返回是否还能挂新的。
+  // 用 getElementById 按 BUBBLE_SLOT 取——旧节点一定带这个 id。
+  function claimBubbleSlot() {
+    const old = document.getElementById(BUBBLE_SLOT)
+    if (old) old.remove()
+  }
+  function showFillHint(msg) {
+    if (!msg) return
+    claimBubbleSlot()
     const box = document.createElement('div')
-    box.id = 'ptp-save-cred'
+    box.id = BUBBLE_SLOT
     Object.assign(box.style, {
-      position: 'fixed', right: '18px', bottom: '70px', zIndex: 2147483646,
+      position: 'fixed', right: '18px', bottom: '196px', zIndex: 2147483647,
+      maxWidth: '280px', padding: '10px 14px', borderRadius: '12px',
+      background: 'rgba(27,30,40,.97)', color: '#e8eaf0',
+      font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
+      border: '1px solid #3a3f4f',
+    })
+    box.textContent = '⚠ ' + msg
+    document.documentElement.appendChild(box)
+    // 与保存气泡同：一句人话 4.5s 读不完，1.8s 太短（保存侧已因此改过）。
+    setTimeout(() => box.remove(), 4500)
+  }
+  function offerSave(username, password) {
+    claimBubbleSlot()
+    const box = document.createElement('div')
+    box.id = BUBBLE_SLOT
+    Object.assign(box.style, {
+      position: 'fixed', right: '18px', bottom: '196px', zIndex: 2147483647,
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '10px 14px', borderRadius: '12px',
       background: 'rgba(27,30,40,.97)', color: '#e8eaf0',
@@ -132,8 +176,16 @@
         title: document.title.slice(0, 60) || location.hostname,
         username, password,
       }, (res) => {
-        box.textContent = res && res.ok ? '✅ 已保存' : '⚠ 请先到扩展设置页解锁凭据库'
-        setTimeout(() => box.remove(), 1800)
+        // 显示后台给的真原因（credentials.js#credSaveFailText 统一文案）。
+        // 从前这里对所有失败贴同一句「请先到扩展设置页解锁凭据库」——
+        // 站点被用户自己拉进凭据黑名单、或来源校验被拒时也照这句说，等于把人指向错的下一步。
+        if (res && res.ok) {
+          box.textContent = '✅ 已保存'
+        } else {
+          const code = res && res.error ? String(res.error) : ''
+          box.textContent = '⚠ ' + ((res && res.message) || (code ? `保存失败：${code}` : '保存失败：未返回原因（请打开扩展设置页查看）'))
+        }
+        setTimeout(() => box.remove(), 4500)
       })
     })
     no.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); box.remove() })

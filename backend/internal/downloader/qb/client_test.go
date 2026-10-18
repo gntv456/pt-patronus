@@ -193,3 +193,40 @@ func TestQBClientRidRegressionResync(t *testing.T) {
 		t.Error("full-resync torrent 'a' missing")
 	}
 }
+
+// TestQBAddFailsBodyReturnsError qB 添加失败是 HTTP 200 + "Fails."：只查状态码会把失败
+// 当成功（RSS 标记已下载、辅种记 added，静默丢种且不再重试）。URL 与文件两条路径都要报错。
+func TestQBAddFailsBodyReturnsError(t *testing.T) {
+	fails := true
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/auth/login":
+			w.WriteHeader(200)
+			_, _ = w.Write([]byte("Ok."))
+		case "/api/v2/torrents/add":
+			w.WriteHeader(200)
+			if fails {
+				_, _ = w.Write([]byte("Fails."))
+			}
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer srv.Close()
+	c, err := New(srv.URL, "u", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := c.AddTorrent(ctx, downloader.AddOptions{URL: "magnet:?xt=urn:btih:x"}); err == nil {
+		t.Error("Fails. 响应必须报错（URL 路径）")
+	}
+	if err := c.AddTorrent(ctx, downloader.AddOptions{FileContent: []byte("d4:infode"), FileName: "a.torrent"}); err == nil {
+		t.Error("Fails. 响应必须报错（文件路径）")
+	}
+	// 正控：空 body = qB 成功响应 → 不得报错。
+	fails = false
+	if err := c.AddTorrent(ctx, downloader.AddOptions{URL: "magnet:?xt=urn:btih:y"}); err != nil {
+		t.Errorf("成功响应（空 body）不应报错: %v", err)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -15,17 +16,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// fakeSubProvider 测试用字幕源（无需网络）。
+// fakeSubProvider 测试用字幕源（无需网络）。panicOn=true 时 Search 现场 panic
+// （模拟解析器崩在畸形结果页，验 per-source 隔离与「全源崩≠没字幕」）。
 type fakeSubProvider struct {
-	name   string
-	subs   []subtitle.Subtitle
-	err    error
-	dlData []byte
-	dlName string
+	name    string
+	subs    []subtitle.Subtitle
+	err     error
+	dlData  []byte
+	dlName  string
+	panicOn bool
 }
 
 func (f *fakeSubProvider) Name() string { return f.name }
 func (f *fakeSubProvider) Search(context.Context, string, subtitle.SearchOpts) ([]subtitle.Subtitle, error) {
+	if f.panicOn {
+		panic("nil pointer dereference on malformed subtitle page")
+	}
 	return f.subs, f.err
 }
 func (f *fakeSubProvider) Download(context.Context, subtitle.Subtitle) ([]byte, string, error) {
@@ -158,3 +164,44 @@ var errFake = bytesError("source down")
 type bytesError string
 
 func (b bytesError) Error() string { return string(b) }
+
+// TestSubtitleSearchReportsAllSourcesFailed 全部源都崩掉时 Search 必须报错，而不是回「空列表 + nil」：
+// 修复前每个崩掉的源留下 outs[i] 零值（err=nil），下游当成「这个源没搜到字幕」，于是
+// 「一个源都没读回来」和「没找到字幕」在页面上完全同形（健康中心据此判定「无字幕」也是同一条链）。
+func TestSubtitleSearchReportsAllSourcesFailed(t *testing.T) {
+	p := newSubtitleTestProvider(t, "",
+		&fakeSubProvider{name: "a", panicOn: true},
+		&fakeSubProvider{name: "b", panicOn: true},
+	)
+	ch := NewSubtitleChain(NewBase(module.New(), event.New()), p)
+	res, err := ch.Search(context.Background(), "q", "")
+	if err == nil {
+		t.Fatalf("全部源崩溃必须报错（否则与「没找到字幕」同形），got res=%+v", res)
+	}
+	if !strings.Contains(err.Error(), "共 2 个源") {
+		t.Errorf("错误要点明参与源数（63/69 口径），got %q", err)
+	}
+	if strings.Contains(err.Error(), "subtitle sources all failed") {
+		t.Errorf("给用户看的句子不得夹英文 id（handler 用 WithDetail 把整句送进响应体），got %q", err)
+	}
+	if res != nil {
+		t.Errorf("全源失败不该返回半截结果，got %+v", res)
+	}
+}
+
+// TestSubtitleSearchSurvivesOnePanickingSource 单源崩溃不阻断其它源：仍出结果、不报错
+// （反向对照，防我把聚合错误写成「有失败就报错」）。
+func TestSubtitleSearchSurvivesOnePanickingSource(t *testing.T) {
+	p := newSubtitleTestProvider(t, "",
+		&fakeSubProvider{name: "boom", panicOn: true},
+		&fakeSubProvider{name: "ok", subs: []subtitle.Subtitle{{Source: "ok", SourceID: "1", Title: "字幕", Score: 5}}},
+	)
+	ch := NewSubtitleChain(NewBase(module.New(), event.New()), p)
+	res, err := ch.Search(context.Background(), "q", "")
+	if err != nil {
+		t.Fatalf("部分源失败不应报错：%v", err)
+	}
+	if len(res) != 1 || res[0].Title != "字幕" {
+		t.Errorf("正常源的结果要照常出，got %+v", res)
+	}
+}

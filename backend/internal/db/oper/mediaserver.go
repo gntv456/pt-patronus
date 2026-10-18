@@ -1,8 +1,6 @@
 package oper
 
 import (
-	"fmt"
-
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
@@ -148,4 +146,4 @@ func (o *MediaServerOper) Token(m *models.MediaServer) (string, error) {
 }
 
 // errInvalidServerType 媒体服务器类型不在 emby/jellyfin/plex 白名单内（包 ErrInvalidInput 供 handler errors.Is 判 400）。
-var errInvalidServerType = fmt.Errorf("无效的媒体服务器类型（仅支持 emby/jellyfin/plex/ugos/fnos/zspace）: %w", ErrInvalidInput)
+var errInvalidServerType = invalidInput("无效的媒体服务器类型（仅支持 emby/jellyfin/plex/ugos/fnos/zspace）")

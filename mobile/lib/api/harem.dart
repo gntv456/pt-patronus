@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import '../features/common/stream_account.dart';
 
 class InviteeInfo {
   final String username;
@@ -99,7 +100,13 @@ class HaremResult {
 }
 
 class HaremApi {
+  HaremApi({StreamFrames? frames}) : _frames = frames;
+
+  final StreamFrames? _frames;
   final _api = ApiClient();
+
+  Stream<MapEntry<String, Map<String, dynamic>>> _stream(String path) =>
+      _frames?.call(path) ?? _api.streamGet(path);
   Future<HaremResult> all({bool refresh = false}) async {
     final r = await _api.get('/harem${refresh ? '?refresh=1' : ''}');
     return HaremResult.fromJson(r);
@@ -107,20 +114,15 @@ class HaremApi {
 
   /// 流式首屏（SSE）：batch 帧产出药单批（通常单站），done 帧产出全量 overview；取消监听即中断。
   Stream<HaremStreamEvent> allStream({bool refresh = false}) {
-    return _api.streamGet('/harem/stream${refresh ? '?refresh=1' : ''}').map((ev) {
-      if (ev.key == 'batch' && ev.value['results'] is List) {
-        return HaremStreamEvent(
-          items: (ev.value['results'] as List)
-              .map((e) => PrescriptionItem.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        );
-      }
+    return _stream('/harem/stream${refresh ? '?refresh=1' : ''}').map((ev) {
+      final batch = mapStreamFrame(ev, PrescriptionItem.fromJson);
       if (ev.key == 'done' && ev.value['overview'] is Map) {
         return HaremStreamEvent(
           overview: HaremOverview.fromJson(ev.value['overview'] as Map<String, dynamic>),
+          listError: batch.listError,
         );
       }
-      return HaremStreamEvent();
+      return HaremStreamEvent(items: batch.items, listError: batch.listError);
     });
   }
 
@@ -130,9 +132,14 @@ class HaremApi {
   }
 }
 
-/// 后宫流式事件：item 帧（一批药单）或 done 帧（全量 overview）。
+/// 后宫流式事件：item 帧（一批药单）或 done 帧（全量 overview + 清单账面）。
 class HaremStreamEvent {
   final List<PrescriptionItem> items;
   final HaremOverview? overview;
-  HaremStreamEvent({this.items = const [], this.overview});
+  final String listError;
+  HaremStreamEvent({
+    this.items = const [],
+    this.overview,
+    this.listError = '',
+  });
 }

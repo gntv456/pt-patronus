@@ -26,7 +26,7 @@ export function useSubscriptionList() {
 
   // 兼容尚未升级后端时创建的旧订阅：页面端也按标题补图，最多同时请求 4 个。
   async function fillMissingPosters(items: Subscription[]) {
-    const pending = items.filter((s) => !s.poster_url)
+    const pending = items.filter((s) => !s.poster_url && (s.title || '').trim())
     let next = 0
     const worker = async () => {
       while (next < pending.length) {

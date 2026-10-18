@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -24,10 +23,17 @@ func NewFreeleechHandler(ch *chain.SiteChain, siteOp *oper.SiteOper) *FreeleechH
 	return &FreeleechHandler{ch: ch, siteOp: siteOp}
 }
 
-// All 返回所有启用站点的站免聚合（带缓存；?refresh=1 强制刷新）。
+// All 返回所有启用站点的站免聚合（带缓存；?refresh=1 强制刷新）。清单读失败回 errcode，不渲染成「全部站无站免」。
 func (h *FreeleechHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	results := h.ch.FreeleechAll(c.Request.Context(), force)
+	results, err := h.ch.FreeleechAll(c.Request.Context(), force)
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	if results == nil {
+		results = []chain.FreeleechResult{}
+	}
 	c.JSON(http.StatusOK, gin.H{"sites": results})
 }
 
@@ -56,7 +62,11 @@ func (h *FreeleechHandler) AllStream(c *gin.Context) {
 			flusher.Flush()
 		}
 	}
-	h.ch.FreeleechStream(c.Request.Context(), force, emit)
+	// 流末尾补 done 行：站点清单读失败时带 list_error（前端识别后抛错留痕，不再「0 站全绿」）。
+	listErr := h.ch.FreeleechStream(c.Request.Context(), force, emit)
+	if listErr != "" {
+		emitDone(w, &mu, flusher, listErr)
+	}
 }
 
 // SyncOne 立即抓取单个站点站免并返回（站点卡片「刷新」按钮）。
@@ -68,16 +78,12 @@ func (h *FreeleechHandler) SyncOne(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
-	notices, e := h.ch.Freeleech(c.Request.Context(), s)
-	r := chain.FreeleechResult{SiteID: s.ID, SiteName: s.Name}
-	if e != nil {
-		r.Error = e.Error()
-	}
-	r.Notices = notices
-	c.JSON(http.StatusOK, r.Normalize())
+	// 交回链层的单站组装口径：中文原因 + 「没接线」判定 + notices 归一（handler 自己拼
+	// 会把 e.Error() 英文原文弹给用户，且未适配的站退化成「没有促销」）。
+	c.JSON(http.StatusOK, h.ch.SyncFreeleech(c.Request.Context(), s))
 }
 
 // AnnouncementHandler 站点公告。
@@ -91,10 +97,17 @@ func NewAnnouncementHandler(ch *chain.SiteChain, siteOp *oper.SiteOper) *Announc
 	return &AnnouncementHandler{ch: ch, siteOp: siteOp}
 }
 
-// All 返回所有启用站点的公告聚合（带缓存；?refresh=1 强制刷新）。
+// All 返回所有启用站点的公告聚合（带缓存；?refresh=1 强制刷新）。清单读失败回 errcode，不渲染成「全部站无公告」。
 func (h *AnnouncementHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	results := h.ch.AnnouncementsAll(c.Request.Context(), force)
+	results, err := h.ch.AnnouncementsAll(c.Request.Context(), force)
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	if results == nil {
+		results = []chain.AnnouncementResult{}
+	}
 	c.JSON(http.StatusOK, gin.H{"sites": results})
 }
 
@@ -122,7 +135,26 @@ func (h *AnnouncementHandler) AllStream(c *gin.Context) {
 			flusher.Flush()
 		}
 	}
-	h.ch.AnnouncementsStream(c.Request.Context(), force, emit)
+	// 流末尾补 done 行：站点清单读失败时带 list_error（前端识别后抛错留痕，不再「0 站全绿」）。
+	listErr := h.ch.AnnouncementsStream(c.Request.Context(), force, emit)
+	if listErr != "" {
+		emitDone(w, &mu, flusher, listErr)
+	}
+}
+
+// emitDone 向 NDJSON 流末尾补一行 {"done":true,"list_error":...}（清单读失败留痕；"" 则不打扰）。
+func emitDone(w gin.ResponseWriter, mu *sync.Mutex, flusher http.Flusher, listErr string) {
+	b, err := json.Marshal(gin.H{"done": true, "list_error": listErr})
+	if err != nil {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	_, _ = w.Write(b)
+	_, _ = w.Write([]byte("\n"))
+	if flusher != nil {
+		flusher.Flush()
+	}
 }
 
 // SyncOne 立即抓取单个站点公告并返回。
@@ -134,18 +166,9 @@ func (h *AnnouncementHandler) SyncOne(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
-	ann, e := h.ch.Announcements(c.Request.Context(), s)
-	r := chain.AnnouncementResult{SiteID: s.ID, SiteName: s.Name, FetchedAt: time.Now()}
-	if e != nil {
-		r.Error = e.Error()
-	}
-	if ann != nil {
-		r.RawText = ann.RawText
-		r.Items = ann.Items
-		r.FetchedAt = ann.FetchedAt
-	}
-	c.JSON(http.StatusOK, r.Normalize())
+	// 同站免：交回链层口径（中文原因 + 未接线判定 + items 归一 + 回写缓存）。
+	c.JSON(http.StatusOK, h.ch.SyncAnnouncement(c.Request.Context(), s))
 }

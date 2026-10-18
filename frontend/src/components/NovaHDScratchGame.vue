@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const { t } = useI18n()
 // 服务端奖品名占位值（比较用，非文案）
@@ -21,10 +22,10 @@ const remaining = computed(() => {
 })
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(entFail('stats', stats.value))
 }
 async function refreshHistory() {
-  records.value = await entertainmentApi.history(props.siteId, GAME).catch(() => [])
+  records.value = await entertainmentApi.history(props.siteId, GAME).catch(entFail('history', []))
 }
 
 async function scratch() {
@@ -45,7 +46,7 @@ async function scratch() {
 }
 
 onMounted(async () => {
-  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(() => [] as PrizeDef[])
+  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(entFail('prizes', [] as PrizeDef[]))
   await Promise.all([refreshStats(), refreshHistory()])
 })
 </script>

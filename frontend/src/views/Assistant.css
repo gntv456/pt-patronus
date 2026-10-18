@@ -170,6 +170,11 @@
   font-size: var(--fs-xs);
   opacity: 0.6;
 }
+/* 读取失败的说明不能沿用 0.6 的弱化态：那正是「读不出来」最容易被跳过去的样子。 */
+.hint-warn {
+  opacity: 1;
+  color: var(--pt-danger);
+}
 .tool-perms {
   width: 100%;
 }

@@ -76,7 +76,8 @@ func powerSynology(ctx context.Context, hc *httpclient.Client, t *models.Monitor
 	}()
 	if _, err := synoCall(ctx, hc, base, "SYNO.Core.System", method, 1, url.Values{"_sid": {login.Sid}}); err != nil {
 		if _, err2 := synoCall(ctx, hc, base, "SYNO.Core.System", method, 2, url.Values{"_sid": {login.Sid}}); err2 != nil {
-			return fmt.Errorf("synology %s: %w", method, err)
+			// 两次尝试都留下原因：拦腰失败可能发生在第二次（如密码策略要求 OTP），只报 v1 的错会丢一半线索。
+			return fmt.Errorf("synology %s: %w（v2 重试亦失败：%v）", method, err, err2)
 		}
 	}
 	return nil

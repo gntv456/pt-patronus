@@ -33,7 +33,7 @@ func (h *OpsConfigHandler) Create(c *gin.Context) {
 	}
 	item, err := h.op.Create(in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, nil, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, item)
@@ -51,7 +51,7 @@ func (h *OpsConfigHandler) Update(c *gin.Context) {
 	}
 	item, err := h.op.Update(id, in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, errcode.OpsConfigNotFound, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, item)
@@ -60,6 +60,9 @@ func (h *OpsConfigHandler) Update(c *gin.Context) {
 func (h *OpsConfigHandler) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.op.Get, id, errcode.OpsConfigNotFound) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {

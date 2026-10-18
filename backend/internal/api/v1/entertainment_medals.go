@@ -15,7 +15,7 @@ func (h *EntertainmentHandler) Syntheses(c *gin.Context) {
 	}
 	res, err := h.ent.Syntheses(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"targets": res})
@@ -76,7 +76,7 @@ func (h *EntertainmentHandler) MedalTree(c *gin.Context) {
 	}
 	res, err := h.ent.MedalTree(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"nodes": res})
@@ -90,7 +90,7 @@ func (h *EntertainmentHandler) MedalShards(c *gin.Context) {
 	}
 	res, err := h.ent.MedalShards(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"shards": res})
@@ -169,7 +169,7 @@ func (h *EntertainmentHandler) Farm(c *gin.Context) {
 	}
 	res, err := h.ent.Farm(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)

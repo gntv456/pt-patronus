@@ -86,7 +86,7 @@ func (h *DiskHandler) Partition(c *gin.Context) {
 	script := strings.Join(steps, " && ")
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 60)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
@@ -159,7 +159,7 @@ func (h *DiskHandler) Mount(c *gin.Context) {
 	script := fmt.Sprintf(`mkdir -p %s && mount %s %s`, in.Mountpoint, in.Device, in.Mountpoint)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
@@ -192,7 +192,7 @@ func (h *DiskHandler) Umount(c *gin.Context) {
 	script := fmt.Sprintf(`umount %s`, in.Mountpoint)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {

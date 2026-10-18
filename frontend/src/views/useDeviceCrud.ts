@@ -78,10 +78,14 @@ export function useDeviceCrud(
       const r = await monitorApi.probe(t.id)
       if (r.online) ElMessage.success(`${t.name} 在线`)
       else if (isSSHAuthError(r.error)) showSSHAuthFix()
+      // 探活本身没做成时后端回 {ok:false, online:false, error:'原因'}（monitor.go:99）：
+      // 「没测出来」不许说成「设备离线」，否则用户去查设备而不是查凭据/网络（#252）。
+      else if (!r.ok) ElMessage.warning(`${t.name} 探活未完成${r.error ? '：' + r.error : ''}`)
       else ElMessage.warning(`${t.name} 离线${r.error ? '：' + r.error : ''}`)
       await deps.reload()
-    } catch {
-      ElMessage.error('探活失败')
+    } catch (e) {
+      // 后端给的中文原因在 err.message 里（http 拦截器改写），别压成一句「探活失败」。
+      ElMessage.error('探活失败：' + ((e as Error).message || '未知原因'))
     }
   }
 
@@ -108,20 +112,40 @@ export function useDeviceCrud(
     previewVisible.value = true
   }
 
+  // 告警动作的失败出口只写一份。后端这几个端点有真会发生的 400/404（告警已被别人清掉、
+  // 静默时间在过去/越界），中文原因就在响应的 error 字段里；不接住异常就逃出 async 的 click
+  // handler ⇒ Promise rejection 没人处理：列表没变、也不吭声，用户读到的就是「点了没反应」。
+  // 失败后照样 reload 不是把失败演成成功：那条告警可能已经不存在，界面要跟服务端对齐。
+  function alertActionFailed(action: string, e: unknown) {
+    ElMessage.error(action + '失败：' + (e as Error).message)
+  }
+
   async function onReadAlert(a: MonitorAlert) {
-    await monitorApi.readAlert(a.id)
+    try {
+      await monitorApi.readAlert(a.id)
+    } catch (e) {
+      alertActionFailed('标记已读', e)
+    }
     await deps.reload()
   }
 
   async function onAckAlert(a: MonitorAlert) {
-    await monitorApi.ackAlert(a.id)
-    ElMessage.success('告警已确认')
+    try {
+      await monitorApi.ackAlert(a.id)
+      ElMessage.success('告警已确认')
+    } catch (e) {
+      alertActionFailed('确认告警', e)
+    }
     await deps.reload()
   }
 
   async function onSilenceAlert(a: MonitorAlert) {
-    await monitorApi.silenceAlert(a.id, 30)
-    ElMessage.success('已静默 30 分钟')
+    try {
+      await monitorApi.silenceAlert(a.id, 30)
+      ElMessage.success('已静默 30 分钟')
+    } catch (e) {
+      alertActionFailed('静默告警', e)
+    }
     await deps.reload()
   }
 
@@ -135,8 +159,12 @@ export function useDeviceCrud(
     } catch {
       return
     }
-    await monitorApi.deleteAlert(a.id)
-    ElMessage.success('已删除')
+    try {
+      await monitorApi.deleteAlert(a.id)
+      ElMessage.success('已删除')
+    } catch (e) {
+      alertActionFailed('删除告警', e)
+    }
     await deps.reload()
   }
 
@@ -150,8 +178,12 @@ export function useDeviceCrud(
     } catch {
       return
     }
-    await monitorApi.clearAlerts(false)
-    ElMessage.success('已清空告警记录')
+    try {
+      await monitorApi.clearAlerts(false)
+      ElMessage.success('已清空告警记录')
+    } catch (e) {
+      alertActionFailed('清空告警', e)
+    }
     await deps.reload()
   }
 

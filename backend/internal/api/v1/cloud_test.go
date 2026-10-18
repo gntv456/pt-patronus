@@ -30,7 +30,7 @@ func setupCloudServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 			_ = sqlDB.Close()
 		}
 	})
-	if err := db.AutoMigrate(&models.CloudDrive{}, &models.StrmRule{}, &models.Subscription{}, &models.Downloader{}, &models.SubscriptionHit{}); err != nil {
+	if err := db.AutoMigrate(&models.CloudDrive{}, &models.StrmRule{}, &models.StrmRecord{}, &models.Subscription{}, &models.Downloader{}, &models.SubscriptionHit{}); err != nil {
 		t.Fatal(err)
 	}
 	subOp := oper.NewSubscriptionOper(db)
@@ -49,7 +49,7 @@ func setupCloudServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 	r.DELETE("/cloud/drives/:id", h.Delete)
 	r.GET("/cloud/drives/:id/test", h.Test)
 	r.GET("/cloud/drives/:id/quota", h.Quota)
-	r.GET("/cloud/drives/:id/browse", h.Browse)
+	r.GET("/cloud/drives/:id/list", h.Browse)
 	r.GET("/cloud/strm/rules", h.ListRules)
 	r.POST("/cloud/files/mkdir", h.CloudMkdir)
 	r.POST("/cloud/files/move", h.CloudMove)
@@ -58,6 +58,11 @@ func setupCloudServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 	r.POST("/cloud/files/delete", h.CloudDelete)
 	r.POST("/cloud/files/offline", h.CloudOffline)
 	r.POST("/cloud/files/share-save", h.CloudShare)
+	r.POST("/cloud/generate", h.Generate)
+	r.DELETE("/cloud/rules/:id", h.DeleteRule)
+	r.DELETE("/cloud/records/:id", h.DeleteRecord)
+	r.POST("/cloud/rules/:id/generate", h.GenerateRule)
+	r.PUT("/cloud/rules/:id", h.UpdateRule)
 	return r, db
 }
 
@@ -151,11 +156,11 @@ func TestCloud_BrowseAndRules(t *testing.T) {
 	doCloud(t, r, http.MethodPost, "/cloud/drives", cloudBody)
 
 	// 非法 id → 400
-	if rec := doCloud(t, r, http.MethodGet, "/cloud/drives/zz/browse", ""); rec.Code != http.StatusBadRequest {
+	if rec := doCloud(t, r, http.MethodGet, "/cloud/drives/zz/list", ""); rec.Code != http.StatusBadRequest {
 		t.Fatalf("非法 id 应 400，got %d", rec.Code)
 	}
 	// 假凭据浏览 → 400 错误语义（不 5xx）
-	rec := doCloud(t, r, http.MethodGet, "/cloud/drives/1/browse?path=/media", "")
+	rec := doCloud(t, r, http.MethodGet, "/cloud/drives/1/list?path=/media", "")
 	if rec.Code == http.StatusInternalServerError {
 		t.Fatalf("浏览失败不应 500: %d %s", rec.Code, rec.Body.String())
 	}

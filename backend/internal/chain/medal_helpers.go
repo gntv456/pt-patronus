@@ -126,6 +126,25 @@ func mergeMedals(shop []medalwall.Item, owned []medalwall.Owned) []medalwall.Ite
 	return shop
 }
 
+// carryForwardOwned 已拥有列表回源失败时，把旧快照里的 OWNED/佩戴状态回填到本次结果：
+// BatchUpsert 是删后插——没有这道保护，一次瞬时故障（uid 发现失败/个人页 5xx）就会把
+// 已拥有勋章洗成「可购买」。列表恢复后以站点真实结果为准（本函数只在 ownedErr != nil 时调用）。
+func carryForwardOwned(old, cur []medalwall.Item) []medalwall.Item {
+	ownedByKey := make(map[string]medalwall.Item, len(old))
+	for _, o := range old {
+		if o.PurchaseStatus == medalwall.StatusOwned {
+			ownedByKey[medalKey(o)] = o
+		}
+	}
+	for i := range cur {
+		if o, ok := ownedByKey[medalKey(cur[i])]; ok && cur[i].PurchaseStatus != medalwall.StatusOwned {
+			cur[i].PurchaseStatus = medalwall.StatusOwned
+			cur[i].WearStatus = o.WearStatus
+		}
+	}
+	return cur
+}
+
 // ensureMedalIDs gives parser rows without a real site id a stable read-only id
 // so DB upserts cannot collide on (site_id, ""). Synthetic ids are blocked from
 // write actions below because they cannot be sent back to the site safely.

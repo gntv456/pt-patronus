@@ -62,8 +62,21 @@ export const rssApi = {
   create: (data: RssInput) => http.post<RssSubscription>('/rss', data).then((r) => r.data),
   update: (id: number, data: RssInput) => http.put<RssSubscription>(`/rss/${id}`, data).then((r) => r.data),
   remove: (id: number) => http.delete(`/rss/${id}`).then((r) => r.data),
+  // 成功面必须带扫描账面（scanned/total/truncated）：只回 new_count 时，「源共 500 条只查了
+  // 窗口内 200 条」与「整个源查完了」在界面同形。
   check: (id: number) =>
-    http.post<{ ok: boolean; new_count: number; error?: string }>(`/rss/${id}/check`).then((r) => r.data),
+    http
+      .post<
+        | { ok: true; new_count: number; scanned: number; total: number; truncated: boolean }
+        | { ok: false; new_count: number; error?: string }
+      >(`/rss/${id}/check`)
+      .then((r) => r.data),
+  // total 在计数读取失败时不下发（后端按「可能被截断」保守报 truncated=true），
+  // 所以这里必须是可选字段，界面不能拿 `?? 0` 把它伪造成「一共 0 条」。
   items: (id: number, limit = 100) =>
-    http.get<{ items: RssItem[] }>(`/rss/${id}/items`, { params: { limit } }).then((r) => r.data.items ?? []),
+    http
+      .get<{ items: RssItem[]; total?: number; limit: number; truncated: boolean }>(`/rss/${id}/items`, {
+        params: { limit },
+      })
+      .then((r) => r.data),
 }

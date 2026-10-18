@@ -11,10 +11,10 @@ import (
 // 站点 / 下载器 / 媒体服务器 / 云盘 / 网络 / 云任务队列。探活复用各 chain 既有 Test 入口，
 // doctor 包保持叶子（Target/ProbeFunc 闭包注入，不 import 业务包）。
 func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
-	siteTargets := func() []doctor.Target {
+	siteTargets := func() ([]doctor.Target, error) {
 		sites, err := d.siteOp.ListActive()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		ts := make([]doctor.Target, 0, len(sites))
 		for i := range sites {
@@ -25,12 +25,12 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 					return err
 				}})
 		}
-		return ts
+		return ts, nil
 	}
-	dlTargets := func() []doctor.Target {
+	dlTargets := func() ([]doctor.Target, error) {
 		dls, err := d.dlOp.List()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		ts := make([]doctor.Target, 0, len(dls))
 		for i := range dls {
@@ -39,12 +39,12 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 			ts = append(ts, doctor.Target{ID: id, Name: name, Type: "downloader",
 				Prob: func(ctx context.Context) error { return d.dlCh.Test(ctx, id) }})
 		}
-		return ts
+		return ts, nil
 	}
-	msTargets := func() []doctor.Target {
+	msTargets := func() ([]doctor.Target, error) {
 		servers, err := d.mediaServerCh.List()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		ts := make([]doctor.Target, 0, len(servers))
 		for i := range servers {
@@ -56,12 +56,12 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 					return err
 				}})
 		}
-		return ts
+		return ts, nil
 	}
-	cloudTargets := func() []doctor.Target {
+	cloudTargets := func() ([]doctor.Target, error) {
 		drives, err := d.cloudCh.List()
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		ts := make([]doctor.Target, 0, len(drives))
 		for i := range drives {
@@ -73,7 +73,7 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 					return err
 				}})
 		}
-		return ts
+		return ts, nil
 	}
 	return []doctor.Check{
 		lazyTargets("business.sites", "站点连通", false, siteTargets),
@@ -91,9 +91,19 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 }
 
 // lazyTargets 每次体检执行时才解析目标列表（目标可能中途增删）。
-func lazyTargets(id, title string, warnOnly bool, targets func() []doctor.Target) doctor.Check {
+// 目标列表读失败必须报 failed——以前吞成 0 目标，体检渲染成「未配置」(skipped/info)，
+// 与「真的没配」同形，体检面板把读库故障画成没事。
+func lazyTargets(id, title string, warnOnly bool, targets func() ([]doctor.Target, error)) doctor.Check {
 	return func(ctx context.Context) doctor.Finding {
-		check := doctor.CheckTargets(id, title, warnOnly, targets())
+		ts, err := targets()
+		if err != nil {
+			return doctor.Finding{
+				ID: id, Title: title, Severity: doctor.SevError, Status: doctor.StatusFailed,
+				Detail:         "读取目标列表失败: " + err.Error(),
+				Recommendation: "检查数据库状态后重新体检",
+			}
+		}
+		check := doctor.CheckTargets(id, title, warnOnly, ts)
 		return check(ctx)
 	}
 }

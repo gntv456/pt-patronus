@@ -14,6 +14,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/cookiecloud"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -229,7 +230,7 @@ func (c *CookieCloudChain) Sync(ctx context.Context) (CookieCloudSyncReport, err
 // recordSyncResult 把同步结果（时间戳/错误）回写 settings。
 func (c *CookieCloudChain) recordSyncResult(s CookieCloudSettings, report CookieCloudSyncReport, err error) {
 	if err != nil {
-		s.LastError = err.Error()
+		s.LastError = errtext.Text(err)
 	} else {
 		s.LastError = ""
 		s.LastSyncUnix = time.Now().Unix()
@@ -277,11 +278,15 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 			if dir == "pull" && builtin {
 				// builtin：store 无数据=浏览器还没推过，不算错误，报空报告
 				slog.Info("cookiecloud builtin store empty, skip pull", "err", ferr)
-			} else {
-				// push/both：拉取失败时从空 map 推送，至少上传本端站点
-				slog.Warn("cookiecloud fetch before push failed; pushing from empty base", "err", ferr)
+			} else if errors.Is(ferr, cookiecloud.ErrEmptyPayload) {
+				// 云端该 UUID 还没数据（首次推送的常态）→ 从空 base 推。
 				payload = map[string][]cookiecloud.CookieEntry{}
-				report.Errors = append(report.Errors, "拉取云端失败，将仅推送本地: "+ferr.Error())
+			} else {
+				// 拉取真失败（网络抖动、密码不匹配、服务端 5xx…）：此时云端有什么我们完全不知道，
+				// 而 CookieCloud 的 PUT 是**整体替换**——从空 base 推送会把云端已有的其它
+				// host 全部抹掉（别的设备/浏览器要重新推一遍）。本轮放弃推送，报错误下轮再试。
+				slog.Warn("cookiecloud fetch failed; skip push to avoid overwriting unknown cloud data", "err", ferr)
+				return report, fmt.Errorf("拉取云端失败，已跳过本次推送以免覆盖云端数据: %w", ferr)
 			}
 		} else {
 			payload = p
@@ -310,7 +315,7 @@ func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettin
 	if normalizeCookieCloudMode(s.Mode) == CookieCloudModeBuiltin {
 		env, ok := c.serverStore().Get(s.UUID)
 		if !ok {
-			return nil, fmt.Errorf("内置服务端暂无数据（浏览器扩展推送后自动同步）")
+			return nil, fmt.Errorf("内置服务端暂无数据（浏览器扩展推送后自动同步）: %w", cookiecloud.ErrEmptyPayload)
 		}
 		body, err := cookiecloud.MarshalEnvelope(env)
 		if err != nil {
@@ -332,6 +337,11 @@ func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettin
 	resp, err := c.hc.Get(ctx, fetchURL, "", false)
 	if err != nil {
 		return nil, fmt.Errorf("拉取 CookieCloud 失败: %w", err)
+	}
+	// 非 2xx（5xx/网关错误页等）不能当成「云端没数据」：那样会走进「从空 base 推送」
+	// 分支，把云端其它 host 抹掉。状态异常一律按拉取失败处理，由调用方跳过本次推送。
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("拉取 CookieCloud 失败: HTTP %d", resp.StatusCode)
 	}
 	payload, err := cookiecloud.DecodeEnvelope(resp.Body, s.UUID, password)
 	if err != nil {

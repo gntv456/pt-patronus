@@ -1,7 +1,6 @@
 package schemas
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/url"
@@ -19,9 +18,10 @@ var torrentLeechUserIDRe = regexp.MustCompile(`userLogUserID\s*=\s*['"](\d+)['"]
 
 func fetchTorrentLeechUserInfo(ctx context.Context, hc *httpclient.Client, def *site.SiteMetadata, baseURL, cookie string) (*site.UserInfo, error) {
 	u := &site.UserInfo{}
-	root, resp, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/", cookie)
+	root, resp, err := fetchHTMLDoc(ctx, hc, baseURL, "/", cookie)
 	if err != nil {
-		return u, nil
+		// 首页都没读到就返空结构当成功，等于把站点故障报成「该号 0 上传 0 做种」。
+		return nil, err
 	}
 	if loggedOut(resp, root, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -33,10 +33,10 @@ func fetchTorrentLeechUserInfo(ctx context.Context, hc *httpclient.Client, def *
 	u.Bonus = site.ToFloat64(top.Find("span.total-TL-points").First().Text())
 
 	if u.Name != "" {
-		if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(u.Name), cookie); err == nil {
+		if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(u.Name), cookie); err == nil {
 			parseTorrentLeechProfile(doc, u)
 		}
-		if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(u.Name)+"/seeding", cookie); err == nil {
+		if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(u.Name)+"/seeding", cookie); err == nil {
 			if c, sz := parseTorrentListSize(doc); sz > 0 {
 				u.Seeding = c
 				u.SeedingSize = sz
@@ -48,16 +48,10 @@ func fetchTorrentLeechUserInfo(ctx context.Context, hc *httpclient.Client, def *
 			u.Uploads = uploads
 		}
 	}
-	return u, nil
-}
-
-func fetchTorrentLeechDoc(ctx context.Context, hc *httpclient.Client, baseURL, path, cookie string) (*goquery.Document, *httpclient.Response, error) {
-	resp, err := hc.Get(ctx, joinURL(baseURL, path), cookie, true)
-	if err != nil {
-		return nil, resp, err
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "首页与资料页")
 	}
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
-	return doc, resp, err
+	return u, nil
 }
 
 func parseTorrentLeechProfile(doc *goquery.Document, u *site.UserInfo) {

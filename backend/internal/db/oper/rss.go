@@ -39,6 +39,12 @@ func (o *RssOper) Get(id uint) (*models.RssSubscription, error) {
 
 // Create 新建。
 func (o *RssOper) Create(r *models.RssSubscription) error {
+	// 地址在写入面校验（同包 downloader.go / mediaserver.go 都调 validateURLScheme）：
+	// 「忘了写 https://」这类笔误从前会原样入库，成为一条列表里看着正常、
+	// 抓取却永远失败的订阅，失败要到 cron 那一刻才以英文尾巴露出来。
+	if err := validateURLScheme(r.URL); err != nil {
+		return err
+	}
 	// Create 会把 GORM default:true 回填进 r.Enabled，必须先保存原始值再判断，
 	// 否则 Create 后 r.Enabled 已被改为 true，回写条件永假（同 SiteOper 用 input 的等价做法）。
 	enabled := r.Enabled
@@ -53,7 +59,13 @@ func (o *RssOper) Create(r *models.RssSubscription) error {
 }
 
 // Update 保存。
-func (o *RssOper) Update(r *models.RssSubscription) error { return o.db.Save(r).Error }
+func (o *RssOper) Update(r *models.RssSubscription) error {
+	// 与 Create 同一判据（一处校验，两个入口共用），编辑时也拒掉不可用地址。
+	if err := validateURLScheme(r.URL); err != nil {
+		return err
+	}
+	return o.db.Save(r).Error
+}
 
 // Delete 删除订阅及其条目。
 func (o *RssOper) Delete(id uint) error {
@@ -109,6 +121,14 @@ func (o *RssItemOper) ListBySubscription(subID uint, limit int) ([]models.RssIte
 	}
 	err := q.Find(&its).Error
 	return its, err
+}
+
+// CountBySubscription 某订阅的条目总数。列表有上限，界面要说「还有多少没显示」，
+// 所以总数与清单必须同批给出（对齐 MonitorOper.ListAlerts 的 total/truncated 口径）。
+func (o *RssItemOper) CountBySubscription(subID uint) (int64, error) {
+	var n int64
+	err := o.db.Model(&models.RssItem{}).Where("subscription_id = ?", subID).Count(&n).Error
+	return n, err
 }
 
 // Prune 清理 before 之前创建的条目（保留已下载记录，供历史追溯）。

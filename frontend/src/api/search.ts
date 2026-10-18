@@ -66,6 +66,8 @@ export const searchApi = {
       `/api/v1/search/stream?${params}`,
       (event, data) => {
         if (event === 'batch' && data?.results?.length) onSite((data.results as SiteSearchResult[])[0])
+        // done 帧带 list_error = 站点清单读失败：抛错让调用方 catch 留痕（不再「0 站全绿」）
+        if (event === 'done' && data?.list_error) throw new Error(data.list_error)
       },
       signal,
     )

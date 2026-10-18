@@ -126,6 +126,9 @@ class DashboardOverview {
   final List<SiteStatItem> sites;
   final int siteCount;
   final int downloaderCount;
+  // 后端每站统计那条查询本身失败时带的中文原因（dashboard.go 的 stat_read_error）。
+  // Web 顶部有横幅，移动端以前整份丢掉 ⇒ 库读失败在手机上画成「每站 0 上传 0 下载」。
+  final String? statReadError;
 
   DashboardOverview({
     required this.uploaded,
@@ -149,10 +152,12 @@ class DashboardOverview {
     required this.sites,
     required this.siteCount,
     required this.downloaderCount,
+    this.statReadError,
   });
 
   factory DashboardOverview.fromJson(Map<String, dynamic> j) {
     final totals = (j['totals'] as Map<String, dynamic>?) ?? const {};
+    final statErr = (j['stat_read_error'] as String?)?.trim() ?? '';
     return DashboardOverview(
       uploaded: _i(totals['uploaded']),
       downloaded: _i(totals['downloaded']),
@@ -177,6 +182,7 @@ class DashboardOverview {
           .toList(),
       siteCount: (j['site_count'] as num?)?.toInt() ?? 0,
       downloaderCount: (j['downloader_count'] as num?)?.toInt() ?? 0,
+      statReadError: statErr.isEmpty ? null : statErr,
     );
   }
 }
@@ -293,6 +299,23 @@ class SiteHistoryPoint {
   );
 }
 
+// SiteHistoryResult 对齐后端 chain.SiteHistoryResult：points 单次最多 500 条，
+// total/truncated 一起给出，让界面能说清「这个区间其实有更多快照」。
+class SiteHistoryResult {
+  final List<SiteHistoryPoint> points;
+  final int days;
+  final int total;
+  final bool truncated;
+
+  SiteHistoryResult.fromJson(Map<String, dynamic> j)
+      : points = ((j['points'] as List?) ?? const [])
+            .map((e) => SiteHistoryPoint.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        days = _i(j['days']),
+        total = _i(j['total']),
+        truncated = j['truncated'] == true;
+}
+
 class DashboardApi {
   final _api = ApiClient();
 
@@ -314,12 +337,12 @@ class DashboardApi {
     return DashboardOverview.fromJson(r);
   }
 
-  // 单站点历史统计快照：GET /dashboard/history/:id?days=N（后端回裸数组，走 getList）。
-  Future<List<SiteHistoryPoint>> history(int siteId, {int days = 90}) async {
-    final list = await _api.getList('/dashboard/history/$siteId?days=$days');
-    return list
-        .map((e) => SiteHistoryPoint.fromJson(e as Map<String, dynamic>))
-        .toList();
+  // 单站点历史统计快照：GET /dashboard/history/:id?days=N。
+  // 后端单次最多返回 500 条并一起给出 total/truncated：只当数组用会把
+  // 「90 天 540 个快照」显示成「只有 500 个」，起点那段看着像站点没数据。
+  Future<SiteHistoryResult> history(int siteId, {int days = 90}) async {
+    final r = await _api.get('/dashboard/history/$siteId?days=$days');
+    return SiteHistoryResult.fromJson(r);
   }
 
   // trend 拉按天聚合趋势：GET /dashboard/trend?days=N。

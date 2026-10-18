@@ -12,6 +12,22 @@ import (
 
 var ErrNoMedals = errors.New("no medal data found")
 
+// ErrOwnedUnavailable：已拥有列表不可得（uid 无法定位 / 个人页请求失败）。
+// 与「请求成功但列表为空」严格区分——chain 只有拿到错误才会保留旧 OWNED 快照，
+// 否则 BatchUpsert（删后插）会把一次瞬时故障放大成「已拥有勋章变可购买」。
+var ErrOwnedUnavailable = errors.New("已拥有列表不可得（uid 缺失）")
+
+// ownedFetchErr 已拥有列表回源失败的可读错误（err 优先，其次非 2xx 响应）。
+func ownedFetchErr(err error, resp *Response) error {
+	if err != nil {
+		return fmt.Errorf("已拥有列表请求失败: %w", err)
+	}
+	if resp == nil {
+		return errors.New("已拥有列表请求失败: 无响应")
+	}
+	return fmt.Errorf("已拥有列表请求失败: HTTP %d", resp.StatusCode)
+}
+
 type ShopFetchError struct {
 	Kind       string
 	URL        string

@@ -78,6 +78,10 @@ jobs:
       - run: npm run typecheck   # vue-tsc 严格类型检查（vite build 用 esbuild 擦除类型，单独跑 typecheck 才能抓类型错误）
       - run: npx eslint src      # i18n 防回潮门禁：已迁移页面禁止硬编码中文（eslint.config.mjs 的 I18N_DONE 列表）
       - run: npm run build
+      # 摄像头预览的 jessibuca 解码器是 GPL-3.0，绝不能进分发产物。
+      # vite 会把 public/ 原样拷进 dist，故本地残留即会被带出去（.dockerignore 拦不住，
+      # 因为构建发生在容器内、用的是已 COPY 的工作区内容）。这里做最终断言。
+      - run: bash ../scripts/check-no-gpl-assets.sh "$PWD/dist"
 
   backend-windows:
     name: Backend Windows
@@ -170,8 +174,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: '20' }
       # 安全基线：manifest 声明面 + innerHTML 拼接审计（XSS 静态门禁）+ 纯函数行为
+      # CookieCloud：协议派生与负载形状（钉 crypto-js 真实向量，防 AES-128 退化）
       # （显式列测试文件——node --test 传目录在部分平台会当模块解析而失败）
-      - run: node --test extension/test/security.test.mjs
+      - run: node --test extension/test/security.test.mjs extension/test/cookiecloud.test.mjs
 
   e2e:
     name: E2E (Playwright core flow)

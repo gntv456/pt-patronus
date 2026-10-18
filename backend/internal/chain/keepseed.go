@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
@@ -85,7 +86,12 @@ func (c *KeepSeedChain) findCandidatesWith(ctx context.Context, name string, siz
 	if c.siteCh == nil {
 		return nil
 	}
-	results := c.siteCh.SearchSites(ctx, name, "", nil) // 辅种按名称+大小匹配，不限媒体类型
+	results, err := c.siteCh.SearchSites(ctx, name, "", nil) // 辅种按名称+大小匹配，不限媒体类型
+	if err != nil {
+		// 清单读失败不能无声渲染成「无候选」：至少日志留痕（FindCandidates 签名不动，调用方多）。
+		slog.Warn("keepseed search sites failed", "err", err)
+		return nil
+	}
 	var out []keepseed.Candidate
 	for _, r := range results {
 		for _, tor := range r.Torrents {

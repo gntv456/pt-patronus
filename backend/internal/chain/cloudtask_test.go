@@ -137,6 +137,36 @@ func TestImportTreeStrm(t *testing.T) {
 	}
 }
 
+// TestImportTreeStrmFailuresNotSilent 逐行落盘失败不得静默 success：
+// output_dir 为相对路径（非法）→ 每行 UpsertStrm 必失败 → 必须返回错误交任务
+// 标失败可见（此前逐行仅 Debug+continue、全失败仍 return nil → 任务假 success）。
+func TestImportTreeStrmFailuresNotSilent(t *testing.T) {
+	ch, _, _ := newCloudTaskTestChain(t)
+	payload, _ := json.Marshal(map[string]string{
+		"tree":       "电影/A.mkv\n剧集/B.mp4\n",
+		"base":       "/媒体库",
+		"output_dir": "relative/not-absolute",
+	})
+	task := &models.CloudTask{DriveID: 9, Kind: "import_tree", Payload: string(payload)}
+	if err := ch.ImportTreeStrm(nil, task); err == nil {
+		t.Fatal("全行失败必须返回错误（否则任务静默 success，用户以为已导入）")
+	}
+}
+
+// TestImportTreeStrmNoMediaNoFail 树中没有媒体文件 → 无操作、不报错（跳过≠失败）。
+func TestImportTreeStrmNoMediaNoFail(t *testing.T) {
+	ch, _, _ := newCloudTaskTestChain(t)
+	payload, _ := json.Marshal(map[string]string{
+		"tree":       "电影/A/poster.jpg\n---\n",
+		"base":       "/媒体库",
+		"output_dir": "relative/not-absolute", // 无媒体行 → 不会触到该路径
+	})
+	task := &models.CloudTask{DriveID: 9, Kind: "import_tree", Payload: string(payload)}
+	if err := ch.ImportTreeStrm(nil, task); err != nil {
+		t.Fatalf("无媒体行不应报错: %v", err)
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

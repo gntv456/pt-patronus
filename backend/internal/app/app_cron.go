@@ -185,7 +185,11 @@ func registerCronJobs(
 	mustCron("medal-refresh", cfg.MedalCron, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		cards := medalCh.MedalAll(ctx, true)
+		cards, err := medalCh.MedalAll(ctx, true)
+		if err != nil {
+			slog.Warn("medal cron refresh failed", "err", err)
+			return
+		}
 		slog.Debug("medal cache refreshed", "medals", len(cards))
 	})
 
@@ -209,13 +213,35 @@ func registerCronJobs(
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 		defer cancel()
 		cloudCh.GenerateAll(ctx)
-		cloudCh.SyncSubscriptions(ctx)
+		// 追更结果要落日志：cron 面此前完全无声，读失败/零命中只在界面看得见。
+		if subs := cloudCh.SyncSubscriptions(ctx); len(subs.Failed) > 0 {
+			slog.Warn("cron: 订阅追更未正常完成", "result", subs.String())
+		} else {
+			slog.Info("cron: 订阅追更", "result", subs.String())
+		}
 	})
 
 	// 目录同步：固定每 5 分钟 tick，transfer 包内按各任务 interval_minutes + last_run_at
 	// 决定是否真正执行（interval=0 的任务仅手动触发）；幂等（目标同 size 跳过）。
 	mustCron("dirsync-tick", "*/5 * * * *", func() {
-		for _, run := range transfer.RunDueDirSyncs(transferCh.KV(), time.Now()) {
+		runs, err := transfer.RunDueDirSyncs(transferCh.KV(), time.Now())
+		if err != nil {
+			// 自曝：清单读失败=本轮整轮不跑，此前与「没有到期任务」同形（无日志无通知）。
+			slog.Warn("dirsync tick: 读取任务列表失败", "err", err)
+			if noticeSvc != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				_ = noticeSvc.Notice(ctx, notice.Input{
+					Source: notice.SourceDirSyncListFail,
+					Key:    "dirsync-listfail:" + time.Now().Format("2006-01-02"),
+					Title:  "目录同步",
+					Body:   "本轮目录同步未能开始：读取任务列表失败 — " + err.Error(),
+					Level:  "warning",
+				}, true)
+			}
+			return
+		}
+		for _, run := range runs {
 			if run.Err != nil {
 				slog.Warn("dirsync run failed", "task", run.Name, "err", run.Err)
 				continue

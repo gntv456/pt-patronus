@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
-	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
 	"github.com/hxpt/ptpatronus/internal/subtitle/automation"
 )
@@ -32,6 +31,11 @@ func (h *SubtitleHandler) Search(c *gin.Context) {
 	}
 	res, err := h.svc.Search(c.Request.Context(), q, c.Query("language"))
 	if err != nil {
+		if errors.Is(err, chain.ErrSubtitleSourcesFailed) {
+			// WithDetail 把链层那句「哪几个源、为什么」送进响应体；WithErr 只进日志不进响应。
+			errcode.Respond(c, errcode.SubtitleSourcesFailed.WithDetail(err))
+			return
+		}
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
@@ -69,11 +73,7 @@ func (h *SubtitleHandler) Download(c *gin.Context) {
 	}
 	data, name, err := h.svc.Download(c.Request.Context(), sub)
 	if err != nil {
-		if errors.Is(err, oper.ErrInvalidInput) {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-			return
-		}
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondInputError(c, err, errcode.BadGateway)
 		return
 	}
 	contentType := "application/octet-stream"
@@ -133,6 +133,8 @@ func (h *SubtitleHandler) SetConfig(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
+	// #374 写失败不许只说「服务内部错误，请稍后重试」：用户刚填完一屏 token/cookie，
+	// 失败后既不知道出了什么事，也不知道该重试还是该找管理员。与 #371 Webhook 同口径。
 	if err := h.svc.SetConfig(chain.SubtitleSettings{
 		AssrtToken:       strings.TrimSpace(req.AssrtToken),
 		OpenSubtitlesKey: strings.TrimSpace(req.OpenSubtitlesKey),
@@ -140,10 +142,21 @@ func (h *SubtitleHandler) SetConfig(c *gin.Context) {
 		ZimukuCookie:     strings.TrimSpace(req.ZimukuCookie),
 		TargetLang:       tl,
 	}); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondSubtitleSettingsErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// respondSubtitleSettingsErr 字幕源配置写入失败的出口。
+//
+// #374 从前是 Internal.WithErr(err)（500「服务内部错误，请稍后重试」）。改成 SaveFailed
+// 并带上真实原因：链层那条已经说明了「保存失败、是否已回滚」（ApplySettings 会回滚，
+// 极端情况下回滚也失败会明说「配置可能停在中间态」），原样带给界面才有意义。
+//
+// 刻意不新造翻译表：链层那句话就是本仓自产、为用户写的单一来源。
+func respondSubtitleSettingsErr(c *gin.Context, err error) {
+	errcode.Respond(c, errcode.SaveFailed.WithDetail(err))
 }
 
 // sanitizeFilename 去掉文件名中不安全的路径/控制字符（防 Content-Disposition 注入）。
@@ -178,7 +191,9 @@ func (h *SubtitleHandler) SetAutomationConfig(c *gin.Context) {
 		return
 	}
 	if err := h.auto.SetConfig(cfg); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #387 与同文件的 SetSourcesConfig 同一判据：这是同类设置写入，失败是
+		// kv.Set 写不进去（磁盘满/连接断/锁），用户不该只看到「服务内部错误，请稍后重试」。
+		respondSubtitleSettingsErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

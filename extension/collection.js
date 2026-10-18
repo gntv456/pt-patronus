@@ -4,9 +4,18 @@
 const FAV_KEY = 'ptp_favorites'
 const HIS_KEY = 'ptp_history'
 
+// #338 读不到 / 数据不是数组（损坏、旧版残留、手改存储、导入坏备份）与「真的空」
+// 必须分得开：从前的 `Array.isArray(list) ? … : []` 把前者一律回 []，界面于是显示
+// 「暂无收藏」，与本机真的一条都没有完全同形 —— 而设置页的「清空」按钮正是在这个
+// 读数之后直接 set({key: []})，把损坏数据当空覆盖掉，不可逆。
+// 现在：键不存在（真的是空）→ []；键存在但不是数组 → 抛可读的原因，让调用方显示。
 async function read(key, cap) {
   const { [key]: list } = await chrome.storage.local.get({ [key]: [] })
-  return Array.isArray(list) ? list.slice(0, cap) : []
+  if (list === undefined || list === null) return []
+  if (!Array.isArray(list)) {
+    throw new Error(`「${key}」存储内容不是列表（读出来是 ${typeof list}），可能是旧版数据或损坏：已停止操作，请先导出备份再清理该项`)
+  }
+  return list.slice(0, cap)
 }
 
 export async function getFavorites() {

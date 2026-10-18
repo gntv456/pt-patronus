@@ -3,14 +3,29 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
+
+// connPanicResult 崩站的连通结果（JSON 面与流式面共用，防两处口径漂移）。
+// 前端连通性只有 connected/disconnected/disabled 三态（api/site.ts SiteConnectivityState），
+// 零值槽的 Status="" 既不算连上也算不上失败 ⇒ 这一站在矩阵里静默消失；按失败路径同口径记 disconnected。
+func connPanicResult(s models.Site, r any) SiteConnectionResult {
+	return SiteConnectionResult{
+		SiteID:    s.ID,
+		SiteName:  s.Name,
+		Status:    "disconnected",
+		Error:     fmt.Sprintf("连通检测异常: %v", r),
+		CheckedAt: time.Now(),
+	}
+}
 
 // TestConnections 并发检查全部站点的网络连接与登录态。
 // 停用站点不发起网络请求，直接返回 disabled；启用站点各自有独立超时，单站失败不影响其它站点。
@@ -30,6 +45,16 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 		wg.Add(1)
 		safego.Go("site:400", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站记 disconnected + 原因，并刷新连通缓存（否则 TTL 内下次进
+			// 页面还会被推成上次那条 green）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("connectivity site panic", "site", s.Name, "err", r)
+					res := connPanicResult(s, r)
+					_ = c.sites.UpsertConnectivity(s.ID, res.Status, "", res.Error, 0)
+					results[i] = res
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
@@ -39,7 +64,7 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 			result := SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Level: level}
 			if e != nil {
 				result.Status = "disconnected"
-				result.Error = e.Error()
+				result.Error = errtext.Text(e)
 			} else {
 				result.Status = "connected"
 			}
@@ -55,11 +80,11 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 // 每站 infoFetchTimeout 独立超时、停用站直接 disabled（不发网络请求）。连通结果由 TestConnection
 // 顺带 upsert 进 site_connectivity 缓存；停用站在此处单独 upsert。emit 无返回值——客户端断开时
 // 链路靠 request ctx 取消自然收敛（各站 siteCtx 随之取消），与 SearchSitesStream 同款容错。
-func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteConnectionResult)) {
+func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteConnectionResult)) string {
 	sites, err := c.sites.List()
 	if err != nil {
 		slog.Warn("TestConnectionsStream list sites failed", "err", err)
-		return
+		return err.Error()
 	}
 	// 新鲜度节流：进页面时若某站最近 connectivityFreshTTL 内已检测过（connected/disconnected），
 	// 直接复用 site_connectivity 缓存结果推送，跳过网络探测——兑现「进页面显示上次结果 + 后台仅刷新过期站」
@@ -88,6 +113,15 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 		wg.Add(1)
 		safego.Go("site:458", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站必须 emit 一帧（前端「检测到一个更新一个」，少一帧就是少一站）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("connectivity stream site panic", "site", s.Name, "err", r)
+					res := connPanicResult(s, r)
+					_ = c.sites.UpsertConnectivity(s.ID, res.Status, "", res.Error, 0)
+					emit(res)
+				}
+			}()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			siteCtx, cancel := context.WithTimeout(ctx, infoFetchTimeout)
@@ -96,7 +130,7 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 			r := SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Level: level, CheckedAt: time.Now()}
 			if e != nil {
 				r.Status = "disconnected"
-				r.Error = e.Error()
+				r.Error = errtext.Text(e)
 			} else {
 				r.Status = "connected"
 			}
@@ -104,6 +138,7 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 		})
 	}
 	wg.Wait()
+	return ""
 }
 
 // TestConnection 测试站点连接与登录态，返回用户等级；同时把结果 upsert 进 site_connectivity 缓存，
@@ -129,11 +164,12 @@ func (c *SiteChain) TestConnection(ctx context.Context, s *models.Site) (string,
 // UserInfo 抓取并返回站点用户资料（自动化统计同步用）。
 func (c *SiteChain) UserInfo(ctx context.Context, s *models.Site) (*site.UserInfo, error) {
 	def := c.defFor(s)
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var ui *site.UserInfo
-	var adapter site.Adapter
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
-		adapter = a
 		u, e := a.FetchUserInfo(ctx, def, s.BaseURL, token)
 		if e != nil {
 			return e
@@ -142,26 +178,27 @@ func (c *SiteChain) UserInfo(ctx context.Context, s *models.Site) (*site.UserInf
 		return nil
 	})
 	if err == nil {
-		c.maybeAdoptPasskey(s, def, adapter)
+		c.maybeAdoptPasskey(s, def, ui)
 	}
 	return ui, err
 }
 
 // maybeAdoptPasskey 在适配器从站点端点发现 passkey（如 FluxTorrent ptppUserInfo）且
 // 站点尚未存有 passkey 时，自动加密回写——用户首次只需填 API Token，下载链即可用。
-// 站点已存 passkey 时不覆盖（尊重用户手填值）；适配器不支持发现则跳过。
-func (c *SiteChain) maybeAdoptPasskey(s *models.Site, def *site.SiteMetadata, a site.Adapter) {
-	if s == nil || def == nil || a == nil {
+// 站点已存 passkey 时不覆盖（尊重用户手填值）；本次抓取未发现 passkey 则跳过。
+// discovered 只能来自本次调用的返回值：适配器实例跨站点共享，任何实例级中转都会在并发
+// TestConnections 时将 A 站的 passkey 写进 B 站（实测串站）。
+func (c *SiteChain) maybeAdoptPasskey(s *models.Site, def *site.SiteMetadata, ui *site.UserInfo) {
+	if s == nil || def == nil || ui == nil {
 		return
 	}
-	if pk := c.sites.DecryptedPasskey(s); pk != "" {
+	pk := ui.DiscoveredPasskey
+	if pk == "" {
 		return
 	}
-	provider, ok := a.(interface{ TakePasskey() string })
-	if !ok {
+	if existing := c.sites.DecryptedPasskey(s); existing != "" {
 		return
 	}
-	pk := provider.TakePasskey()
 	if len(pk) < 16 { // FluxTorrent passkey 为 32 位；过短视为无效不落库
 		return
 	}

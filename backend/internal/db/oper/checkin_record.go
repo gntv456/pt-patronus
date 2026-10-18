@@ -18,18 +18,40 @@ func NewCheckinRecordOper(db *gorm.DB) *CheckinRecordOper {
 }
 
 // Create 新建一条签到记录。
+// Count 签到记录总数（siteID=0 不过滤，与 List 同筛选）。
+// List 有单页上限且支持 offset，只回被切过的一页时，界面分不清「翻完了」和「到这页为止」。
+func (o *CheckinRecordOper) Count(siteID uint) (int64, error) {
+	q := o.db.Model(&models.CheckinRecord{})
+	if siteID > 0 {
+		q = q.Where("site_id = ?", siteID)
+	}
+	var n int64
+	err := q.Count(&n).Error
+	return n, err
+}
+
 func (o *CheckinRecordOper) Create(r *models.CheckinRecord) error {
 	return o.db.Create(r).Error
 }
 
 // List 列签到记录（按时间倒序）。siteID=0 不过滤；limit<=0 默认 100。
+const (
+	CheckinListDefault = 100
+	CheckinListLimit   = 1000
+)
+
+func NormalizeCheckinLimit(n int) int {
+	if n <= 0 {
+		return CheckinListDefault
+	}
+	if n > CheckinListLimit {
+		return CheckinListLimit
+	}
+	return n
+}
+
 func (o *CheckinRecordOper) List(siteID uint, limit, offset int) ([]models.CheckinRecord, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if limit > 1000 { // 上限封顶防 DoS
-		limit = 1000
-	}
+	limit = NormalizeCheckinLimit(limit)
 	if offset < 0 { // 负 offset 传 GORM 触发 MySQL 500，钳到 0
 		offset = 0
 	}

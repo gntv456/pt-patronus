@@ -42,6 +42,9 @@ export const medalWallApi = {
       `/api/v1/medalwall/stream${refresh ? '?refresh=1' : ''}`,
       (event, data) => {
         if (event === 'batch' && data?.results) onCards(data.results as Medal[])
+        // done 帧的 list_error = 站点清单读不出来。不读它就等于把一次查询失败
+        // 渲染成「这个号还没勋章」（后端已经如实发了，之前整帧被忽略）。
+        else if (event === 'done' && data?.list_error) throw new Error(data.list_error as string)
       },
       signal,
     ),

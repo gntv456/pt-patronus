@@ -99,6 +99,13 @@ func Build(d *Deps) *gin.Engine {
 		v3.DELETE("/series/:id", d.Servarr.RemoveSeries)
 	}
 
+	// 摄像头预览的 jessibuca 资源：不在镜像里（GPL-3.0），由后端按需下载到
+	// DataDir/jessibuca 后直出。必须注册在 NoRoute 之前——SPA fallback 对任何未命中
+	// 路径都返回 index.html，浏览器拿到 200+HTML 会当成 wasm 报解码错误。
+	// 未登录也可达：预览发生在登录后的页面里，但资源请求本身不应要求鉴权
+	// （jessibuca 内部还会 fetch decoder.js 作为 Worker 脚本）。
+	engine.GET("/jessibuca/*file", gin.WrapH(web.AssetHandler(web.NewAssetStore(d.Cfg.DataDir))))
+
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。
 	// /api/ 前缀的未命中必须返回 JSON 404：否则前端会把 SPA 的 index.html 当 JSON 解析，
 	// 报 "Unexpected token '<'"，掩盖真正的端点拼写 / HTTP 方法错误（如把 PUT 误用为 POST）。

@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -106,7 +105,7 @@ func (jsonToolboxPlugin) ExecuteAction(ctx context.Context, rt Runtime, action s
 		rt.Log(logInfo, action, "json path extracted", map[string]any{"path": path, "found": found})
 		return out, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 
@@ -250,6 +249,6 @@ func (textToolboxPlugin) ExecuteAction(ctx context.Context, rt Runtime, action s
 		rt.Log(logInfo, action, "regex extracted", map[string]any{"count": len(matches)})
 		return map[string]any{"count": len(matches), "matches": matches}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

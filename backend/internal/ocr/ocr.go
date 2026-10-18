@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -84,6 +85,20 @@ func stripDataURL(b64 string) string {
 	return b64
 }
 
+// ErrEmptyResult 服务答了但什么都没认出来（响应可解析、文本为空）。
+// 必须与「识别成功」分开：调用方拿空串当成功，就会把空验证码填进站点登录框。
+var ErrEmptyResult = errors.New("ocr 空结果")
+
+// finish 三种形态共用同一判据：去噪后为空 = 什么都没认出来，必须算失败（ErrEmptyResult）。
+// 从前只有 paddle 的结构空会报错，simple/ddddoc 把空串原样当成功返回，调用方就拿到
+// 200 {"text":""} 去填登录框。
+func finish(text string) (string, error) {
+	if t := clean(text); t != "" {
+		return t, nil
+	}
+	return "", ErrEmptyResult
+}
+
 // parse 解析三种常见自建/第三方 OCR 响应形态。
 func parse(body []byte, mode string) (string, error) {
 	switch mode {
@@ -94,7 +109,7 @@ func parse(body []byte, mode string) (string, error) {
 		if err := json.Unmarshal(body, &r); err != nil {
 			return "", err
 		}
-		return clean(r.Text), nil
+		return finish(r.Text)
 	case "ddddoc":
 		var r struct {
 			Data struct {
@@ -104,7 +119,7 @@ func parse(body []byte, mode string) (string, error) {
 		if err := json.Unmarshal(body, &r); err != nil {
 			return "", err
 		}
-		return clean(r.Data.Data), nil
+		return finish(r.Data.Data)
 	default: // paddle: {"results":[[{"text":"abcd","confidence":...}]]} 或 PP-OCR simple 数组
 		var r struct {
 			Results [][]struct {
@@ -117,14 +132,14 @@ func parse(body []byte, mode string) (string, error) {
 				Text string `json:"text"`
 			}
 			if err2 := json.Unmarshal(body, &alt); err2 == nil && len(alt) > 0 {
-				return clean(alt[0].Text), nil
+				return finish(alt[0].Text)
 			}
 			return "", err
 		}
 		if len(r.Results) == 0 || len(r.Results[0]) == 0 {
-			return "", fmt.Errorf("ocr 空结果")
+			return "", ErrEmptyResult
 		}
-		return clean(r.Results[0][0].Text), nil
+		return finish(r.Results[0][0].Text)
 	}
 }
 

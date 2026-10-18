@@ -70,7 +70,15 @@ export interface TorrentTableFilters {
   clearFilters: () => void
 }
 
-export function useTorrentTableFilters(torrents: readonly Torrent[]): TorrentTableFilters {
+// #382 torrents 以前收 `readonly Torrent[]`（**按值**）。`filtered` 里的 `torrents.filter(...)`
+// 只在**首次求值**时访问数组元素，而那时抽屉刚挂载、REST/WS 还没回来 ⇒ 数组是空的
+// ⇒ computed 没建立任何依赖 ⇒ 后续数据到达不会触发重算，filtered 永远停在空数组。
+// 症状极像「数据到了但被筛掉」：计数显示 `0 / 1 个任务`（total 取 props.torrents.length 是活的，
+// shown 取 filtered.length 是死的），搜索/筛选全默认、无「清除筛选」按钮、接口全 200。
+// 本仓 Playwright core-flow E2E 实测：抽屉在搜索用例跑过之后打开必现（REST 晚于组件初始化），
+// 单跑下载器用例则不复现 —— 正是这个时序。
+// 改成收 getter：每次求值都重新读当前的响应式数组，依赖关系在 computed 内直接建立。
+export function useTorrentTableFilters(torrents: () => readonly Torrent[]): TorrentTableFilters {
   const search = ref('')
   const stateFilter = ref('all')
   const categoryFilter = ref('')
@@ -85,7 +93,7 @@ export function useTorrentTableFilters(torrents: readonly Torrent[]): TorrentTab
   }
 
   const filtered = computed(() => {
-    let arr = torrents.filter((t) => {
+    let arr = torrents().filter((t) => {
       const needle = search.value.trim().toLowerCase()
       if (needle && !`${t.name} ${t.hash} ${t.category}`.toLowerCase().includes(needle)) return false
       if (stateFilter.value !== 'all' && stateGroup(t.state) !== stateFilter.value) return false

@@ -10,18 +10,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
 // ListAlerts 列告警（?target_id=&unread=true）。
 func (h *MonitorHandler) ListAlerts(c *gin.Context) {
 	targetID, _ := strconv.ParseUint(c.Query("target_id"), 10, 64)
 	unread := c.Query("unread") == "true"
-	alerts, err := h.op.ListAlerts(uint(targetID), unread)
+	alerts, total, err := h.op.ListAlerts(uint(targetID), unread)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"alerts": alerts})
+	// total/limit/truncated 一起给出：列表被上限截断时，界面才能说「还有 N 条没显示」。
+	c.JSON(http.StatusOK, gin.H{
+		"alerts":    alerts,
+		"total":     total,
+		"limit":     oper.MonitorAlertListLimit,
+		"truncated": total > int64(len(alerts)),
+	})
 }
 
 // ReadAlert 标单条告警为已读。
@@ -31,7 +38,7 @@ func (h *MonitorHandler) ReadAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.MarkAlertRead(id); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondRecordError(c, err, errcode.MonitorAlertNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"read": id})
@@ -44,7 +51,7 @@ func (h *MonitorHandler) AckAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.AckAlert(id, currentUsername(c)); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondRecordError(c, err, errcode.MonitorAlertNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"acknowledged": id})
@@ -90,7 +97,7 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.SilenceAlert(id, until, currentUsername(c)); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondRecordError(c, err, errcode.MonitorAlertNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"silenced": id, "until": until})
@@ -100,6 +107,9 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 func (h *MonitorHandler) DeleteAlert(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.op.GetAlert, id, errcode.MonitorAlertNotFound) {
 		return
 	}
 	if err := h.op.DeleteAlert(id); err != nil {

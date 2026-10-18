@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { terr } from './i18nErr'
+import { translateErrcode } from './errcodeI18n'
+import { i18n } from '@/i18n'
 
 // 会话令牌封装（收权加固）：登录响应由后端同时种 httpOnly cookie（XSS 读不到，
 // 同源请求自动携带），localStorage 的 Bearer 仅作过渡兜底（扩展打开的 Web 页/
@@ -101,13 +103,47 @@ export function startTokenRefresher() {
   }, 30 * 60 * 1000)
 }
 
+
+// readErrorEnvelope 把错误响应体读成 {code,message,error} 信封；Blob 先取文本。
+// 非 JSON（反代返回的 HTML 错误页等）一律回 null，让调用方走状态码兜底，
+// 不把上游 HTML 塞进用户提示里。
+async function readErrorEnvelope(data: any): Promise<any | null> {
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await blobText(data))
+      return parsed && typeof parsed === 'object' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+  if (data && typeof data === 'object') return data
+  return null
+}
+
+// Blob.text() 在部分环境（老 WebKit、jsdom）不存在，退回 FileReader；
+// 两个真实 blob 端点的失败原因都要能读出来。
+function blobText(b: Blob): Promise<string> {
+  if (typeof (b as any).text === 'function') return (b as any).text()
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result ?? ''))
+    r.onerror = () => reject(r.error)
+    r.readAsText(b)
+  })
+}
+
 http.interceptors.response.use(
   (r) => r,
   async (err) => {
     const status = err.response?.status
+    // responseType:'blob' 的端点（封面拼图 / 字幕下载）出错时 body 也是 Blob：
+    // 直接 err.response.data.code 永远是 undefined，后端写好的中文原因会被换成
+    // 「服务暂时不可用」「请求参数有误」这类按状态码兜底的话——等于原因一定丢失。
+    // 所以先把 Blob 读成文本再试解析信封。
+    const body = await readErrorEnvelope(err.response?.data)
     // 机器可读错误码（后端统一信封 {code, message, error}）：透传到 err.code 供业务分支。
     // 不改变下方文案优先级——code 只做编程判断，message 仍走 error/message 双字段回退。
-    const code = err.response?.data?.code
+    const code = body?.code
     if (typeof code === 'string' && code) err.code = code
     // 401 先尝试滑动续期再重放一次（原请求非 refresh 自身；token_version_mismatch 是
     // 真失效——登出/改绑，续期也会被拒，不重放直接走会话失效）。
@@ -130,9 +166,12 @@ http.interceptors.response.use(
     }
     // 错误友好化：改写 err.message 为 i18n 文案，组件 catch 显示 err.message 时即友好。
     // 后端已给 error/message 时优先用，否则按状态码/错误类型兜底（英文界面不再混中文）。
-    const backend = err.response?.data?.error || err.response?.data?.message
+    const backend = body?.error || body?.message
     if (typeof backend === 'string' && backend) {
-      err.message = backend
+      // #355 后端给了文案时按 code 翻成当前界面语言：英文界面下这一档原本直接显示
+      // 中文（后端信封总是带 message），i18n 那套 apiErr.* 兜底几乎永远走不到。
+      // 查不到 code 对应的译文就原样返回后端文案——那是链层写的唯一线索，不许吞。
+      err.message = translateErrcode(code, backend, i18n.global.locale.value as string)
     } else if (err.code === 'ECONNABORTED' || /timeout/i.test(err.message || '')) {
       err.message = terr('apiErr.timeout', '请求超时，请稍后重试')
     } else if (!err.response) {

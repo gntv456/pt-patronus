@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import type { ReseedTask } from '@/api/reseed'
@@ -18,6 +19,8 @@ const {
   selectedDl,
   reseeding,
   tasks,
+  taskTotal,
+  tasksTruncated,
   loadingTasks,
   focusSiteId,
   focusSiteName,
@@ -41,6 +44,16 @@ const {
   statusType,
   statusLabel,
 } = useReseed()
+
+// 候选表头的条数：后端单次最多返回 500 条，被截断时必须写清「最近 500 条 · 共 N 条」，
+// 否则表头会把部分渲染成全部，用户清完这 500 条还以为是空的。
+const taskCntLabel = computed(() => {
+  const shown = tasks.value.length
+  if (!tasksTruncated.value) return `${shown}`
+  return taskTotal.value === null
+    ? t('reseed.tasksTruncatedUnknown', { n: shown })
+    : t('reseed.tasksTruncated', { n: shown, total: taskTotal.value })
+})
 </script>
 
 <template>
@@ -176,7 +189,7 @@ const {
     <div class="card glass table-card">
       <div class="card-head">
         <span
-          >{{ t('reseed.tasks') }}<span class="cnt text-muted">（{{ tasks.length }}）</span></span
+          >{{ t('reseed.tasks') }}<span class="cnt text-muted">（{{ taskCntLabel }}）</span></span
         >
         <el-radio-group v-model="statusFilter" size="small" @change="loadTasks">
           <el-radio-button label="pending">{{ t('reseed.st.pending') }}</el-radio-button>

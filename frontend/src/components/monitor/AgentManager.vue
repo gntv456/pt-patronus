@@ -20,8 +20,10 @@ async function load() {
     const [list, lv] = await Promise.all([agentApi.list(), agentApi.latestAgentVersion().catch(() => null)])
     agents.value = list
     if (lv) latestVersion.value = lv.version
-  } catch {
-    /* ignore */
+  } catch (e: unknown) {
+    // 从前是 catch { /* ignore */ }：列表没读到就继续显示上一次/空列表，
+    // 和「这台主机真没有 agent」长得一样（面板那句 empty 会被人当成事实）。
+    ElMessage.error((e as Error).message || t('am.loadFailed'))
   }
 }
 
@@ -59,23 +61,35 @@ async function remove(a: Agent) {
     await ElMessageBox.confirm(t('am.removeConfirm', { name: a.name }), t('am.removeTitle'), {
       type: 'warning',
     })
+  } catch {
+    return // 用户取消
+  }
+  try {
     await agentApi.remove(a.id)
     ElMessage.success(t('common.deleted'))
     await load()
     emit('changed')
-  } catch {
-    /* 取消 */
+  } catch (e: unknown) {
+    // 从前删除与「取消」共用一个 catch { /* 取消 */ }：删失败（后端 4xx 有中文原因）
+    // 在界面上和「用户自己取消了」完全一样——点了没反应（#206/#268 那族）。
+    ElMessage.error((e as Error).message || t('am.removeFailed'))
   }
 }
 
 async function rotate(a: Agent) {
   try {
     await ElMessageBox.confirm(t('am.rotateConfirm', { name: a.name }), t('am.rotateTitle'), { type: 'warning' })
+  } catch {
+    return // 用户取消
+  }
+  try {
     const r = await agentApi.rotate(a.id)
     showAgentSecret(a, r.plain_secret)
     await load()
-  } catch {
-    /* 取消 */
+  } catch (e: unknown) {
+    // 重置 secret 是有副作用的写操作：旧 secret 是否已失效必须说得出，
+    // 静默成「取消」会让人以为没动过，继续拿旧 secret 重启 agent。
+    ElMessage.error((e as Error).message || t('am.rotateFailed'))
   }
 }
 

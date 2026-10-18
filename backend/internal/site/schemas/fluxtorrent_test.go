@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -177,12 +178,58 @@ func TestFluxTorrentUserInfoAndPasskey(t *testing.T) {
 	if u.Ratio < wantRatio-0.001 || u.Ratio > wantRatio+0.001 {
 		t.Fatalf("ratio = %v, want ~%v", u.Ratio, wantRatio)
 	}
-	// passkey 握手：Fetch 后可取一次，再取为空
-	if pk := f.TakePasskey(); pk != "fedcba0987654321fedcba0987654321" {
-		t.Fatalf("take passkey = %q", pk)
+	// passkey 随本次返回值交付（无实例级中转，见 TestFluxTorrentPasskeyConcurrentIsolation）
+	if u.DiscoveredPasskey != "fedcba0987654321fedcba0987654321" {
+		t.Fatalf("discovered passkey = %q", u.DiscoveredPasskey)
 	}
-	if pk := f.TakePasskey(); pk != "" {
-		t.Fatalf("second take should be empty, got %q", pk)
+	// 不参与序列化：passkey 不应随 UserInfo 出现在任何 JSON 出口（API 响应/快照）
+	if b, err := json.Marshal(u); err != nil || strings.Contains(string(b), "fedcba") {
+		t.Fatalf("UserInfo JSON must not carry passkey: %s err=%v", string(b), err)
+	}
+}
+
+// TestFluxTorrentPasskeyConcurrentIsolation 钉住并发串站回归：app_setup 全 app 只注册一个
+// FluxTorrent 适配器实例，TestConnectionsStream 会并发对多站调 UserInfo。passkey 必须只随
+// 本次调用返回值传递——一旦经实例字段中转，A 站会取到 B 站的 passkey（写错身份做种），
+// 而 B 站自己拿到空值（下载链永远缺凭证）。
+func TestFluxTorrentPasskeyConcurrentIsolation(t *testing.T) {
+	mk := func(passkey string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"name":"u","passkey":"` + passkey + `"}}`))
+		}))
+	}
+	srvA := mk("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	defer srvA.Close()
+	srvB := mk("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	defer srvB.Close()
+
+	f := NewFluxTorrent(fluxTestClient(t)) // 同一个实例服务两站
+	def := &site.SiteMetadata{Schema: "fluxtorrent"}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	got := map[string]string{}
+	fetch := func(base, cred string) {
+		defer wg.Done()
+		u, err := f.FetchUserInfo(context.Background(), def, base, cred)
+		if err != nil {
+			t.Errorf("FetchUserInfo(%s): %v", base, err)
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		got[base] = u.DiscoveredPasskey
+	}
+	wg.Add(2)
+	go fetch(srvA.URL, `{"token":"fxo_aaa"}`)
+	go fetch(srvB.URL, `{"token":"fxo_bbb"}`)
+	wg.Wait()
+
+	if got[srvA.URL] != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Errorf("A 站 passkey = %q（串站或丢失）", got[srvA.URL])
+	}
+	if got[srvB.URL] != "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" {
+		t.Errorf("B 站 passkey = %q（串站或丢失）", got[srvB.URL])
 	}
 }
 

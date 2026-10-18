@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type GameRecord } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // 9 个奖品（源码 jgg/magic_grid_config.php 固定配置；id 1-8 占外圈，id9 归到 VIP1天格）。
 export interface Prize {
@@ -59,11 +60,11 @@ export function useJggGame(siteId: Ref<number>) {
   })
 
   async function refreshStats() {
-    stats.value = await entertainmentApi.stats(siteId.value, 'jgg').catch(() => stats.value)
+    stats.value = await entertainmentApi.stats(siteId.value, 'jgg').catch(entFail('stats', stats.value))
   }
 
   async function refreshHistory() {
-    records.value = await entertainmentApi.history(siteId.value, 'jgg').catch(() => records.value)
+    records.value = await entertainmentApi.history(siteId.value, 'jgg').catch(entFail('history', records.value))
   }
 
   async function spin() {

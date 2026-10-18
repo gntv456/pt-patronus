@@ -170,6 +170,85 @@ func TestChainRunFailedSetsStateAndResult(t *testing.T) {
 	}
 }
 
+// TestChainRunCorruptGraphIsFailedNotSuccess 回归：库里那行 workflow 的 nodes 是残缺/空 JSON 时
+// （备份恢复、手工改库、旧版本遗留——chain.Create/Update 的 validateGraph 管不到这些写入路径），
+// 修复前 Run 用 `_ = json.Unmarshal` 吞掉解析错误 → 执行器拿到 0 个节点什么都不跑 → 记成 success（假绿）。
+// 修复后必须：不落任何节点执行、run 与 wf 都记 failed、错误信息可见。
+func TestChainRunCorruptGraphIsFailedNotSuccess(t *testing.T) {
+	c, op, runOp := newChainTB(t, nil, nil, echoN{typ: "t_echo", msg: "hi"})
+	// op.Create 绕过 validateGraph，模拟库里已存在坏行。
+	// 前半段合法（encoding/json 会先填出 n1 再报错）——正是「半个图被静默执行」的场景。
+	wf := &models.Workflow{Name: "坏图流", TriggerType: "manual", State: "idle",
+		Nodes: `[{"id":"n1","type":"t_echo","name":"打招呼"},`, Edges: "[]"}
+	if err := op.Create(wf); err != nil {
+		t.Fatal(err)
+	}
+
+	run, err := c.Run(context.Background(), wf.ID, "manual", nil)
+	if err == nil {
+		t.Fatal("nodes JSON 无效应返回错误")
+	}
+	if run.State != "failed" {
+		t.Fatalf("run.State=%s want failed（此前记成 success 即假绿）", run.State)
+	}
+	if !strings.Contains(run.Result, "JSON 无效") {
+		t.Fatalf("run.Result 应含解析失败原因，got %q", run.Result)
+	}
+	if strings.Contains(run.Result, "hi") {
+		t.Fatalf("解析失败不得执行任何节点，got %q", run.Result)
+	}
+	if run.NodeExecutions != "" && run.NodeExecutions != "null" {
+		t.Fatalf("不应有节点执行日志，got %q", run.NodeExecutions)
+	}
+	got, _ := op.Get(wf.ID)
+	if got.State != "failed" {
+		t.Fatalf("wf.State=%s want failed", got.State)
+	}
+	if runs, _ := runOp.ListByWorkflow(wf.ID, 10); len(runs) != 1 || runs[0].State != "failed" {
+		t.Fatalf("运行历史应 1 条 failed，got %+v", runs)
+	}
+
+	// 合法 JSON 但零节点同样不能算成功。
+	wf2 := &models.Workflow{Name: "空图流", TriggerType: "manual", State: "idle", Nodes: "[]", Edges: "[]"}
+	if err := op.Create(wf2); err != nil {
+		t.Fatal(err)
+	}
+	run2, err2 := c.Run(context.Background(), wf2.ID, "manual", nil)
+	if err2 == nil {
+		t.Fatal("空节点图应返回错误")
+	}
+	if run2.State != "failed" {
+		t.Fatalf("空图 run.State=%s want failed", run2.State)
+	}
+
+	// nodes 为空串（旧数据/绕过写入的常见形态）也不能被当成一次成功执行。
+	wf4 := &models.Workflow{Name: "无图流", TriggerType: "manual", State: "idle"}
+	if err := op.Create(wf4); err != nil {
+		t.Fatal(err)
+	}
+	run4, err4 := c.Run(context.Background(), wf4.ID, "manual", nil)
+	if err4 == nil {
+		t.Fatal("nodes 空串应返回错误")
+	}
+	if run4.State != "failed" {
+		t.Fatalf("nodes 空串 run.State=%s want failed", run4.State)
+	}
+
+	// edges 坏 JSON 同样中止（否则只有 nodes 被校验，连线坏了会静默丢掉全部依赖关系）。
+	wf3 := &models.Workflow{Name: "坏连线", TriggerType: "manual", State: "idle",
+		Nodes: `[{"id":"n1","type":"t_echo","name":"打招呼"}]`, Edges: `[{"id":"e1"`}
+	if err := op.Create(wf3); err != nil {
+		t.Fatal(err)
+	}
+	run3, err3 := c.Run(context.Background(), wf3.ID, "manual", nil)
+	if err3 == nil {
+		t.Fatal("edges JSON 无效应返回错误")
+	}
+	if run3.State != "failed" {
+		t.Fatalf("坏连线 run.State=%s want failed", run3.State)
+	}
+}
+
 // TestChainRunPanicSetsFailedState 回归：节点 Execute panic 曾让 wf.State 永久卡在 running
 // （panic 跳过末尾 MarkRun/Update，二者非 defer）。修复后 defer recover 兜底写 failed 终态，
 // 且 Run 把 panic 转为错误返回（不逃逸出函数），run 记录同样置 failed。
@@ -232,7 +311,8 @@ func TestChainRunReentryGuard(t *testing.T) {
 // TestChainRunEventPayloadSeedsVariables 事件触发：trigger 写入 run 记录（eventData 种子由节点消费）。
 func TestChainRunEventPayloadSeedsVariables(t *testing.T) {
 	c, op, _ := newChainTB(t, nil, nil, echoN{typ: "t_echo", msg: "ok"})
-	wf := &models.Workflow{Name: "事件流", TriggerType: "event", EventType: "x", State: "idle"}
+	wf := &models.Workflow{Name: "事件流", TriggerType: "event", EventType: "x", State: "idle",
+		Nodes: mustJSON(t, []workflow.GraphNode{{ID: "n1", Type: "t_echo", Name: "回显"}}), Edges: "[]"}
 	op.Create(wf)
 
 	run, err := c.Run(context.Background(), wf.ID, "event", map[string]any{"title": "T1"})
@@ -311,7 +391,8 @@ func TestRegisterAllTriggersOnStartup(t *testing.T) {
 	bus := event.New()
 	c, op, _ := newChainTB(t, scheduler.New(), bus, echoN{typ: "t_echo", msg: "hi"})
 	// 直接 op.Create 绕过 chain 的 RegisterTriggers，模拟"DB 已有工作流但触发器随重启丢失"。
-	wf := &models.Workflow{Name: "event", TriggerType: "event", EventType: "download.completed", Enabled: true, State: "idle"}
+	wf := &models.Workflow{Name: "event", TriggerType: "event", EventType: "download.completed", Enabled: true, State: "idle",
+		Nodes: mustJSON(t, []workflow.GraphNode{{ID: "n1", Type: "t_echo", Name: "回显"}}), Edges: "[]"}
 	op.Create(wf)
 
 	if err := c.RegisterAllTriggers(context.Background()); err != nil {

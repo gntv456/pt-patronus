@@ -24,6 +24,9 @@ export interface ContractCheckResult {
   site_name: string
   status: 'ok' | 'breach' | 'error'
   detail?: string
+  // 是否真取到了站点数据。false/缺席 = 这次没跑成（未到生效时间、站点被删、抓取失败），
+  // 下面的 ratio/seeding/upload_gb 全是零值占位，界面不得当读数画。
+  measured?: boolean
   ratio: number
   seeding: number
   upload_gb: number

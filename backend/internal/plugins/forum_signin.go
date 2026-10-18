@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -115,6 +114,6 @@ func (p *forumSigninPlugin) ExecuteAction(ctx context.Context, rt Runtime, actio
 		}
 		return map[string]any{"ok": true, "results": results}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

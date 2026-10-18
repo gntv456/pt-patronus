@@ -75,7 +75,10 @@ func (t *Telegram) Send(ctx context.Context, msg Message) error {
 		OK          bool   `json:"ok"`
 		Description string `json:"description"`
 	}
-	if json.Unmarshal(raw, &be) == nil && !be.OK {
+	if err := decodeEnvelope("telegram", raw, &be); err != nil {
+		return err
+	}
+	if !be.OK {
 		return fmt.Errorf("telegram: %s", be.Description)
 	}
 	return nil

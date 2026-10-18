@@ -1,4 +1,5 @@
 // BigSmallView 的 BigSmallOpsMixin mixin（含 setState 段；从 bigsmall_view.dart 拆出，行为不变）。
+// entReadFailed 来自库文件 bigsmall_view.dart 的 import（part 文件自己不许有 import）。
 part of 'package:ptpatronus/features/entertainment/bigsmall_view.dart';
 
 mixin BigSmallOpsMixin on State<BigSmallView> {
@@ -92,7 +93,9 @@ mixin BigSmallOpsMixin on State<BigSmallView> {
       if (_chat.length > 60) _chat = _chat.sublist(_chat.length - 60);
       _lastChatId = _chat.fold<int>(_lastChatId, (m, c) => c.id > m ? c.id : m);
       if (mounted) setState(() {});
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'bigsmallChat', e);
+    }
   }
 
   Future<void> _doBet(String type) async {

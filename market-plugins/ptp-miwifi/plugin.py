@@ -1070,22 +1070,32 @@ def action_port_forward(cfg, inp):
             "dport": inp.get("dport") or inp.get("internal_port"),
         })
         # return refreshed list best-effort
+        rules_error = None
         try:
             rules = summarize_port_rules(c.portforward_list())
-        except Exception:
+        except Exception as exc:
+            # 回显刷新失败不能画成「一条映射都没有」：刚加/删成功的规则会凭空消失，
+            # 用户据此再点一次就是重复操作。失败要在这本账里单独说出来。
             rules = []
-        return {"ok": True, "op": "add", "result": raw, "rules": rules}
+            rules_error = "刷新端口映射列表失败：%s" % (exc,)
+            log("warn", "miwifi.port_forward.refresh", rules_error, None)
+        return {"ok": True, "op": "add", "result": raw, "rules": rules, "rules_error": rules_error}
     if op in ("delete", "del", "remove"):
         raw = c.portforward_delete(inp)
         log("info", "miwifi.port_forward.delete", "port mapping deleted", {
             "fwid": inp.get("fwid") or inp.get("id"),
             "name": inp.get("name"),
         })
+        rules_error = None
         try:
             rules = summarize_port_rules(c.portforward_list())
-        except Exception:
+        except Exception as exc:
+            # 回显刷新失败不能画成「一条映射都没有」：刚加/删成功的规则会凭空消失，
+            # 用户据此再点一次就是重复操作。失败要在这本账里单独说出来。
             rules = []
-        return {"ok": True, "op": "delete", "result": raw, "rules": rules}
+            rules_error = "刷新端口映射列表失败：%s" % (exc,)
+            log("warn", "miwifi.port_forward.refresh", rules_error, None)
+        return {"ok": True, "op": "delete", "result": raw, "rules": rules, "rules_error": rules_error}
     if op in ("enable", "disable", "toggle"):
         if op == "enable":
             inp = dict(inp)
@@ -1094,11 +1104,16 @@ def action_port_forward(cfg, inp):
             inp = dict(inp)
             inp["enable"] = 0
         raw = c.portforward_toggle(inp)
+        rules_error = None
         try:
             rules = summarize_port_rules(c.portforward_list())
-        except Exception:
+        except Exception as exc:
+            # 回显刷新失败不能画成「一条映射都没有」：刚加/删成功的规则会凭空消失，
+            # 用户据此再点一次就是重复操作。失败要在这本账里单独说出来。
             rules = []
-        return {"ok": True, "op": op, "result": raw, "rules": rules}
+            rules_error = "刷新端口映射列表失败：%s" % (exc,)
+            log("warn", "miwifi.port_forward.refresh", rules_error, None)
+        return {"ok": True, "op": op, "result": raw, "rules": rules, "rules_error": rules_error}
     raise ValueError("input.op 应为 list|add|delete|enable|disable")
 
 

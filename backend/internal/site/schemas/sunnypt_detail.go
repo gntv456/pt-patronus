@@ -21,7 +21,7 @@ func (g *GenericJSON) FetchTorrentDetail(ctx context.Context, def *site.SiteMeta
 		return nil, fmt.Errorf("sunnypt: 无法从 %s 提取种子 id", detailURL)
 	}
 	apiBase := sunnyAPIBase(baseURL)
-	body, _, err := g.sunnyGet(ctx, apiBase, cookie, "/api/v1/torrent/detail?id="+m[1])
+	body, st, err := g.sunnyGet(ctx, apiBase, cookie, "/api/v1/torrent/detail?id="+m[1])
 	if err != nil {
 		return nil, err
 	}
@@ -31,15 +31,12 @@ func (g *GenericJSON) FetchTorrentDetail(ctx context.Context, def *site.SiteMeta
 	}
 	slog.Debug("sunnypt detail raw", "id", m[1], "len", len(body), "body", rb)
 
-	var wrap struct {
-		Code int             `json:"code"`
-		Data json.RawMessage `json:"data"`
-	}
-	if json.Unmarshal(body, &wrap) != nil || wrap.Code != 0 {
-		return &site.TorrentDetail{DetailURL: detailURL}, nil
+	data, err := sunnyData(body, st)
+	if err != nil {
+		return nil, err
 	}
 	var d map[string]any
-	if json.Unmarshal(wrap.Data, &d) != nil {
+	if json.Unmarshal(data, &d) != nil {
 		return &site.TorrentDetail{DetailURL: detailURL}, nil
 	}
 	td := &site.TorrentDetail{

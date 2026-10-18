@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
@@ -28,6 +29,17 @@ type DownloadChain struct {
 // NewDownloadChain 构造。tf 为站点种子下载器（通常传 SiteChain），传 nil 则禁用 cookie 下载。
 func NewDownloadChain(b Base, mgr *manager.Manager, op *oper.DownloaderOper, tf torrentFetcher) *DownloadChain {
 	return &DownloadChain{Base: b, mgr: mgr, op: op, tf: tf}
+}
+
+// TagsSupported 报告下载器类型是否支持并保留标签。刷流用 tag 识别任务种子：
+// 不支持的下载器（aria2/uTorrent/Deluge 等）添加时静默丢弃 Tag、列表也不返回 →
+// MaxSeeds 限流恒失效（无限加种灌满磁盘）且扫删永匹配不到（永不删种）。
+func (c *DownloadChain) TagsSupported(downloaderID uint) (bool, error) {
+	d, err := c.op.Get(downloaderID)
+	if err != nil {
+		return false, err
+	}
+	return downloader.Capabilities(d.Type).Tags, nil
 }
 
 // List 列出某下载器的任务。
@@ -79,31 +91,74 @@ func applyFetchedTorrent(ctx context.Context, tf torrentFetcher, opts *downloade
 	return nil
 }
 
+// ErrEmptyHashes 批量目标为空时的拒绝。
+// 各适配器把「hashes 为空」解释成「对下载器内全部种子操作」——qB 的 joinHashes 空列表直接
+// 发 "all"。于是前端漏选/竞态、AI 工具传 {"hashes":[]}（JSON Schema 的 required 只保证键存在、
+// 不保证非空）、自动化筛选命中 0 条，都会变成一次性暂停/改路径/删除整个下载客户端，
+// 且 delete_files=true 时连磁盘数据一起没。批量目标为空必须是错误，不能是「全部」。
+var ErrEmptyHashes = errors.New("未指定任何种子（hashes 为空）：已拒绝，避免对下载器内全部种子批量操作")
+
+// clientForHashes 取下载器客户端并校验批量目标非空（所有按 hash 定位的操作共用）。
+// 空白项一并剔除并作为返回值下发：["", " "] 这类「看起来选了、其实是空的」列表若原样放行，
+// 请求里就是 hashes=| 这种空选择器，正是要防的「目标未指定」。
+func (c *DownloadChain) clientForHashes(ctx context.Context, id uint, hashes []string) (downloader.Downloader, []string, error) {
+	cleaned := nonBlank(hashes)
+	if len(cleaned) == 0 {
+		return nil, nil, ErrEmptyHashes
+	}
+	d, err := c.mgr.Get(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	return d, cleaned, nil
+}
+
+// nonBlank 去掉空/纯空白字符串项。
+func nonBlank(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if strings.TrimSpace(s) != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// requireValues 校验「操作必需的取值」非空（标签名 / Tracker URL 等）。
+// 值为空时请求照样发、200 照样回、上层照样报「已添加/已删除」，而下载器里什么都没变——
+// UI 有自己的非空校验，但 AI 工具、插件与工作流节点没有，空参数会一路走到这里。
+func requireValues(what string, values []string) error {
+	if len(nonBlank(values)) == 0 {
+		return fmt.Errorf("未指定任何%s：已拒绝，避免空操作却回报成功", what)
+	}
+	return nil
+}
+
 // Pause 暂停。
 func (c *DownloadChain) Pause(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.Pause(ctx, hashes)
+	return d.Pause(ctx, hs)
 }
 
 // Resume 恢复。
 func (c *DownloadChain) Resume(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.Resume(ctx, hashes)
+	return d.Resume(ctx, hs)
 }
 
 // Delete 删除。
 func (c *DownloadChain) Delete(ctx context.Context, id uint, hashes []string, deleteFiles bool) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.Delete(ctx, hashes, deleteFiles)
+	return d.Delete(ctx, hs, deleteFiles)
 }
 
 // Stats 全局速率。

@@ -277,3 +277,46 @@ func TestFetchDetailCopyPerCall(t *testing.T) {
 		t.Fatalf("detail description drifted: %q vs %q", r1.Cards[0].Detail.Description, r2.Cards[0].Detail.Description)
 	}
 }
+
+// ── 回归：上游 200 但解析出 0 张卡（页面改版/结构变化）以前被当成功缓存 6h，
+// 前端渲染成「监护室没有站点」的假空态。现在必须报错或降级旧缓存。──
+func TestFetchParseEmptyNotCachedAsSuccess(t *testing.T) {
+	var hits int32
+	good := `<a class="card-link" href="https://a.pt" data-name="A" data-year="2020" data-status="online"><div class="card"><div class="card-title">A</div></div></a>`
+	bad := `<html>改版后的全新页面，解析器已不认识</html>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&hits, 1)
+		if n == 1 {
+			_, _ = w.Write([]byte(good))
+		} else {
+			_, _ = w.Write([]byte(bad))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	hc := newTestHTTPClient(t)
+	s := NewService(hc, nil, nil)
+	s.url = srv.URL
+	s.skipProbe = true
+
+	// 第一轮：正常抓到 1 张卡并写缓存
+	if _, err := s.Fetch(t.Context(), false); err != nil {
+		t.Fatalf("cold fetch: %v", err)
+	}
+	// 第二轮 force：上游改版解析 0 卡 → 必须降级旧缓存（Stale），不能把空结果写成新鲜缓存
+	res, err := s.Fetch(t.Context(), true)
+	if err != nil {
+		t.Fatalf("改版后应降级旧缓存而非报错（有缓存可用）: %v", err)
+	}
+	if !res.Stale || len(res.Cards) < 1 {
+		t.Errorf("want stale fallback with saved cards, got stale=%v cards=%d", res.Stale, len(res.Cards))
+	}
+
+	// 无缓存的服务实例：解析 0 卡要向外报错，不能静默回「没有站点」
+	s2 := NewService(hc, nil, nil)
+	s2.url = srv.URL
+	s2.skipProbe = true
+	if _, err := s2.Fetch(t.Context(), false); err == nil {
+		t.Fatal("无缓存 + 解析 0 卡应报错")
+	}
+}

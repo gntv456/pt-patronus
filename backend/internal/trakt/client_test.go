@@ -3,6 +3,7 @@ package trakt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,11 +98,37 @@ func TestClientWatchlist(t *testing.T) {
 	}
 }
 
-// asDeviceErr 是 errors.As 的本地替身（避免引入 errors，测试足够）。
+// asDeviceErr 是 errors.As 的本地替身（测试足够）。
 func asDeviceErr(err error, target **DeviceTokenError) bool {
 	if dte, ok := err.(*DeviceTokenError); ok {
 		*target = dte
 		return true
 	}
 	return false
+}
+
+// TestRefreshTokenErrorClassification 刷新失败分类：400/401=AuthDead（令牌已死须重授权）；
+// 429/5xx=瞬时（保留令牌重试）。此前一律为泛化错误，调用方无法区分而清空令牌。
+func TestRefreshTokenErrorClassification(t *testing.T) {
+	for _, tc := range []struct {
+		status int
+		dead   bool
+	}{
+		{400, true}, {401, true}, {429, false}, {500, false}, {503, false},
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(tc.status)
+			_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+		}))
+		c := NewClient(srv.URL)
+		_, err := c.RefreshToken(context.Background(), "RT", "", Credentials{ClientID: "cid", ClientSecret: "cs"})
+		var re *RefreshError
+		if !errors.As(err, &re) {
+			t.Fatalf("status %d: want *RefreshError, got %T %v", tc.status, err, err)
+		}
+		if re.AuthDead != tc.dead {
+			t.Fatalf("status %d: AuthDead=%v want %v", tc.status, re.AuthDead, tc.dead)
+		}
+		srv.Close()
+	}
 }

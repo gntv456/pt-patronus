@@ -1,9 +1,9 @@
 package chain
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"io"
 	"log/slog"
 	"net"
@@ -51,7 +51,7 @@ type pathCacheEntry struct {
 // cachedMediaPath 带缓存的 MediaPath（负结果不缓存——失败常见于临时网络问题）。
 // 四轮 P2 修复：过期条目此前仅在"再次被访问"时删除，未被回访的条目永驻——媒体库
 // 几十万条目时按 PlaybackInfo 调用量单调涨内存。每次写入后顺手清扫全表过期项
-//（条目带 exp，Range 一遍 Delete 即可，成本低；清扫与写入并发安全——sync.Map）。
+// （条目带 exp，Range 一遍 Delete 即可，成本低；清扫与写入并发安全——sync.Map）。
 func (p *MediaProxyService) cachedMediaPath(ctx context.Context, serverID uint, itemID string) (string, error) {
 	key := fmt.Sprintf("%d:%s", serverID, itemID)
 	if v, ok := p.pathCache.Load(key); ok {
@@ -166,13 +166,13 @@ func (p *MediaProxyService) tryDirectLink(w http.ResponseWriter, r *http.Request
 
 // resolveLink 从媒体路径解析云盘直链：.strm 内容 / StrmRecord 按云盘路径。
 // 二轮 P1-2（mediaproxy 三连修）：
-//   1. .strm 内容含 ?sign= 时剥离 query 再取路径（签名模式下路径必带 query，不剥则
-//      statCloud 按 "a.mkv?sign=..." 找文件必失败）；
-//   2. 解析前先过 VerifyDirectLinkSign——mediaproxy 是公开路由，此前直接调
-//      ResolveDirectLink 完全绕过了 /cloud/direct 端点的签名校验（匿名枚举 Emby
-//      itemId 换直链的口子）；兼容模式（无密钥）保持放行；
-//   3. .strm 解析失败不再提前 return——落回 ② StrmRecord 匹配（挂载型/畸形 strm
-//      的拦截此前静默失效）。
+//  1. .strm 内容含 ?sign= 时剥离 query 再取路径（签名模式下路径必带 query，不剥则
+//     statCloud 按 "a.mkv?sign=..." 找文件必失败）；
+//  2. 解析前先过 VerifyDirectLinkSign——mediaproxy 是公开路由，此前直接调
+//     ResolveDirectLink 完全绕过了 /cloud/direct 端点的签名校验（匿名枚举 Emby
+//     itemId 换直链的口子）；兼容模式（无密钥）保持放行；
+//  3. .strm 解析失败不再提前 return——落回 ② StrmRecord 匹配（挂载型/畸形 strm
+//     的拦截此前静默失效）。
 func (p *MediaProxyService) resolveLink(ctx context.Context, mediaPath, ua string) (*cloud.DirectLink, bool) {
 	// ① 本地 .strm：内容若指向 /api/v1/cloud/direct/:driveId/*，复用端点解析
 	if strings.HasSuffix(strings.ToLower(mediaPath), ".strm") {
@@ -282,7 +282,7 @@ func (p *MediaProxyService) forward(w http.ResponseWriter, r *http.Request, base
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, resp.Body)
+	httpclient.CopyBody(w, resp.Body, "mediaproxy", resp.ContentLength, "target", redactDirectURL(target), "status", resp.StatusCode)
 }
 
 // isUpgrade WebSocket 升级请求判定。
@@ -305,13 +305,22 @@ func (p *MediaProxyService) forwardWS(w http.ResponseWriter, r *http.Request, ta
 		return
 	}
 	for k, vs := range r.Header {
-		if hopByHop[k] || strings.EqualFold(k, "Host") {
+		if strings.EqualFold(k, "Host") {
+			continue
+		}
+		// 握手头例外：Connection/Upgrade 虽是逐跳头，但升级握手本身依赖它们
+		//（此前一并按 hopByHop 剥掉 → 上游看到的是普通 GET，永远不回 101）。
+		if hopByHop[k] && !strings.EqualFold(k, "Connection") && !strings.EqualFold(k, "Upgrade") {
 			continue
 		}
 		for _, v := range vs {
 			upReq.Header.Add(k, v)
 		}
 	}
+	// 对齐 net/http/httputil.ReverseProxy：过滤后显式补回规范化握手头
+	//（防客户端 Connection 值夹带 close/keep-alive 等 token 干扰上游判定）。
+	upReq.Header.Set("Connection", "Upgrade")
+	upReq.Header.Set("Upgrade", "websocket")
 	if u, err := url.Parse(target); err == nil {
 		upReq.Host = u.Host
 	}
@@ -331,22 +340,13 @@ func (p *MediaProxyService) forwardWS(w http.ResponseWriter, r *http.Request, ta
 		return
 	}
 	defer clientConn.Close()
-	// 双向 pipe：上游→客户端 由 bufio flush；客户端→上游 直接拷
+	// 双向 pipe：上游→客户端直写 clientConn——绝不经过 bufio.Writer（io.Copy 到
+	// EOF 才返回，缓冲未满时 101 握手与小帧永远滞留客户端收不到，WS 全链路静默失效）；
+	// 客户端→上游从 hijack 的 bufio.Reader 读（已预读的请求字节不能丢）。
 	done := make(chan struct{}, 2)
 	go func() { // 上游 → 客户端
 		defer func() { done <- struct{}{} }()
-		br := bufio.NewReader(conn)
-		for {
-			if _, err := br.Peek(1); err != nil {
-				return
-			}
-			if _, err := io.Copy(clientBuf, br); err != nil {
-				return
-			}
-			if err := clientBuf.Flush(); err != nil {
-				return
-			}
-		}
+		_, _ = io.Copy(clientConn, conn)
 	}()
 	go func() { // 客户端 → 上游
 		defer func() { done <- struct{}{} }()

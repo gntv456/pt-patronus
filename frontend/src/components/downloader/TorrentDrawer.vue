@@ -34,15 +34,39 @@ watch(
   },
   { immediate: true },
 )
-async function restFallback() {
-  if (Date.now() - lastWsHit < 10_000) return
+// REST 兜底读失败的原因（#260）。WS 有这台的实时帧时静默是「可自愈」；
+// tr/ut/dl 没有 StatsCacher（见下方 watch 注释），REST 是唯一来源 ⇒ 失败必须出声，
+// 否则「下载器连不上」在屏幕上长成「这台没有种子」+ 顶栏一直「连接中」。
+// 两个来源各记一笔（谁先回来都能被另一笔冲掉，共用一个字符串会看运气）。
+const listError = ref('')
+const statsError = ref('')
+const readError = computed(() => listError.value || statsError.value)
+async function restFallback(force = false) {
+  if (!force && Date.now() - lastWsHit < 10_000) return
   try {
     restList.value = await downloaderApi.torrents(props.downloader.id)
-  } catch {
-    /* REST 失败静默：WS 恢复后自然接管 */
+    listError.value = ''
+  } catch (e: unknown) {
+    if (!snapshot.value) {
+      listError.value = `${t('tw.restListErr')}：${(e as Error).message || t('tw.restUnknown')}（${t('tw.retryRefresh')}）`
+    }
   }
 }
-const list = computed(() => snapshot.value?.torrents ?? (Date.now() - lastWsHit < 10_000 ? [] : restList.value))
+// #381 从前是 `snapshot.value?.torrents ?? (... ? [] : restList.value)`：把「本台有没有 WS 帧」
+// 与「帧里有没有种子」折叠成了一个 ??。帧存在但 torrents 为空时取到的是 **[]**，而 [] 不是
+// null/undefined ⇒ ?? 不再往下走 ⇒ restList 永远读不到。于是 restFallback() 把 REST 结果拉回来
+// 写进了 restList，list 却当它不存在：接口全绿、统计条算对（任务总数 1）、表格却空。
+// 竞态窗口真实存在——watch(visible) 里先 connect() 再 lastWsHit=0 + restFallback()（后者
+// fire-and-forget 没 await），WS 首帧与 REST 响应谁先落地看时序：Playwright 核心链路 E2E
+// 实测同一份代码两次跑，一次「1 / 1」一次「0 / 1」。
+// 现在按**数据**取：WS 帧里有种子就用它，没有才用 REST（REST 已拉到且更新）。
+const wsList = computed(() => snapshot.value?.torrents ?? null)
+const list = computed(() => {
+  const w = wsList.value
+  if (w && w.length) return w
+  // WS 帧空/未到：只要 REST 已经拿到过东西就用它（而不是一律给 []）。
+  return restList.value.length ? restList.value : w ?? []
+})
 const wsStats = computed(() => snapshot.value?.stats ?? null)
 
 // TR 的 WS 不带 stats → 兜底轮询 GET /stats
@@ -53,8 +77,9 @@ let statsTimer: ReturnType<typeof setInterval> | undefined
 async function refreshStats() {
   try {
     polledStats.value = await downloaderApi.stats(props.downloader.id)
-  } catch {
-    /* 忽略，WS 端会重试 */
+    statsError.value = ''
+  } catch (e: unknown) {
+    statsError.value = `${t('tw.restStatsErr')}：${(e as Error).message || t('tw.restUnknown')}（${t('tw.retryRefresh')}）`
   }
 }
 
@@ -87,7 +112,29 @@ async function loadCats() {
 function refresh() {
   loadCats()
   lastUpdated.value = new Date()
-  restFallback()
+  restFallback(true)
+}
+
+// #381 兜底轮询：restFallback 的守卫是「WS 10s 内命中过就跳过」，而 lastWsHit 盯的是
+// **全局** torrents 数组——useWs 是模块级单例，任何下载器的任何一帧都会把它刷成 now。
+// 于是抽屉刚打开时（本台 WS 帧还没到）守卫会把这唯一的 REST 拉取挡掉，
+// 之后本台 WS 若一直不来（本仓 Playwright core-flow 实测：前两个用例跑完 SSE 搜索后
+// 打开抽屉，就是 0/1），就再没有人去拉 REST 了 —— 表格空、统计条却算得出「任务总数 1」。
+// 这里按固定节奏无条件重问一次 REST：WS 正常时它只是幂等刷新，抽屉开着期间
+// 总有一次能落到 list 里（list 在 WS 帧为空时优先取 restList）。
+let restTimer: ReturnType<typeof setInterval> | undefined
+function startRestPolling() {
+  stopRestPolling()
+  restTimer = setInterval(() => {
+    if (document.hidden) return
+    restFallback(true)
+  }, 5000)
+}
+function stopRestPolling() {
+  if (restTimer) {
+    clearInterval(restTimer)
+    restTimer = undefined
+  }
 }
 
 // —— 任务详情抽屉（实时 torrent 引用，随 WS 自动更新）——
@@ -141,7 +188,10 @@ watch(
     }
     if (v) {
       lastWsHit = 0
-      restFallback()
+      restFallback(true)
+      startRestPolling()
+    } else {
+      stopRestPolling()
     } // 打开即拉一次 REST 兜底（幂等；WS 活跃时随后被覆盖）
   },
   { immediate: true }, // 首次打开时 visible 已为 true，无 immediate 则回调不触发、分类/TR 轮询不加载
@@ -149,6 +199,7 @@ watch(
 
 onUnmounted(() => {
   if (statsTimer) clearInterval(statsTimer)
+  stopRestPolling()
 })
 </script>
 
@@ -179,6 +230,10 @@ onUnmounted(() => {
 
     <el-alert v-if="connectionError" type="error" :closable="false" show-icon class="connection-alert">
       {{ connectionError }}
+    </el-alert>
+    <!-- WS 没接管时 REST 是唯一来源，读失败必须上屏（#260）：空表格 + 「连接中」不算交代。 -->
+    <el-alert v-else-if="readError" type="error" :closable="false" show-icon class="connection-alert">
+      {{ readError }}
     </el-alert>
     <StatsBar
       :stats="stats"

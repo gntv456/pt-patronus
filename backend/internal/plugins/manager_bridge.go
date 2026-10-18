@@ -22,7 +22,7 @@ func (m *Manager) Bridge(ctx context.Context, id, method string, params map[stri
 		return nil, err
 	}
 	if !st.Enabled {
-		return nil, errors.New("plugin is disabled")
+		return nil, ErrPluginDisabled
 	}
 	manifest := p.Manifest()
 	rt := m.runtime(id, cfg)

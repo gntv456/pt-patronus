@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import '../features/common/stream_account.dart';
 
 // JSON 字符串字段容错：后端个别字段（如 end_time）可能返回 int（0 / epoch）而非字符串，
 // `as String?` 会抛 "type 'int' is not a subtype of type 'String?' in type cast"（且 `?? ''`
@@ -73,21 +74,22 @@ class AssessmentCard {
 }
 
 class AssessmentApi {
+  AssessmentApi({StreamFrames? frames}) : _frames = frames;
+
+  final StreamFrames? _frames;
   final _api = ApiClient();
+
+  Stream<MapEntry<String, Map<String, dynamic>>> _stream(String path) =>
+      _frames?.call(path) ?? _api.streamGet(path);
   Future<List<AssessmentCard>> all({bool refresh = false}) async {
     final r = await _api.get('/assessment${refresh ? '?refresh=1' : ''}');
     final list = (r['sites'] as List?) ?? const [];
     return list.map((e) => AssessmentCard.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// 流式首屏（SSE）：每站完成推一帧 batch（单元素数组），逐帧产出该站卡片；取消监听即中断。
-  Stream<AssessmentCard> allStream({bool refresh = false}) {
-    return _api.streamGet('/assessment/stream${refresh ? '?refresh=1' : ''}').expand((ev) {
-      if (ev.key == 'batch' && ev.value['results'] is List) {
-        return (ev.value['results'] as List)
-            .map((e) => AssessmentCard.fromJson(e as Map<String, dynamic>));
-      }
-      return const <AssessmentCard>[];
-    });
+  /// 流式首屏（SSE）：每站完成推一帧 batch（单元素数组）；done 帧带清单账面。
+  Stream<StreamBatch<AssessmentCard>> allStream({bool refresh = false}) {
+    return _stream('/assessment/stream${refresh ? '?refresh=1' : ''}')
+        .map((ev) => mapStreamFrame(ev, AssessmentCard.fromJson));
   }
 }

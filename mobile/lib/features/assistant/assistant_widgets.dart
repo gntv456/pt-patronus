@@ -6,6 +6,15 @@ extension on _AssistantPageState {
   Widget _msgList() {
     final units = _buildUnits();
     if (units.isEmpty && !_hasLive) {
+      // 读取失败不能画成「还没说过话」的空态：那会让用户以为会话丢了。
+      if (_messagesNotice.isNotEmpty) {
+        return PTEmptyState(
+          icon: Icons.error_outline,
+          text: _messagesNotice,
+          description: '会话内容还在服务器上，只是这次没读出来。',
+          onRetry: _activeId == null ? null : () => _select(_activeId!),
+        );
+      }
       return PTEmptyState(
         icon: Icons.smart_toy,
         title: '和 PTPatronus 助手对话',
@@ -156,7 +165,7 @@ extension on _AssistantPageState {
           ),
           const SizedBox(width: 8),
           _sending
-              ? FloatingActionButton.small(tooltip: '停止生成', onPressed: _api.cancel, backgroundColor: PTColors.danger, child: const Icon(Icons.stop, color: Colors.white))
+              ? FloatingActionButton.small(tooltip: '停止生成', onPressed: _stop, backgroundColor: PTColors.danger, child: const Icon(Icons.stop, color: Colors.white))
               : FloatingActionButton.small(tooltip: '发送消息', onPressed: _send, child: const Icon(Icons.send)),
         ]),
       ),
@@ -167,16 +176,20 @@ extension on _AssistantPageState {
   void _openConfig() async {
     final AgentConfig cfg;
     List<ToolCatalogEntry> tools;
+    var toolsError = '';
     try {
       cfg = await _api.getConfig();
-    } catch (_) {
-      _toast('加载配置失败');
+    } catch (e) {
+      // 读不到配置就绝不打开面板：面板里的字段是整份 PUT 回去的，
+      // 用默认值顶着打开一次再点保存，就把真配置覆盖成默认了。
+      _toast('配置读不出来：$e');
       return;
     }
     try {
       tools = await _api.tools();
-    } catch (_) {
+    } catch (e) {
       tools = [];
+      toolsError = '$e';
     }
     AgentStats? stats;
     try {
@@ -234,13 +247,26 @@ extension on _AssistantPageState {
               TextField(controller: TextEditingController(text: cfg.model), decoration: const InputDecoration(labelText: '模型', isDense: true), onChanged: (v) => cfg.model = v),
               const Divider(height: 28),
               // 工具白名单：启用全部 ↔ 按风险勾选。
+              if (toolsError.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: PTColors.danger.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: Text(
+                    '工具目录读不出来：$toolsError\n此时不能改「启用全部工具」——关掉它会把清单存成空，而空清单在服务器上等于「全部允许」。',
+                    style: const TextStyle(fontSize: 11, height: 1.4, color: PTColors.danger),
+                  ),
+                ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: allowAll,
-                onChanged: (v) => setS(() {
-                  allowAll = v;
-                  if (!v && enabled.isEmpty) enabled = tools.map((t) => t.name).toSet();
-                }),
+                // 目录读失败时禁用开关（onChanged=null 即禁用）：enabled 的初值取自这份目录，空目录会让「自选」被存成全开。
+                onChanged: toolsError.isEmpty
+                    ? (v) => setS(() {
+                          allowAll = v;
+                          if (!v && enabled.isEmpty) enabled = tools.map((t) => t.name).toSet();
+                        })
+                    : null,
                 title: const Text('启用全部工具', style: TextStyle(fontSize: 14)),
                 subtitle: const Text('关闭后可按风险勾选，新增工具不自动可用', style: TextStyle(fontSize: 11)),
               ),
@@ -256,8 +282,8 @@ extension on _AssistantPageState {
                   await _api.setConfig(cfg, apiKey: apiKeyCtrl.text.trim().isEmpty ? null : apiKeyCtrl.text.trim());
                   if (ctx.mounted) Navigator.pop(ctx);
                   _toast('配置已保存');
-                } catch (_) {
-                  _toast('保存失败');
+                } catch (e) {
+                  _toast('保存失败：$e');
                 }
               }, child: const Text('保存')),
             ])),

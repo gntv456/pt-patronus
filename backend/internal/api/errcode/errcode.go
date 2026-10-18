@@ -9,6 +9,8 @@ package errcode
 
 import (
 	"errors"
+	"log/slog"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,6 +47,38 @@ func (e *Error) WithErr(err error) *Error {
 	return &ne
 }
 
+// WithDetail 用「我们自己写给用户的校验原因」替换默认文案（原因保留在 Message 里给用户看，
+// 同时留在 Err 里给日志）。用于错误已经在一层里说清楚、不该退回「请求参数有误」的场景；
+// 只对带哨兵（如 chain.ErrInvalidGraph）的自产错误使用，Go 运行时的类型错误不适用。
+func (e *Error) WithDetail(err error) *Error {
+	ne := *e
+	if err != nil {
+		ne.Message = err.Error()
+	}
+	ne.Err = err
+	return &ne
+}
+
+// WithDetailKeepMessage 追加底层原因，但**保留本码的默认文案**。
+//
+// WithDetail 是「用原因整体替换 Message」——适合原因本身就是一句完整可操作的话
+// （#336/#337 那一族）。但有些场景两者都需要：
+//
+//   - 默认文案说清「这件事造成的后果是什么、用户接下来该做什么」；
+//   - 原因说清「具体是哪一个技术失败」，供运维定位。
+//
+// #391 运维批量命令的审计写失败就是后者：默认文案必须点明「本次没有执行任何命令」
+// （用户据此判断能否安全重试），而原因「sql: database is locked」决定他是先修库还是
+// 回头看输入。用 WithDetail 会把前一句整个丢掉，只剩一串技术文本。
+func (e *Error) WithDetailKeepMessage(err error) *Error {
+	ne := *e
+	if err != nil {
+		ne.Message = ne.Message + "：" + err.Error()
+	}
+	ne.Err = err
+	return &ne
+}
+
 // New 构造（仅 codes.go 注册表内使用；handler 应引用预定义值）。
 func New(code, message string, httpStatus int) *Error {
 	return &Error{Code: code, Message: message, HTTP: httpStatus}
@@ -66,10 +100,43 @@ func FromError(err error) *Error {
 // Respond 统一错误出口：识别 *Error（含 errors.As 解包），否则按 internal 处理。
 // 信封：{code, message, error}——error 与 message 同值，过渡兼容只读 error 的老客户端。
 func Respond(c *gin.Context, err error) {
-	e := FromError(err)
-	c.AbortWithStatusJSON(e.HTTP, gin.H{
-		"code":    e.Code,
-		"message": e.Message,
-		"error":   e.Message,
-	})
+	respondCommon(c, FromError(err), nil)
+}
+
+// RespondWithFields 见下方注释；它复用同一条日志与信封路径（不重写 message/error）。
+func RespondWithFields(c *gin.Context, e *Error, fields gin.H) {
+	if e == nil {
+		e = Internal
+	}
+	env := gin.H{"code": e.Code, "message": e.Message, "error": e.Message}
+	for k, v := range fields {
+		env[k] = v
+	}
+	respondCommon(c, e, env)
+}
+
+func respondCommon(c *gin.Context, e *Error, env gin.H) {
+	logErr(c, e)
+	if env == nil {
+		env = gin.H{"code": e.Code, "message": e.Message, "error": e.Message}
+	}
+	c.AbortWithStatusJSON(e.HTTP, env)
+}
+
+// logErr 把底层错误写进日志（5xx 用 Warn，4xx 用 Debug）。信封不进响应。
+func logErr(c *gin.Context, e *Error) {
+	// 包文档承诺「底层细节进日志不进响应」，但 Err 此前只挂在结构上、无人写出——
+	// 全仓数百处 WithErr 等于白附加，400/500 事后连原因都查不到（响应体仍只给通用文案）。
+	if e.Err != nil {
+		// c.Request 可能为 nil（单元里直接构造 gin.Context），取路径前要判。
+		path := ""
+		if c.Request != nil {
+			path = c.Request.URL.Path
+		}
+		if e.HTTP >= http.StatusInternalServerError {
+			slog.Warn("api error", "code", e.Code, "path", path, "err", e.Err)
+		} else {
+			slog.Debug("api error", "code", e.Code, "path", path, "err", e.Err)
+		}
+	}
 }

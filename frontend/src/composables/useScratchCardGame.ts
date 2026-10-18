@@ -7,6 +7,7 @@ import {
   type GameRecord,
   type PlayResult,
 } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 export function useScratchCardGame(siteId: Ref<number>) {
   const stats = ref<GameStats | null>(null)
@@ -24,10 +25,10 @@ export function useScratchCardGame(siteId: Ref<number>) {
   async function loadAll() {
     try {
       const [st, opt, pz, hi] = await Promise.all([
-        entertainmentApi.stats(siteId.value, 'cspt_scratch').catch(() => null),
-        entertainmentApi.buyOptions(siteId.value, 'cspt_scratch').catch(() => []),
-        entertainmentApi.prizes(siteId.value, 'cspt_scratch').catch(() => []),
-        entertainmentApi.history(siteId.value, 'cspt_scratch').catch(() => []),
+        entertainmentApi.stats(siteId.value, 'cspt_scratch').catch(entFail('stats', null)),
+        entertainmentApi.buyOptions(siteId.value, 'cspt_scratch').catch(entFail('buyOptions', [])),
+        entertainmentApi.prizes(siteId.value, 'cspt_scratch').catch(entFail('prizes', [])),
+        entertainmentApi.history(siteId.value, 'cspt_scratch').catch(entFail('history', [])),
       ])
       stats.value = st
       options.value = opt
@@ -39,7 +40,7 @@ export function useScratchCardGame(siteId: Ref<number>) {
   }
 
   async function refreshStats() {
-    stats.value = await entertainmentApi.stats(siteId.value, 'cspt_scratch').catch(() => stats.value)
+    stats.value = await entertainmentApi.stats(siteId.value, 'cspt_scratch').catch(entFail('stats', stats.value))
   }
 
   async function play() {
@@ -52,7 +53,7 @@ export function useScratchCardGame(siteId: Ref<number>) {
       if (res.success) ElMessage.success(res.prize ? `获得 ${res.prize}` : '刮卡成功')
       else ElMessage.warning(res.message || '刮卡失败')
       await refreshStats()
-      history.value = await entertainmentApi.history(siteId.value, 'cspt_scratch').catch(() => history.value)
+      history.value = await entertainmentApi.history(siteId.value, 'cspt_scratch').catch(entFail('history', history.value))
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
       ElMessage.error(msg || '请求失败')

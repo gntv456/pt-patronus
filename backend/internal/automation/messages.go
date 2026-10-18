@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
@@ -49,5 +50,8 @@ func saveSeenIDs(cfgOp *oper.SystemConfigOper, siteName string, ids map[uint64]s
 		list = append(list, id)
 	}
 	raw, _ := json.Marshal(list)
-	_ = cfgOp.Set("mail:seen:"+siteName, string(raw))
+	if err := cfgOp.Set("mail:seen:"+siteName, string(raw)); err != nil {
+		// 已见水位写失败 = 下一轮把同一批邮件当新邮件重新提醒（重复刷屏），且没人知道。
+		slog.Warn("私信已见水位保存失败：下一轮可能重复提醒同一批邮件", "site", siteName, "err", err)
+	}
 }

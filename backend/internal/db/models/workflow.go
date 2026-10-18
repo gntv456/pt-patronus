@@ -105,7 +105,11 @@ type BrushFlowTask struct {
 	Name         string `gorm:"size:128;not null" json:"name"`
 	SiteID       uint   `gorm:"index;not null" json:"site_id"`
 	DownloaderID uint   `gorm:"index;not null" json:"downloader_id"`
-	Enabled      bool   `gorm:"default:true" json:"enabled"`
+	// Enabled 不加 gorm default：字段带 default:true 时，GORM 会把「零值 false」当作
+	// 未赋值而从 INSERT 里跳过该列，由 DB 补成 true，连结构体都被回填成 true。
+	// 后果是用户在「新建任务时就关掉」的开关被静默翻成开，任务立刻进 10 分钟选种 cron
+	// 往下载器加种子。缺省方向也应是安全的：不带 enabled = 不启用。
+	Enabled bool `json:"enabled"`
 	// 选种规则
 	Keyword      string `gorm:"size:128" json:"keyword"`        // 搜种关键字，空=综合
 	Category     string `gorm:"size:32" json:"category"`        // 传给 Search 的分类(movie/tv/music/"")
@@ -144,8 +148,12 @@ type BrushFlowTask struct {
 	LastSelectAt *time.Time `json:"last_select_at"`
 	LastSweepAt  *time.Time `json:"last_sweep_at"`
 	LastError    string     `gorm:"type:text" json:"last_error"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	// LastErrorFrom 标记 last_error 写入方（"select"/"sweep"；空=升级前遗留）。选种/扫删
+	// 交错运行（10min/5min）共享一个错误字段：成功侧只清同源错误，否则扫删成功会在
+	// 5 分钟内擦掉选种刚写入的诊断，用户永远看不到。
+	LastErrorFrom string    `gorm:"size:16" json:"last_error_from"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // BrushFlowSeed — 刷流种子加入历史。用于去重（同任务不重复加同一站点种子）与展示，

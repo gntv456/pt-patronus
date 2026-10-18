@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/system_log.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
@@ -25,7 +26,8 @@ class _LogsPageState extends State<LogsPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // GET/DELETE /system/logs 是 admin-only：非管理员不发必然 403 的请求。
+    if (ApiClient().isAdmin) _load();
   }
 
   Future<void> _load() async {
@@ -100,6 +102,16 @@ class _LogsPageState extends State<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 整页拦截（后端仍是权威鉴权，这里只挡 UI 入口；对齐系统设置页的既有惯例）。
+    if (!ApiClient().isAdmin) {
+      return const PTPageScaffold(
+        title: '运行日志',
+        body: PTEmptyState(
+          icon: Icons.admin_panel_settings_outlined,
+          text: '仅管理员可访问',
+        ),
+      );
+    }
     return PTPageScaffold(
       title: '运行日志${_entries.isNotEmpty ? "（${_entries.length} 条）" : ""}',
       actions: [

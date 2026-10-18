@@ -231,6 +231,13 @@ export function normalizePlugin(p: PluginInfo): PluginInfo {
   }
 }
 
+// marketSourceIssues 整理聚合市场时没取到的源。后端只在多源聚合时报这部分失败
+// （全部失败才是 502），所以列表非空意味着「看到的清单是残缺的」，必须让用户知道。
+export function marketSourceIssues(index?: PluginMarketIndex | null): { source: string; reason: string }[] {
+  const failed = index?.sources_failed || []
+  return failed.map((f) => ({ source: f.source || '-', reason: f.error || '-' }))
+}
+
 export function normalizeMarket(index: PluginMarketIndex): PluginMarketIndex {
   return {
     ...index,

@@ -123,7 +123,7 @@ func (c *EntertainmentChain) PlayMulti(ctx context.Context, siteID uint, gameID 
 	}
 	mp, ok := g.(entertainment.MultiPlayable)
 	if !ok {
-		return nil, errors.New("该游戏不支持连抽")
+		return nil, fmt.Errorf("%w连抽", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:playmulti:%s:%d", siteID, gameID, count)
 	if !c.guard.acquire(key) {
@@ -141,7 +141,7 @@ func (c *EntertainmentChain) Stats(ctx context.Context, siteID uint, gameID stri
 	}
 	st, ok := g.(entertainment.Statable)
 	if !ok {
-		return nil, errors.New("该游戏不支持统计")
+		return nil, fmt.Errorf("%w统计", ErrGameUnsupported)
 	}
 	return st.Stats(ctx, c.hc, base, cr)
 }
@@ -154,7 +154,7 @@ func (c *EntertainmentChain) BuyOptions(siteID uint, gameID string) ([]entertain
 	}
 	p, ok := g.(entertainment.Purchasable)
 	if !ok {
-		return nil, errors.New("该游戏不支持购卡")
+		return nil, fmt.Errorf("%w购卡", ErrGameUnsupported)
 	}
 	return p.BuyOptions(), nil
 }
@@ -167,7 +167,7 @@ func (c *EntertainmentChain) Buy(ctx context.Context, siteID uint, gameID string
 	}
 	p, ok := g.(entertainment.Purchasable)
 	if !ok {
-		return nil, errors.New("该游戏不支持购卡")
+		return nil, fmt.Errorf("%w购卡", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:buy:%s:%d", siteID, gameID, optionType)
 	if !c.guard.acquire(key) {
@@ -185,7 +185,7 @@ func (c *EntertainmentChain) Prizes(ctx context.Context, siteID uint, gameID str
 	}
 	p, ok := g.(entertainment.Prizeable)
 	if !ok {
-		return nil, errors.New("该游戏不支持奖品展示")
+		return nil, fmt.Errorf("%w奖品展示", ErrGameUnsupported)
 	}
 	return p.Prizes(ctx, c.hc, base, cr)
 }
@@ -198,7 +198,7 @@ func (c *EntertainmentChain) History(ctx context.Context, siteID uint, gameID st
 	}
 	h, ok := g.(entertainment.Historable)
 	if !ok {
-		return nil, errors.New("该游戏不支持历史记录")
+		return nil, fmt.Errorf("%w历史记录", ErrGameUnsupported)
 	}
 	return h.History(ctx, c.hc, base, cr)
 }
@@ -211,7 +211,7 @@ func (c *EntertainmentChain) Syntheses(ctx context.Context, siteID uint, gameID 
 	}
 	s, ok := g.(entertainment.Synthesizable)
 	if !ok {
-		return nil, errors.New("该游戏不支持合成")
+		return nil, fmt.Errorf("%w合成", ErrGameUnsupported)
 	}
 	return s.Syntheses(ctx, c.hc, base, cr)
 }
@@ -224,7 +224,7 @@ func (c *EntertainmentChain) Draw(ctx context.Context, siteID uint, gameID strin
 	}
 	s, ok := g.(entertainment.Synthesizable)
 	if !ok {
-		return nil, errors.New("该游戏不支持合成")
+		return nil, fmt.Errorf("%w合成", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:draw:%s:%d:%d", siteID, gameID, synthesisID, count)
 	if !c.guard.acquire(key) {
@@ -242,7 +242,7 @@ func (c *EntertainmentChain) Synthesize(ctx context.Context, siteID uint, gameID
 	}
 	s, ok := g.(entertainment.Synthesizable)
 	if !ok {
-		return nil, errors.New("该游戏不支持合成")
+		return nil, fmt.Errorf("%w合成", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:synth:%s:%d", siteID, gameID, synthesisID)
 	if !c.guard.acquire(key) {
@@ -260,7 +260,7 @@ func (c *EntertainmentChain) MedalTree(ctx context.Context, siteID uint, gameID 
 	}
 	mc, ok := g.(entertainment.MedalComposable)
 	if !ok {
-		return nil, errors.New("该游戏不支持勋章合成")
+		return nil, fmt.Errorf("%w勋章合成", ErrGameUnsupported)
 	}
 	return mc.MedalTree(ctx, c.hc, base, cr)
 }
@@ -273,7 +273,7 @@ func (c *EntertainmentChain) MedalShards(ctx context.Context, siteID uint, gameI
 	}
 	mc, ok := g.(entertainment.MedalComposable)
 	if !ok {
-		return nil, errors.New("该游戏不支持勋章合成")
+		return nil, fmt.Errorf("%w勋章合成", ErrGameUnsupported)
 	}
 	return mc.MedalShards(ctx, c.hc, base, cr)
 }
@@ -286,7 +286,7 @@ func (c *EntertainmentChain) ComposeMedal(ctx context.Context, siteID uint, game
 	}
 	mc, ok := g.(entertainment.MedalComposable)
 	if !ok {
-		return nil, errors.New("该游戏不支持勋章合成")
+		return nil, fmt.Errorf("%w勋章合成", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:compose:%s:%s", siteID, gameID, medalID)
 	if !c.guard.acquire(key) {
@@ -304,7 +304,7 @@ func (c *EntertainmentChain) ComposeBigMedal(ctx context.Context, siteID uint, g
 	}
 	mc, ok := g.(entertainment.MedalComposable)
 	if !ok {
-		return nil, errors.New("该游戏不支持勋章合成")
+		return nil, fmt.Errorf("%w勋章合成", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:composebig:%s:%s", siteID, gameID, medalID)
 	if !c.guard.acquire(key) {
@@ -322,7 +322,7 @@ func (c *EntertainmentChain) ConvertShard(ctx context.Context, siteID uint, game
 	}
 	mc, ok := g.(entertainment.MedalComposable)
 	if !ok {
-		return nil, errors.New("该游戏不支持勋章合成")
+		return nil, fmt.Errorf("%w勋章合成", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:convert:%s:%d", siteID, gameID, yiYang)
 	if !c.guard.acquire(key) {
@@ -344,19 +344,19 @@ type OverviewGame struct {
 
 // OverviewSite 总览单站：站点信息 + 游戏清单。
 type OverviewSite struct {
-	ID        int            `json:"id"`
-	Name      string         `json:"name"`
-	BaseURL   string         `json:"base_url"`
-	IsActive  bool           `json:"is_active"`
-	Games     []OverviewGame `json:"games"`
+	ID       int            `json:"id"`
+	Name     string         `json:"name"`
+	BaseURL  string         `json:"base_url"`
+	IsActive bool           `json:"is_active"`
+	Games    []OverviewGame `json:"games"`
 }
 
 // OverviewResp 总览响应：统计 + 站点清单（有游戏的站在前）。
 type OverviewResp struct {
-	TotalSites int            `json:"total_sites"`    // 站点总数
-	GameSites  int            `json:"game_sites"`     // 有已适配游戏的站点数
-	TotalGames int            `json:"total_games"`    // 已适配游戏总数
-	Categories map[string]int `json:"categories"`     // 分类 → 游戏数
+	TotalSites int            `json:"total_sites"` // 站点总数
+	GameSites  int            `json:"game_sites"`  // 有已适配游戏的站点数
+	TotalGames int            `json:"total_games"` // 已适配游戏总数
+	Categories map[string]int `json:"categories"`  // 分类 → 游戏数
 	Sites      []OverviewSite `json:"sites"`
 }
 

@@ -80,16 +80,22 @@ func shouldWrite(path string, policy ScrapePolicy) bool {
 	return !pathExists(path)
 }
 
-// videoExts 可整理的视频扩展名（小写）。
+// videoExts 可整理的视频扩展名（小写）。dirwatch 经 IsVideoPath 共用此清单——
+// 增删这里即增删目录监视发现范围，勿再另建副本（.m2ts 曾只在 dirwatch 清单里，
+// 导致 m2ts 目录被反复发现却整理失败）。
 var videoExts = map[string]bool{
 	".mkv": true, ".mp4": true, ".avi": true, ".ts": true, ".mov": true,
 	".wmv": true, ".flv": true, ".m4v": true, ".iso": true, ".rmvb": true, ".rm": true,
+	".m2ts": true,
 }
 
 // isVideoFile 是否视频文件（按扩展名）。
 func isVideoFile(name string) bool {
 	return videoExts[strings.ToLower(filepath.Ext(name))]
 }
+
+// IsVideoPath 导出判定：dirwatch 发现范围与引擎可整理范围同一事实源。
+func IsVideoPath(p string) bool { return isVideoFile(p) }
 
 // isSample 样本/花絮/广告文件（跳过）。
 func isSample(name string) bool {

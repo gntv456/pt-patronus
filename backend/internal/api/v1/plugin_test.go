@@ -1,13 +1,19 @@
 package v1
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -21,6 +27,14 @@ import (
 // setupPluginServer 构造真实 plugins.Manager（SQLite）+ PluginHandler 路由。
 // Manager 依赖 notice/site 均可为真实 oper（通知在测试中不会触发外发）。
 func setupPluginServer(t *testing.T) *gin.Engine {
+	t.Helper()
+	return setupPluginServerRooted(t, false)
+}
+
+// setupPluginServerRooted rooted=true 时把插件根目录指到一个空的临时目录，
+// 于是「重载不存在的插件」会走到 os 的 not-exist 分支——真实实例上内置插件
+// （代码在二进制里、磁盘上没有目录）就是这个形状。
+func setupPluginServerRooted(t *testing.T, rooted bool) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/plugin.db"), &gorm.Config{})
@@ -39,6 +53,9 @@ func setupPluginServer(t *testing.T) *gin.Engine {
 	mgr := plugins.NewManager(db, event.New(), noticeSvc,
 		oper.NewSiteOper(db, nil), oper.NewPluginKVOper(db))
 	mgr.SetCfgOp(oper.NewSystemConfigOper(db)) // UI 持久化配置（市场源/信任配置）
+	if rooted {
+		mgr.SetPluginRoot(filepath.Join(t.TempDir(), "plugins"))
+	}
 	h := NewPluginHandler(mgr, auth.NewTicketStore())
 	r := gin.New()
 	r.GET("/plugins", h.List)
@@ -51,6 +68,9 @@ func setupPluginServer(t *testing.T) *gin.Engine {
 	r.POST("/plugins/:id/disable", h.Disable)
 	r.POST("/plugins/:id/config", h.SaveConfig)
 	r.POST("/plugins/:id/action", h.Action)
+	r.POST("/plugins/:id/reload", h.Reload)
+	r.GET("/plugins/market", h.Market)
+	r.POST("/plugins/market/install", h.Install)
 	r.GET("/plugins/logs", h.Logs)
 	return r
 }
@@ -166,10 +186,11 @@ func TestPlugin_ActionValidation(t *testing.T) {
 	if rec := doPluginReq(t, r, http.MethodPost, "/plugins/xx/action", `{bad`); rec.Code != http.StatusBadRequest {
 		t.Fatalf("非法 body 应 400，got %d", rec.Code)
 	}
-	// 未安装插件执行动作 → 400（manager 报 plugin not found，不 5xx）
+	// 未安装插件执行动作 → 404 plugin_not_installed：输入没写错，是插件本机没装。
+	// 旧断言把这条缺陷当契约钉住了（400「请求参数有误」让用户反复改输入框）。
 	rec := doPluginReq(t, r, http.MethodPost, "/plugins/nope/action", `{"action":"ping"}`)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("未安装插件 action 应 400，got %d", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("未安装插件 action 应 404，got %d", rec.Code)
 	}
 }
 
@@ -182,5 +203,105 @@ func TestPlugin_Logs(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "logs") {
 		t.Fatalf("响应应含 logs 字段: %s", rec.Body.String())
+	}
+}
+
+// TestPlugin_ReloadBuiltinNot400 重载磁盘上没有代码的插件（内置插件就是这种：
+// 代码在二进制里，plugins/<id>/ 不存在）应回 409 plugin_not_reloadable 并说清
+// 「只有磁盘/市场安装的插件支持重载」，而不是 400「请求参数有误」——后者会把
+// 用户支去反复点重载。修复前：os.ReadFile 的 not-exist 一路落到 InvalidInput。
+func TestPlugin_ReloadBuiltinNot400(t *testing.T) {
+	r := setupPluginServerRooted(t, true)
+	rec := doPluginReq(t, r, http.MethodPost, "/plugins/ptp-mcp-server/reload", "")
+	body := rec.Body.String()
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("内置插件重载应 409，got %d body=%s", rec.Code, body)
+	}
+	if !strings.Contains(body, "plugin_not_reloadable") {
+		t.Fatalf("应带 plugin_not_reloadable 码: %s", body)
+	}
+	if !strings.Contains(body, "内置插件") {
+		t.Fatalf("文案应说明内置插件随程序更新: %s", body)
+	}
+	if strings.Contains(body, "invalid_input") {
+		t.Fatalf("不得再报成参数有误: %s", body)
+	}
+}
+
+// TestPluginInstallFailureKeepsSemantics 回归 #162：市场安装的失败分档必须原样传到 HTTP 面。
+// 从前 install 不论什么原因都回 400「请求参数有误」，于是「市场里没有这个插件」这种该 404 的
+// 情况、以及「包校验不通过」这种安全事件，在界面上都变成了一句用户手误提示。
+func TestPluginInstallFailureKeepsSemantics(t *testing.T) {
+	dir := t.TempDir()
+	raw, err := json.Marshal(map[string]any{
+		"version": 1,
+		"plugins": []map[string]any{{
+			"id":          "other-plugin",
+			"name":        "Other",
+			"version":     "1.0.0",
+			"runtime":     "external-http",
+			"archive":     "packages/other.zip",
+			"sha256":      "0000000000000000000000000000000000000000000000000000000000000000",
+			"permissions": []string{"event:read"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexPath := filepath.Join(dir, "plugin-market.json")
+	if err := os.WriteFile(indexPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := setupPluginServer(t)
+
+	body, _ := json.Marshal(map[string]any{
+		"source":               indexPath,
+		"id":                   "no-such-plugin",
+		"accepted_permissions": []string{"event:read"},
+	})
+	w := doPluginReq(t, r, http.MethodPost, "/plugins/market/install", string(body))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("市场里没有的插件应回 404，got %d body=%s", w.Code, w.Body.String())
+	}
+	got := w.Body.String()
+	if !strings.Contains(got, `"code":"plugin_not_in_market"`) {
+		t.Errorf("响应码应是 plugin_not_in_market：%s", got)
+	}
+	if !strings.Contains(got, "市场里没有这个插件") {
+		t.Errorf("message 应是中文可操作提示：%s", got)
+	}
+}
+
+// TestPluginInstallFailureMapping 逐档核对状态码语义：映射表写反一次，
+// 界面就会把「上游挂了」「包被改过」说成用户填错表。
+func TestPluginInstallFailureMapping(t *testing.T) {
+	cases := []struct {
+		err  error
+		want *errcode.Error
+	}{
+		{fmt.Errorf("%w：拿不到包", plugins.ErrMarketUnreachable), errcode.PluginMarketUnreachable},
+		{fmt.Errorf("%w：demo", plugins.ErrPluginNotInMarket), errcode.PluginNotInMarket},
+		{fmt.Errorf("%w：sha256 不一致", plugins.ErrUntrustedPackage), errcode.PluginPackageUntrusted},
+		{fmt.Errorf("%w：manifest 坏了", plugins.ErrPackageInvalid), errcode.PluginPackageInvalid},
+		{fmt.Errorf("%w：能力不支持", plugins.ErrPluginNotInstallable), errcode.PluginNotInstallable},
+		{fmt.Errorf("%w：磁盘写入失败", plugins.ErrInstallWriteFailed), errcode.PluginInstallFailed},
+		{errors.New("plugin id is required"), errcode.InvalidInput},
+	}
+	for _, tc := range cases {
+		if got := pluginInstallFailure(tc.err); got != tc.want {
+			t.Errorf("pluginInstallFailure(%v) = %s，期望 %s", tc.err, got.Code, tc.want.Code)
+		}
+	}
+}
+
+// TestPluginMarketListUpstreamFailure 市场列表取不到源要回 502，不再冒充「参数有误」。
+func TestPluginMarketListUpstreamFailure(t *testing.T) {
+	r := setupPluginServer(t)
+	w := doPluginReq(t, r, http.MethodGet, "/plugins/market?source=http://127.0.0.1:9/no-such-market.json", "")
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("源不可达应回 502，got %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "市场源暂时取不到") {
+		t.Errorf("应给出中文提示：%s", w.Body.String())
 	}
 }

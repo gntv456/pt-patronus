@@ -77,23 +77,23 @@ func TestRssCheckFiltersAndDedup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := models.RssSubscription{ID: uint(i + 100), Name: "t", URL: feedURL}
 			tc.mutate(&s)
-			n, err := ch.Check(context.Background(), &s)
+			res, err := ch.Check(context.Background(), &s)
 			if err != nil {
 				t.Fatalf("Check err: %v", err)
 			}
-			if n != tc.wantNew {
-				t.Errorf("new=%d want %d", n, tc.wantNew)
+			if res.New != tc.wantNew {
+				t.Errorf("new=%d want %d", res.New, tc.wantNew)
 			}
 		})
 	}
 	// 去重：同一订阅再查 → 0 新增（用独立订阅 ID，避免与表驱动用例的去重表冲突）。
 	dedupID := uint(200)
 	s := models.RssSubscription{ID: dedupID, Name: "dedup", URL: feedURL}
-	if n, _ := ch.Check(context.Background(), &s); n != 3 {
-		t.Fatalf("first check new=%d want 3", n)
+	if res, _ := ch.Check(context.Background(), &s); res.New != 3 {
+		t.Fatalf("first check new=%d want 3", res.New)
 	}
-	if n, _ := ch.Check(context.Background(), &s); n != 0 {
-		t.Errorf("second check new=%d want 0（去重失效）", n)
+	if res, _ := ch.Check(context.Background(), &s); res.New != 0 {
+		t.Errorf("second check new=%d want 0（去重失效）", res.New)
 	}
 	if items, _ := itemOp.ListBySubscription(dedupID, 50); len(items) != 3 {
 		t.Errorf("dedup sub items=%d want 3", len(items))

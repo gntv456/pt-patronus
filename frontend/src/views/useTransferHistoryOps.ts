@@ -27,7 +27,17 @@ export function useTransferHistoryOps(opts: {
         pendingEnabled.value = sum.enabled
         list.value = []
       } else {
-        list.value = await transferApi.history(opts.statusFilter.value, 200)
+        const page = await transferApi.historyPage(opts.statusFilter.value, 200)
+        list.value = page.history
+        // 单页封顶 500、默认 200：被截断时说出来，否则更早的整理记录（含失败那些）
+        // 在界面上不存在，「已经处理完了」这类结论也跟着失真。
+        if (page.truncated) {
+          ElMessage.warning(
+            page.total == null
+              ? `已显示最近 ${page.history.length} 条整理记录，但总数读取失败——可能还有更多`
+              : `仅显示最近 ${page.history.length} 条整理记录（共 ${page.total} 条，更早的未加载）`,
+          )
+        }
       }
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '加载失败')
@@ -57,7 +67,13 @@ export function useTransferHistoryOps(opts: {
 
   async function sweep() {
     try {
-      await transferApi.sweep()
+      // 后端会在「整理未启用」时返回 ok:false（那种情况扫描什么都不会做），
+      // 此前这里不看回执一律报绿 ⇒ 点了按钮、消息说已触发、实际一粒种子都没整理。
+      const res = await transferApi.sweep()
+      if (res && res.ok === false) {
+        ElMessage.warning(res.msg || '扫描未启动')
+        return
+      }
       ElMessage.success('已触发扫描，稍后刷新查看')
       setTimeout(load, 4000)
     } catch (e: unknown) {

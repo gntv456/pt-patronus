@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'ent_read_fail.dart';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -75,7 +76,9 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
   Future<void> _load() async {
     try {
       _prizes = await _api.prizes(widget.siteId, widget.game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'prizes', e);
+    }
     await _refresh();
     if (mounted) setState(() {});
   }
@@ -83,10 +86,14 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, widget.game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     try {
       _records = await _api.history(widget.siteId, widget.game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
   }
 
   Future<void> _draw(int count) async {

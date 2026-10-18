@@ -62,3 +62,33 @@ func TestSummarize(t *testing.T) {
 		t.Errorf("mp counts: owned=%d available=%d unsupported=%d", s.MpOwned, s.MpAvailable, s.MpUnsupported)
 	}
 }
+
+// TestSummarizeCountsUnknown 探测不明的站必须进汇总：
+// 回归前只数 健康/病危/已关 三项，unknown（连通性探测失败、上游没给状态）
+// 被静默漏掉，头部四个数字里 healthy+critical+closed < total，
+// 用户对不上数却不知道少的是哪一类。
+func TestSummarizeCountsUnknown(t *testing.T) {
+	cards := []SaveptSiteCard{
+		{Status: HealthHealthy},
+		{Status: HealthCritical},
+		{Status: HealthClosed},
+		{Status: HealthUnknown},
+		{Status: ""}, // 上游缺状态同样归入不明，不能凭空消失
+	}
+	s := summarize(cards)
+	if s.Total != 5 {
+		t.Fatalf("total=%d want 5", s.Total)
+	}
+	if s.Unknown != 2 {
+		t.Fatalf("unknown=%d want 2（含缺状态）", s.Unknown)
+	}
+	if s.Healthy+s.Critical+s.Closed+s.Unknown != s.Total {
+		t.Errorf("四项必须对得上总数：+%v", s)
+	}
+
+	// 正控：全是已知状态时不明为 0（证明不是把所有卡都塞进不明凑数）。
+	s2 := summarize([]SaveptSiteCard{{Status: HealthHealthy}, {Status: HealthClosed}})
+	if s2.Unknown != 0 || s2.Total != 2 || s2.Healthy+s2.Closed != 2 {
+		t.Errorf("无不明卡时不应计数：%+v", s2)
+	}
+}

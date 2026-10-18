@@ -88,16 +88,37 @@ async function save() {
 }
 
 async function remove(r: ContractRule) {
-  await ElMessageBox.confirm(t('contract.confirmDelete', { site: siteName(r.site_id) }), t('messages.tip'), {
-    type: 'warning',
-  })
-  await contractApi.remove(r.id)
+  try {
+    await ElMessageBox.confirm(t('contract.confirmDelete', { site: siteName(r.site_id) }), t('messages.tip'), {
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await contractApi.remove(r.id)
+  } catch (e: any) {
+    // 从前这里没有兜底：删除失败（404「规则已被别人删掉」/400「ID 不合法」/500）会逃出
+    // async 的点击回调进未处理 Promise——既不报失败也不报成功，那一行还留在列表里，
+    // 看起来就是「删除点了没反应」。
+    ElMessage.error(e?.userMessage || e?.message || t('common.deleteFailed'))
+    await load() // 让列表回到库里的真值：可能它其实已经被别人删了
+    return
+  }
   ElMessage.success(t('common.deleted'))
   await load()
 }
 
 async function toggle(r: ContractRule, val: boolean) {
-  await contractApi.upsert({ ...r, enabled: val })
+  try {
+    await contractApi.upsert({ ...r, enabled: val })
+  } catch (e: any) {
+    // 开关的显示值已经被拨过去了：写不进去就要按库里的真值拉回来，
+    // 否则界面留着「已启用」的幻影，而 cron 其实根本不会检查这条规则。
+    ElMessage.error(e?.userMessage || e?.message || t('common.saveFailed'))
+    await load()
+    return
+  }
   r.enabled = val
 }
 
@@ -174,15 +195,22 @@ onMounted(load)
           <span v-if="r.last_checked_at" class="time">{{ new Date(r.last_checked_at).toLocaleString() }}</span>
         </div>
         <div v-if="results[r.id]" class="check-result">
-          {{ t('contract.livePrefix') }}{{ t('contract.ratioShort') }} {{ results[r.id].ratio.toFixed(2) }} ·
-          {{ t('contract.seedingShort') }} {{ results[r.id].seeding
-          }}<template v-if="results[r.id].seeding_official"
-            >（{{ t('contract.officialShort') }} {{ results[r.id].seeding_official }}）</template
-          >
-          · {{ t('contract.uploadShort') }} {{ results[r.id].upload_gb.toFixed(1) }}GiB · {{ t('contract.sizeShort') }}
-          {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template v-if="results[r.id].unsupported">
-            · ⚠ {{ results[r.id].unsupported }}</template
-          >
+          <template v-if="results[r.id].measured">
+            {{ t('contract.livePrefix') }}{{ t('contract.ratioShort') }} {{ results[r.id].ratio.toFixed(2) }} ·
+            {{ t('contract.seedingShort') }} {{ results[r.id].seeding
+            }}<template v-if="results[r.id].seeding_official"
+              >（{{ t('contract.officialShort') }} {{ results[r.id].seeding_official }}）</template
+            >
+            · {{ t('contract.uploadShort') }} {{ results[r.id].upload_gb.toFixed(1) }}GiB ·
+            {{ t('contract.sizeShort') }} {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template
+              v-if="results[r.id].unsupported"
+            >
+              · ⚠ {{ results[r.id].unsupported }}</template
+            >
+          </template>
+          <!-- 没取到数（未到生效时间 / 站点被删 / 抓取失败）时四个字段都是零值占位，
+               画出来就是一行以假乱真的「实时：分享率 0.00 · 做种 0」，只能说这次没读数。 -->
+          <span v-else>{{ results[r.id].detail || t('contract.st.unchecked') }}</span>
         </div>
         <div class="actions">
           <el-button size="small" @click="check(r)">{{ t('rss.check') }}</el-button>

@@ -2,6 +2,19 @@
 // （无 setState 段；从 dashboard_page.dart 拆出，行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';
 
+/// 导出失败要说什么：截图取不到像素（RepaintBoundary 还没布局完 / 平台不支持）
+/// 与本地写盘/分享异常是两种原因，但共同点是**不能静默**——从前这两处都只有一句
+/// `'$e'`（英文原文）或直接 return，用户按「保存图片」后弹窗不关、也不吭声，只会反复点。
+String shareExportFailure(Object? err) {
+  // 这里的失败都来自本地（RepaintBoundary 未布局、写盘、分享通道），不是后端响应，
+  // 所以不给 ApiException 分支；英文原文只作细节附在中文主句后面。
+  if (err == null) return '截图失败：预览还没渲染完成，请关闭后重新打开导出预览再试';
+  return '导出图片失败：$err';
+}
+
+/// 分享通道缺失时的说法（与保存失败区分：这里用户能做的是改用保存）。
+String shareUnsupported() => '当前平台不支持分享，请使用保存图片';
+
 extension on _DashboardPageState {
   Future<void> _exportImage() async {
     await _prepareShareFavicons();
@@ -104,7 +117,14 @@ extension on _DashboardPageState {
     String? savedPath;
     try {
       final png = await _captureDashboardPng();
-      if (png == null) return;
+      if (png == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(shareExportFailure(null))));
+        }
+        return;
+      }
       final fileName = _dashboardImageFileName();
 
       try {
@@ -133,7 +153,7 @@ extension on _DashboardPageState {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
+        ).showSnackBar(SnackBar(content: Text(shareExportFailure(e))));
       }
     }
   }
@@ -141,7 +161,14 @@ extension on _DashboardPageState {
   Future<void> _shareImage() async {
     try {
       final png = await _captureDashboardPng();
-      if (png == null) return;
+      if (png == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(shareExportFailure(null))));
+        }
+        return;
+      }
       await Share.shareXFiles([
         XFile.fromData(
           png,
@@ -156,15 +183,14 @@ extension on _DashboardPageState {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('当前平台不支持分享，请使用保存图片')));
+        ).showSnackBar(SnackBar(content: Text(shareUnsupported())));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
+        ).showSnackBar(SnackBar(content: Text(shareExportFailure(e))));
       }
     }
   }
-
 }

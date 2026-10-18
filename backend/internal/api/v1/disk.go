@@ -33,7 +33,7 @@ func (h *DiskHandler) List(c *gin.Context) {
 	cmd := `lsblk -b -o NAME,PATH,TYPE,SIZE,MODEL,VENDOR,SERIAL,ROTA,RO,FSTYPE,PARTLABEL,MOUNTPOINT --json`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {

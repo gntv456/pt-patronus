@@ -49,12 +49,29 @@ const { t } = useI18n()
         </el-button>
       </div>
       <div v-loading="healthLoading">
+        <!-- 巡检没跑成 ≠ 库很干净：后端把连不上/读不出的服务器与库逐条回传，这里显式警告，
+             否则「0 问题」会被当成健康而不再复检。 -->
+        <el-alert
+          v-if="healthReport?.errors?.length"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="scan-alert"
+          style="margin-bottom: 12px"
+        >
+          <div class="scan-alert-title">{{ t('mediaserver.scanIncomplete') }}</div>
+          <div v-for="(line, i) in healthReport.errors" :key="i" class="scan-alert-line">{{ line }}</div>
+        </el-alert>
         <div class="hint" style="margin-bottom: 8px" v-if="healthReport">
           {{ t('mediaserver.unmatched') }} {{ healthReport.unmatched }} · {{ t('mediaserver.missingEps') }}
           {{ healthReport.missing_episodes }} · {{ t('mediaserver.missingSubs') }} {{ healthReport.missing_subtitle }} ·
           {{ t('mediaserver.upgradeable') }} {{ healthReport.upgradeable ?? 0 }}
         </div>
-        <el-table :data="healthReport?.issues ?? []" size="small" :empty-text="t('mediaserver.healthyEmpty')">
+        <el-table
+          :data="healthReport?.issues ?? []"
+          size="small"
+          :empty-text="healthReport?.errors?.length ? t('mediaserver.notScanned') : t('mediaserver.healthyEmpty')"
+        >
           <el-table-column :label="t('mediaserver.col.type')" width="100">
             <template #default="{ row }">
               <el-tag

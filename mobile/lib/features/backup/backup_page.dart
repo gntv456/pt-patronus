@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/backup.dart';
 import 'package:ptpatronus/core/api_client.dart';
+import 'package:ptpatronus/features/backup/backup_notice.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:share_plus/share_plus.dart';
@@ -66,15 +67,17 @@ class _BackupPageState extends State<BackupPage> {
           _toast('文件应为 MoviePilot 站点 JSON 数组');
           return;
         }
-        final n = await _api.importMoviePilot(decoded);
-        _toast('已导入 $n 个站点');
+        final r = await _api.importMoviePilot(decoded);
+        // MP 路径没有下载器维度，跳过账（缺 name / 重复注册域）必须显示出来（#257）。
+        _toast(importOutcomeNotice(r, withDownloaders: false));
       } else {
         if (decoded is! Map) {
           _toast('文件应为 PTPatronus 备份 JSON 对象');
           return;
         }
         final r = await _api.importOwn(decoded as Map<String, dynamic>);
-        _toast('导入完成：站点 ${r.sites} / 下载器 ${r.downloaders}');
+        // 跳过/失败/空备份必须可见：从前这里写死「导入完成」，两份账都后端发了却没人读。
+        _toast(importOutcomeNotice(r));
       }
     } on MissingPluginException {
       _toast('选文件不可用，请用 Web 端导入');
@@ -100,8 +103,9 @@ class _BackupPageState extends State<BackupPage> {
         _toast('无法读取所选文件');
         return;
       }
-      final n = await _api.importPTD(bytes, file.name);
-      _toast('已导入 $n 个站点');
+      final r = await _api.importPTD(bytes, file.name);
+      // .ptd 包里没 URL 的条目、以及与现有站点重复的，都记在跳过账上（#257）。
+      _toast(importOutcomeNotice(r, withDownloaders: false));
     } on MissingPluginException {
       _toast('选文件不可用，请用 Web 端导入');
     } catch (e) {

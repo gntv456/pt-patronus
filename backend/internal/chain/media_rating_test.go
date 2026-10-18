@@ -9,13 +9,22 @@ import (
 )
 
 // ratingFakeSrc 测试用 MediaSource：按预设 items 返回，模拟某源评分数据。
+// err 非 nil 时该源查询失败；panicOn 时 Search 现场 panic（验源崩掉时的账面）。
 type ratingFakeSrc struct {
-	name  string
-	items []media.MediaInfo
+	name    string
+	items   []media.MediaInfo
+	err     error
+	panicOn bool
 }
 
 func (f ratingFakeSrc) Name() string { return f.name }
 func (f ratingFakeSrc) Search(_ context.Context, _ string, _ int) ([]media.MediaInfo, error) {
+	if f.panicOn {
+		panic("nil pointer dereference on malformed rating response")
+	}
+	if f.err != nil {
+		return nil, f.err
+	}
 	return f.items, nil
 }
 func (f ratingFakeSrc) Detail(_ context.Context, _ string) (*media.MediaInfo, error) { return nil, nil }
@@ -68,7 +77,10 @@ func TestComputeAggregatedRating(t *testing.T) {
 		ratingFakeSrc{name: "tmdb", items: []media.MediaInfo{{Source: "tmdb", Title: "X", Rating: 8.0, VoteCount: 1000, ReleaseDate: old}}},
 		ratingFakeSrc{name: "douban", items: []media.MediaInfo{{Source: "douban", Title: "X", Rating: 9.0, VoteCount: 100, ReleaseDate: old}}},
 	)
-	sum := c.computeAggregatedRating(context.Background(), "X", 2010, "")
+	sum, err := c.computeAggregatedRating(context.Background(), "X", 2010, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if sum == nil {
 		t.Fatal("nil summary")
 	}
@@ -92,7 +104,10 @@ func TestComputeAggregatedRatingHeld(t *testing.T) {
 	c := newRatingChain(
 		ratingFakeSrc{name: "tmdb", items: []media.MediaInfo{{Source: "tmdb", Title: "Bad", Rating: 4.0, VoteCount: 500, ReleaseDate: "2010-01-01"}}},
 	)
-	sum := c.computeAggregatedRating(context.Background(), "Bad", 0, "")
+	sum, err := c.computeAggregatedRating(context.Background(), "Bad", 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if sum.Passed {
 		t.Fatalf("expected held, got pass reason=%q", sum.Reason)
 	}
@@ -128,6 +143,25 @@ func TestReleaseDaysSince(t *testing.T) {
 	old := time.Now().AddDate(-10, 0, 0).Format("2006-01-02")
 	if got := releaseDaysSince(old); got < 3650 {
 		t.Errorf("10y ago = %d days, want >=3650", got)
+	}
+}
+
+// TestReleaseDaysSinceFullDatePrecision 完整日期必须按真实月日计算——
+// 此前先按 4 位年份解析（永真），"YYYY-MM-DD" 被截成 YYYY-01-01，新片闸门恒过。
+func TestReleaseDaysSinceFullDatePrecision(t *testing.T) {
+	// time.Parse 无时区按 UTC；3 个 UTC 日前的结果 ∈ [2,3]（含当日进度截断）；
+	// 旧缺陷值是 ~283 天，区间断言仍可判别。
+	d := time.Now().UTC().AddDate(0, 0, -3).Format("2006-01-02")
+	if got := releaseDaysSince(d); got < 2 || got > 3 {
+		t.Fatalf("3 天前 = %d 天, want 2..3", got)
+	}
+	// RFC3339 前缀也应按日期部分解析。
+	if got := releaseDaysSince(d + "T08:00:00Z"); got < 2 || got > 3 {
+		t.Fatalf("RFC3339 3 天前 = %d 天, want 2..3", got)
+	}
+	// 仅年份仍可用（退化 1 月 1 日）。
+	if got := releaseDaysSince("2000"); got < 3650 {
+		t.Fatalf("year-only 2000 = %d, want >=3650", got)
 	}
 }
 

@@ -15,6 +15,8 @@ export interface AnnouncementResult {
   items: AnnouncementItem[]
   fetched_at: string
   error?: string
+  // 后端 omitempty：false 时字段缺席。true = 这一站没适配该能力（配置事实），区别于「抓到了，当前没有」。
+  unsupported?: boolean
 }
 
 export const announcementApi = {
@@ -41,7 +43,12 @@ export const announcementApi = {
         for (const line of lines) {
           const t = line.trim()
           if (t) {
-            const r = JSON.parse(t) as AnnouncementResult
+            const r = JSON.parse(t) as AnnouncementResult & { done?: boolean; list_error?: string }
+            // 流末尾 done 行：清单读失败带 list_error，抛错让视图 catch 留痕（不再「0 站全绿」）
+            if (r.done) {
+              if (r.list_error) throw new Error(r.list_error)
+              continue
+            }
             onResult({ ...r, items: r.items || [] })
           }
         }

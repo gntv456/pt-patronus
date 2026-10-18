@@ -30,7 +30,7 @@ const selected = ref<string[]>([])
 const stateLabel = useStateLabel()
 
 const { search, stateFilter, categoryFilter, page, pageSize, filtered, paged, hasFilters, onSortChange, clearFilters } =
-  useTorrentTableFilters(props.torrents)
+  useTorrentTableFilters(() => props.torrents)
 
 function onSelectionChange(rows: Torrent[]) {
   selected.value = rows.map((row) => row.hash)

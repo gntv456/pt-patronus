@@ -5,6 +5,22 @@ import (
 	"time"
 )
 
+// detBudget/detSims 把搜索改成可复现：固定随机源 + 固定模拟数，预算给到永不触发。
+// 默认路径按墙钟播种、按墙钟收工——同盘两跑着法不同、负载高时模拟数骤减，
+// 这三条断言就会随机红（实测整仓 go test ./... 偶发 FAIL）。
+// 生产行为不受影响：两个 force 变量零值时沿用原逻辑。
+const (
+	detBudget = time.Hour // 形同不限时：终止只由 detSims 决定
+	detSims   = 4000
+)
+
+func useDeterministicMCTS(t *testing.T) {
+	t.Helper()
+	prevSeed, prevSims := mctsForceSeed, mctsForceSims
+	mctsForceSeed, mctsForceSims = 7, detSims
+	t.Cleanup(func() { mctsForceSeed, mctsForceSims = prevSeed, prevSims })
+}
+
 // newBoard15 辅助：15×15 空盘。
 func newBoard15() [][]int {
 	b := make([][]int, 15)
@@ -23,7 +39,8 @@ func TestGobangMCTSFindsImmediateWin(t *testing.T) {
 		board[7][x] = 1 // 黑横向四连，两端(2,7)(8,7)空
 	}
 	board[5][5] = 2
-	res := gobangMCTS(board, 1, 2, 2*time.Second, nil)
+	useDeterministicMCTS(t)
+	res := gobangMCTS(board, 1, 2, detBudget, nil)
 	if res.X < 0 {
 		t.Fatalf("no move, sims=%d", res.Simulations)
 	}
@@ -44,7 +61,8 @@ func TestGobangMCTSBlocksOpponentFive(t *testing.T) {
 	}
 	board[9][8] = 1 // 右端被黑封
 	board[5][5] = 1
-	res := gobangMCTS(board, 1, 2, 2*time.Second, nil)
+	useDeterministicMCTS(t)
+	res := gobangMCTS(board, 1, 2, detBudget, nil)
 	if res.X < 0 {
 		t.Fatalf("no move, sims=%d", res.Simulations)
 	}
@@ -59,7 +77,8 @@ func TestGobangMCTSKnowsJumpThreeIsLosing(t *testing.T) {
 	// 黑跳三 (8,10)(9,10) + (11,10)，缺口 (10,10)；白两个乱子不构成威胁
 	board[10][8], board[10][9], board[10][11] = 1, 1, 1
 	board[5][5], board[5][6] = 2, 2
-	res := gobangMCTS(board, 2, 1, 2*time.Second, nil)
+	useDeterministicMCTS(t)
+	res := gobangMCTS(board, 2, 1, detBudget, nil)
 	if res.X < 0 {
 		t.Fatalf("no move, sims=%d", res.Simulations)
 	}

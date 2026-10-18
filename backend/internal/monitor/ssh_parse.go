@@ -271,8 +271,8 @@ func skipDiskMount(mount string) bool {
 // parseDF 解析 df -B1 输出：Filesystem 1B-blocks Used Avail Use% Mountpoint。
 func parseDF(raw string) []DiskMetric {
 	var disks []DiskMetric
-	seenSrc := map[string]bool{}   // 块设备源去重（/dev/sda1 的 bind/subvol 只计一次）
-	seenPool := map[string]bool{}  // ZFS 池去重（tank/data、tank/media 共享 tank 物理池）
+	seenSrc := map[string]bool{}  // 块设备源去重（/dev/sda1 的 bind/subvol 只计一次）
+	seenPool := map[string]bool{} // ZFS 池去重（tank/data、tank/media 共享 tank 物理池）
 	for _, line := range strings.Split(raw, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 6 || f[0] == "Filesystem" || !strings.HasSuffix(f[4], "%") {

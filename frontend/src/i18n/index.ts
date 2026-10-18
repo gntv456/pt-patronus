@@ -37,7 +37,14 @@ const loaded = new Set<AppLocale>()
 export async function loadLocale(l: AppLocale) {
   if (loaded.has(l)) return
   const mod = l === 'en-US' ? await import('./locales/en-US') : await import('./locales/zh-CN')
-  i18n.global.setLocaleMessage(l, mod.default)
+  // 设备监控的接入指引独立成模块后合并进来：主翻译表在行数棘轮上（只许缩不许涨），
+  // 而这类引导文案随厂商/方案增长，放主表迟早要靠压缩既有代码来腾行。
+  const bridge = await import('./locales/cameraBridge')
+  // cameraBridge 的键是 `zh`/`en`（不是 `zh-CN`/`en-US`），须显式映射。
+  // 之前直接用 bridge.default[l] 取值——运行时恒为 undefined，接入指引其实一直没生效，
+  // 只是 TS 的索引报错把它暴露了出来。
+  const extra = (l === 'en-US' ? bridge.default.en : bridge.default.zh) as unknown as Record<string, unknown>
+  i18n.global.setLocaleMessage(l, { ...mod.default, ...extra })
   loaded.add(l)
 }
 

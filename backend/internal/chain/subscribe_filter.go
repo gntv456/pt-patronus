@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"net/url"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -91,34 +92,92 @@ func containsNumWord(t, num string) bool {
 // isASCIIDigit 判断字节是否 ASCII 数字（0-9）。
 func isASCIIDigit(b byte) bool { return b >= '0' && b <= '9' }
 
-// torrentKey 下载链接的稳定哈希（去重键）。
-func torrentKey(url string) string {
-	sum := sha1.Sum([]byte(url))
+// volatileDownloadParams 下载链上「不代表种子身份、会随凭据/会话轮换」的鉴权参数名。
+// 只收鉴权语义的名字：passkey/authkey/auth(Gazelle 每次签发)/token/sign 等。
+// 不收 id/torrentid/t（NexusPHP 的种子 id）、也不收 xt（magnet 的 infohash）——那些是身份。
+// "hash" 归到身份侧由 normalizeDownloadURL 的「不删空」护栏兜底：单站若 hash 是唯一身份参数，
+// 删空后会被原样保留；若它与 id 同时出现，则它是附带的校验签名，删掉不影响身份。
+var volatileDownloadParams = []string{
+	"authkey", "auth", "torrent_pass", "passkey", "rsskey", "apikey", "token",
+	"access_token", "secret", "sign", "hash", "tg",
+}
+
+// torrentKey 下载链接的稳定去重键：先剥掉鉴权参数再哈希。
+// 直接哈希整条 URL 会在凭据轮换后失配：Gazelle(MTeam 系) 的下载链带 authkey+torrent_pass
+// （从 action=index 取、进程内按站缓存，重启即换新），NexusPHP 带 passkey/hash。轮换后同一
+// 个种子看起来是全新的，订阅会把已下过的集重推一遍——下载器里还留着的只是刷 duplicate 日志，
+// 用户已经删过种的（做完种就删是常规操作）则真的重新下载一遍。
+func torrentKey(rawURL string) string {
+	sum := sha1.Sum([]byte(normalizeDownloadURL(rawURL)))
 	return hex.EncodeToString(sum[:])[:16]
 }
 
-// ratingGate 多评分低分保护判定：返回 (是否拦截本轮推送, 拦截原因)。
-//   - 未装配 mediaCh / 闸门未启用 → (false, "") 放行。
-//   - 聚合查询失败 → (false, "") fail-open 放行（外网评分故障不应阻断下载）。
-//   - 查到但 summary.Passed==false → (true, reason) 拦截。
+// normalizeDownloadURL 小写 scheme/host、去 fragment、删鉴权类 query；
+// 其余 query 由 Values.Encode 按 key 排序，保证同一种子每轮得到同一个键。
+// 解析不了的（极少数畸形链）按原样返回——宁可退化成旧行为也不把两条不同种子并成一个键。
+//
+// 升级说明：改造前存量的命中行记的是 sha1(整条 URL)，其中掺着当时的凭据，
+// 换凭据后已无法从新 URL 反推那把旧键，所以升级后的第一轮，那些「当时 URL 里带旧凭据」
+// 的种子会被再认一次为新种子（qb 幂等，TR 报 duplicate 走已有分支）；此后键即稳定。
+// 若想跳过这一轮，可清空 subscription_hits 表。
+func normalizeDownloadURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	beforeCount := len(u.Query())
+	q := u.Query()
+	for _, k := range volatileDownloadParams {
+		q.Del(k)
+	}
+	// 不删空护栏：若原链的 query 全被当成鉴权删光（如 download.php?hash=<infohash> 这种
+	// 「参数名看着像凭据、其实是身份」的站），归一化后所有种子都塌成同一个光杆端点，
+	// 第二条起会被误判为重复而永远不再下载——静默丢种比多推一次严重得多。
+	// 这种情况下保留原样：最坏退化成改造前的旧行为（轮换后重推一次），不会合并不同种子。
+	// 计数必须在删除前取：url.Values 是 map，删除会同时改掉「删除前」的观测值。
+	if beforeCount > 0 && len(q) == 0 {
+		return rawURL
+	}
+	u.RawQuery = q.Encode()
+	u.Fragment = ""
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+	return u.String()
+}
+
+// ratingGate 多评分低分保护判定：返回 (是否拦截本轮推送, 拦截原因, 本轮跳过说明)。
+//   - 闸门未启用 → (false, "", "")：没开保护，本来就该安静。
+//   - 闸门开着但评不出（未装配 / 外网全挂 / 无源可问）→ (false, "", 跳过说明)：
+//     fail-open 放行是对的（外网故障不该让订阅停摆），但「保护开着却这一轮没生效」
+//     必须能被人看见——此前这里返回空串，调用方把闸门跳过的轮次与「评分合格」混成同一种账面，
+//     低分片照样推送，卡片与通知都不提闸门没跑（对照同文件站点失败的 siteFails 出声口径）。
+//   - 查到但 summary.Passed==false → (true, reason, "") 拦截。
 //
 // 启用条件：全局 MediaQualityConfig.Enabled 或本订阅有效 EnableRatingGuard（已回退全局订阅默认）任一为真。
-func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscription, enableGuard bool) (bool, string) {
+func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscription, enableGuard bool) (bool, string, string) {
 	if c.mediaCh == nil {
-		return false, ""
+		if !enableGuard {
+			return false, "", ""
+		}
+		return false, "", "低分保护开着，但媒体评分模块未装配，本轮没有做任何评分判定"
 	}
 	cfg := c.mediaCh.LoadQuality()
 	if !cfg.Enabled && !enableGuard {
-		return false, ""
+		return false, "", ""
 	}
 	summary, err := c.mediaCh.AggregatedRating(ctx, sub.Title, sub.Year, sub.Type)
 	if err != nil || summary == nil {
-		return false, "" // fail-open
+		// fail-open：放行，但把「为什么没判」带回去（错误文本截短，避免整段外网响应进卡片）。
+		why := "评分查不出来"
+		if err != nil {
+			why = clipRunes(err.Error(), 60)
+		}
+		return false, "", "低分保护本轮跳过（聚合评分失败：" + why + "），这部片没有被评分闸门校验过"
 	}
 	if summary.Passed {
-		return false, ""
+		return false, "", ""
 	}
-	return true, summary.Reason
+	return true, summary.Reason, ""
 }
 
 // filterByResolution 按分辨率子串过滤（复用 matchResolution，对齐 MP-2 两阶段前置过滤）。

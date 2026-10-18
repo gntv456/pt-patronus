@@ -23,6 +23,10 @@ func fetchSkyeySnowUserInfo(ctx context.Context, a *BaseHTMLAdapter, def *site.S
 		}
 	}
 	if u.ID == "" {
+		if userInfoParsesEmpty(u) {
+			// pages 一页都没读到（未配置或改版）→ 空结构当成功会把假 0 写进 site_stats。
+			return nil, emptyUserInfoErr(baseURL, "用户信息页")
+		}
 		return u, nil
 	}
 	if seeding, seedingSize := fetchSkyeySnowSeeding(ctx, a, def, baseURL, cookie); seeding > 0 || seedingSize > 0 {

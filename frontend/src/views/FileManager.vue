@@ -36,6 +36,9 @@ const ops = useFileOps(fm)
 const {
   list,
   loading,
+  drivesFailed,
+  fsFailed,
+  fsForbidden,
   current,
   statusMap,
   testing,
@@ -49,6 +52,7 @@ const {
   editingId,
   form,
   agents,
+  agentsError,
   mkdirVisible,
   mkdirName,
   renameVisible,
@@ -162,6 +166,9 @@ watch(
     <FileManagerSidebar
       :list="list"
       :loading="loading"
+      :drives-failed="drivesFailed"
+      :fs-failed="fsFailed"
+      :fs-forbidden="fsForbidden"
       :current="current"
       :item-key="itemKey"
       :item-icon="itemIcon"
@@ -331,6 +338,7 @@ watch(
       v-model:editing-id="editingId"
       v-model:form="form"
       v-model:agents="agents"
+      v-model:agents-error="agentsError"
       v-model:submitting="submitting"
       v-model:mkdir-visible="mkdirVisible"
       v-model:mkdir-name="mkdirName"

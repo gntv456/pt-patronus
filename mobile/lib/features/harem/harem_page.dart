@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/harem.dart';
+import 'package:ptpatronus/features/common/stream_account.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
@@ -28,7 +29,9 @@ String _fmtBytes(int b) {
 /// 处方宽屏=表格 / 窄屏=卡片；花名册与导出走自适应浮层（宽屏对话框 / 窄屏底栏），
 /// 花名册含上传+下载两列；导出支持复制。对齐 Web 的 el-table + el-dialog/el-drawer。
 class HaremPage extends StatefulWidget {
-  const HaremPage({super.key});
+  const HaremPage({super.key, this.frames});
+  /// 帧源注入缝（同勋章墙）：done 帧的清单账面要吸收成 _error / _streamBanner。
+  final StreamFrames? frames;
   @override
   State<HaremPage> createState() => _HaremPageState();
 }

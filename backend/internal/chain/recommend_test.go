@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -14,10 +15,12 @@ import (
 )
 
 // fakeSrc 实现 MediaSource + TrendingCapable；记录 Trending 调用次数以验证缓存。
+// panicTrending=true 时 Trending 现场 panic（模拟解析器崩在畸形响应，验扇出账面）。
 type fakeSrc struct {
-	name  string
-	items []media.MediaInfo
-	calls int
+	name          string
+	items         []media.MediaInfo
+	calls         int
+	panicTrending bool
 }
 
 func (f *fakeSrc) Name() string { return f.name }
@@ -27,6 +30,9 @@ func (f *fakeSrc) Search(context.Context, string, int) ([]media.MediaInfo, error
 func (f *fakeSrc) Detail(context.Context, string) (*media.MediaInfo, error) { return nil, nil }
 func (f *fakeSrc) Trending(context.Context, string, int) ([]media.MediaInfo, error) {
 	f.calls++
+	if f.panicTrending {
+		panic("nil pointer dereference on malformed trending response")
+	}
 	return f.items, nil
 }
 
@@ -251,10 +257,77 @@ func TestRecommendFeedsStreamSourceFailure(t *testing.T) {
 	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{ok, bad}})
 
 	var got []media.MediaInfo
-	rc.RecommendFeedsStream(context.Background(), "", "movie", 1, true, func(items []media.MediaInfo) {
+	sum := rc.RecommendFeedsStream(context.Background(), "", "movie", 1, true, func(items []media.MediaInfo) {
 		got = append(got, items...)
 	})
 	if len(got) != 1 || got[0].Title != "OK" {
 		t.Fatalf("expected only OK source emitted (bad failed), got %+v", got)
+	}
+	// 账面要说到「哪一源没回来」：只回条目数时，页面少一源看着就像「今天就这些」。
+	if sum.Sources != 2 || sum.Batches != 1 || len(sum.Failed) != 1 {
+		t.Errorf("summary 应为「2 源 / 1 批 / 1 失败」，got %+v", sum)
+	}
+	if len(sum.Failed) == 1 && !strings.Contains(sum.Failed[0], "bad") {
+		t.Errorf("failed 要点名源，got %q", sum.Failed[0])
+	}
+
+	// 有源失败时不得写缓存：否则这次缺席的慢源会被部分结果钉住 30min。
+	again := rc.RecommendFeedsStream(context.Background(), "", "movie", 1, false, func(items []media.MediaInfo) {})
+	if again.Cached {
+		t.Error("上一轮有源失败，这一轮不该命中缓存（部分结果被钉住会让该源长期缺席）")
+	}
+	if len(again.Failed) != 1 {
+		t.Errorf("重跑仍应报出失败源，got %+v", again)
+	}
+}
+
+// slowSrc 阻塞到 delay 或 ctx 结束（先到者），模拟「源在但响应慢」。
+type slowSrc struct {
+	name  string
+	delay time.Duration
+	items []media.MediaInfo
+}
+
+func (s *slowSrc) Name() string { return s.name }
+func (s *slowSrc) Search(context.Context, string, int) ([]media.MediaInfo, error) {
+	return nil, nil
+}
+func (s *slowSrc) Detail(context.Context, string) (*media.MediaInfo, error) { return nil, nil }
+func (s *slowSrc) Trending(ctx context.Context, _ string, _ int) ([]media.MediaInfo, error) {
+	t := time.NewTimer(s.delay)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return s.items, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// TestRecommendFeedsBudgetPartialNotCached JSON 面到预算就返回已到手的部分，且**不写缓存**
+// （把部分结果钉 30min 会让慢源长期缺席）。调用方 ctx 不设 deadline——只有预算能兜住扇出，
+// 这样断言钉的是预算本身，而不是测试自己传的超时。
+func TestRecommendFeedsBudgetPartialNotCached(t *testing.T) {
+	old := recommendFeedsBudget
+	recommendFeedsBudget = 600 * time.Millisecond
+	defer func() { recommendFeedsBudget = old }()
+
+	b := NewBase(module.New(), event.New())
+	fast := &fakeSrc{name: "fast", items: []media.MediaInfo{{Source: "fast", Title: "F"}}}
+	slow := &slowSrc{name: "slow", delay: 3 * time.Second, items: []media.MediaInfo{{Source: "slow", Title: "S"}}}
+	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{fast, slow}})
+
+	start := time.Now()
+	got := rc.RecommendFeeds(context.Background(), "", "movie", 1, true)
+	if el := time.Since(start); el > 2*time.Second {
+		t.Fatalf("应在预算内返回部分结果，实际耗时 %v", el)
+	}
+	if len(got) != 1 || got[0].Title != "F" {
+		t.Fatalf("应只拿到快源的 1 条，got %+v", got)
+	}
+
+	rc.RecommendFeeds(context.Background(), "", "movie", 1, false)
+	if fast.calls != 2 {
+		t.Fatalf("部分结果不该进缓存（第二次应重新扇出），fast.calls=%d", fast.calls)
 	}
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { backupApi } from '@/api/backup'
+import { backupApi, importFailureNotice, importOutcomeKind } from '@/api/backup'
 import { useAuthStore } from '@/stores/auth'
 import type { UploadFile } from 'element-plus'
 
@@ -125,12 +125,25 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
         return
       }
       const res = await backupApi.importOwn(data, password)
-      ElMessage.success(
-        t('backup.importDone', {
-          sites: res.imported_sites ?? 0,
-          dlPart: res.imported_downloaders != null ? ' ' + t('backup.dlPart', { n: res.imported_downloaders }) : '',
-        }),
-      )
+      const skipped = (res.sites_skipped ?? 0) + (res.downloaders_failed ?? 0)
+      const msg = t('backup.importDone', {
+        sites: res.imported_sites ?? 0,
+        dlPart: res.imported_downloaders != null ? ' ' + t('backup.dlPart', { n: res.imported_downloaders }) : '',
+      })
+      // 跳过/失败必须可见：重复域或非法条目曾被静默丢弃，只报成功数
+      if (res.empty) ElMessage.warning(t('backup.importEmpty'))
+      else if (skipped > 0) ElMessage.warning(msg + t('backup.importSkipPart', { n: skipped }))
+      else ElMessage.success(msg)
+      const plan = importFailureNotice(res.failures)
+      if (plan.total) {
+        ElMessage.warning(
+          t('backup.importFailures', {
+            total: plan.total,
+            shown: plan.shown.length,
+            list: plan.shown.join('；'),
+          }),
+        )
+      }
     } catch (err) {
       const code = (err as { code?: string })?.code
       if (code === 'backup_password_incorrect') ElMessage.error(t('backup.passwordIncorrect'))
@@ -151,12 +164,19 @@ function onPlainFile(file: File, kind: 'own' | 'moviepilot') {
       const data = JSON.parse(String(reader.result))
       const fn = backupApi.importMoviePilot
       const res = await fn(data)
-      ElMessage.success(
-        t('backup.importDone', {
+      // 0 条不是「导入完成」：拿自有备份去点 MoviePilot 入口就是这种返回，
+      // 从前无条件弹绿色 success（后端这条链不发通知，所以只有界面在说谎）。
+      if (importOutcomeKind(res?.imported_sites, res?.imported_downloaders) === 'none') {
+        ElMessage.warning(t('backup.importNothing'))
+      } else {
+        const msg = t('backup.importDone', {
           sites: res.imported_sites ?? 0,
           dlPart: res.imported_downloaders != null ? ' ' + t('backup.dlPart', { n: res.imported_downloaders }) : '',
-        }),
-      )
+        })
+        // 缺 name / 注册域重复的条目不在成功数里：只报成功数就是把部分没进来讲成全部讲完了（#257）。
+        if ((res?.sites_skipped ?? 0) > 0) ElMessage.warning(msg + t('backup.importSkipPart', { n: res.sites_skipped }))
+        else ElMessage.success(msg)
+      }
     } catch (err) {
       ElMessage.error(t('backup.importFailed') + (err as Error).message)
     } finally {
@@ -172,7 +192,18 @@ function onPTDFile(file: File | undefined) {
   importing.value = true
   backupApi
     .importPTD(file)
-    .then((res) => ElMessage.success(t('backup.importDoneSimple', { sites: res.imported_sites ?? 0 })))
+    .then((res) =>
+      // 同上：.ptd 选错/空包时 imported_sites=0，不能再弹绿色成功（后端也已改成 0 条不发通知）。
+      importOutcomeKind(res?.imported_sites) === 'none'
+        ? ElMessage.warning(t('backup.importNothing'))
+        : (res?.sites_skipped ?? 0) > 0
+          ? // 包里没 URL 的条目、与现有站点重复的都记在跳过账上（#257）。
+            ElMessage.warning(
+              t('backup.importDoneSimple', { sites: res.imported_sites ?? 0 }) +
+                t('backup.importSkipPart', { n: res.sites_skipped }),
+            )
+          : ElMessage.success(t('backup.importDoneSimple', { sites: res.imported_sites ?? 0 })),
+    )
     .catch((err) => ElMessage.error(t('backup.importFailed') + (err as Error).message))
     .finally(() => {
       importing.value = false

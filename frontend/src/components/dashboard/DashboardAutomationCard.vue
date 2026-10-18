@@ -15,14 +15,31 @@ const wf = ref<WorkflowStats | null>(null)
 const brush = ref<BrushFlowTask[]>([])
 const contract = ref<ContractRule[]>([])
 const transfer = ref<TransferHistory[]>([])
+// 四个数据源读不到时必须说出来：它们各自 .catch→空值，
+// 契约环形图会画成全 0（看着像「没有违约」）、整理成功率会变成「—」。
+const failed = ref<string[]>([])
 
 async function load() {
+  const errs: string[] = []
   const [w, b, c, t] = await Promise.all([
-    workflowApi.stats().catch(() => null),
-    brushflowApi.list().catch(() => [] as BrushFlowTask[]),
-    contractApi.list().catch(() => [] as ContractRule[]),
-    transferApi.history('', 200).catch(() => [] as TransferHistory[]),
+    workflowApi.stats().catch(() => {
+      errs.push('workflow')
+      return null
+    }),
+    brushflowApi.list().catch(() => {
+      errs.push('brushflow')
+      return [] as BrushFlowTask[]
+    }),
+    contractApi.list().catch(() => {
+      errs.push('contract')
+      return [] as ContractRule[]
+    }),
+    transferApi.history('', 200).catch(() => {
+      errs.push('transfer')
+      return [] as TransferHistory[]
+    }),
   ])
+  failed.value = errs
   wf.value = w
   brush.value = b
   contract.value = c
@@ -65,6 +82,7 @@ const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').
         <p>{{ t('dac.sub') }}</p>
       </div>
       <span v-if="breachCount" class="dc-tag danger">{{ t('dac.breachTag', { n: breachCount }) }}</span>
+      <span v-if="failed.length" class="dc-tag">{{ t('common.loadFailed') }}：{{ failed.join('、') }}</span>
     </div>
 
     <div class="auto-body">

@@ -59,9 +59,15 @@ func (o *AgentOper) ResetSecret(id uint) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := o.db.Model(&models.Agent{}).Where("id = ?", id).
-		Updates(map[string]any{"secret_hash": hash, "secret_hint": secretHint(secret)}).Error; err != nil {
-		return "", err
+	res := o.db.Model(&models.Agent{}).Where("id = ?", id).
+		Updates(map[string]any{"secret_hash": hash, "secret_hint": secretHint(secret)})
+	if res.Error != nil {
+		return "", res.Error
+	}
+	// 一行都没改 = 这个被控端不存在：必须失败，不能把明文密钥当「轮转成功」发出去。
+	// 否则界面显示已轮转、用户复制的是个谁也用不上的密钥，而真正那台 agent 的密钥纹丝未动。
+	if res.RowsAffected == 0 {
+		return "", gorm.ErrRecordNotFound
 	}
 	return secret, nil
 }

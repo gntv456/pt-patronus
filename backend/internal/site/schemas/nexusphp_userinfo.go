@@ -99,5 +99,8 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 			u.MaxClaim = max
 		}
 	}
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "用户页")
+	}
 	return u, nil
 }

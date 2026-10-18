@@ -1,5 +1,5 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
+import { fileApi, targetReadFailedNotice, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi } from '@/api/cloud'
 import type { useFileManager } from './useFileManager'
 import type { StorageItem } from './useFileManager'
@@ -176,7 +176,7 @@ export function useFileOps(fm: FileManager) {
   async function doMoveCopy() {
     if (!fm.curFs.value || !fm.moveCopySources.value.length || fm.submitting.value) return
     // 目标目录同名覆盖确认：先取目标已有文件名，源 basename 命中则弹确认（后端静默覆盖会丢数据）。
-    // 列目录失败（如权限）则跳过检查交给后端，不阻断操作。
+    // 列目录失败不再当「预检通过」：读不到目标就等于无法确认同名，交给用户决定。
     try {
       const targetEntries = await fileApi.files(fm.curFs.value.id, fm.moveCopyPath.value)
       const existing = new Set(targetEntries.map((e) => e.name))
@@ -193,7 +193,11 @@ export function useFileOps(fm: FileManager) {
         }
       }
     } catch {
-      // 列目标目录失败，跳过覆盖检查
+      // 读不到目标 ≠ 没有同名项（后端 move/copy 是同名静默覆盖）：这份不确定要交给用户决定，
+      // 从前这里当作「预检通过」直接放行，用户毫不知情就把同名文件盖掉了。
+      const n = targetReadFailedNotice(fm.moveCopyMode.value, fm.moveCopySources.value.length)
+      const go = await ElMessageBox.confirm(n.body, n.title, { type: 'warning' }).catch(() => false)
+      if (!go) return
     }
     const fn = fm.moveCopyMode.value === 'move' ? fileApi.move : fileApi.copy
     const verb = fm.moveCopyMode.value === 'move' ? '移动' : '复制'

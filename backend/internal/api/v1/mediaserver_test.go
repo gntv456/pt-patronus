@@ -168,3 +168,54 @@ func TestMediaServer_Health(t *testing.T) {
 		t.Fatalf("health 应 200，got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+// TestMediaServer_MissingRowIsNotFoundNotBadRequest 回归：库里没有这台服务器要说「不存在」(404)。
+// 修复前 10 处一律 InvalidInput → 用户删掉服务器后另一个标签页/书签里的旧 id 换来
+// 「请求参数有误，请检查后重试」，被支去改参数而不是重选服务器；软失败面还把
+// raw Go 错误 "record not found" 原样弹给用户。
+func TestMediaServer_MissingRowIsNotFoundNotBadRequest(t *testing.T) {
+	r, _ := setupMediaServerEnv(t)
+	rec := doMS(t, r, http.MethodGet, "/mediaservers/999/libraries", "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("不存在的服务器应 404，got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "mediaserver_not_found") {
+		t.Fatalf("应带 mediaserver_not_found 码，got %s", rec.Body.String())
+	}
+
+	rec2 := doMS(t, r, http.MethodGet, "/mediaservers/999/duplicates?library_id=1", "")
+	if rec2.Code != http.StatusNotFound {
+		t.Fatalf("duplicates 同样应 404，got %d body=%s", rec2.Code, rec2.Body.String())
+	}
+
+	rec3 := doMS(t, r, http.MethodGet, "/mediaservers/999/test", "")
+	if !strings.Contains(rec3.Body.String(), "媒体服务器不存在") {
+		t.Fatalf("软失败面应给中文而不是 raw 错误，got %s", rec3.Body.String())
+	}
+	if strings.Contains(rec3.Body.String(), "record not found") {
+		t.Fatalf("不得把 Go 原文弹给用户，got %s", rec3.Body.String())
+	}
+}
+
+// TestMediaServerCreateValidationReason 校验类 400 要带 oper 写好的中文原因。
+// 修复前一律「请求参数有误，请检查后重试」：用户填错协议或选了不支持的类型，
+// 不知道是哪一个字段错，只能瞎试。
+func TestMediaServerCreateValidationReason(t *testing.T) {
+	r, _ := setupMediaServerEnv(t)
+
+	badURL := doMS(t, r, http.MethodPost, "/mediaservers", `{"name":"m1","type":"emby","url":"ftp://192.168.1.5:8096","api_key":"k"}`)
+	if badURL.Code != http.StatusBadRequest {
+		t.Fatalf("非法协议应 400，got %d body=%s", badURL.Code, badURL.Body.String())
+	}
+	if !strings.Contains(badURL.Body.String(), "http/https") {
+		t.Fatalf("应说明协议要求，got %s", badURL.Body.String())
+	}
+
+	badType := doMS(t, r, http.MethodPost, "/mediaservers", `{"name":"m2","type":"kodi","url":"http://127.0.0.1:8096","api_key":"k"}`)
+	if badType.Code != http.StatusBadRequest {
+		t.Fatalf("未知类型应 400，got %d", badType.Code)
+	}
+	if !strings.Contains(badType.Body.String(), "媒体服务器类型") {
+		t.Fatalf("应点名类型白名单问题，got %s", badType.Body.String())
+	}
+}

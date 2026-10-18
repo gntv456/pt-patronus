@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"sync"
@@ -27,12 +28,17 @@ type HaremResult struct {
 }
 
 // HaremStatus 抓单站邀请库存（适配器需实现 site.HaremCapable）。
+// 站点定义未启用后宫/适配器不支持时返回 ErrNotSupported——不能返回 (nil, nil)，
+// 否则调用方把「不支持」渲染成「剩余 0、权限 ✗」的假数据。
 func (c *SiteChain) HaremStatus(ctx context.Context, s *models.Site) (*site.InviteStatus, error) {
 	def := c.defFor(s)
 	if !def.Harem.Enabled {
-		return nil, nil
+		return nil, ErrNotSupported
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out *site.InviteStatus
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		hc, ok := a.(site.HaremCapable)
@@ -53,9 +59,12 @@ func (c *SiteChain) HaremStatus(ctx context.Context, s *models.Site) (*site.Invi
 func (c *SiteChain) HaremInvitees(ctx context.Context, s *models.Site) ([]site.InviteeInfo, error) {
 	def := c.defFor(s)
 	if !def.Harem.Enabled {
-		return nil, nil
+		return nil, ErrNotSupported
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out []site.InviteeInfo
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		hc, ok := a.(site.HaremCapable)
@@ -81,11 +90,12 @@ type haremSFResult struct {
 
 // HaremAll 跨站并发聚合后宫（Semaphore(5) + per-site Mutex + 30min 缓存）。
 // 非 force 时单站 miss 走 singleflight 合并同 siteID 并发抓取（防击穿，sem 仅 leader 占用）。
-func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
+// 站点清单读不出时返回错误——不能返回空结果让前端渲染成「没有站点」。
+func (c *SiteChain) HaremAll(ctx context.Context, force bool) (*HaremResult, error) {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		slog.Warn("harem list sites failed", "err", err)
-		return nil
+		return nil, err
 	}
 	items := make([]site.PrescriptionItem, len(sites))
 	sem := make(chan struct{}, haremConcurrency)
@@ -94,6 +104,13 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 		wg.Add(1)
 		safego.Go("harem:94", func() {
 			defer wg.Done()
+			// per-site 隔离：单站 panic 交出它自己的错误药单行（safego 只记日志，零值行被过滤）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("harem site panic", "site", s.Name, "err", r)
+					items[i] = haremPanicItem(s, r)
+				}
+			}()
 			// 快速路径：缓存命中
 			if !force {
 				c.haremMu.Lock()
@@ -121,7 +138,7 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 					return c.fetchHaremOnce(ctx, sem, &s), nil
 				})
 				if waitErr != nil {
-					res.errMsg = waitErr.Error()
+					res.errMsg = ctxErrText(ctx, waitErr)
 				}
 			}
 			status := res.status
@@ -162,13 +179,13 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 			}
 		}
 	}
-	return &HaremResult{Overview: haremOverview(sorted), Prescriptions: sorted}
+	return &HaremResult{Overview: haremOverview(sorted), Prescriptions: sorted}, nil
 }
 
 // fetchHaremOnce 抓单站邀请库存 + 被邀请人（占一个 sem 槽、独立超时），成功时写缓存。
 func (c *SiteChain) fetchHaremOnce(ctx context.Context, sem chan struct{}, s *models.Site) haremSFResult {
 	if err := acquireSemaphore(ctx, sem); err != nil {
-		return haremSFResult{errMsg: err.Error()}
+		return haremSFResult{errMsg: ctxErrText(ctx, err)}
 	}
 	if sem != nil {
 		defer func() { <-sem }()
@@ -180,10 +197,12 @@ func (c *SiteChain) fetchHaremOnce(ctx context.Context, sem chan struct{}, s *mo
 	errMsg := ""
 	if errors.Is(e1, site.ErrNotLoggedIn) {
 		errMsg = "未登录或 cookie 失效"
+	} else if errors.Is(e1, ErrNotSupported) || errors.Is(e2, ErrNotSupported) {
+		errMsg = "该站不支持邀请页抓取"
 	} else if e1 != nil {
-		errMsg = e1.Error()
+		errMsg = ctxErrText(siteCtx, e1)
 	} else if e2 != nil {
-		errMsg = e2.Error()
+		errMsg = ctxErrText(siteCtx, e2)
 	}
 	if errMsg == "" {
 		c.haremMu.Lock()
@@ -196,6 +215,12 @@ func (c *SiteChain) fetchHaremOnce(ctx context.Context, sem chan struct{}, s *mo
 // buildPrescription 构造单站药单行。
 func buildPrescription(id uint, name string, st *site.InviteStatus, invitees []site.InviteeInfo, errMsg string) site.PrescriptionItem {
 	return BuildPrescription(id, name, st, invitees, errMsg)
+}
+
+// haremPanicItem 崩站的那行药单（JSON 面与流式面共用，防两处口径漂移）：零值行会被聚合出口的
+// `it.SiteID != 0` 整行丢掉 ⇒ 后宫页安静地少一站，与「这站没有成员」同形（#127 同族）。
+func haremPanicItem(s models.Site, r any) site.PrescriptionItem {
+	return buildPrescription(s.ID, s.Name, nil, nil, fmt.Sprintf("后宫抓取异常: %v", r))
 }
 
 // BuildPrescription 构造单站药单行（导出，供 handler 单站刷新用）。
@@ -299,12 +324,14 @@ func itoa(n int) string {
 // （供 handler 在 done 帧一次性下发准确汇总）。供 SSE 端点「加载一个显示一个」——卡片渐进显示，
 // 顶部 7 格汇总数字在全部完成时给出（汇总本就需全量数据）。与 HaremAll 不同：不排序（按到达顺序显示，
 // 渐进加载下排序反而使卡片跳动）。非 force 单站 miss 仍走 singleflight + 30min 缓存；force 各站强制回源。
+// 返回的第二值是站点清单读失败的错误文本（空=正常）——清单读不出时以前静默返回空 overview，
+// done 帧与「全部站点都空闲」在界面上同形；现在随 done 帧交回，调用方必须原样透出。
 // 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化实际写入。
-func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(site.PrescriptionItem)) site.HaremOverview {
+func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(site.PrescriptionItem)) (site.HaremOverview, string) {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		slog.Warn("harem list sites failed", "err", err)
-		return site.HaremOverview{}
+		return site.HaremOverview{}, err.Error()
 	}
 	sem := make(chan struct{}, haremConcurrency)
 	var wg sync.WaitGroup
@@ -321,6 +348,13 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 		wg.Add(1)
 		safego.Go("harem:321", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站也必须 push 一行（否则前端只看到「少一站」，账面数字对不上）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("harem stream site panic", "site", s.Name, "err", r)
+					push(haremPanicItem(s, r))
+				}
+			}()
 			// 快速路径：缓存命中
 			if !force {
 				c.haremMu.Lock()
@@ -347,7 +381,7 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 					return c.fetchHaremOnce(ctx, sem, &s), nil
 				})
 				if waitErr != nil {
-					res.errMsg = waitErr.Error()
+					res.errMsg = ctxErrText(ctx, waitErr)
 				}
 			}
 			status := res.status
@@ -358,5 +392,5 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 		})
 	}
 	wg.Wait()
-	return haremOverview(all)
+	return haremOverview(all), ""
 }

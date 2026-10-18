@@ -315,6 +315,18 @@ export default {
       manual: '手动',
       empty: '暂无签到记录',
     },
+    diagTitle: '站点定义里有 {n} 条配置没有生效',
+    diagMore: '另有 {n} 条未列出',
+    diagLoadFailed: '站点定义诊断读取失败：{err}',
+    diagKind: {
+      bad_regexp: '正则表达式编不过',
+      unknown_key: '有不认识的配置键',
+      duplicate_id: '站点 id 撞车',
+      skipped_subdir: '子目录没读',
+      other: '其它配置问题',
+    },
+    recordsTruncated: '仅显示最近 {n} 条记录（共 {total} 条，更早的未读取）',
+    recordsTruncatedUnknown: '已显示 {n} 条记录，但总数读取失败——可能还有更多',
   },
   search: {
     title: '搜索',
@@ -477,6 +489,7 @@ export default {
       failPart: '，失败 {n}（{err}）',
       failed: '批量操作失败',
     },
+    checkIssue: '上次检查有问题：{reason}',
   },
   notices: {
     title: '通知中心',
@@ -526,6 +539,18 @@ export default {
       medal_price_drop: '勋章降价',
       medal_price_rise: '勋章涨价',
       medal_out_of_stock: '勋章售罄',
+      camera_offline: '摄像头离线',
+      subscribe_list_fail: '订阅检查未开始',
+      rss_list_fail: 'RSS 扫描未开始',
+      rss_check_fail: 'RSS 抓取失败',
+      strm_list_fail: 'STRM 维护未开始',
+      brushflow_list_fail: '刷流未开始',
+      contract_list_fail: '契约检查未开始',
+      dirsync_list_fail: '目录同步未开始',
+      brushflow: '刷流',
+      cloud: '云盘',
+      contract: '保种契约',
+      mediaserver: '媒体库',
     },
     relTime: {
       justNow: '刚刚',
@@ -533,6 +558,9 @@ export default {
       hoursAgo: '{n} 小时前',
       daysAgo: '{n} 天前',
     },
+    truncated: '仅显示最近 {n} 条通知（收件箱共 {total} 条，更早的已隐藏）',
+    truncatedUnknown: '已显示最近 {n} 条，总数读取失败，可能还有更多',
+    partialFailed: '其中 {n} 条未成功：{reason}',
   },
   rss: {
     title: 'RSS 订阅',
@@ -578,6 +606,9 @@ export default {
       tagsHint: '逗号分隔',
     },
     col: { title: '标题', size: '大小', downloaded: '已下载', foundAt: '发现时间' },
+    newItemsTruncated: '{n} 个新条目（源共 {total} 个，本轮只检查了最近 {scanned} 个）',
+    itemsTruncated: '已显示最近 {shown} 条，共 {total} 条，还有 {rest} 条未显示',
+    itemsTruncatedUnknown: '已显示 {shown} 条；总数读取失败，可能还有更多',
   },
   messages: {
     title: '消息',
@@ -605,6 +636,9 @@ export default {
       reports: '举报信箱',
       staff: '管理组信箱',
     },
+    notSupported: '未适配私信',
+    notSupportedTip: '该站未接入私信抓取，不代表站点没有私信',
+    markReadFailed: '标为已读失败',
   },
   announcements: {
     title: '公告',
@@ -621,6 +655,7 @@ export default {
     emptySiteTitle: '该站点暂无公告',
     emptyDesc: '添加并启用 PT 站点后，这里会聚合展示各站公告',
     emptySiteDesc: '该站点当前没有公告，可尝试点击该站刷新',
+    notAdapted: '该站未适配公告抓取',
   },
   savept: {
     searchPlaceholder: '搜索站点名称...',
@@ -650,6 +685,8 @@ export default {
     emptyDesc: '添加并登录 PT 站点后，这里会展示各站的考核进度、剩余天数与达标情况',
     emptyFilterTitle: '当前筛选下无站点',
     emptyFilterDesc: '可切换状态筛选或清空站点筛选',
+    streamShortage: '{n} 个站点未返回考核结果（其任务失败）',
+    streamListFailed: '站点列表读取失败；没有站点被考核：{error}',
   },
   freeleech: {
     title: '站免',
@@ -666,6 +703,8 @@ export default {
     expandAll: '展开全部（{n}）',
     tile: { sites: '站点', none: '暂无', failed: '失败' },
     status: { active: '正在站免', upcoming: '即将站免', none: '暂无站免', failed: '读取失败' },
+    notAdapted: '该站未适配站免检测',
+    noPromo: '当前无全站免费/促销',
   },
   medalwall: {
     title: '勋章墙',
@@ -741,6 +780,8 @@ export default {
       status: '状态',
       actions: '操作',
     },
+    tasksTruncated: '最近 {n} 条，共 {total} 条',
+    tasksTruncatedUnknown: '最近 {n} 条，还有更多未列出',
   },
   contract: {
     title: '保种契约',
@@ -838,7 +879,12 @@ export default {
       rateLimited: '限流',
       toolCalls: '工具调用',
       toolSuccess: '工具成功率',
+      readFailed: '用量统计读取失败（{reason}）：此处为空并不代表没有调用',
     },
+    convsTruncated: '仅显示最近 {n} 个会话（共 {total} 个，更早的未读取）',
+    convsTruncatedUnknown: '已显示 {n} 个会话，但总数读取失败——可能还有更多',
+    adminOnly: 'AI 助手仅管理员可用',
+    adminOnlyDesc: '它会驱动站点、下载器和媒体工具，因此仅限管理员。请联系管理员开通。',
   },
   brushflow: {
     title: '刷流',
@@ -902,6 +948,8 @@ export default {
       savePathHint: '留空=下载器默认',
       dlCategory: '下载器分类',
     },
+    seedsTruncated: '仅显示最近添加的 {n} 个（任务共 {total} 个；更早的超出窗口）',
+    seedsTruncatedUnknown: '仅显示最近添加的 {n} 个（总数无法读取，可能还有更多）',
   },
   recommend: {
     title: '推荐',
@@ -927,6 +975,7 @@ export default {
     emptyFeedDesc: '点击右上角刷新重试，或在上方切换推荐源与分类',
     dateLabel: '{m}/{d} 周{w}',
     weekday: { 0: '日', 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六' },
+    partialSources: '{n} 个市场源没取到',
   },
   mediaserver: {
     title: '媒体服务器',
@@ -1026,6 +1075,9 @@ export default {
       directBase: '直链基址',
       directBaseHint: "/mediaserver/:id/direct/<path> → {'{基址}'}/{'{path}'} 302",
     },
+    subtitleFixNone: '未加入队列：{n} 个缺失项均无可用的字幕文件路径',
+    scanIncomplete: '巡检未完整覆盖',
+    notScanned: '没读到任何库内容',
   },
   transfer: {
     title: '媒体整理',
@@ -1254,6 +1306,10 @@ export default {
     importDoneSimple: '导入完成：站点 {sites}',
     dlPart: '/ 下载器 {n}',
     importFailed: '导入失败：',
+    importSkipPart: '（{n} 项跳过/失败，未导入）',
+    importFailures: '未导入：共 {total} 项（显示前 {shown} 项）：{list}',
+    importEmpty: '该备份不含站点或下载器，未导入任何内容',
+    importNothing: '解析成功，但导入 0 个站点/下载器（请确认文件与该入口匹配）',
   },
   workflow: {
     title: '工作流',
@@ -1337,6 +1393,7 @@ export default {
     selectStorageTitle: '请选择左侧存储',
     selectStorageDesc: '点击左侧任一存储开始浏览。',
     col: { name: '名称' },
+    storagesAdminOnly: '存储后端仅管理员可见',
   },
   mediaquality: {
     title: '媒体质量',
@@ -1456,7 +1513,10 @@ export default {
       emptyDefault: '留空用公开默认',
       bangumiToken: 'Token（可选）',
       emptyAnonymous: '留空走匿名配额',
+      omdbKey: 'OMDb API Key（IMDb 评分）',
     },
+    omdbDesc: '通过 OMDb 免费 Key 获取 IMDb 评分；留空则聚合时跳过 IMDb',
+    omdbSkipped: '未配置（评分里不含 IMDb）',
   },
   filterrules: {
     title: '资源过滤规则',
@@ -1517,6 +1577,9 @@ export default {
     liveView: '实时画面',
     alertHistory: '告警记录',
     clearHistory: '清空记录',
+    alertsCapped: '仅列出最近 {shown} 条（共 {total} 条未读）',
+    runsCapped: '仅列最近 {shown} 次批次，共 {total} 次',
+    runsCappedUnknown: '总数读取失败——可能还有更多',
   },
   opsmonitor: {
     localScope: '本机监控',
@@ -1789,6 +1852,9 @@ export default {
     statusRunning: '执行中',
     statusSuccess: '成功',
     statusFailed: '失败',
+    strmRepairPartial: 'STRM 修复：重写 {repaired} 个，写入失败 {failed} 个（跳过 {skipped} 个）',
+    tasksTruncated: '最近 {n} 条，共 {total} 条',
+    tasksTruncatedUnknown: '最近 {n} 条，还有更多未列出',
   },
   wfe: {
     back: '← 返回',
@@ -1837,6 +1903,8 @@ export default {
     triggerCol: '触发',
     time: '时间',
     tplTitle: '从模板创建',
+    historyTruncated: '仅显示最近 {n} 次运行（共 {total} 次）',
+    historyTruncatedUnknown: '仅显示最近 {n} 次运行（总数无法读取）',
   },
   sitedetail: {
     backSites: '← 站点',
@@ -1918,6 +1986,9 @@ export default {
     official: '官方',
     addSource: '添加源',
     restoreOfficial: '恢复官方源',
+    chartsReadFail: '榜单读不出来',
+    favoritesReadFail: '不是您没收藏过',
+    srcPartial: '{n} 个市场源没取到（榜单已覆盖 {ok} 个）：',
   },
   pad: {
     title: '插件审计：{name}',
@@ -2007,6 +2078,7 @@ export default {
     emptyTitle: '暂无求种数据',
     emptyDesc: '各站求种专区数据会在此聚合；NexusPHP 系站点支持（未适配的站点会显示原因）。',
     loadFailed: '求种列表加载失败',
+    emptyFailed: '该站无法读取；无数据（不等于没有求种）',
   },
   pld: {
     title: '插件日志',
@@ -2104,6 +2176,7 @@ export default {
     dir: '目录',
     imageName: '镜像名',
     pullGo: '拉取',
+    statsStale: '资源读数已停更（最后成功 {time}）：{reason}',
   },
   tt: {
     searchPh: '搜索任务名称、哈希或分类',
@@ -2302,6 +2375,12 @@ export default {
     tcpRequired: '请填写 TCP 地址和端口',
     processRequired: '请填写进程名称',
     scriptRequired: '请填写脚本命令',
+    thrCpu: 'CPU 阈值',
+    thrMem: '内存阈值',
+    thrDisk: '磁盘阈值',
+    thrTemp: '温度阈值',
+    thrOffline: '离线告警',
+    thrHint: '留空或 0 = 内置默认（CPU/内存/磁盘 90%，温度 75℃）；关闭则不再离线告警',
   },
   notif: {
     testTitle: '发送测试通知',
@@ -2481,6 +2560,7 @@ export default {
     prev: '上一步',
     next: '下一步',
     createGo: '创建容器',
+    createdNotStarted: '容器已创建，但自动启动失败：{reason}',
   },
   fmd: {
     addStorage: '添加存储',
@@ -2517,6 +2597,8 @@ export default {
     strmHint: '为云盘目录「{name}」下的媒体文件生成本地 .strm（媒体服务器读取后直链播放云盘资源，无需落地）。',
     strmOutPh: '本地 .strm 输出根目录，如 /Media/STRM',
     tplPh: "留空用默认 {'{mount}'}{'{cloudpath}'}",
+    agentsReadFail: '无法读取 Agent 列表（{reason}）；菜单为空 ≠ 未配置。重新打开以重试。',
+    strmRepairRulesUnreadable: 'STRM 规则不可读：{n} 个 .strm 文件仍处于损坏状态；数据库恢复后请重新执行。',
   },
   ded: {
     title: '导出仪表盘图片',
@@ -2667,6 +2749,7 @@ export default {
     libCounts: '🎬 {m} 电影 · 📺 {s} 剧集',
     noLibrary: '未配置媒体服务器，',
     goAdd: '去添加',
+    incomplete: '部分数据未能读取',
   },
   dhd: {
     deviceName: '设备名称',
@@ -2709,6 +2792,8 @@ export default {
     rxRate: '下行速率',
     txRate: '上行速率',
     load: '负载',
+    trendWindow: '趋势只覆盖最近 {n} 个采样点（该设备共 {total} 个）',
+    trendWindowUnknown: '总数读取失败——可能还有更多',
   },
   hxcard: {
     help: '把 PTPatronus 聚合的各站数据（上传/下载/做种/魔力）推送到好学论坛「PT Patronus 守护神」名片，在个人页与头像悬浮卡展示。',
@@ -3076,6 +3161,8 @@ export default {
     readAll: '全部已读',
     clearGo: '清空',
     nUnread: '{n} 条未读 · ',
+    groupReadAllFailed: '本组 {n} 条通知均未标为已读；在收件箱中仍为未读',
+    groupReadPartial: '本组有 {n} 条未能标为已读；其余已处理',
   },
   sn: { noNotices: '暂无公告' },
   psf: { pickSite: '选择站点' },
@@ -3242,6 +3329,10 @@ export default {
     newCatPh: '新分类名',
     catPathPh: '保存路径（可空）',
     noCats: '无分类',
+    restListErr: '种子清单读不出来',
+    restStatsErr: '运行状态读不出来',
+    restUnknown: '未知原因',
+    retryRefresh: '点击刷新重试',
   },
 
   ot: {
@@ -3271,6 +3362,8 @@ export default {
     dark: '深色',
     light: '浅色',
     configHint: '配置保存在浏览器本地。',
+    qcReadFailed: '已保存的自定义快捷命令无法读取（本地存储损坏）；已恢复默认。',
+    qcCfgFailed: '终端配置无法读取；使用默认值。',
   },
 
   dc: {
@@ -3325,6 +3418,7 @@ export default {
     refresh: '刷新数据',
     recentAnniv: '近期站庆',
     showing: '显示 {shown} / {total} 个站点',
+    unknown: '未知',
   },
 
   nh: {
@@ -3373,6 +3467,7 @@ export default {
     tags: '标签',
     note: '备注',
     tagsPh: '生产环境, root',
+    userUnreadable: '用户名无法解密（主密钥可能已变更）',
   },
 
   ncf: {
@@ -3448,6 +3543,7 @@ export default {
     failedN: '{n} 失败',
     scanPartial: '扫描部分失败',
     noTodo: '无待办',
+    assessUnknown: '{n} 站无法核实',
   },
 
   am: {
@@ -3469,6 +3565,9 @@ export default {
     removeTitle: '删除 Agent',
     removeConfirm: '删除 agent「{name}」？关联设备与历史数据一并删除。',
     rotateConfirm: '重置「{name}」的 secret？旧 secret 立即失效，需用新 secret 重启 agent。',
+    loadFailed: 'Agent 列表加载失败',
+    removeFailed: '删除 Agent 失败',
+    rotateFailed: '重置密钥失败',
   },
 
   das: {
@@ -3631,6 +3730,7 @@ export default {
     saved: 'OCR 配置已保存',
     connOk: 'OCR 服务连通正常',
     testFailed: '测试失败',
+    loadFailed: 'OCR 配置无法读取（{reason}）：下方留空并不代表未设置',
   },
 
   wn: {
@@ -3707,6 +3807,9 @@ export default {
     cronPh: '选择预设或自定义',
     cronLabel: 'cron 表达式',
     builtinDefault: '快照默认：',
+    zoneLine: 'Cron 按服务器时区解析：{tz}（服务器时间 {time}）',
+    nextRun: '下次执行：{t}',
+    utcWarn: '服务器时区为 UTC：未设置 TZ 时，0 8 * * * 会在本地 16:00 触发。请设置 TZ=Asia/Shanghai。',
   },
 
   smh: {
@@ -3742,6 +3845,7 @@ export default {
     errRate: '错误率',
     errRateDetail: '错误 {err} · 限流 {rl}',
     recentN: '近 {n} 次用量',
+    forbidden: '需要管理员权限查看 AI 用量',
   },
 
   dhs: {
@@ -3753,6 +3857,8 @@ export default {
     nodataN: '{n} 个站点无采集数据',
     nodataHint: '疑似 Cookie 失效或未采集，签到 / 统计 / H&R 自动化可能已停摆',
     viewSites: '查看站点',
+    statReadFailed: '站点统计读取失败',
+    statReadFailedHint: '各站点最新统计读取失败（{reason}）。这不是 cookie 问题——此处为空并不代表站点没有采集。',
   },
 
   drc: {

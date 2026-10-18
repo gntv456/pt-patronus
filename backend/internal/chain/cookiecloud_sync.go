@@ -14,6 +14,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -158,13 +159,8 @@ func (c *CookieCloudChain) pushLocal(ctx context.Context, s CookieCloudSettings,
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return 0, fmt.Errorf("推送 CookieCloud 返回 HTTP %d", resp.StatusCode)
 	}
-	if len(resp.Body) > 0 {
-		var out struct {
-			Action string `json:"action"`
-		}
-		if json.Unmarshal(resp.Body, &out) == nil && out.Action != "" && out.Action != "done" {
-			return 0, fmt.Errorf("推送 CookieCloud 失败: action=%s", out.Action)
-		}
+	if err := judgeCookieCloudPush(resp.Body); err != nil {
+		return 0, err
 	}
 	return len(local), nil
 }
@@ -275,4 +271,35 @@ func cookieHostFromBaseURL(baseURL string) string {
 		return site.RegisteredDomain(baseURL)
 	}
 	return strings.ToLower(u.Hostname())
+}
+
+// judgeCookieCloudPush 是「凭据到底上云没有」的判据：标准服务回 {"action":"done"|"error"}。
+// 旧写法 `json.Unmarshal(...) == nil && action 非 done` 有两个洞：
+//  1. 非 JSON 的 200（Cloudflare/反代的错误页常常顶 200、或改写了响应体）解析失败即一路
+//     return「已推送 N 条」，用户以为凭据已同步到云端，实际云端还是旧的；
+//  2. action=error 时只回 `action=error`，服务给的 error 字段被丢掉。
+//
+// 空 body 仍算成功：部分部署只回 2xx 不带 body（原注释即为此兼容）。
+func judgeCookieCloudPush(rb []byte) error {
+	if len(rb) == 0 {
+		return nil
+	}
+	if !json.Valid(rb) {
+		return fmt.Errorf("推送 CookieCloud 未确认成功：响应不是合法 JSON（原文：%s）", errtext.RespSnippet(rb))
+	}
+	var out struct {
+		Action string `json:"action"`
+		Error  string `json:"error"`
+	}
+	if err := json.Unmarshal(rb, &out); err != nil {
+		return fmt.Errorf("推送 CookieCloud 未确认成功：响应解析失败（原文：%s）", errtext.RespSnippet(rb))
+	}
+	if out.Action != "" && out.Action != "done" {
+		reason := out.Error
+		if reason == "" {
+			reason = "action=" + out.Action
+		}
+		return fmt.Errorf("推送 CookieCloud 失败: %s", reason)
+	}
+	return nil
 }

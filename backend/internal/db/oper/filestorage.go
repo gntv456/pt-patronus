@@ -1,7 +1,6 @@
 package oper
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
@@ -42,7 +41,7 @@ func validatePasswordLength(in FileStorageInput) error {
 		max = 65536
 	}
 	if len(in.Password) > max {
-		return fmt.Errorf("%s 存储密码/配置过长（>%d 字符）", in.Type, max)
+		return invalidInput("%s 存储密码/配置过长（>%d 字符）", in.Type, max)
 	}
 	return nil
 }
@@ -135,15 +134,15 @@ func validateTypeFields(in FileStorageInput) error {
 	switch in.Type {
 	case "agent":
 		if in.AgentID == 0 {
-			return fmt.Errorf("agent 存储必须关联一个 agent")
+			return invalidInput("agent 存储必须关联一个 agent")
 		}
 	case "webdav", "alist", "smb":
 		if strings.TrimSpace(in.URL) == "" {
-			return fmt.Errorf("%s 存储必须填写地址", in.Type)
+			return invalidInput("%s 存储必须填写地址", in.Type)
 		}
 	case "local":
 		if strings.TrimSpace(in.BasePath) == "" {
-			return fmt.Errorf("本机存储必须填写根目录")
+			return invalidInput("本机存储必须填写根目录")
 		}
 	case "115", "quark", "123":
 		// 网盘后端（只读浏览）：凭据存 password，浏览根存 basePath；均可在创建后补填/测试。
@@ -152,13 +151,13 @@ func validateTypeFields(in FileStorageInput) error {
 		// URL=rclone 二进制路径（可空=用 PATH）、password=rclone.conf INI 原文、BasePath=remote 内根子路径，均可选。
 		remote := strings.TrimSpace(strings.TrimRight(in.Username, ":"))
 		if remote == "" {
-			return fmt.Errorf("rclone 存储必须填写 remote 名")
+			return invalidInput("rclone 存储必须填写 remote 名")
 		}
 		if strings.ContainsAny(remote, "/\\:") {
-			return fmt.Errorf("rclone remote 名不能包含 / \\ 或冒号: %s", remote)
+			return invalidInput("rclone remote 名不能包含 / \\ 或冒号: %s", remote)
 		}
 	default:
-		return fmt.Errorf("未知存储类型: %s", in.Type)
+		return invalidInput("未知存储类型：%s", in.Type)
 	}
 	return nil
 }

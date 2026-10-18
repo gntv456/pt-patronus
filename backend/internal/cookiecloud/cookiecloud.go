@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -255,19 +256,48 @@ func DecryptPayload(encryptedB64, uuid, password string) (map[string][]CookieEnt
 	if err != nil {
 		return nil, err
 	}
-	// 标准 CookieCloud：{"cookie_data": {host: [cookies]}, "update_time": ...}
-	var wrapped struct {
-		CookieData map[string][]CookieEntry `json:"cookie_data"`
-	}
-	if err := json.Unmarshal(plain, &wrapped); err == nil && len(wrapped.CookieData) > 0 {
-		return wrapped.CookieData, nil
-	}
-	// 回退：直接的 {host: [cookies]}（部分服务端无包裹层）
-	var payload map[string][]CookieEntry
-	if err := json.Unmarshal(plain, &payload); err != nil {
+	return ParsePayload(plain)
+}
+
+// ParsePayload 解析 CookieCloud 明文为 {host: []CookieEntry}。
+// 标准扩展带 {"cookie_data": {host: [cookies]}, "update_time": ...} 包裹；
+// cookie_data 存在但为空是合法状态（用户清空了台账），返回空映射而不是报错——
+// 报错会让上层以为「云端内容未知」而放弃推送，把「云端是空的」当成了「云端读不到」。
+// 无包裹层的服务端（部分自建实现）则直接把顶层当 {host: [cookies]}。
+func ParsePayload(plain []byte) (map[string][]CookieEntry, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(plain, &top); err != nil {
 		return nil, fmt.Errorf("parse payload: %w", err)
 	}
-	return payload, nil
+	raw, isWrapped := top["cookie_data"]
+	if !isWrapped {
+		raw = plain
+	}
+	var data map[string][]CookieEntry
+	if err := json.Unmarshal(raw, &data); err != nil {
+		if isWrapped {
+			return nil, fmt.Errorf("parse cookie_data: %w", err)
+		}
+		return nil, fmt.Errorf("parse payload: %w", err)
+	}
+	return data, nil
+}
+
+// VerifyPushProof 校验密文确实由该口令加密：解密成功（PKCS7 填充校验通过）且明文是 JSON 对象。
+// 内置服务端 /update 的写入门禁用它——要的是「对端知道口令」这一证明，而不是
+// 「我们的 cookie 解析器认得这份负载」：拿 DecryptPayload 把关会把解得开、但 cookie 结构
+// 形状陌生的合法客户端一并误判成伪造。要求「是 JSON 对象」是为压掉 CBC+PKCS7 约 1/256
+// 的随机数据碰巧通过填充校验。
+func VerifyPushProof(encryptedB64, uuid, password string) error {
+	plain, err := Decrypt(encryptedB64, DeriveKey(uuid, password))
+	if err != nil {
+		return err
+	}
+	s := strings.TrimLeft(string(plain), " \t\r\n")
+	if s == "" || s[0] != '{' {
+		return fmt.Errorf("payload is not a JSON object")
+	}
+	return nil
 }
 
 // Envelope 是 GET /get/{uuid} 的响应；crypto_type 标记加密格式（老服务端无此字段）。
@@ -275,6 +305,11 @@ type Envelope struct {
 	Encrypted  string `json:"encrypted"`
 	CryptoType string `json:"crypto_type"`
 }
+
+// ErrEmptyPayload 云端该 UUID 还没有任何数据（首次推送前的常态）。
+// 调用方必须把它和「拉取真失败」区分开：前者可以从空 base 开始推送，
+// 后者绝不能——CookieCloud 的 PUT 是整体替换，拿空 base 推等于抹掉云端其它 host。
+var ErrEmptyPayload = errors.New("empty encrypted payload")
 
 // DecodeEnvelope 解析服务器响应并解密为 {host: []CookieEntry}。
 // crypto_type=aes-128-cbc-fixed 时按标准 fixed-IV 格式解；legacy 时限制为 legacy
@@ -286,7 +321,7 @@ func DecodeEnvelope(rawBody []byte, uuid, password string) (map[string][]CookieE
 		return nil, fmt.Errorf("parse envelope: %w", err)
 	}
 	if envelope.Encrypted == "" {
-		return nil, fmt.Errorf("empty encrypted payload")
+		return nil, fmt.Errorf("%w", ErrEmptyPayload)
 	}
 	return DecryptPayload(envelope.Encrypted, uuid, password)
 }

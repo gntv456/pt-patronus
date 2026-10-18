@@ -4,6 +4,8 @@
 import { ref } from 'vue'
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
 import { useI18n } from 'vue-i18n'
+// #405 下载地址来自环境变量/更新接口，仍走协议白名单（收口一致，勿让某处裸绑 href）。
+import { safeUrl } from '@/utils/safeUrl'
 
 const { t } = useI18n()
 import { useUiPrefs, ACCENT_PRESETS } from '@/composables/useUiPrefs'
@@ -215,7 +217,7 @@ function onWallpaperFile(f: File | null) {
         <pre class="update-cmd">{{ updateInfo.instructions }}</pre>
         <el-button size="small" @click="copyUpgradeCmd">{{ t('gp.copyCmd') }}</el-button>
       </template>
-      <el-link v-else-if="updateInfo.downloadUrl" type="primary" :href="updateInfo.downloadUrl" target="_blank">{{
+      <el-link v-else-if="updateInfo.downloadUrl" type="primary" :href="safeUrl(updateInfo.downloadUrl)" target="_blank">{{
         t('gp.downloadUpdate')
       }}</el-link>
     </div>

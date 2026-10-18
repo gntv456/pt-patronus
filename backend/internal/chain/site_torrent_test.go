@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -75,6 +76,39 @@ func TestFetchTorrentFilePasskeyAppend(t *testing.T) {
 	}
 	if !strings.Contains(gotQuery, "passkey=pk-secret-123") {
 		t.Errorf("expected passkey appended, got query %q", gotQuery)
+	}
+}
+
+// TestFetchTorrentFileErrorNoPasskeyLeak 下载请求网络失败时错误文本不得含明文 passkey：
+// *url.Error 携带完整 URL，错误会进容器日志并经 API 回显前端（泄漏即凭证外泄）。
+func TestFetchTorrentFileErrorNoPasskeyLeak(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srvURL := srv.URL
+	srv.Close() // 关闭监听 → 连接被拒 → hc.Get 返回 *url.Error（含请求 URL）
+	ch, sid := setupChainWithSite(t, srvURL, "c_secure_uid=8", "pk-secret-123", "nexusphp")
+
+	_, _, err := ch.FetchTorrentFileByID(context.Background(), sid, srvURL+"/download.php?id=9&passkey=pk-secret-123")
+	if err == nil {
+		t.Fatal("closed server must error")
+	}
+	if strings.Contains(err.Error(), "pk-secret-123") {
+		t.Fatalf("passkey 泄漏进错误文本: %v", err)
+	}
+}
+
+// TestSanitizeURLSecrets 脱敏函数：敏感参数打码、正常 URL 不动。
+func TestSanitizeURLSecrets(t *testing.T) {
+	got := sanitizeURLSecrets(`Get "https://s.org/download.php?id=1&passkey=pk123&x=2": dial tcp`)
+	want := `Get "https://s.org/download.php?id=1&passkey=***&x=2": dial tcp`
+	if got != want {
+		t.Errorf("sanitize:\n got %s\nwant %s", got, want)
+	}
+	if s := sanitizeURLSecrets("https://s.org/index.php?id=1"); s != "https://s.org/index.php?id=1" {
+		t.Errorf("non-secret url changed: %s", s)
+	}
+	// 大写与 api_key 变体
+	if s := sanitizeURLSecrets("?API_KEY=abc"); !strings.Contains(s, "API_KEY=***") {
+		t.Errorf("apikey variant not masked: %s", s)
 	}
 }
 
@@ -230,5 +264,108 @@ func TestApplyFetchedTorrentSkipped(t *testing.T) {
 		if tf.called {
 			t.Errorf("%s: tf should not be called", name)
 		}
+	}
+}
+
+// ── FluxTorrent 下载链（兼容层只认 ?passkey=，凭据包是 JSON Token 串）──
+
+// setupFluxChain 建一个 fluxtorrent schema 的 SiteChain：token 落 APIKey 列，passkey 单独列。
+func setupFluxChain(t *testing.T, baseURL, token, passkey string) (*SiteChain, uint, string) {
+	t.Helper()
+	siteOp := oper.NewSiteOper(newChainDB(t), security.NewCrypto("seed"))
+	s, err := siteOp.Create(oper.SiteInput{
+		Name: "flux", Platform: "fluxtorrent", BaseURL: baseURL, APIKey: token, Passkey: passkey,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch := NewSiteChain(NewBase(module.New(), event.New()), siteOp, site.NewRegistry())
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	ch.SetHTTPClient(hc)
+	return ch, s.ID, s.Definition
+}
+
+// TestFetchTorrentFileFluxTorrentPasskeyOnly 有 passkey：请求补 ?passkey= 且不带任何 Cookie 头
+// （凭据 JSON 当 Cookie 发出去是无效凭据，FluxTorrent 站根本没有 cookie 概念）。
+func TestFetchTorrentFileFluxTorrentPasskeyOnly(t *testing.T) {
+	var gotCookie, gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCookie = r.Header.Get("Cookie")
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/x-bittorrent")
+		_, _ = w.Write(validTorrentFixture)
+	}))
+	defer srv.Close()
+	ch, sid, _ := setupFluxChain(t, srv.URL, "fxo_token_123", "pk-flux-0123456789abcdef")
+
+	content, _, err := ch.FetchTorrentFileByID(context.Background(), sid,
+		srv.URL+"/api/v1/compat/nexusphp/download.php?id=7")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if string(content) != string(validTorrentFixture) {
+		t.Errorf("content mismatch")
+	}
+	if !strings.Contains(gotQuery, "passkey=pk-flux-0123456789abcdef") {
+		t.Errorf("passkey not appended, query=%q", gotQuery)
+	}
+	if gotCookie != "" {
+		t.Errorf("fluxtorrent 下载不得带 Cookie 头，got %q", gotCookie)
+	}
+}
+
+// TestFetchTorrentFileFluxTorrentMissingPasskey 缺 passkey 时报「需要 passkey」的可执行提示，
+// 而不是把它当 cookie 站判成 ErrCookieInvalid（用户看到的「Cookie 失效」对本站毫无意义）。
+func TestFetchTorrentFileFluxTorrentMissingPasskey(t *testing.T) {
+	reqs := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs++
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`<html>unauthorized</html>`))
+	}))
+	defer srv.Close()
+	ch, sid, _ := setupFluxChain(t, srv.URL, "fxo_token_123", "")
+
+	_, _, err := ch.FetchTorrentFileByID(context.Background(), sid,
+		srv.URL+"/api/v1/compat/nexusphp/download.php?id=7")
+	if err == nil {
+		t.Fatal("missing passkey must fail, not silently delegate/download")
+	}
+	if !strings.Contains(err.Error(), "passkey") {
+		t.Errorf("error should point at passkey, got %q", err.Error())
+	}
+	if errors.Is(err, ErrCookieInvalid) {
+		t.Errorf("must not misdiagnose as cookie invalid: %v", err)
+	}
+	if reqs != 0 {
+		t.Errorf("无凭据时不该发请求（本站 passkey 限流 30/min），got %d 次", reqs)
+	}
+}
+
+// TestCredentialFluxTorrentNoToken token 缺失时凭据包仍是 JSON：裸返回 passkey 会被适配器
+// parse 成 Token=passkey，请求头变成 `Authorization: Token <passkey>`，站点回 401 → 用户看到
+// 「未登录」而不是「请填写 API Token」。
+func TestCredentialFluxTorrentNoToken(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	defer srv.Close()
+	ch, sid, _ := setupFluxChain(t, srv.URL, "", "pk-flux-0123456789abcdef")
+	s, err := ch.sites.Get(sid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	def := site.EnsureDefaults(&site.SiteMetadata{ID: "fluxtorrent", Schema: "fluxtorrent"})
+	cred, cerr := ch.credentialWithErr(s, def)
+	if cerr != nil {
+		t.Fatalf("credentialWithErr: %v", cerr)
+	}
+	var pkg map[string]string
+	if err := json.Unmarshal([]byte(cred), &pkg); err != nil {
+		t.Fatalf("cred must be JSON pkg (bare passkey would be parsed as Token), got %q: %v", cred, err)
+	}
+	if pkg["token"] != "" {
+		t.Errorf("token = %q, want empty", pkg["token"])
+	}
+	if pkg["passkey"] != "pk-flux-0123456789abcdef" {
+		t.Errorf("passkey = %q", pkg["passkey"])
 	}
 }

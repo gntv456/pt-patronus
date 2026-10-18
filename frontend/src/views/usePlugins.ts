@@ -44,6 +44,7 @@ import {
   defaultsFromSchema,
   fmtTime,
 } from './pluginsHelpers'
+import { pluginLogsNotice } from './pluginLogsAccount'
 import { hostCapabilityLabel, hostCapabilityDescription } from './pluginsLabels'
 import { usePluginAudit } from './usePluginAudit'
 import { usePluginLifecycle } from './usePluginLifecycle'
@@ -84,7 +85,6 @@ export function usePlugins(options: UsePluginsOptions) {
   const actionInputText = ref('{}')
   const actionOutput = ref('')
   const actionRunning = ref(false)
-
 
   const pluginSearch = ref('')
   const marketSearch = ref('')
@@ -149,7 +149,11 @@ export function usePlugins(options: UsePluginsOptions) {
   async function loadLogs() {
     logsLoading.value = true
     try {
-      logs.value = await pluginApi.logs(logPlugin.value, 120)
+      const page = await pluginApi.logsPage(logPlugin.value, 120)
+      logs.value = page.logs
+      // 单页封顶 500：被截断时说出来，否则更早的插件日志（含报错那些）在界面上不存在。
+      const notice = pluginLogsNotice({ shown: page.logs.length, total: page.total, truncated: page.truncated })
+      if (notice) ElMessage.warning(notice)
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '加载插件日志失败')
     } finally {
@@ -163,8 +167,10 @@ export function usePlugins(options: UsePluginsOptions) {
   }
 
   // 审计面板（日志+发布历史+回滚）拆出 usePluginAudit
-  const { auditVisible, auditTarget, auditLogs, auditReleases, auditLoading, rollbacking, openAudit, triggerRollback } =
-    usePluginAudit({ reload: load })
+  const {
+    auditVisible, auditTarget, auditLogs, auditLogsNotice, auditReleases,
+    auditLoading, rollbacking, openAudit, triggerRollback,
+  } = usePluginAudit({ reload: load })
 
   onMounted(load)
 
@@ -341,6 +347,7 @@ export function usePlugins(options: UsePluginsOptions) {
     auditVisible,
     auditTarget,
     auditLogs,
+    auditLogsNotice,
     auditReleases,
     auditLoading,
     rollbacking,

@@ -38,10 +38,10 @@ func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var subscription models.RssSubscription
 		if err := decodeToolInput(a, &subscription); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		if subscription.Name == "" || subscription.URL == "" {
-			return nil, fmt.Errorf("name and url are required")
+			return nil, fmt.Errorf("缺少必填参数：name（名称）与 url（路径）都不能为空")
 		}
 		if subscription.IntervalMin <= 0 {
 			subscription.IntervalMin = 30
@@ -55,15 +55,15 @@ func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		subscription, err := rss.Get(uint(argInt(a, "id")))
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		id, createdAt, lastCheckedAt := subscription.ID, subscription.CreatedAt, subscription.LastCheckedAt
 		if err := decodeToolInput(a, subscription); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		subscription.ID, subscription.CreatedAt, subscription.LastCheckedAt = id, createdAt, lastCheckedAt
 		if err := rss.Update(subscription); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return subscription, nil
 	})
@@ -73,7 +73,7 @@ func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := rss.Delete(uint(argInt(a, "id")))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "rss_items", Category: "rss", Permission: "rss:read",
@@ -90,11 +90,11 @@ func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		r, err := rss.Get(uint(argInt(a, "id")))
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		n, err := rss.Check(ctx, r)
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return map[string]any{"checked": n}, nil
 	})
@@ -130,7 +130,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp("")}, []string{"storage_id", "path"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Mkdir(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""))
-		return okCount("created", 1, err)
+		return okCount("created", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "file_rename", Category: "file", Permission: "file:write",
@@ -138,7 +138,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp(""), "new_name": strProp("")}, []string{"storage_id", "path", "new_name"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Rename(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""), argString(a, "new_name", ""))
-		return okCount("renamed", 1, err)
+		return okCount("renamed", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "file_move", Category: "file", Permission: "file:write",
@@ -146,7 +146,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "source": strProp(""), "destination_dir": strProp("")}, []string{"storage_id", "source", "destination_dir"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Move(ctx, uint(argInt(a, "storage_id")), argString(a, "source", ""), argString(a, "destination_dir", ""))
-		return okCount("moved", 1, err)
+		return okCount("moved", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "file_copy", Category: "file", Permission: "file:write",
@@ -154,7 +154,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "source": strProp(""), "destination_dir": strProp("")}, []string{"storage_id", "source", "destination_dir"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Copy(ctx, uint(argInt(a, "storage_id")), argString(a, "source", ""), argString(a, "destination_dir", ""))
-		return okCount("copied", 1, err)
+		return okCount("copied", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "file_test", Category: "file", Permission: "file:read",
@@ -162,7 +162,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp("")}, []string{"storage_id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		if err := fc.Test(ctx, uint(argInt(a, "storage_id"))); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return map[string]any{"ok": true}, nil
 	})
@@ -172,7 +172,7 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp("")}, []string{"storage_id", "path"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Delete(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	// TODO(file_upload/file_download): 二进制流，不适合 JSON RPC；后续可走 multipart 端点。
 }
@@ -197,10 +197,10 @@ func registerWorkflowTools(reg *plugins.HostToolRegistry, wf *chain.WorkflowChai
 	reg.Register(plugins.HostTool{
 		Name: "workflow_run", Category: "workflow", Permission: "workflow:write",
 		Description: "Run a workflow by id with a trigger and optional event data.",
-		InputSchema: objSchema(map[string]any{"id": intProp(""), "trigger": strProp("manual | api"), "event_data": map[string]any{"type": "object"}}, []string{"id"}),
+		InputSchema: objSchema(map[string]any{"id": intProp(""), "trigger": strProp("provenance recorded in run history; default api; e.g. manual | api | webhook | timer"), "event_data": map[string]any{"type": "object"}}, []string{"id"}),
 		Timeout:     60 * time.Second,
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		data, _ := a["event_data"].(map[string]any)
-		return wf.Run(ctx, uint(argInt(a, "id")), argString(a, "trigger", "api"), data)
+		return wf.Run(ctx, uint(argInt(a, "id")), runTrigger(a, "api"), data)
 	})
 }

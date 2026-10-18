@@ -55,6 +55,18 @@ func isSeasonPackTitle(title string) bool {
 	return pack
 }
 
+// interestedMovie 电影洗版门控（与 interestedEpisode 的「未记录过 → 放行首版」同语义）。
+//   - pri>0：候选画质等级须严格优于已记录的最优 currentPriority；
+//   - pri<=0：没有画质信息（未配过滤规则组时 ranked 的 PriOrder 全为 0）——此时只有该订阅
+//     还没推过任何种子才放行首版建立基线。旧实现只有 `pri <= currentPriority → continue`，
+//     于是勾了「优先最佳版本」却没配规则组的电影订阅一条都不下、也不通知。
+func interestedMovie(currentPriority, pri int, hasBaseline bool) bool {
+	if pri <= 0 {
+		return !hasBaseline
+	}
+	return pri > currentPriority
+}
+
 // interestedEpisode 报告候选（画质=pri）是否对该订阅的剧集进度有改善。
 //   - 单集 keys：任一集当前 PriOrder < pri（或该集首次出现）→ 感兴趣；
 //   - 整季包 seasonPack：从未见过任何集 OR pri 高于已见最弱集 → 感兴趣。

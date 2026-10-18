@@ -14,6 +14,9 @@ services:
     ports:
       - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
     environment:
+      # 定时任务表达式按容器本地时区解释；不设 TZ 时容器是 UTC，「0 8 * * *」会晚 8 小时才跑。
+      # 设置 → 调度频率 会显示当前生效时区与下次执行时间。
+      TZ: ${TZ:-Asia/Shanghai}
       # APP_ENV 必填：触发 release 模式 + 密钥自动生成 + 生产安全限制。
       # 其余（好学站 www.hxpt.org、数据库 SQLite、cron、限流…）全用后端默认，不用写。
       APP_ENV: release
@@ -32,6 +35,9 @@ services:
       # agent 自动更新：最新版本号 + 下载地址（含 {arch} 占位）
       AGENT_LATEST_VERSION: 0.3.1
       AGENT_DOWNLOAD_URL: https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}
+      # agent 自更新的 sha256：留空则点「升级」必失败——agent 侧拒绝无校验的二进制替换（供应链防线）。
+      # 下载地址按 {arch} 展开，各架构哈希不同：多架构机群写成「amd64=<hex> arm64=<hex>」，agent 取本机那条。
+      AGENT_CHECKSUM: ""
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
 

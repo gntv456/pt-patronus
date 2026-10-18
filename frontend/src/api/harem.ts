@@ -61,7 +61,12 @@ export const haremApi = {
       `/api/v1/harem/stream${refresh ? '?refresh=1' : ''}`,
       (event, data) => {
         if (event === 'batch' && data?.results?.length) onItem((data.results as PrescriptionItem[])[0])
-        else if (event === 'done' && data?.overview) onOverview(data.overview as HaremOverview)
+        else if (event === 'done') {
+          // 清单读不出与「一个站都没有」不能同形：后端在 done 帧带 list_error，
+          // 这里 throw 给视图既有的 catch 弹原文（否则后宫页是一片空态 +「加载完成」）。
+          if (data?.list_error) throw new Error(data.list_error as string)
+          if (data?.overview) onOverview(data.overview as HaremOverview)
+        }
       },
       signal,
     ),

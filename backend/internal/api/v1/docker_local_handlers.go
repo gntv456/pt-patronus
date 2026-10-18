@@ -1,8 +1,13 @@
 package v1
 
 import (
+	"errors"
+	"fmt"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"io/fs"
 	"net/http"
+	"strings"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,7 +46,7 @@ func (h *DockerHandler) LocalList(c *gin.Context) {
 	}
 	resp, err := h.local.LocalList(c.Request.Context())
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -55,7 +60,9 @@ func (h *DockerHandler) LocalStats(c *gin.Context) {
 	}
 	rows, err := h.local.LocalStats(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"stats": []dockerStatsRow{}})
+		// 从前这里回 200 + {"stats":[]}：引擎不可达被渲染成「没有容器在跑」，与真的零读数同形
+		//（2026-10-14 隔离实例实测两次都是 200 空数组，而 /local/list 同一次请求里是 503）。
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"stats": rows})
@@ -74,7 +81,7 @@ func (h *DockerHandler) LocalInspect(c *gin.Context) {
 	}
 	ct, err := h.local.LocalInspect(c.Request.Context(), name)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, ct)
@@ -103,7 +110,7 @@ func (h *DockerHandler) LocalLogs(c *gin.Context) {
 	}
 	logs, err := h.local.LocalLogs(c.Request.Context(), name, tail)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
@@ -128,8 +135,8 @@ func (h *DockerHandler) LocalContainerAction(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
-	if err := h.local.LocalContainerAction(c.Request.Context(), name, action); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalContainerAction(detachedAction(c.Request.Context()), name, action); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -154,8 +161,8 @@ func (h *DockerHandler) LocalRemove(c *gin.Context) {
 		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
-	if err := h.local.LocalRemove(c.Request.Context(), name, true); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalRemove(detachedAction(c.Request.Context()), name, true); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -178,8 +185,8 @@ func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
-	if err := h.local.LocalRemoveImage(c.Request.Context(), ref); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalRemoveImage(detachedAction(c.Request.Context()), ref); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -196,9 +203,9 @@ func (h *DockerHandler) LocalPull(c *gin.Context) {
 		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return
 	}
-	progress, err := h.local.LocalPull(c.Request.Context(), ref)
+	progress, err := h.local.LocalPull(detachedAction(c.Request.Context()), ref)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "progress": progress})
@@ -219,9 +226,9 @@ func (h *DockerHandler) LocalPrune(c *gin.Context) {
 		return
 	}
 	typ := c.DefaultQuery("type", "image")
-	result, err := h.local.LocalPruneResult(c.Request.Context(), typ)
+	result, err := h.local.LocalPruneResult(detachedAction(c.Request.Context()), typ)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
@@ -241,8 +248,8 @@ func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	if err := h.local.LocalVolumeCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalVolumeCreate(detachedAction(c.Request.Context()), in.Name, in.Driver); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -266,8 +273,8 @@ func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
 		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
-	if err := h.local.LocalVolumeRemove(c.Request.Context(), name, true); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalVolumeRemove(detachedAction(c.Request.Context()), name, true); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -287,8 +294,8 @@ func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	if err := h.local.LocalNetworkCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalNetworkCreate(detachedAction(c.Request.Context()), in.Name, in.Driver); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -311,9 +318,54 @@ func (h *DockerHandler) LocalNetworkRemove(c *gin.Context) {
 		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
-	if err := h.local.LocalNetworkRemove(c.Request.Context(), name); err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	if err := h.local.LocalNetworkRemove(detachedAction(c.Request.Context()), name); err != nil {
+		h.respondLocalErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// respondLocalErr 是本机 Docker 各出口的统一判据：引擎根本不在（拨不通/套接字不存在）
+// 回 503 + 实际地址 + 「先启动 Docker / 设 DOCKER_HOST」，其余错误才回 502「请稍后重试」。
+// 以前 12 个出口各自抄了一遍 BadGateway——面板开着时 Docker 退出，用户点「停止/删除/看日志」
+// 只会拿到一句永远不会实现的「等一等」，而唯一的出路（启动引擎）一个字都没提（#240 同轴）。
+func (h *DockerHandler) respondLocalErr(c *gin.Context, err error) {
+	if dockerEngineUnavailable(err) {
+		e := errcode.DockerEngineUnavailable.WithErr(err)
+		e.Message = fmt.Sprintf("%s（实际连接地址：%s）", e.Message, h.local.endpoint())
+		errcode.Respond(c, e)
+		return
+	}
+	errcode.Respond(c, errcode.BadGateway.WithErr(err))
+}
+
+// dockerEngineUnavailable 判断本机 Docker 客户端的错误是不是「引擎根本不在」：
+// 命名管道/套接字不存在、连接被拒、明确说 daemon 没跑。这些都是**重试不会自愈**的状态，
+// 必须回 503 + 指名「先启动 Docker」，而不是 502「本次服务不可用，请稍后重试」。
+// 「引擎答了但这次失败」（4xx/5xx、载荷解析不了）仍走 BadGateway，那条文案才谈得上重试。
+func dockerEngineUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	msg := err.Error()
+	low := strings.ToLower(msg)
+	for _, s := range []string{
+		"cannot find the file", "cannot find the path", "no such file or directory",
+		"connection refused", "econnrefused", "docker daemon", "docker desktop",
+		// Windows 原生运行时拨 unix 套接字的真实失败形态（2026-10-13 冒烟实测）：
+		// dial unix /var/run/docker.sock: connect: A socket operation encountered a dead network.
+		// 只收整句：单独的 "not supported" 会把引擎真答回来的 400「operation is not supported」
+		// 也读成「引擎不在」，给已经在跑的引擎贴上「请先启动 Docker」。
+		"dead network", "target machine actively refused",
+		"address family not supported", "protocol not supported",
+		"系统找不到指定的文件", "系统找不到指定的路径", "\\\\.\\pipe\\docker_engine",
+	} {
+		if strings.Contains(msg, s) || strings.Contains(low, strings.ToLower(s)) {
+			return true
+		}
+	}
+	return false
 }

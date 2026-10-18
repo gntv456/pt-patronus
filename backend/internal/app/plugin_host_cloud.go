@@ -31,7 +31,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var in oper.CloudDriveInput
 		if err := decodeToolInput(a, &in); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return cl.Create(in)
 	})
@@ -42,7 +42,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var in oper.CloudDriveInput
 		if err := decodeToolInput(a, &in); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return cl.Update(uint(argInt(a, "id")), in)
 	})
@@ -52,7 +52,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := cl.Delete(uint(argInt(a, "id")))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_test", Category: "cloud", Permission: "cloud:read",
@@ -61,7 +61,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		message, err := cl.Test(ctx, uint(argInt(a, "id")))
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return map[string]any{"ok": true, "message": message}, nil
 	})
@@ -97,7 +97,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var in oper.StrmRuleInput
 		if err := decodeToolInput(a, &in); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return cl.CreateRule(in)
 	})
@@ -108,7 +108,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var in oper.StrmRuleInput
 		if err := decodeToolInput(a, &in); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return cl.UpdateRule(uint(argInt(a, "id")), in)
 	})
@@ -118,7 +118,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := cl.DeleteRule(uint(argInt(a, "id")))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_records", Category: "cloud", Permission: "cloud:read",
@@ -133,7 +133,7 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := cl.DeleteRecord(uint(argInt(a, "id")))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_generate_strm", Category: "cloud", Permission: "cloud:write",
@@ -145,11 +145,12 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_generate_all", Category: "cloud", Permission: "cloud:write",
-		Description: "Generate .strm files for all enabled rules (async on the host).",
+		Description: "Generate .strm files for all enabled rules; returns the cross-rule summary (rules/generated/failed).",
 		InputSchema: noArgsSchema(),
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
-		go cl.GenerateAll(context.Background())
-		return map[string]any{"ok": true}, nil
+		// 原先 go + {ok:true}：所有规则都失败（凭据过期、目录不存在）也叫成功，插件据此认为 .strm 已落地。
+		// 同步跑完并回汇总；超时由 host 的工具超时兜底，比假成功可信。
+		return cl.GenerateAll(ctx), nil
 	})
 }
 
@@ -178,16 +179,16 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		var task models.BrushFlowTask
 		if err := decodeToolInput(a, &task); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		if task.Name == "" || task.SiteID == 0 || task.DownloaderID == 0 {
-			return nil, fmt.Errorf("name/site_id/downloader_id are required")
+			return nil, fmt.Errorf("缺少必填参数：name、site_id、downloader_id 都不能为空")
 		}
 		if task.MaxSeeds <= 0 {
 			task.MaxSeeds = 10
 		}
 		if err := bf.CreateTask(&task); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return task, nil
 	})
@@ -198,17 +199,17 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		task, err := bf.GetTask(uint(argInt(a, "id")))
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		id, totalAdded, totalDeleted, totalUpload := task.ID, task.TotalAdded, task.TotalDeleted, task.TotalUpload
 		createdAt, lastSelectAt, lastSweepAt, lastError := task.CreatedAt, task.LastSelectAt, task.LastSweepAt, task.LastError
 		if err := decodeToolInput(a, task); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		task.ID, task.TotalAdded, task.TotalDeleted, task.TotalUpload = id, totalAdded, totalDeleted, totalUpload
 		task.CreatedAt, task.LastSelectAt, task.LastSweepAt, task.LastError = createdAt, lastSelectAt, lastSweepAt, lastError
 		if err := bf.UpdateTask(task); err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return task, nil
 	})
@@ -218,7 +219,7 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := bf.DeleteTask(uint(argInt(a, "id")))
-		return okCount("deleted", 1, err)
+		return okCount("deleted", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "brushflow_task_get", Category: "brushflow", Permission: "brushflow:read",
@@ -236,19 +237,19 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 	})
 	reg.Register(plugins.HostTool{
 		Name: "brushflow_run_select", Category: "brushflow", Permission: "brushflow:write",
-		Description: "Manually trigger seed selection of a brush-flow task.",
+		Description: "Manually trigger seed selection of a brush-flow task. Fails if the task is disabled (a disabled task does nothing).",
 		InputSchema: objSchema(map[string]any{"task_id": intProp("")}, []string{"task_id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
-		err := bf.RunSelect(ctx, uint(argInt(a, "task_id")))
-		return okCount("selected", 1, err)
+		// 与 agent 面共用：未启用要失败，跑完要把任务诊断带回，
+		// 否则 okCount(...,1,nil) 把空跑说成「已选种」。
+		return brushflowRunOutcome(ctx, bf, uint(argInt(a, "task_id")), "select", "selected", bf.RunSelect)
 	})
 	reg.Register(plugins.HostTool{
 		Name: "brushflow_run_sweep", Category: "brushflow", Permission: "brushflow:write",
-		Description: "Manually trigger sweep (delete) of a brush-flow task.",
+		Description: "Manually trigger sweep (delete) of a brush-flow task. Fails if the task is disabled (a disabled task deletes nothing).",
 		InputSchema: objSchema(map[string]any{"task_id": intProp("")}, []string{"task_id"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
-		err := bf.RunSweep(ctx, uint(argInt(a, "task_id")))
-		return okCount("swept", 1, err)
+		return brushflowRunOutcome(ctx, bf, uint(argInt(a, "task_id")), "sweep", "swept", bf.RunSweep)
 	})
 }
 

@@ -161,8 +161,9 @@ func TestSSHCommandValidationAndExecution(t *testing.T) {
 	}
 }
 
-// TestNilSafeNodesReturnSuccess 两个 nil 守卫/空输入节点：不 panic 且返回 nil。
-func TestNilSafeNodesReturnSuccess(t *testing.T) {
+// TestNilSafeNodesContract 两个 nil 依赖节点的口径：add_download 空输入是「无事可做」→ 成功；
+// send_message 缺通知服务是「发不出去」→ 必须失败，不能记成成功。
+func TestNilSafeNodesContract(t *testing.T) {
 	// add_download：downloader_id>0 绕开 dlOp，空 Torrents 不触发 dlCh.Add → 成功无副作用。
 	ecx := &workflow.Context{}
 	if err := NewAddDownloadNode(nil, nil).Execute(context.Background(),
@@ -170,11 +171,20 @@ func TestNilSafeNodesReturnSuccess(t *testing.T) {
 		t.Fatalf("add_download 空 Torrents 应成功: %v", err)
 	}
 
-	// send_message：notice==nil 守卫，恒返回 nil。
+	// send_message：notice==nil 时**不能**静默跳过——旧口径「恒返回 nil」把「什么都没发」
+	// 记成工作流成功，且与同文件 send_notification 的「通知服务未初始化」报错自相矛盾。
+	// 现在两个通知节点同一口径：缺依赖 = 节点失败（见 TestNilDepNodesGuarded）。
 	ecx2 := &workflow.Context{}
-	if err := NewSendMessageNode(nil).Execute(context.Background(),
-		map[string]any{"title": "", "body": "x", "level": "info"}, ecx2); err != nil {
-		t.Fatalf("send_message nil notice 应成功: %v", err)
+	err := NewSendMessageNode(nil).Execute(context.Background(),
+		map[string]any{"title": "", "body": "x", "level": "info"}, ecx2)
+	if err == nil {
+		t.Fatal("send_message nil notice 应报错，不能记成已发送")
+	}
+	if !strings.Contains(err.Error(), "未初始化") {
+		t.Errorf("错误要与 send_notification 同口径，got %q", err.Error())
+	}
+	if len(ecx2.Messages) != 0 {
+		t.Errorf("没发出去就不该写「已发送通知」运行日志，got %v", ecx2.Messages)
 	}
 }
 
@@ -240,4 +250,3 @@ func TestDlMgmtNodesGuardedOnNilDep(t *testing.T) {
 		t.Fatalf("add_tracker nil dlCh/dlOp 应报「下载器服务未初始化」, got %v", err)
 	}
 }
-

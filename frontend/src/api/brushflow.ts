@@ -75,5 +75,14 @@ export const brushflowApi = {
       if (r.data && r.data.ok === false) throw new Error(r.data.error || 'sweep failed')
       return r.data
     }),
-  seeds: (id: number) => http.get<{ seeds: BrushFlowSeed[] }>(`/brushflow/${id}/seeds`).then((r) => r.data.seeds ?? []),
+  seeds: (id: number) =>
+    http
+      .get<{ seeds: BrushFlowSeed[]; total?: number; limit?: number; truncated?: boolean }>(`/brushflow/${id}/seeds`)
+      .then((r) => ({
+        seeds: r.data.seeds ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? 0,
+        // 缺字段按「可能被截断」处理：单页 500 条封顶，别把一页说成全部加入历史。
+        truncated: r.data.truncated ?? true,
+      })),
 }

@@ -109,10 +109,22 @@ export interface SiteRequestResult {
   error?: string
 }
 
+// 站点定义诊断（后端 internal/site 的 DefinitionDiagnostic）：四类「配置被静默忽略」。
+// kind 新增值时前端映射表要同步（utils/siteDefinitionDiag.ts），否则界面会退到「其它」。
+export interface DefinitionDiagnostic {
+  kind: string
+  site?: string
+  file?: string
+  detail: string
+}
+
 export const siteApi = {
   list: () => http.get<{ sites: Site[] }>('/sites').then((r) => r.data.sites ?? []),
   definitions: () => http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
-  create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
+  // 站点定义诊断（独立端点：只有几十条，不必重读 300+ 条定义）。
+  // 读失败不在这里吞掉——交回调用方决定怎么出声（#292/#317 同族教训）。
+  definitionDiagnostics: () =>
+    http.get<{ diagnostics?: DefinitionDiagnostic[] }>('/sites/definition-diagnostics').then((r) => r.data.diagnostics ?? []),  create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
   // 站点硬删不可恢复（凭据随之失），后端要求 confirm_risk 二次确认（UI 已有弹窗）。
   remove: (id: number) => http.delete(`/sites/${id}`, { data: { confirm_risk: true } }).then((r) => r.data),
@@ -130,7 +142,11 @@ export const siteApi = {
       '/api/v1/sites/status/stream',
       (event, data) => {
         if (event === 'status') onStatus(data as SiteConnectivityStatus)
-        else if (event === 'done') onDone?.()
+        else if (event === 'done') {
+          // list_error=站点清单读失败（0 帧 status），throw 留痕给视图 catch 弹错
+          if (data?.list_error) throw new Error(data.list_error)
+          onDone?.()
+        }
       },
       signal,
     ),
@@ -144,16 +160,33 @@ export const siteApi = {
         timeout: 0,
       })
       .then((r) => r.data.sites ?? []),
+  // 后端「站点清单读不出来」时会回 {results: [], list_error:'原因'}：
+  // 只取 results 就把它讲成「没有启用的站点」（#258），所以整份信封交回调用方判。
   checkinAll: () =>
     http
-      .post<{ results: CheckinResult[] }>('/sites/checkin', undefined, { timeout: checkinAllTimeout })
-      .then((r) => r.data.results ?? []),
+      .post<{ results?: CheckinResult[]; list_error?: string }>('/sites/checkin', undefined, {
+        timeout: checkinAllTimeout,
+      })
+      .then((r) => ({ results: r.data.results ?? [], listError: r.data.list_error ?? '' })),
   records: (siteId?: number, limit = 100, offset = 0) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
     if (siteId) params.set('site_id', String(siteId))
     return http
-      .get<{ records: CheckinRecord[] }>(`/sites/checkin/records?${params.toString()}`)
-      .then((r) => r.data.records ?? [])
+      .get<{
+        records: CheckinRecord[]
+        total?: number
+        limit?: number
+        offset?: number
+        truncated?: boolean
+      }>(`/sites/checkin/records?${params.toString()}`)
+      .then((r) => ({
+        records: r.data.records ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? limit,
+        offset: r.data.offset ?? offset,
+        // 缺字段按「可能被截断」处理：不把这一页说成「签到史到此为止」。
+        truncated: r.data.truncated ?? true,
+      }))
   },
   search: (id: number, keyword: string) =>
     http

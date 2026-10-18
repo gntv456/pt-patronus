@@ -35,6 +35,7 @@ const {
   showConfig,
   cfg,
   cloudDrives,
+  cfgLoadFailed,
   showDirwatch,
   dwSaving,
   dwForm,
@@ -246,9 +247,9 @@ const {
         </el-table>
         <EmptyState
           v-if="!loading && !filtered.length"
-          icon="files"
+          icon="📁"
           :title="t('transfer.noRecords')"
-          :sub="t('transfer.noRecordsSub')"
+          :description="t('transfer.noRecordsSub')"
         />
       </div>
     </div>
@@ -260,6 +261,7 @@ const {
       v-model:skip-str="skipStr"
       :cloud-drives="cloudDrives"
       :downloaders="downloaders"
+      :load-failed="cfgLoadFailed"
       :saving-cfg="savingCfg"
       :rename-vars="renameVars"
       :preview-rename="previewRename"

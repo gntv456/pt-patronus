@@ -62,15 +62,17 @@ func (n *NexusPHP) Search(ctx context.Context, def *site.SiteMetadata,
 	if err != nil {
 		return nil, err
 	}
+	// 5xx / CF 页解析出来是「零条种子」，与「这个关键词没结果」在返回值上无法区分——
+	// 跨站搜索会把故障站渲染成「该站无匹配」。
+	if err := guardHTMLResp(resp, baseURL, u); err != nil {
+		return nil, err
+	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
-	}
-	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
 	}
 	return site.ParseSearch(doc, def, baseURL), nil
 }

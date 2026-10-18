@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -39,6 +40,9 @@ type composeProjectListResp struct {
 	Projects  []composeProject `json:"projects"`
 	ScanDir   string           `json:"scan_dir"`
 	Available bool             `json:"available"` // 扫描目录是否可访问
+	// ScanError 是「这次扫描不完整」的账面：读不出根、或某个项目的 compose 文件读不出来时，
+	// 界面必须说出来。从前这些失败只表现为 available=false 或列表少几条，看起来像一次正常扫描。
+	ScanError string `json:"scan_error,omitempty"`
 }
 
 // composeFileNames 按优先级查找 compose 文件名。
@@ -64,8 +68,22 @@ func (h *LocalComposeHandler) ScanProjects(c *gin.Context) {
 	resp := composeProjectListResp{Projects: []composeProject{}, ScanDir: root}
 
 	info, err := os.Stat(root)
-	if err != nil || !info.IsDir() {
+	if err == nil && !info.IsDir() {
+		err = fmt.Errorf("%s 不是目录", root)
+	}
+	if err != nil {
 		resp.Available = false
+		resp.ScanError = fmt.Sprintf("compose 扫描根 %s 读不出来：%s（请确认容器启动时把宿主机目录挂到这里）", root, err)
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+	// 根清单只读一次：从前 Stat 成功后又 ReadDir 并在 err==nil 才扫嵌套层，
+	// 那次 ReadDir 的失败被整个丢掉——界面仍显示 available:true 和「N 个项目」，
+	// 少掉的那几层无从发现（同一个判定抄两遍必然漂移，这里合成一次）。
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		resp.Available = false
+		resp.ScanError = fmt.Sprintf("compose 扫描根 %s 列目录失败：%s", root, err)
 		c.JSON(http.StatusOK, resp)
 		return
 	}
@@ -73,26 +91,29 @@ func (h *LocalComposeHandler) ScanProjects(c *gin.Context) {
 
 	// 扫描直接子目录 + 根目录
 	var found []composeProject
-	scanOneLevel(root, &found)
-	entries, err := os.ReadDir(root)
-	if err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			sub := filepath.Join(root, e.Name())
-			scanOneLevel(sub, &found)
+	var unreadable []string
+	scanOneLevel(root, &found, &unreadable)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
 		}
+		scanOneLevel(filepath.Join(root, e.Name()), &found, &unreadable)
 	}
 
 	// 按名称排序
 	sort.Slice(found, func(i, j int) bool { return found[i].Name < found[j].Name })
 	resp.Projects = found
+	if len(unreadable) > 0 {
+		resp.ScanError = fmt.Sprintf("%d 个项目目录的 compose 文件读不出来，已从列表隐藏：%s",
+			len(unreadable), strings.Join(unreadable, "、"))
+	}
 	c.JSON(http.StatusOK, resp)
 }
 
 // scanOneLevel 扫描单个目录，若含 compose 文件则加入列表。
-func scanOneLevel(dir string, out *[]composeProject) {
+// 文件存在但读不出来时把项目名记进 unreadable：从前直接 return，项目在界面上
+// 凭空消失，「这个根里没有项目」与「有但读不出」完全无法区分。
+func scanOneLevel(dir string, out *[]composeProject, unreadable *[]string) {
 	name := findComposeFile(dir)
 	if name == "" {
 		return
@@ -100,6 +121,7 @@ func scanOneLevel(dir string, out *[]composeProject) {
 	fullPath := filepath.Join(dir, name)
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
+		*unreadable = append(*unreadable, filepath.Base(dir))
 		return
 	}
 	// 列表时内容截断到 200 字符
@@ -107,10 +129,12 @@ func scanOneLevel(dir string, out *[]composeProject) {
 	if len(preview) > 200 {
 		preview = preview[:200] + "..."
 	}
-	// 推算宿主机路径：/host/compose/xxx → /opt/xxx
+	// 推算宿主机路径：扫描根下的 xxx → $COMPOSE_ROOT/xxx。根目录取 composeScanDir()
+	// 而不是写死 /host/compose：运维用 COMPOSE_SCAN_DIR 换过挂载点时，写死前缀会让
+	// 每个项目的「宿主机路径」原样显示容器内路径（用户照着它去宿主机找不到文件）。
 	hostDir := dir
-	if strings.HasPrefix(dir, "/host/compose") {
-		rest := strings.TrimPrefix(dir, "/host/compose")
+	if root := strings.TrimSuffix(filepath.ToSlash(composeScanDir()), "/"); root != "" && strings.HasPrefix(filepath.ToSlash(dir), root) {
+		rest := strings.TrimPrefix(filepath.ToSlash(dir), root)
 		hostDir = os.Getenv("COMPOSE_ROOT")
 		if hostDir == "" {
 			hostDir = "/opt"
@@ -125,6 +149,20 @@ func scanOneLevel(dir string, out *[]composeProject) {
 		Content: preview,
 		HostDir: hostDir,
 	})
+}
+
+// composeOutputFunc 执行已构造好的 *exec.Cmd 并带回合并输出（LocalComposeHandler.output 的形状）。
+type composeOutputFunc func(ctx context.Context, cmd *exec.Cmd) (string, error)
+
+// runCompose 是本机 compose 唯一的执行出口：默认直接 CombinedOutput，单测换成替身即可
+// 抓住传给 exec 的 context。放在 scan 文件里是因为本机 compose 的两条 exec 出口都在
+// runComposeCLI*，改状态动作的上下文解绑（detachedAction）也要在这里被证伪。
+func (h *LocalComposeHandler) runCompose(ctx context.Context, cmd *exec.Cmd) (string, error) {
+	if h.output != nil {
+		return h.output(ctx, cmd)
+	}
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
 
 // composeDirWithin 校验 dir（clean 后）位于扫描根内。不能用裸 HasPrefix：
@@ -201,7 +239,9 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Minute)
+	// compose 项目动作（up/down/restart/pull）由 CLI 逐步编排：客户端一断开就取消上下文
+	// 会把工程做一半（容器/网络建了一半），与 localComposeUp/Down 同一个口径处理。
+	ctx, cancel := context.WithTimeout(detachedAction(c.Request.Context()), 5*time.Minute)
 	defer cancel()
 	out, err := h.runComposeCLIWithFlags(ctx, in.Dir, "", subArgs)
 	if err != nil {

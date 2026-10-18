@@ -235,7 +235,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 			// 网络不可达（临时性）。前者标 ssrf，后者标 unreachable，避免把「站点域名解析不了」
 			// 误报成 SSRF 拦截，误导排障（如 hhanclub.top/lemonhd.club 域名失效被显示为 ssrf）。
 			if errors.Is(err, ErrBlocked) {
-				return nil, fmt.Errorf("ssrf: %w", err)
+				return nil, err
 			}
 			return nil, fmt.Errorf("unreachable: %w", err)
 		}
@@ -319,7 +319,7 @@ func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (
 	if !c.allowPrivate {
 		if err := c.assertPublicWithRetry(rawURL); err != nil {
 			if errors.Is(err, ErrBlocked) {
-				return nil, fmt.Errorf("ssrf: %w", err)
+				return nil, err
 			}
 			return nil, fmt.Errorf("unreachable: %w", err)
 		}

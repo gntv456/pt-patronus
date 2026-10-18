@@ -241,3 +241,62 @@ func TestToFileInputsAppliesRemotePathMapping(t *testing.T) {
 		t.Fatalf("mapped files = %+v", got)
 	}
 }
+
+// TestTransferProcessTorrentSkipsWhenHistoryDBUnreadable SuccessExistsByHash 查询出错时
+// 必须跳过本轮（旧实现吞错继续：已成功种子被重跑，引擎写「target exists」假失败行）。
+func TestTransferProcessTorrentSkipsWhenHistoryDBUnreadable(t *testing.T) {
+	chain, db := newTransferDeepChain(t, media.MediaInfo{
+		Source: "tmdb", SourceID: "movie:9", Title: "DB Fail", Year: 2026, Type: media.TypeMovie,
+	})
+	srcDir := t.TempDir()
+	src := filepath.Join(srcDir, "DB.Fail.2026.1080p.mkv")
+	if err := os.WriteFile(src, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dl := &transferDeepDownloader{files: []downloader.TorrentFile{{Name: filepath.Base(src), Size: 5}}}
+	torrent := &downloader.Torrent{Hash: "hash-dbfail", Name: filepath.Base(src), SavePath: srcDir, Category: "subscribe", State: "completed", CompletedAt: time.Now()}
+
+	// 首次正常整理成功（写入 success 历史）
+	if res := chain.processTorrent(context.Background(), 1, torrent, dl, false); res == nil || !res.Success {
+		t.Fatalf("首次整理应成功, got %+v", res)
+	}
+	if dl.listCalls != 1 {
+		t.Fatalf("listCalls=%d want 1", dl.listCalls)
+	}
+
+	// 破坏历史表：成功查询开始报错
+	if err := db.Exec("DROP TABLE transfer_histories").Error; err != nil {
+		t.Fatal(err)
+	}
+	// 前提断言：损坏后查询必须真报错
+	if _, err := chain.hist.SuccessExistsByHash(torrent.Hash); err == nil {
+		t.Fatal("前提不成立：DROP TABLE 后查询应报错")
+	}
+	_ = chain.processTorrent(context.Background(), 1, torrent, dl, false)
+	if dl.listCalls != 1 {
+		t.Fatalf("去重状态不可读时必须跳过本轮（旧行为会重跑已成功种子），listCalls=%d want 1", dl.listCalls)
+	}
+}
+
+// TestProcessDiscoveredFilesSkipsWhenHistoryDBUnreadable dirwatch 去重查询出错同源修复：
+// 跳过本轮，不回退为「继续整理」。
+func TestProcessDiscoveredFilesSkipsWhenHistoryDBUnreadable(t *testing.T) {
+	chain, db := newTransferDeepChain(t, media.MediaInfo{
+		Source: "tmdb", SourceID: "movie:10", Title: "DW Fail", Year: 2026, Type: media.TypeMovie,
+	})
+	dir := t.TempDir()
+	src := filepath.Join(dir, "DW.Fail.2026.1080p.mkv")
+	if err := os.WriteFile(src, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("DROP TABLE transfer_histories").Error; err != nil {
+		t.Fatal(err)
+	}
+	res, err := chain.ProcessDiscoveredFiles(context.Background(), dir, []transfer.FileInput{{Path: src, Size: 5}})
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
+	if res != nil {
+		t.Fatalf("去重状态不可读时必须跳过本轮（旧行为会继续整理），got res=%+v", res)
+	}
+}

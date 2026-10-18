@@ -61,10 +61,14 @@ func CheckRuntimePaths(cfg *config.Config) Check {
 }
 
 // CheckSystemResources 内存 / 磁盘余量（gopsutil）。
-func CheckSystemResources() Check {
+// collect 供测试注入伪造「采集失败」（nil 用真实采集）——否则这条判定的接线部分永远验不红。
+func CheckSystemResources(collect func() sysinfo.Metrics) Check {
 	return func(ctx context.Context) Finding {
 		f := Finding{ID: "system.resources", Severity: SevWarn, Title: "系统资源"}
-		m := sysinfo.CollectSystemMetrics()
+		if collect == nil {
+			collect = func() sysinfo.Metrics { return sysinfo.CollectSystemMetrics() }
+		}
+		m := collect()
 		ctxMap := map[string]any{
 			"mem_usage": fmt.Sprintf("%.1f%%", m.MemUsage),
 			"mem_total": m.MemTotal,
@@ -72,23 +76,49 @@ func CheckSystemResources() Check {
 			"os":        m.OS,
 			"hostname":  m.Hostname,
 		}
-		var critical []string
 		for _, d := range m.Disks {
 			ctxMap["disk:"+d.Device] = fmt.Sprintf("%.1f%%", d.Usage)
-			if d.Usage >= 95 {
-				critical = append(critical, fmt.Sprintf("%s %.1f%%", d.Device, d.Usage))
-			}
 		}
-		if m.MemUsage >= 95 {
-			critical = append(critical, fmt.Sprintf("内存 %.1f%%", m.MemUsage))
+		status, detail, rec := resourceVerdict(m)
+		f.Status, f.Detail, f.Recommendation = status, detail, rec
+		f.Context = ctxMap
+		if status == StatusOK {
+			f.Severity = SevInfo
 		}
-		if len(critical) > 0 {
-			f.Status, f.Detail, f.Recommendation = StatusDegraded, "资源紧张: "+strings.Join(critical, ", "), "清理或扩容"
-			return f
-		}
-		f.Status, f.Severity, f.Detail, f.Context = StatusOK, SevInfo, "资源正常", ctxMap
 		return f
 	}
+}
+
+// resourceVerdict 由采集结果判定健康度。
+// 关键原则：没采到数据不能算「正常」。CollectSystemMetrics 对每项 gopsutil 调用都是
+// `if err == nil { 填值 }`——受限容器里 /proc 缺失或权限不足时静默返回零值。
+// 旧实现只把 usage≥95 当问题，于是「内存和磁盘一个都没测到」被判成 StatusOK「资源正常」，
+// 而磁盘写满是 PT 机器最常见的事故；自检报告恰恰是用户唯一信任的那一眼。
+func resourceVerdict(m sysinfo.Metrics) (FindingStatus, string, string) {
+	var critical, missing []string
+	for _, d := range m.Disks {
+		if d.Usage >= 95 {
+			critical = append(critical, fmt.Sprintf("%s %.1f%%", d.Device, d.Usage))
+		}
+	}
+	if m.MemUsage >= 95 {
+		critical = append(critical, fmt.Sprintf("内存 %.1f%%", m.MemUsage))
+	}
+	if m.MemTotal <= 0 {
+		missing = append(missing, "内存")
+	}
+	if len(m.Disks) == 0 {
+		missing = append(missing, "磁盘")
+	}
+	if len(critical) > 0 {
+		return StatusDegraded, "资源紧张: " + strings.Join(critical, ", "), "清理或扩容"
+	}
+	if len(missing) > 0 {
+		return StatusDegraded,
+			"未能核验：以下指标一个都没采到（" + strings.Join(missing, "、") + "）",
+			"容器内常见为 /proc 未挂载或权限受限；在宿主机监控或补齐挂载后重跑自检"
+	}
+	return StatusOK, "资源正常", ""
 }
 
 // CheckConfigSecurity release 模式下密钥强度。

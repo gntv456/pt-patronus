@@ -21,6 +21,11 @@
   font-weight: 500;
   font-size: var(--fs-md);
 }
+.inbox-note {
+  margin-top: calc(var(--sp-3) * -1);
+  color: var(--text-muted);
+  font-size: var(--fs-md);
+}
 .head-tools {
   display: flex;
   align-items: center;

@@ -9,6 +9,7 @@ export type NoticeSource =
   | 'announce'
   | 'host_offline'
   | 'nas_offline'
+  | 'camera_offline'
   | 'reseed_done'
   | 'dl_done'
   | 'site_offline'
@@ -16,6 +17,17 @@ export type NoticeSource =
   | 'backup_import'
   | 'freeleech'
   | 'subscribe_hit'
+  | 'subscribe_list_fail'
+  | 'rss_list_fail'
+  | 'rss_check_fail'
+  | 'strm_list_fail'
+  | 'brushflow_list_fail'
+  | 'contract_list_fail'
+  | 'dirsync_list_fail'
+  | 'brushflow'
+  | 'cloud'
+  | 'contract'
+  | 'mediaserver'
   | 'workflow'
   | 'rss_hit'
   | 'webhook'
@@ -40,9 +52,25 @@ export interface Notice {
   created_at: string
 }
 
+/// 收件箱一页：除了数组还带取数账面（后端有单页上限，默认 200、封顶 1000）。
+export interface NoticeListResponse {
+  notices: Notice[]
+  /** 该筛选下的通知总数；后端计数读不出时省略这个字段 */
+  total?: number
+  /** 服务端生效的 limit（请求值被归一后的真值） */
+  limit: number
+  truncated: boolean
+  /** 未读总数（与本页筛选无关）；本页装不下全部未读时给角标兜底，读不出则省略 */
+  unread_total?: number
+}
+
 export const noticeApi = {
-  list: (unread = false) =>
-    http.get<{ notices: Notice[] }>(`/notices${unread ? '?unread=true' : ''}`).then((r) => r.data.notices ?? []),
+  // 缺 truncated 字段按「可能被截断」处理：宁可多说一句，不把一页说成整个收件箱。
+  listPage: (unread = false) =>
+    http
+      .get<NoticeListResponse>(`/notices${unread ? '?unread=true' : ''}`)
+      .then((r) => ({ ...r.data, truncated: r.data.truncated ?? true })),
+  list: (unread = false) => noticeApi.listPage(unread).then((p) => p.notices ?? []),
   read: (id: number) => http.post(`/notices/${id}/read`).then((r) => r.data),
   readAll: () => http.post('/notices/read-all').then((r) => r.data),
   clear: () => http.post('/notices/clear').then((r) => r.data),

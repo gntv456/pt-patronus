@@ -23,6 +23,8 @@ const records = ref<GameRecord[]>([])
 const playing = ref(false)
 const result = ref<PlayResult | null>(null)
 const loadingInfo = ref(true)
+// 三个请求都被吞掉时，卡片只会显示「0 次 / 暂无记录」——与真的一次没玩同形，这里留失败痕迹。
+const loadError = ref('')
 
 const hasPrizes = computed(() => prizes.value.length > 0)
 const hasRecords = computed(() => records.value.length > 0)
@@ -37,14 +39,26 @@ const hasStats = computed(
 
 async function loadInfo() {
   loadingInfo.value = true
+  loadError.value = ''
+  let failed = false
   const [st, pz, hs] = await Promise.all([
-    entertainmentApi.stats(props.siteId, props.game).catch(() => null),
-    entertainmentApi.prizes(props.siteId, props.game).catch(() => [] as PrizeDef[]),
-    entertainmentApi.history(props.siteId, props.game).catch(() => [] as GameRecord[]),
+    entertainmentApi.stats(props.siteId, props.game).catch(() => {
+      failed = true
+      return null
+    }),
+    entertainmentApi.prizes(props.siteId, props.game).catch(() => {
+      failed = true
+      return [] as PrizeDef[]
+    }),
+    entertainmentApi.history(props.siteId, props.game).catch(() => {
+      failed = true
+      return [] as GameRecord[]
+    }),
   ])
   stats.value = st
   prizes.value = pz ?? []
   records.value = (hs ?? []).slice(0, 8)
+  if (failed) loadError.value = t('common.loadFailed')
   loadingInfo.value = false
 }
 
@@ -79,6 +93,7 @@ onMounted(loadInfo)
         <template v-if="stats?.cost_per_play"> · {{ stats.cost_per_play.toLocaleString() }}/次</template>
         <template v-if="stats?.max_daily"> · 今日 {{ stats.today_spins ?? 0 }}/{{ stats.max_daily }}</template>
       </div>
+      <div v-else-if="loadError" class="hero-sub">{{ loadError }}</div>
     </div>
 
     <section class="glass section play-zone" v-loading="loadingInfo">

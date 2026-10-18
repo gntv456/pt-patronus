@@ -73,7 +73,7 @@ func (eventAuditPlugin) ExecuteAction(ctx context.Context, rt Runtime, action st
 		rt.Publish(ctx, "plugin.test", data)
 		return map[string]any{"published": true, "event_type": "plugin.test", "data": data}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 
@@ -149,7 +149,7 @@ func (noticeForwarderPlugin) HandleEvent(ctx context.Context, rt Runtime, e Even
 
 func (noticeForwarderPlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	if action != "send_test_notice" {
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 	title := strings.TrimSpace(fmt.Sprint(input["title"]))
 	if title == "" {

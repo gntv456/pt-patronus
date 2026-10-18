@@ -1,8 +1,6 @@
 package oper
 
 import (
-	"fmt"
-
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
@@ -129,4 +127,4 @@ func (o *CloudDriveOper) SetToken(id uint, token string) error {
 }
 
 // errInvalidCloudType 网盘类型不在 115/quark/123 白名单内（包 ErrInvalidInput 供 handler errors.Is 判 400）。
-var errInvalidCloudType = fmt.Errorf("无效的网盘类型（仅支持 115/quark/123）: %w", ErrInvalidInput)
+var errInvalidCloudType = invalidInput("无效的网盘类型（仅支持 115/quark/123）")

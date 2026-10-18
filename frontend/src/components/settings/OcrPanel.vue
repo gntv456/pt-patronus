@@ -59,8 +59,11 @@ async function load() {
     const c = await http.get<OcrConfig>('/system/ocr').then((r) => r.data)
     cfg.value = c
     form.value = { endpoint: c.endpoint, api_key: '', mode: c.mode || 'paddle' }
-  } catch {
-    // 未装配（旧后端）时静默：面板显示未配置态。
+  } catch (e: unknown) {
+    // 后端这个 GET 现在恒回 200（没配也给你一份空配置），所以走到这里只剩三种可能：
+    // 登录失效/无权限、网络断了、或极旧版本没这条路由。
+    // 静默回落到默认值 = 把这三件都说成「您还没配置 OCR」，用户会去重填一遍（#298）。
+    ElMessage.warning(t('ocrp.loadFailed', { reason: (e as Error).message || '?' }))
   }
 }
 

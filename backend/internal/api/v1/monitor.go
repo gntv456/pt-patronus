@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,7 +47,7 @@ func (h *MonitorHandler) Create(c *gin.Context) {
 	}
 	t, err := h.op.Create(in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, nil, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, t)
@@ -65,7 +66,7 @@ func (h *MonitorHandler) Update(c *gin.Context) {
 	}
 	t, err := h.op.Update(id, in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, errcode.MonitorTargetNotFound, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, t)
@@ -75,6 +76,9 @@ func (h *MonitorHandler) Update(c *gin.Context) {
 func (h *MonitorHandler) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.op.Get, id, errcode.MonitorTargetNotFound) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
@@ -92,7 +96,7 @@ func (h *MonitorHandler) Probe(c *gin.Context) {
 	}
 	online, err := h.svc.ProbeNow(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "online": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "online": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "online": online})
@@ -106,7 +110,7 @@ func (h *MonitorHandler) Collect(c *gin.Context) {
 	}
 	m, err := h.svc.CollectNow(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "metrics": m})
@@ -133,7 +137,7 @@ func (h *MonitorHandler) Power(c *gin.Context) {
 		return
 	}
 	if err := h.svc.PowerNow(c.Request.Context(), id, in.Action); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -152,7 +156,7 @@ func (h *MonitorHandler) Exec(c *gin.Context) {
 	}
 	result, err := h.svc.RunCommandNow(c.Request.Context(), id, in.Command, in.TimeoutSec)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "result": result})
@@ -170,13 +174,26 @@ func (h *MonitorHandler) Metrics(c *gin.Context) {
 			since = t
 		}
 	}
-	limit, _ := strconv.Atoi(c.Query("limit"))
+	reqLimit, _ := strconv.Atoi(c.Query("limit"))
+	// 回显**生效的** limit：被归一过的请求若不告诉调用方，趋势图会以为自己要到了全量。
+	limit := oper.NormalizeSnapshotLimit(reqLimit)
 	snaps, err := h.op.ListSnapshots(id, since, limit)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"snapshots": snaps})
+	// total/truncated 与清单同批给出（口径同 keepseed / RSS / 云任务队列）：
+	// 计数读不出时保守报「可能被截断」，也不编一个假 total。
+	total, cntErr := h.op.CountSnapshots(id, since)
+	truncated := cntErr != nil || total > int64(len(snaps))
+	if cntErr != nil {
+		slog.Warn("monitor snapshot count failed", "id", id, "err", cntErr)
+	}
+	resp := gin.H{"snapshots": snaps, "limit": limit, "truncated": truncated}
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // AcceptHostKey 删除该 SSH 设备的 host key 记录，下次连接重新 TOFU（合法换 key 后重置）。
@@ -187,7 +204,14 @@ func (h *MonitorHandler) AcceptHostKey(c *gin.Context) {
 	}
 	t, err := h.op.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.ResourceNotFound)
+		// #341 用本域专属码而不是通用 ResourceNotFound：后者只说「资源不存在」，
+		// 用户既不知道是哪台主机、也不知道该去哪重选（运维中心已有这条文案）。
+		// 原因仍要挂上：op.Get 底层是 db.First，可能是「记录不存在」也可能是 DB 真故障，
+		// 两者混成一句话会��真故障说成「没这台」。
+		// #373 本注释从 #341 起就写着「两者混成一句话会把真故障说成没这台」，而代码仍是一句
+		// WithErr —— 描述的是意图，实现没跟上。这里补上分类器，与同文件 Update
+		// （monitor.go:69）同一判据：真不存在仍 404，DB 真故障 500。
+		respondRecordError(c, err, errcode.MonitorTargetNotFound, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	port := t.Port

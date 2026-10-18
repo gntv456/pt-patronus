@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"hash/fnv"
 	"io/fs"
 	"log/slog"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 const defaultDevWatchInterval = time.Second
@@ -226,10 +226,10 @@ func (m *Manager) unloadExternalByDir(dir string) (string, bool) {
 	m.mu.Unlock()
 
 	m.removeSchedules(pluginID)
-	if st, err := m.op.GetState(pluginID); err == nil {
-		st.Enabled = false
-		st.Installed = false
-		_ = m.op.SaveState(st)
+	if err := m.markPluginUninstalled(pluginID); err != nil {
+		// 目录监听这条没有 HTTP 出口可报错，但必须留在插件日志里：
+		// 目录已删而状态行没落成未安装，面板仍会显示它在安装中。
+		m.log(pluginID, logError, "dev.watch", "插件源码目录已移除，但安装状态没能写入数据库："+err.Error(), nil)
 	}
 	m.log(pluginID, logInfo, "dev.watch", "plugin unloaded after source directory removal", map[string]any{"dir": dir})
 	return pluginID, true

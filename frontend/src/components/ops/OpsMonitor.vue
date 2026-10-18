@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
 import { humanTempName } from '@/components/monitor/useDeviceDetail'
+import { fmtNumOr } from '@/utils/format'
 import GlassIcon from '@/components/GlassIcon.vue'
 
 const { t } = useI18n()
@@ -120,12 +121,12 @@ onBeforeUnmount(() => {
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#f7971e" to="#ff6a00" :size="28" />
           <span class="metric-label">{{ t('opsmonitor.load') }}</span>
-          <span class="metric-value">{{ (metrics.load1 ?? 0).toFixed(2) }}</span>
+          <span class="metric-value">{{ fmtNumOr(metrics.load1) }}</span>
         </div>
         <div class="load-row">
-          <span class="pt-chip">1m: {{ (metrics.load1 ?? 0).toFixed(2) }}</span>
-          <span class="pt-chip">5m: {{ (metrics.load5 ?? 0).toFixed(2) }}</span>
-          <span class="pt-chip">15m: {{ (metrics.load15 ?? 0).toFixed(2) }}</span>
+          <span class="pt-chip">1m: {{ fmtNumOr(metrics.load1) }}</span>
+          <span class="pt-chip">5m: {{ fmtNumOr(metrics.load5) }}</span>
+          <span class="pt-chip">15m: {{ fmtNumOr(metrics.load15) }}</span>
         </div>
         <div class="metric-sub">{{ t('opsmonitor.procs') }}: {{ metrics.process_count ?? '-' }}</div>
       </div>

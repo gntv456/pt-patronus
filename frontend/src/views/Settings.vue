@@ -24,6 +24,7 @@ import { useCookieCloud } from '@/composables/useCookieCloud'
 import { useSchedule } from '@/composables/useSchedule'
 import { useTgBot } from '@/composables/useTgBot'
 import { useLogs } from '@/composables/useLogs'
+import { useAdminTabs } from '@/composables/useAdminTabs'
 const { initThemeVersion } = useGeneralSettings()
 const { notifCfg, loadNotif } = useNotification()
 const { oidcCfg, loadOIDC } = useOidc()
@@ -32,6 +33,7 @@ const { ccCfg, loadCookieCloud } = useCookieCloud()
 const { schedCfg, loadSchedule } = useSchedule()
 const { tgCfg, loadTgBot } = useTgBot()
 const { logs, loadLogs } = useLogs()
+const { canSeeTab, pickTab } = useAdminTabs()
 
 const { t } = useI18n()
 
@@ -48,7 +50,7 @@ const activeTab = ref('general')
 const connectTab = ref('cloud')
 const mediaTab = ref('mediaquality')
 const notifyTab = ref('notification')
-const maintainTab = ref('logs')
+const maintainTab = ref(pickTab('logs', 'backup'))
 const settingsRouter = useRouter()
 
 // 原独立配置页 → 设置分区内嵌 Tab（C 类迁入完成）
@@ -68,9 +70,9 @@ function goPage(name: string) {
   const m = settingsPageMap[name]
   if (m) {
     settingsSection.value = m.section
-    if (m.section === 'connect') connectTab.value = m.tab
+    if (m.section === 'connect') connectTab.value = pickTab(m.tab, 'cloud')
     else if (m.section === 'media') mediaTab.value = m.tab
-    else if (m.section === 'maintain') maintainTab.value = m.tab
+    else if (m.section === 'maintain') maintainTab.value = pickTab(m.tab, 'backup')
     onTabChange(m.tab)
     return
   }
@@ -88,7 +90,7 @@ function applySettingsQuery() {
       (!sec && ['cloud', 'trakt', 'files', 'oidc', 'llmgateway', 'cookiecloud', 'servarr'].includes(tab))
     ) {
       if (!sec) settingsSection.value = 'connect'
-      connectTab.value = tab
+      connectTab.value = pickTab(tab, 'cloud')
     } else if (
       sec === 'media' ||
       (!sec && ['mediaquality', 'subtitle', 'media-settings', 'filter-rules'].includes(tab))
@@ -97,9 +99,9 @@ function applySettingsQuery() {
       mediaTab.value = tab
     } else if (sec === 'maintain' || (!sec && ['logs', 'backup', 'doctor'].includes(tab))) {
       if (!sec) settingsSection.value = 'maintain'
-      maintainTab.value = tab
+      maintainTab.value = pickTab(tab, 'backup')
     } else if (sec === 'notify') {
-      notifyTab.value = tab
+      notifyTab.value = pickTab(tab, 'notification')
     }
     onTabChange(tab)
   } else if (sec) {
@@ -112,6 +114,8 @@ onMounted(() => {
 
 function onTabChange(tab: string | number) {
   const name = String(tab)
+  // admin-only 分区（日志/自检/OIDC/LLM 网关/TG bot）：非管理员不发必然 403 的读请求。
+  if (!canSeeTab(name)) return
   if (name === 'logs' && !logs.value.length) loadLogs()
   if (name === 'notification' && !notifCfg.value) loadNotif()
   if (name === 'oidc' && !oidcCfg.value) loadOIDC()
@@ -152,10 +156,10 @@ function onSectionChange(sec: string | number) {
           <el-tab-pane :label="t('settings.connect.files')" name="files" lazy>
             <FileManager :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane :label="t('settings.connect.oidc')" name="oidc">
+          <el-tab-pane v-if="canSeeTab('oidc')" :label="t('settings.connect.oidc')" name="oidc">
             <OidcPanel />
           </el-tab-pane>
-          <el-tab-pane :label="t('settings.connect.llmgateway')" name="llmgateway">
+          <el-tab-pane v-if="canSeeTab('llmgateway')" :label="t('settings.connect.llmgateway')" name="llmgateway">
             <LlmGatewayPanel />
           </el-tab-pane>
           <el-tab-pane :label="t('settings.connect.cookiecloud')" name="cookiecloud">
@@ -222,7 +226,7 @@ function onSectionChange(sec: string | number) {
           <el-tab-pane :label="t('settings.notify.channels')" name="notification">
             <NotificationPanel />
           </el-tab-pane>
-          <el-tab-pane :label="t('settings.notify.tgbot')" name="tgbot">
+          <el-tab-pane v-if="canSeeTab('tgbot')" :label="t('settings.notify.tgbot')" name="tgbot">
             <TgBotPanel />
           </el-tab-pane>
         </el-tabs>
@@ -230,13 +234,13 @@ function onSectionChange(sec: string | number) {
 
       <el-tab-pane :label="t('settings.sections.maintain')" name="maintain">
         <el-tabs v-model="maintainTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane :label="t('settings.maintain.logs')" name="logs">
+          <el-tab-pane v-if="canSeeTab('logs')" :label="t('settings.maintain.logs')" name="logs">
             <LogsPanel />
           </el-tab-pane>
           <el-tab-pane :label="t('settings.maintain.backup')" name="backup" lazy>
             <Backup :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane :label="t('settings.maintain.doctor')" name="doctor" lazy>
+          <el-tab-pane v-if="canSeeTab('doctor')" :label="t('settings.maintain.doctor')" name="doctor" lazy>
             <Doctor :embedded="true" />
           </el-tab-pane>
         </el-tabs>

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 )
 
 // ProcessFunc 处理一批发现的媒体文件（由 TransferChain.ProcessDiscoveredFiles 实现）。
@@ -135,10 +135,6 @@ func (w *Watcher) schedule(ctx context.Context, dir string) {
 	w.pending[dir] = time.AfterFunc(w.debounce, func() { w.scanAndProcess(ctx, dir) })
 }
 
-var mediaExts = map[string]bool{
-	".mkv": true, ".mp4": true, ".avi": true, ".mov": true, ".wmv": true,
-	".flv": true, ".m4v": true, ".ts": true, ".m2ts": true, ".iso": true,
-}
 var tempExts = map[string]bool{
 	".part": true, ".tmp": true, ".aria2": true, ".downloading": true,
 	".!qb": true, ".!ut": true, ".crdownload": true,
@@ -153,17 +149,9 @@ func isTemp(p string) bool {
 	}
 	return false
 }
-func isMedia(p string) bool {
-	lp := strings.ToLower(p)
-	for ext := range mediaExts {
-		if strings.HasSuffix(lp, ext) {
-			return true
-		}
-	}
-	return false
-}
 
 // scanAndProcess 扫目录组媒体文件（跳临时扩展名）→ TTL 去重 → 调 process。
+// 视频判定用 transfer.IsVideoPath（与可整理范围同一事实源，防清单漂移致恒失败）。
 func (w *Watcher) scanAndProcess(ctx context.Context, dir string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -175,7 +163,7 @@ func (w *Watcher) scanAndProcess(ctx context.Context, dir string) {
 			continue
 		}
 		p := filepath.Join(dir, e.Name())
-		if isTemp(p) || !isMedia(p) {
+		if isTemp(p) || !transfer.IsVideoPath(p) {
 			continue
 		}
 		fi, err := e.Info()

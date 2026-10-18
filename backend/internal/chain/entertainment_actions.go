@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/hxpt/ptpatronus/internal/entertainment"
@@ -17,7 +16,7 @@ func (c *EntertainmentChain) Farm(ctx context.Context, siteID uint, gameID strin
 	}
 	f, ok := g.(entertainment.Farmable)
 	if !ok {
-		return nil, errors.New("该游戏不支持农场")
+		return nil, fmt.Errorf("%w农场", ErrGameUnsupported)
 	}
 	return f.Farm(ctx, c.hc, base, cr)
 }
@@ -30,7 +29,7 @@ func (c *EntertainmentChain) Plant(ctx context.Context, siteID uint, gameID, sec
 	}
 	f, ok := g.(entertainment.Farmable)
 	if !ok {
-		return nil, errors.New("该游戏不支持农场")
+		return nil, fmt.Errorf("%w农场", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:plant:%s:%s:%d", siteID, gameID, section, itemID)
 	if !c.guard.acquire(key) {
@@ -48,7 +47,7 @@ func (c *EntertainmentChain) Harvest(ctx context.Context, siteID uint, gameID, s
 	}
 	f, ok := g.(entertainment.Farmable)
 	if !ok {
-		return nil, errors.New("该游戏不支持农场")
+		return nil, fmt.Errorf("%w农场", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:harvest:%s:%s:%d", siteID, gameID, section, itemID)
 	if !c.guard.acquire(key) {
@@ -66,7 +65,7 @@ func (c *EntertainmentChain) HarvestAll(ctx context.Context, siteID uint, gameID
 	}
 	f, ok := g.(entertainment.Farmable)
 	if !ok {
-		return nil, errors.New("该游戏不支持农场")
+		return nil, fmt.Errorf("%w农场", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:harvestall:%s", siteID, gameID)
 	if !c.guard.acquire(key) {
@@ -84,7 +83,7 @@ func (c *EntertainmentChain) Sell(ctx context.Context, siteID uint, gameID, sell
 	}
 	f, ok := g.(entertainment.Farmable)
 	if !ok {
-		return nil, errors.New("该游戏不支持农场")
+		return nil, fmt.Errorf("%w农场", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:sell:%s:%s", siteID, gameID, sellKey)
 	if !c.guard.acquire(key) {
@@ -102,7 +101,7 @@ func (c *EntertainmentChain) Bet(ctx context.Context, siteID uint, gameID string
 	}
 	b, ok := g.(entertainment.Bettable)
 	if !ok {
-		return nil, errors.New("该游戏不支持下注")
+		return nil, fmt.Errorf("%w下注", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:bet:%s:%s:%v", siteID, gameID, req.Selection, req.Amount)
 	if !c.guard.acquire(key) {
@@ -120,7 +119,7 @@ func (c *EntertainmentChain) Events(ctx context.Context, siteID uint, gameID str
 	}
 	e, ok := g.(entertainment.EventBettable)
 	if !ok {
-		return nil, errors.New("该游戏不支持赛事押注")
+		return nil, fmt.Errorf("%w赛事押注", ErrGameUnsupported)
 	}
 	return e.Events(ctx, c.hc, base, cr)
 }
@@ -133,7 +132,7 @@ func (c *EntertainmentChain) EventDetail(ctx context.Context, siteID uint, gameI
 	}
 	e, ok := g.(entertainment.EventBettable)
 	if !ok {
-		return nil, errors.New("该游戏不支持赛事押注")
+		return nil, fmt.Errorf("%w赛事押注", ErrGameUnsupported)
 	}
 	return e.EventDetail(ctx, c.hc, base, cr, eventID)
 }
@@ -148,7 +147,7 @@ func (c *EntertainmentChain) Blackjack(ctx context.Context, siteID uint, gameID,
 	}
 	b, ok := g.(entertainment.Blackjackable)
 	if !ok {
-		return nil, errors.New("该游戏不支持二十一点")
+		return nil, fmt.Errorf("%w二十一点", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:blackjack:%s:%s", siteID, gameID, action)
 	if !c.guard.acquire(key) {
@@ -166,7 +165,7 @@ func (c *EntertainmentChain) FlipState(ctx context.Context, siteID uint, gameID 
 	}
 	f, ok := g.(entertainment.Flipable)
 	if !ok {
-		return nil, errors.New("该游戏不支持翻面夺宝")
+		return nil, fmt.Errorf("%w翻面夺宝", ErrGameUnsupported)
 	}
 	return f.FlipState(ctx, c.hc, base, cr)
 }
@@ -179,7 +178,7 @@ func (c *EntertainmentChain) BigSmallState(ctx context.Context, siteID uint, gam
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	return b.BigSmallState(ctx, c.hc, base, cr)
 }
@@ -192,7 +191,7 @@ func (c *EntertainmentChain) BigSmallChat(ctx context.Context, siteID uint, game
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	return b.BigSmallChat(ctx, c.hc, base, cr, since)
 }
@@ -205,7 +204,7 @@ func (c *EntertainmentChain) BigSmallSendChat(ctx context.Context, siteID uint, 
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:bschat:%s", siteID, gameID)
 	if !c.guard.acquire(key) {
@@ -223,7 +222,7 @@ func (c *EntertainmentChain) BigSmallTaskAction(ctx context.Context, siteID uint
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:bstask:%s:%s:%d", siteID, gameID, action, taskID)
 	if !c.guard.acquire(key) {
@@ -241,7 +240,7 @@ func (c *EntertainmentChain) BigSmallUseItem(ctx context.Context, siteID uint, g
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:bsitem:%s:%s", siteID, gameID, tag)
 	if !c.guard.acquire(key) {
@@ -259,7 +258,7 @@ func (c *EntertainmentChain) BigSmallRedpacket(ctx context.Context, siteID uint,
 	}
 	b, ok := g.(entertainment.BigSmallable)
 	if !ok {
-		return nil, errors.New("该游戏不支持猜大小")
+		return nil, fmt.Errorf("%w猜大小", ErrGameUnsupported)
 	}
 	key := fmt.Sprintf("%d:bsred:%s:%s:%s", siteID, gameID, action, extra["id"])
 	if !c.guard.acquire(key) {
@@ -277,7 +276,7 @@ func (c *EntertainmentChain) GobangState(ctx context.Context, siteID uint, gameI
 	}
 	gb, ok := g.(entertainment.Gobangable)
 	if !ok {
-		return nil, errors.New("该游戏不支持五子棋")
+		return nil, fmt.Errorf("%w五子棋", ErrGameUnsupported)
 	}
 	return gb.GobangState(ctx, c.hc, base, cr)
 }
@@ -292,7 +291,7 @@ func (c *EntertainmentChain) GobangAction(ctx context.Context, siteID uint, game
 	}
 	gb, ok := g.(entertainment.Gobangable)
 	if !ok {
-		return nil, errors.New("该游戏不支持五子棋")
+		return nil, fmt.Errorf("%w五子棋", ErrGameUnsupported)
 	}
 	// 参数序列化进防重键：同一动作+同一参数未返回前再来一次 → 429。
 	pk, _ := json.Marshal(params)
@@ -312,7 +311,7 @@ func (c *EntertainmentChain) FriendTradeState(ctx context.Context, siteID uint, 
 	}
 	ft, ok := g.(entertainment.FriendTradeable)
 	if !ok {
-		return nil, errors.New("该游戏不支持好友买卖")
+		return nil, fmt.Errorf("%w好友买卖", ErrGameUnsupported)
 	}
 	return ft.FriendTradeState(ctx, c.hc, base, cr)
 }
@@ -325,7 +324,7 @@ func (c *EntertainmentChain) TangptLotteryState(ctx context.Context, siteID uint
 	}
 	l, ok := g.(entertainment.TangptLotteryable)
 	if !ok {
-		return nil, errors.New("该游戏不支持抽奖全景")
+		return nil, fmt.Errorf("%w抽奖全景", ErrGameUnsupported)
 	}
 	return l.LotteryState(ctx, c.hc, base, cr)
 }
@@ -338,7 +337,7 @@ func (c *EntertainmentChain) CbgWheelState(ctx context.Context, siteID uint, gam
 	}
 	w, ok := g.(entertainment.CbgWheelable)
 	if !ok {
-		return nil, errors.New("该游戏不支持大转盘")
+		return nil, fmt.Errorf("%w大转盘", ErrGameUnsupported)
 	}
 	return w.CbgWheelState(ctx, c.hc, base, cr)
 }
@@ -351,7 +350,7 @@ func (c *EntertainmentChain) CbgSlotState(ctx context.Context, siteID uint, game
 	}
 	sm, ok := g.(entertainment.CbgSlotable)
 	if !ok {
-		return nil, errors.New("该游戏不支持老虎机")
+		return nil, fmt.Errorf("%w老虎机", ErrGameUnsupported)
 	}
 	return sm.CbgSlotState(ctx, c.hc, base, cr)
 }
@@ -364,7 +363,7 @@ func (c *EntertainmentChain) City13WheelState(ctx context.Context, siteID uint, 
 	}
 	w, ok := g.(entertainment.City13Wheelable)
 	if !ok {
-		return nil, errors.New("该游戏不支持大转盘")
+		return nil, fmt.Errorf("%w大转盘", ErrGameUnsupported)
 	}
 	return w.City13WheelState(ctx, c.hc, base, cr)
 }
@@ -377,7 +376,7 @@ func (c *EntertainmentChain) City13DiceState(ctx context.Context, siteID uint, g
 	}
 	d, ok := g.(entertainment.City13Diceable)
 	if !ok {
-		return nil, errors.New("该游戏不支持幸运骰子")
+		return nil, fmt.Errorf("%w幸运骰子", ErrGameUnsupported)
 	}
 	return d.City13DiceState(ctx, c.hc, base, cr)
 }
@@ -390,7 +389,7 @@ func (c *EntertainmentChain) FishingState(ctx context.Context, siteID uint, game
 	}
 	f, ok := g.(entertainment.Fishingable)
 	if !ok {
-		return nil, errors.New("该游戏不支持钓鱼")
+		return nil, fmt.Errorf("%w钓鱼", ErrGameUnsupported)
 	}
 	return f.FishingState(ctx, c.hc, base, cr)
 }
@@ -403,22 +402,7 @@ func (c *EntertainmentChain) FlipBridge(ctx context.Context, siteID uint, gameID
 		return nil, err
 	}
 	if _, ok := g.(entertainment.Flipable); !ok {
-		return nil, errors.New("该游戏不支持翻面夺宝")
+		return nil, fmt.Errorf("%w翻面夺宝", ErrGameUnsupported)
 	}
 	return entertainment.ServeFlipBridge(ctx, base, cr.Cookie), nil
-}
-
-// resolve 取站点+游戏+凭据+baseURL（公共前置）。
-func (c *EntertainmentChain) resolve(siteID uint, gameID string) (entertainment.LotteryGame, string, entertainment.Creds, error) {
-	s, err := c.siteOp.Get(siteID)
-	if err != nil {
-		return nil, "", entertainment.Creds{}, err
-	}
-	g, ok := c.reg.Game(s.BaseURL, gameID)
-	if !ok {
-		return nil, "", entertainment.Creds{}, ErrGameNotFound
-	}
-	cookie, _ := c.siteOp.Cookie(s)
-	pw, _ := c.siteOp.Password(s) // 财神等 API 登录用；其余站点为空不影响
-	return g, s.BaseURL, entertainment.Creds{Cookie: cookie, Username: s.Username, Password: pw}, nil
 }

@@ -4,6 +4,8 @@ import '../webview_login/webview_login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/core/api_client.dart';
+// #404 任意异常 → 用户可读文案（后端每个错误码都带着可操作的中文，别在 catch 里丢掉）。
+import 'package:ptpatronus/core/err_text.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/utils/site_def_search.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -24,7 +26,9 @@ class SitesPage extends StatefulWidget {
 }
 
 class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesFormMixin {
-
+  // 站点定义诊断（后端四类「配置被静默忽略」的账面）：读失败与「真的没问题」分开存。
+  List<DefinitionDiagnostic> _defDiags = const [];
+  String _defDiagsErr = '';
 
   @override
   void _toast(String m) {
@@ -61,6 +65,72 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
       if (mounted) setState(() => _loading = false);
     }
     unawaited(_loadConnectivity());
+    unawaited(_loadDefDiags());
+  }
+
+  /// 站点定义诊断单独一路读：不进 `_load()` 的 `Future.wait`，
+  /// 否则这一路失败会把站点列表/定义一起拖没（本仓同族缺陷 #206/#279 的形状）。
+  Future<void> _loadDefDiags() async {
+    final res = await SiteApi().definitionDiagnostics();
+    if (!mounted) return;
+    setState(() {
+      _defDiags = res.items;
+      _defDiagsErr = res.readError;
+    });
+  }
+
+  static String _defDiagKindLabel(String kind) => switch (kind) {
+        'bad_regexp' => '正则写法编译不过',
+        'unknown_key' => '有不认识的配置键',
+        'duplicate_id' => '站点 id 撞车',
+        'skipped_subdir' => '子目录没被读取',
+        // 后端将来新增一类时不许把裸 kind 当文案糊上去（对齐 Web 的 diagKind.other）。
+        _ => '其它配置问题',
+      };
+
+  /// 诊断条：没问题就不占位；读失败说「读取失败+原因」，绝不能显示成「一切正常」。
+  Widget _defDiagBanner() {
+    if (_defDiags.isEmpty && _defDiagsErr.isEmpty) return const SizedBox.shrink();
+    final shown = _defDiags.take(4).toList();
+    return Material(
+      color: const Color(0x14FFB020),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB26A00)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _defDiags.isNotEmpty
+                        ? '站点定义里有 ${_defDiags.length} 条配置没有生效'
+                        : '站点定义诊断读取失败：$_defDiagsErr',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            for (final d in shown)
+              Padding(
+                padding: const EdgeInsets.only(left: 22, top: 2),
+                child: Text(
+                  '${_defDiagKindLabel(d.kind)} · ${d.target.isEmpty ? '—' : d.target}：${d.detail}',
+                  style: const TextStyle(fontSize: 11, color: Colors.black87),
+                ),
+              ),
+            if (_defDiags.length > shown.length)
+              Padding(
+                padding: const EdgeInsets.only(left: 22, top: 2),
+                child: Text('另有 ${_defDiags.length - shown.length} 条未列出',
+                    style: const TextStyle(fontSize: 11)),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   // —— 签到记录：自适应浮层（宽屏对话框 / 窄屏底栏），对齐 Web el-drawer ——
@@ -192,6 +262,7 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _defDiagBanner(),
           if (_loading && _sites.isEmpty)
             const LinearProgressIndicator(minHeight: 2),
           Expanded(child: _listBody()),

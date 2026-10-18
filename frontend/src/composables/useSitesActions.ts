@@ -25,6 +25,13 @@ export function useSitesActions(
   const recordsDrawer = ref(false)
   const records = ref<CheckinRecord[]>([])
   const recordsLoading = ref(false)
+  // 签到记录单页 100 条封顶（可 offset 翻页）：抽屉只装第一页，被截断时得说出来。
+  const recordsWindow = ref<{ shown: number; total?: number; offset: number; truncated: boolean }>({
+    shown: 0,
+    total: undefined,
+    offset: 0,
+    truncated: false,
+  })
 
   async function testSite(s: Site) {
     testing.value = s.id
@@ -81,7 +88,12 @@ export function useSitesActions(
   async function checkinAll() {
     checkinAllLoading.value = true
     try {
-      const results = await siteApi.checkinAll()
+      const { results, listError } = await siteApi.checkinAll()
+      // 「清单读不出」与「没有启用的站点」是两件事，必须分开说（#258）。
+      if (listError) {
+        ElMessage.error(`站点清单读不出来：${listError}`)
+        return
+      }
       if (!results.length) {
         ElMessage.info('没有启用的站点')
         return
@@ -113,10 +125,18 @@ export function useSitesActions(
     recordsDrawer.value = true
     recordsLoading.value = true
     try {
-      records.value = await siteApi.records(siteId)
+      const page = await siteApi.records(siteId)
+      records.value = page.records
+      recordsWindow.value = {
+        shown: page.records.length,
+        total: page.total,
+        offset: page.offset,
+        truncated: page.truncated,
+      }
     } catch {
       ElMessage.error('加载签到记录失败')
       records.value = []
+      recordsWindow.value = { shown: 0, total: undefined, offset: 0, truncated: false }
     } finally {
       recordsLoading.value = false
     }
@@ -169,6 +189,7 @@ export function useSitesActions(
     recordsDrawer,
     records,
     recordsLoading,
+    recordsWindow,
     testSite,
     checkinSite,
     checkinAll,

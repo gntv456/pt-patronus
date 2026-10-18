@@ -7,7 +7,7 @@ import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieH
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
-  pushCookieCloud, pullCookieCloud,
+  pushCookieCloud, pullCookieCloud, cookieHeaderToEntries, entriesToHeader,
 } from './backup.js'
 import { overview, syncAll, fmtBytes, fmtBonus, fmtRatio } from './dashboard.js'
 import {
@@ -96,8 +96,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     await syncCredSession()
   }
 
+  // #388 「库在服务器上但此刻读不到」时的说法。与后台的 credReadFail('server-unreachable')
+  // 同一口径（内容脚本拿不到 credentials.js 时才需要后台拼文案；设置页是扩展自身页面，
+  // 可以直接 import）。原文带出来是因为那是用户唯一的线索，不做二次加工。
+  function credUnreachableMsg(raw) {
+    const why = String(raw || ').trim()
+    return why
+      ? `没能从服务器取到凭据库（可能没登录或网络不通）：${why}。请检查登录状态后重试`
+      : '没能从服务器取到凭据库（可能没登录或网络不通）：请检查登录状态后重试'
+  }
   async function credTryUnlock(pin) {
-    credEntries = await loadCredVault(pin)
+
+    // #389 loadCredVault 以前把「此刻读不到」降级成 []，这里拿到 [] 就直接 credUnlocked=true
+    // —— 用户看到一个「空」的凭据库，以为是自己记错凭据，真因可能只是没登录/网络不通。
+    // 现在它会把 __unreachable 哨兵原样带回来，这里必须拦住：不许拿它当解锁成功。
+    const loaded = await loadCredVault(pin)
+    if (loaded && loaded.__unreachable) {
+      const err = new Error(credUnreachableMsg(loaded.err || 'server-unreachable'))
+      err.code = 'server-unreachable'
+      throw err
+    }
+    credEntries = loaded
     credUnlocked = true
     credPin = pin
     await syncCredSession()
@@ -115,11 +134,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('credUnlockBtn').textContent = '请设置 PIN'
       setTimeout(() => { $('credUnlockBtn').textContent = '解锁 / 设定' }, 1500)
       return
+    // #388 本轮这一枚开关：置位表示「压根没走到 PIN 校验」（库在服务器上、此刻取不到）。
+    // 空串 = 正常路径，最后那句「PIN 错误」才有资格出现。
+    let vaultUnreachable = ''
+    try {
     }
     try {
       // 明文库存量迁移：空 PIN 语义只在「库里还是明文」这一次迁移时成立。
       // server 模式下明文库可能只在服务器上（openVault 取回），本地迁移路径不变。
-      let v = await chrome.storage.local.get('ptp_credentials').then((r) => r.ptp_credentials)
+      // #388 从前这里是 `try { v = await openVault() } catch { /* 未登录回退 local 判定 */ }`：
+      // 异常被吞、v 保持 undefined，于是流程一路落到 credTryUnlock(pin) ⇒ loadCredVault
+      // 解不开 ⇒ 外层 catch 无条件显示「PIN 错误」。而用户填的是**正确的** PIN，真实原因是
+      // 「服务器读不到凭据库」（没登录/网络不通）。他会反复重试 PIN，最后认定库坏了。
+      // 与 #379 同族、同一批资产（原因码/分类器/文案都在），只差这个调用方没接。
+      if (!v || v.plain === undefined) {
+        try {
+          v = await openVault()
+        } catch (e) {
+          // 自报「读不到」而不是伪装成「库不在本地」：下面统一走 credUnreachableFail。
+          vaultUnreachable = String((e && e.message) || e)
+        }
+        if (v && v.__unreachable) vaultUnreachable = 'server-unreachable'
+      }
       if (!v || v.plain === undefined) { try { v = await openVault() } catch { /* 未登录回退 local 判定 */ } }
       if (v && v.plain !== undefined) {
         credEntries = JSON.parse(v.plain)
@@ -138,8 +174,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return
       }
       await credTryUnlock(pin)
-      $('credPin').value = ''
-    } catch {
+    } catch (e) {
+      // #388 只有在真的去校验了 PIN 且校验失败时才能说「PIN 错误」。
+      // vaultUnreachable 置位说明这一轮压根没走到 PIN 校验（库在服务器上、此刻取不到）。
+      $('credUnlockBtn').textContent = vaultUnreachable
+        ? credUnreachableMsg(vaultUnreachable)
+        : 'PIN 错误'
       $('credUnlockBtn').textContent = 'PIN 错误'
       setTimeout(() => { $('credUnlockBtn').textContent = '解锁 / 设定' }, 1500)
     }
@@ -982,23 +1022,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>`).join('')
   }
 
+  // #338 读取失败必须显示真原因。从前无 try：异常冒泡成未处理拒绝，界面停在旧内容，
+  // 用户以为没变化；而若上层补成 [] 又会显示「暂无收藏」，同样分不出真失败。
   async function renderFav() {
     $('tabFav').classList.add('on'); $('tabHis').classList.remove('on')
     colTab = 'fav'
-    $('colList').innerHTML = colRowsHtml(await getFavorites(), 'fav')
+    try {
+      $('colList').innerHTML = colRowsHtml(await getFavorites(), 'fav')
+    } catch (e) {
+      $('colList').innerHTML = `<p class="empty err">收藏读不出来：${esc(e.message)}</p>`
+    }
   }
   async function renderHis() {
     $('tabHis').classList.add('on'); $('tabFav').classList.remove('on')
     colTab = 'his'
-    $('colList').innerHTML = colRowsHtml(await getHistory(), 'his')
+    try {
+      $('colList').innerHTML = colRowsHtml(await getHistory(), 'his')
+    } catch (e) {
+      $('colList').innerHTML = `<p class="empty err">下载历史读不出来：${esc(e.message)}</p>`
+    }
   }
   $('tabFav').onclick = renderFav
   $('tabHis').onclick = renderHis
   $('clearCol').onclick = async () => {
-    const key = colTab === 'fav' ? 'ptp_favorites' : 'ptp_history'
-    if (!confirm(colTab === 'fav' ? '清空全部收藏？' : '清空全部下载历史？')) return
+    // #338 清空前必须复核一次真实读数。数据损坏时 getFavorites/getHistory 会抛，
+    // 从前这里直接 set({key: []})——用户刚看到「暂无收藏」就点确认，损坏数据被
+    // 当成空覆盖掉，不可逆。清空是不可逆动作，宁可拒绝执行。
+    const isFav = colTab === 'fav'
+    const key = isFav ? 'ptp_favorites' : 'ptp_history'
+    let n = 0
+    try {
+      const list = isFav ? await getFavorites() : await getHistory()
+      n = list.length
+    } catch (e) {
+      feedback(`无法清空：${e.message}`, 'err')
+      return
+    }
+    if (!n) { feedback('本来就没什么可清的', 'err'); return }
+    if (!confirm(isFav ? `清空全部 ${n} 条收藏？此操作不可撤销。` : `清空全部 ${n} 条下载历史？此操作不可撤销。`)) return
     await chrome.storage.local.set({ [key]: [] })
-    colTab === 'fav' ? renderFav() : renderHis()
+    isFav ? renderFav() : renderHis()
     feedback('已清空')
   }
 
@@ -1093,7 +1156,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const r = st.lastResult
     let txt = `最近同步：${fmtSyncTime(st.lastRun)}`
     if (r && r.error) txt += ` · ⚠ ${r.error}`
-    else if (r) txt += ` · ↑推送 ${r.pushed} 站 · ↓回写 ${r.pulled} 站${r.dead && r.dead.length ? ` · ⚠ ${r.dead.length} 站两侧均无 cookie` : ''}`
+    else if (r) {
+      const failed = (r.failed || []).filter(Boolean)
+      txt += ` · ↑推送 ${r.pushed} 站 · ↓回写 ${r.pulled} 站${r.dead && r.dead.length ? ` · ⚠ ${r.dead.length} 站两侧均无 cookie` : ''}`
+      // 单站失败必须点名（带第一站的原因）：以前只报「同步失败」，看不出是谁、少了哪些站。
+      if (failed.length) {
+        const first = failed[0]
+        txt += ` · ⚠ ${failed.length} 站本次未同步：${first.name}${first.error ? `（${first.error}）` : ''}${failed.length > 1 ? ' 等' : ''}`
+      }
+    }
     else if (st.enabled) txt += ' · 等待首轮'
     $('autosyncStatus').textContent = txt
   }
@@ -1114,7 +1185,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!r) r = await syncNow()
       const st = await getAutosyncState()
       renderAutosync(st)
-      feedback(!r.error ? `同步完成：推送 ${r.pushed} · 回写 ${r.pulled}${r.dead && r.dead.length ? ` · ${r.dead.length} 站需重登` : ''}` : `同步失败：${r.error}`, r.error ? 'err' : 'ok')
+      const failedNow = (r.failed || []).filter(Boolean)
+      feedback(
+        r.error
+          ? `同步失败：${r.error}`
+          : `同步完成：推送 ${r.pushed} · 回写 ${r.pulled}${r.dead && r.dead.length ? ` · ${r.dead.length} 站需重登` : ''}${failedNow.length ? ` · ⚠ ${failedNow.length} 站本次未同步（${failedNow[0].name}${failedNow[0].error ? `：${failedNow[0].error}` : ''}）` : ''}`,
+        r.error || failedNow.length ? 'err' : 'ok',
+      )
     } catch (e) {
       feedback(`同步失败：${e.message}`, 'err')
       renderAutosync(await getAutosyncState())
@@ -1190,9 +1267,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       for (const s of sites) {
         if (!s.cookie) continue
         const host = new URL(s.base_url).hostname
-        cookieData[host] = Object.fromEntries(s.cookie.split(';').map((p) => {
-          const i = p.indexOf('='); return i > 0 ? [p.slice(0, i).trim(), p.slice(i + 1).trim()] : null
-        }).filter(Boolean))
+        // 协议形状：[{name,value,domain,path}]，见 backup.js cookieHeaderToEntries。
+        cookieData[host] = cookieHeaderToEntries(s.cookie, host)
       }
       await pushCookieCloud($('ccUrl').value, $('ccUuid').value, $('ccPass').value, {
         cookie_data: cookieData, local_storage_data: {},
@@ -1209,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await pullCookieCloud($('ccUrl').value, $('ccUuid').value, $('ccPass').value)
       let n = 0
       for (const [host, cookies] of Object.entries(data.cookie_data || {})) {
-        const header = Object.entries(cookies || {}).map(([k, v]) => `${k}=${v}`).join('; ')
+        const header = entriesToHeader(cookies)
         if (!header) continue
         await pullServerToBrowser({ base_url: `https://${host}/` }, header)
         n++

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ptpatronus/api/cloud.dart';
 import 'package:ptpatronus/api/file_storage.dart';
 import 'package:ptpatronus/api/monitor.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -63,7 +64,13 @@ class _Backend {
 }
 
 class FileManagePage extends StatefulWidget {
-  const FileManagePage({super.key});
+  const FileManagePage({super.key, this.listStorages, this.listDrives});
+
+  /// 取数注入缝（对齐 DoctorPage 的做法）：默认走后端。
+  /// 「存储后端读不到不该把云盘一起拖没」这条分支只有塞进假取数才证得伪。
+  final Future<List<FileStorage>> Function()? listStorages;
+  final Future<List<CloudDrive>> Function()? listDrives;
+
   @override
   State<FileManagePage> createState() => _FileManagePageState();
 }

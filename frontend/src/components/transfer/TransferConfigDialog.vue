@@ -14,11 +14,12 @@ withDefaults(
   defineProps<{
     cloudDrives: { id: number; name: string; type?: string }[]
     downloaders: { id: number; name: string }[]
+    loadFailed?: string[]
     savingCfg: boolean
     renameVars: { key: string; label: string }[]
     previewRename: (tpl: string, isTv: boolean) => string
   }>(),
-  { cloudDrives: () => [], downloaders: () => [], renameVars: () => [] },
+  { cloudDrives: () => [], downloaders: () => [], loadFailed: () => [], renameVars: () => [] },
 )
 
 const emit = defineEmits<{
@@ -43,6 +44,13 @@ const { t } = useI18n()
     <el-dialog :model-value="showConfig"
       @update:model-value="emit('update:showConfig', $event)" :title="t('transfer.config')" width="760px">
       <el-form :model="cfg" label-width="120px" size="small">
+        <el-form-item v-if="loadFailed.length" :label="t('common.loadFailed')">
+          <span class="load-failed">{{
+            loadFailed
+              .map((f) => (f === 'downloader' ? t('downloaders.title') : f === 'cloud' ? t('transfer.f.targetDrive') : t('transfer.config')))
+              .join('、')
+          }}</span>
+        </el-form-item>
         <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="cfg.enabled" /></el-form-item>
         <el-form-item :label="t('transfer.f.mode')">
           <el-select v-model="cfg.mode" style="width: 100%">

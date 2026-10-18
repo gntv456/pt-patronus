@@ -30,7 +30,7 @@ selectors:
             selector: div.postContent
         subtitle:
             filters:
-                - args: "(?s)Category:\\s+(.+?)(?=\\s+(Language:|Keywords:))"
+                - args: "(?s)Category:\\s+(.+?)\\s+(?:Language:|Keywords:)"
                   name: regexp
                 - args: "\u00a0 ::: / "
                   name: replace

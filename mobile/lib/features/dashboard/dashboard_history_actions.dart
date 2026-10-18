@@ -6,11 +6,18 @@ extension on _DashboardPageState {
   // 用户历史数据：打开弹窗/底栏加载该站点 90 天快照（自适应浮层）。
   Future<void> _viewHistory(SiteStatItem s) async {
     List<SiteHistoryPoint> history = [];
+    String? error;
+    String? note;
     bool loading = true;
     try {
-      history = await _api.history(s.siteId, days: 90);
-    } catch (_) {
-      history = const [];
+      final res = await _api.history(s.siteId, days: 90);
+      history = res.points;
+      if (res.truncated) {
+        note = '该区间共 ${res.total} 个快照，仅显示最近 ${res.points.length} 个';
+      }
+    } catch (e) {
+      // 读不到 ≠ 没有快照：吞成空列表会渲染「暂无历史快照」。
+      error = '历史数据加载失败：$e';
     } finally {
       loading = false;
     }
@@ -22,6 +29,8 @@ extension on _DashboardPageState {
       builder: (_) => DashboardHistoryBody(
         points: history,
         loading: loading,
+        error: error,
+        note: note,
         fmtBytes: _fmtBytes,
         fmtTime: _fmtTimeFull,
       ),

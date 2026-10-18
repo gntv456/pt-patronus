@@ -272,7 +272,10 @@ func (q *QQ) postMessage(ctx context.Context, token, target string, isGroup bool
 	}
 	// HTTP 200 仍可能携带业务错误（code != 0）。
 	var be qqError
-	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+	if err := decodeEnvelope("qq", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 0 {
 		return fmt.Errorf("code %d: %s", be.Code, be.Msg)
 	}
 	return nil

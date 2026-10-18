@@ -12,6 +12,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -98,12 +99,13 @@ func NewMedalChain(siteCh *SiteChain, reg *medalwall.Registry, op *oper.MedalOpe
 	return &MedalChain{siteCh: siteCh, reg: reg, op: op, hc: medalHTTP{c: hc}, notice: ns, cache: map[uint]medalCacheEntry{}, guard: newSpendGuard()}
 }
 
-// MedalAll 跨站并发聚合勋章墙（按站点顺序输出）。
-func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
+// MedalAll 跨站并发聚合勋章墙（按站点顺序输出）。站点清单读不出时交回错误——
+// 不能返回空切片让前端与「没配站点」同形。
+func (c *MedalChain) MedalAll(ctx context.Context, force bool) ([]MedalCard, error) {
 	sites, err := c.siteCh.sites.ListActive()
 	if err != nil {
 		slog.Warn("medal list sites failed", "err", err)
-		return []MedalCard{}
+		return nil, err
 	}
 	type siteRes struct {
 		items     []medalwall.Item
@@ -117,6 +119,14 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 		wg.Add(1)
 		safego.Go("medal:121", func() {
 			defer wg.Done()
+			// per-site 隔离：单站 panic 转成该站自己的错误卡（safego 兜底只留日志，
+			// 槽位保持零值 supported=false → 一卡不出，与「未开启抓取」同形）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("medal site panic", "site", s.Name, "err", r)
+					results[i] = siteRes{err: fmt.Sprintf("panic: %v", r), supported: true}
+				}
+			}()
 			def := c.siteCh.defFor(&s)
 			slog.Debug("medal site check", "site", s.Name, "enabled", def.Medal.Enabled, "schema", def.Schema, "shop", def.Medal.ShopPath)
 			if !def.Medal.Enabled {
@@ -145,18 +155,20 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 			out = append(out, MedalCard{SiteID: s.ID, SiteName: s.Name, Error: r.err})
 		}
 	}
-	return out
+	return out, nil
 }
 
 // MedalAllStream 流式推送跨站勋章墙：每站完成即 emit（成功站多张卡，失败站一张错误占位卡）。
 // 供 SSE 端点「加载一个显示一个」。与 MedalAll 不同：不按站序输出（按到达顺序）。
 // medalSite 内部已有 3 级缓存 + per-site singleflight（24h/48h），缓存命中时逐站瞬时返回。
+// 返回站点清单读失败的错误文本（空=正常）——清单读不出以前静默返回、前端只收一个空 done 帧，
+// 与「全部站点都没有勋章」同形；现在随 done 帧交回，调用方必须原样透出。
 // 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化写入。
-func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(cards []MedalCard)) {
+func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(cards []MedalCard)) string {
 	sites, err := c.siteCh.sites.ListActive()
 	if err != nil {
 		slog.Warn("medal list sites failed", "err", err)
-		return
+		return err.Error()
 	}
 	sem := make(chan struct{}, medalConcurrency)
 	var wg sync.WaitGroup
@@ -164,6 +176,14 @@ func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(c
 		wg.Add(1)
 		safego.Go("medal:168", func() {
 			defer wg.Done()
+			// per-site 隔离：单站 panic 转成一帧错误卡（以前 panic → 零帧，前端与
+			// 「该站没有勋章」同形）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("medal site panic", "site", s.Name, "err", r)
+					emit([]MedalCard{{SiteID: s.ID, SiteName: s.Name, Error: fmt.Sprintf("panic: %v", r)}})
+				}
+			}()
 			def := c.siteCh.defFor(&s)
 			if !def.Medal.Enabled {
 				return // 该站未开启勋章墙抓取
@@ -188,6 +208,7 @@ func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(c
 		})
 	}
 	wg.Wait()
+	return ""
 }
 
 // MedalOne 单站强制网络刷新（写操作后调用；单站不限并发，sem=nil）。
@@ -256,14 +277,17 @@ func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models
 // 价格变动通知 → 内存缓存。sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站用）。
 func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter medalwall.Adapter) ([]medalwall.Item, string) {
 	if err := acquireSemaphore(ctx, sem); err != nil {
-		return nil, err.Error()
+		return nil, errtext.Text(err)
 	}
 	if sem != nil {
 		defer func() { <-sem }()
 	}
 	siteCtx, cancel := context.WithTimeout(ctx, medalTimeout)
 	defer cancel()
-	cookie := c.siteCh.credential(s, def)
+	cookie, cerr := c.siteCh.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr.Error()
+	}
 	shop, shopErr := adapter.FetchShop(siteCtx, c.hc, medalDef(def), s.BaseURL, cookie)
 	if shopErr != nil {
 		if errors.Is(shopErr, site.ErrNotLoggedIn) {
@@ -288,13 +312,18 @@ func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *m
 	merged = ensureMedalIDs(merged)
 	errMsg := ""
 	if shopErr != nil {
-		errMsg = shopErr.Error()
+		errMsg = errtext.Text(shopErr)
 	} else if len(merged) == 0 {
 		errMsg = "未发现勋章数据（站点可能未开放勋章功能或页面结构待适配）"
 	}
 
 	// 读旧（BatchUpsert 是删后插，旧数据会被清，必须先读）→ diff → 通知
 	oldItems := medalsToItems(mustFindBySite(c.op, s.ID))
+	// 已拥有列表回源失败（uid 丢失/个人页瞬时故障）：回填旧 OWNED/佩戴状态，
+	// 避免「商店成功 + 已拥有失败」的一次网络抖动把库里的已拥有勋章洗成「可购买」。
+	if ownedErr != nil {
+		merged = carryForwardOwned(oldItems, merged)
+	}
 	// 商店失败时保留完整商店快照，避免一次网络/结构故障清空可用数据。
 	// 但旧版本可能把个人页误扫结果以 owned:<name> 写成“仅拥有快照”；若本次仍只能拿到
 	// owned-only 数据，应允许用 UID 限定后的结果替换它，避免错误佩戴状态在 DB TTL 内复活。
@@ -326,54 +355,6 @@ func ownedOnlyMedalSnapshot(items []medalwall.Item) bool {
 		}
 	}
 	return true
-}
-
-// dispatchMedalChanges 对比新旧勋章，对新勋章/上架/降价/涨价/售罄变动发通知（当天去重）。
-func (c *MedalChain) dispatchMedalChanges(ctx context.Context, s *models.Site, old, cur []medalwall.Item) {
-	oldByID := map[string]medalwall.Item{}
-	for _, o := range old {
-		oldByID[medalKey(o)] = o
-	}
-	for _, n := range cur {
-		o, hadOld := oldByID[medalKey(n)]
-		if !hadOld {
-			if n.PurchaseStatus == medalwall.StatusAvailable {
-				_ = c.notice.Notice(ctx, notice.Input{
-					Source: notice.SourceMedalNew, Key: fmt.Sprintf("medal:%d:%s:new", s.ID, n.MedalID),
-					Title: "新勋章：" + s.Name, Body: n.Name + " 可购买（" + fmtMedalPrice(n) + "）", Level: "info",
-				}, true)
-			}
-			continue
-		}
-		// 价格变动
-		if o.Price > 0 && n.Price > 0 && o.Price != n.Price {
-			if n.Price < o.Price {
-				_ = c.notice.Notice(ctx, notice.Input{
-					Source: notice.SourceMedalPriceDrop, Key: fmt.Sprintf("medal:%d:%s:drop", s.ID, n.MedalID),
-					Title: "勋章降价：" + s.Name, Body: fmt.Sprintf("%s %s → %s", n.Name, fmtMedalPrice(o), fmtMedalPrice(n)), Level: "success",
-				}, true)
-			} else {
-				_ = c.notice.Notice(ctx, notice.Input{
-					Source: notice.SourceMedalPriceRise, Key: fmt.Sprintf("medal:%d:%s:rise", s.ID, n.MedalID),
-					Title: "勋章涨价：" + s.Name, Body: fmt.Sprintf("%s %s → %s", n.Name, fmtMedalPrice(o), fmtMedalPrice(n)), Level: "warning",
-				}, true)
-			}
-		}
-		// 上架可购买
-		if o.PurchaseStatus != medalwall.StatusAvailable && n.PurchaseStatus == medalwall.StatusAvailable {
-			_ = c.notice.Notice(ctx, notice.Input{
-				Source: notice.SourceMedalAvailable, Key: fmt.Sprintf("medal:%d:%s:avail", s.ID, n.MedalID),
-				Title: "勋章上架：" + s.Name, Body: n.Name + " 现可购买", Level: "info",
-			}, true)
-		}
-		// 售罄
-		if !medalOOS(o) && medalOOS(n) {
-			_ = c.notice.Notice(ctx, notice.Input{
-				Source: notice.SourceMedalOutOfStock, Key: fmt.Sprintf("medal:%d:%s:oos", s.ID, n.MedalID),
-				Title: "勋章售罄：" + s.Name, Body: n.Name + " 已缺货", Level: "danger",
-			}, true)
-		}
-	}
 }
 
 // medalKey 勋章去重键：优先 medalId，无则归一名。

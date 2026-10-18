@@ -60,7 +60,10 @@ func (d *DingTalk) Send(ctx context.Context, msg Message) error {
 		ErrCode int    `json:"errcode"`
 		ErrMsg  string `json:"errmsg"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.ErrCode != 0 {
+	if err := decodeEnvelope("dingtalk", raw, &be); err != nil {
+		return err
+	}
+	if be.ErrCode != 0 {
 		return fmt.Errorf("dingtalk: errcode %d: %s", be.ErrCode, be.ErrMsg)
 	}
 	return nil

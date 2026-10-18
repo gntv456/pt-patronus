@@ -21,6 +21,11 @@ const cfgKeyMediaQuality = "media.quality"
 // ratingCacheTTL 聚合评分内存缓存有效期（避免订阅 cron 高频查外网）。
 const ratingCacheTTL = 6 * time.Hour
 
+// ratingFailCacheTTL 「全部源查询失败」的短缓存：故障期避免每条订阅重打全部外网源，
+// 又远短于 6h 正常 TTL——瞬时故障恢复后能快速重查（此前失败被当普通结果缓存 6h，
+// 且 gate 误判为「无评分」拦截下载）。
+const ratingFailCacheTTL = 2 * time.Minute
+
 // MediaQualityConfig 订阅质量闸门配置。Enabled 为总开关；订阅自身 EnableRatingGuard
 // 与此处 Enabled 取并集（任一为真即对该订阅启用评分闸门）。
 type MediaQualityConfig struct {
@@ -101,45 +106,64 @@ type RatingSummary struct {
 	ReleaseDate string         `json:"release_date"` // 取到的上映日（多源取最早已知）
 	ReleaseDays int            `json:"release_days"` // 距今多少天（0=未知）
 	Sources     []SourceRating `json:"sources"`
-	Passed      bool           `json:"passed"`
-	Reason      string         `json:"reason"` // 未通过时的原因
+	// FailedSources 本次没答话的源（网络/服务端故障或崩溃；未配置不计）。两个读者：
+	// 闸门未通过时拼进 Reason（让操作者知道「这次评分依据少了谁」），以及缓存侧据此
+	// 改用 2min 短 TTL——不能把「缺席一源」的聚合当完整结果钉 6 小时。
+	FailedSources []string `json:"failed_sources,omitempty"`
+	Passed        bool     `json:"passed"`
+	Reason        string   `json:"reason"` // 未通过时的原因
 }
 
 // ratingCacheEntry 内存缓存项（避免订阅 cron 高频查外网）。
 type ratingCacheEntry struct {
 	summary   *RatingSummary
+	err       error // 非 nil=算不出来（全部源失败/无可评源），按短 TTL 缓存
 	fetchedAt time.Time
 }
 
 // AggregatedRating 跨源聚合评分 + 质量闸门判定。复用 provider 源做标题+年份匹配，
 // 每源取投票数最高的一条（最佳统计样本），加权综合后按 LoadQuality() 闸门判定。
 //
-// 用于「订阅低分保护」与「媒体质量」预览页。外部源失败静默跳过（不阻断聚合）。
+// 用于「订阅低分保护」与「媒体质量」预览页。外部源查询失败静默跳过（不阻断聚合）；
+// 但全部源失败时返回错误（调用方 fail-open 放行 + 短 TTL 后重试），不得混入
+// 「查询成功但无评分」的摘要（后者 Passed=false 是真实闸门判定）。
 // mtype: "" / "movie" / "tv"，透传给各源做类型过滤（参考 media.TypeMatches）。
 func (c *MediaChain) AggregatedRating(ctx context.Context, title string, year int, mtype string) (*RatingSummary, error) {
 	key := strings.ToLower(strings.TrimSpace(title)) + "|" + strconv.Itoa(year) + "|" + mtype
 
 	// 内存缓存命中（订阅 cron 会高频查同一标题）。
 	c.ratingCacheMu.RLock()
-	if e, ok := c.ratingCache[key]; ok && time.Since(e.fetchedAt) < ratingCacheTTL {
-		c.ratingCacheMu.RUnlock()
-		return e.summary, nil
+	if e, ok := c.ratingCache[key]; ok {
+		ttl := ratingCacheTTL
+		if e.err != nil {
+			ttl = ratingFailCacheTTL
+		} else if e.summary != nil && len(e.summary.FailedSources) > 0 {
+			// 有部分源没答话的聚合结果只当临时答案用：否则缺席的那一源 6 小时内
+			// 都不参与闸门（源恢复后仍按旧的缺源分数拦下载）。
+			ttl = ratingFailCacheTTL
+		}
+		if time.Since(e.fetchedAt) < ttl {
+			c.ratingCacheMu.RUnlock()
+			return e.summary, e.err
+		}
 	}
 	c.ratingCacheMu.RUnlock()
 
-	summary := c.computeAggregatedRating(ctx, title, year, mtype)
+	summary, err := c.computeAggregatedRating(ctx, title, year, mtype)
 
 	c.ratingCacheMu.Lock()
 	if c.ratingCache == nil {
 		c.ratingCache = map[string]ratingCacheEntry{}
 	}
-	c.ratingCache[key] = ratingCacheEntry{summary: summary, fetchedAt: time.Now()}
+	c.ratingCache[key] = ratingCacheEntry{summary: summary, err: err, fetchedAt: time.Now()}
 	c.ratingCacheMu.Unlock()
-	return summary, nil
+	return summary, err
 }
 
 // computeAggregatedRating 实际跑跨源搜索 + 聚合 + 闸门判定（无缓存，便于单测注入 fake provider）。
-func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, year int, mtype string) *RatingSummary {
+// 返回错误当且仅当无可评源：全部源查询失败（网络/服务端故障）或没有任何源参与
+// （未允许/类型不符/未配置）——此时不做闸门判定，交调用方 fail-open。
+func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, year int, mtype string) (*RatingSummary, error) {
 	cfg := c.LoadQuality()
 
 	ctx, cancel := context.WithTimeout(ctx, mediaSearchBudget)
@@ -157,6 +181,9 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 		items  []media.MediaInfo
 	}
 	results := make([]srcResult, len(sources))
+	attempted := 0
+	var mu sync.Mutex
+	var failedNames []string
 	var wg sync.WaitGroup
 	for i, s := range sources {
 		if !allowedForAggregation(s, allowed) {
@@ -165,13 +192,27 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 		if ts, ok := s.(media.TypedSource); ok && !media.SourceMatches(ts.Types(), mtype) {
 			continue
 		}
+		attempted++
 		wg.Add(1)
 		safego.Go("media_rating:168", func() {
 			defer wg.Done()
+			// per-source 隔离：崩掉的源要记成「这个源没答话」。零值槽（source==nil）与
+			// 「这源没有这部片的评分」在聚合里长得一样，还会被当成完整结果钉 6h。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("rating source panicked", "source", s.Name(), "err", r)
+					mu.Lock()
+					failedNames = append(failedNames, s.Name())
+					mu.Unlock()
+				}
+			}()
 			items, err := s.Search(ctx, title, year)
 			if err != nil {
 				if !isNotConfigured(err) {
-					slog.Debug("rating aggregation source failed", "source", s.Name(), "err", err)
+					slog.Warn("rating aggregation source failed", "source", s.Name(), "err", err)
+					mu.Lock()
+					failedNames = append(failedNames, s.Name())
+					mu.Unlock()
 				}
 				return
 			}
@@ -179,6 +220,19 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 		})
 	}
 	wg.Wait()
+
+	succeeded := 0
+	for i := range results {
+		if results[i].source != nil {
+			succeeded++
+		}
+	}
+	if succeeded == 0 {
+		if attempted == 0 {
+			return nil, errors.New("未配置可用的评分源")
+		}
+		return nil, fmt.Errorf("全部 %d 个评分源查询失败", attempted)
+	}
 
 	sum := &RatingSummary{Title: title, Year: year, Type: mtype}
 	var totalVotes, weightedSum int
@@ -218,8 +272,14 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 		sum.Aggregated = s / float64(len(sum.Sources))
 	}
 	sum.ReleaseDays = releaseDaysSince(earliest)
+	sum.FailedSources = failedNames
 	sum.Passed, sum.Reason = evaluateGates(sum, cfg)
-	return sum
+	// 拦下来时把「这次谁没答话」写进原因：综合分是按投票数加权的，缺席一源足以改变
+	// Pass/Fail，只说「评分低于阈值」会让人以为数据是完整的。
+	if !sum.Passed && len(failedNames) > 0 && sum.Reason != "" {
+		sum.Reason += fmt.Sprintf("（本次未答话的源：%s）", strings.Join(failedNames, "、"))
+	}
+	return sum, nil
 }
 
 // allowedForAggregation 该源是否在配置允许列表内（空列表=全部允许）。
@@ -264,12 +324,15 @@ func releaseDaysSince(date string) int {
 	if len(date) < 4 {
 		return 0
 	}
-	// 取前 4 位年份；补全为 YYYY-01-01 以便粗略比较。
-	year := date[:4]
-	t, err := time.Parse("2006", year)
-	if err != nil {
-		// 可能是带月日的完整串，再试 RFC3339 日期部分。
-		t, err = time.Parse("2006-01-02", date)
+	// 优先完整日期（YYYY-MM-DD；RFC3339 取日期前缀），仅年份才退化为 1 月 1 日——
+	// 此前先按仅年份解析且永真，YYYY-MM-DD 被截成 YYYY-01-01，新片「上映天数」闸门恒过。
+	var t time.Time
+	var err error
+	if len(date) >= 10 {
+		t, err = time.Parse("2006-01-02", date[:10])
+	}
+	if err != nil || t.IsZero() {
+		t, err = time.Parse("2006", date[:4])
 		if err != nil {
 			return 0
 		}

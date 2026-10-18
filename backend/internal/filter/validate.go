@@ -1,9 +1,10 @@
 package filter
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
 // ruleIDRe 规则 id 仅限字母数字（对齐 MP-2 校验，保证可安全出现在 rule_string 表达式中）。
@@ -27,7 +28,7 @@ type CustomRuleInput struct {
 func NormalizeCustomRule(in CustomRuleInput) (Rule, error) {
 	id := strings.TrimSpace(in.ID)
 	if !ruleIDRe.MatchString(id) {
-		return Rule{}, fmt.Errorf("规则 id %q 非法：仅限字母数字", in.ID)
+		return Rule{}, oper.InputReasonf("规则 id %q 非法：只能用字母和数字", in.ID)
 	}
 	r := Rule{
 		ID:          id,
@@ -44,12 +45,12 @@ func NormalizeCustomRule(in CustomRuleInput) (Rule, error) {
 	}
 	if r.SizeRange != "" {
 		if op, _, _ := parseSizeRange(r.SizeRange); op == opUnknown {
-			return Rule{}, fmt.Errorf("size_range %q 格式非法（用 1000-5000 / >1000 / <5000）", r.SizeRange)
+			return Rule{}, oper.InputReasonf("大小范围 %q 格式非法，可用 1000-5000 / >1000 / <5000（单位 MB）", r.SizeRange)
 		}
 	}
 	if r.PublishTime != "" {
 		if _, ok := parsePublishTime(r.PublishTime); !ok {
-			return Rule{}, fmt.Errorf("publish_time %q 格式非法（用 60 或 60-1440 分钟）", r.PublishTime)
+			return Rule{}, oper.InputReasonf("发布时间 %q 格式非法，可用 60 或 60-1440（单位分钟）", r.PublishTime)
 		}
 	}
 	if r.Seeders < 0 {
@@ -57,12 +58,12 @@ func NormalizeCustomRule(in CustomRuleInput) (Rule, error) {
 	}
 	for _, p := range r.Include {
 		if _, err := compilePattern(p); err != nil {
-			return Rule{}, fmt.Errorf("include 正则非法：%w", err)
+			return Rule{}, oper.InputReasonf("包含正则写错了：%v", err)
 		}
 	}
 	for _, p := range r.Exclude {
 		if _, err := compilePattern(p); err != nil {
-			return Rule{}, fmt.Errorf("exclude 正则非法：%w", err)
+			return Rule{}, oper.InputReasonf("排除正则写错了：%v", err)
 		}
 	}
 	return r, nil
@@ -81,15 +82,15 @@ type RuleGroupInput struct {
 func NormalizeRuleGroup(in RuleGroupInput) (RuleGroup, error) {
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return RuleGroup{}, fmt.Errorf("规则组 name 不能为空")
+		return RuleGroup{}, oper.InputReasonf("规则组名字不能为空")
 	}
 	rs := strings.TrimSpace(in.RuleString)
 	if rs == "" {
-		return RuleGroup{}, fmt.Errorf("rule_string 不能为空")
+		return RuleGroup{}, oper.InputReasonf("规则表达式不能为空")
 	}
 	mt := strings.TrimSpace(in.MediaType)
 	if mt != "" && mt != MediaTypeMovie && mt != MediaTypeTV {
-		return RuleGroup{}, fmt.Errorf("media_type 取值非法（空 / %s / %s）", MediaTypeMovie, MediaTypeTV)
+		return RuleGroup{}, oper.InputReasonf("媒体类型取值非法，只能是空 / %s / %s", MediaTypeMovie, MediaTypeTV)
 	}
 	if _, err := SplitLevels(rs); err != nil {
 		return RuleGroup{}, err
@@ -105,12 +106,12 @@ func ValidateRuleString(ruleString string, knownID map[string]bool) error {
 	}
 	for _, lv := range levels {
 		if _, err := Parse(lv); err != nil {
-			return fmt.Errorf("层级 %q 语法非法：%w", lv, err)
+			return oper.InputReasonf("规则层级 %q 语法写错了：%v", lv, err)
 		}
 	}
 	for _, tok := range extractTokens(ruleString) {
 		if !knownID[tok] {
-			return fmt.Errorf("rule_string 引用了未知规则 id：%q", tok)
+			return oper.InputReasonf("规则表达式引用了不存在的规则 id %q，请先创建它或从表达式里去掉", tok)
 		}
 	}
 	return nil

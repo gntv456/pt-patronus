@@ -3,13 +3,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { agentApi, type AgentConfig, type ToolCatalogEntry, type AgentStats } from '@/api/agent'
 import { useAgentChat, type Unit } from '@/composables/useAgentChat'
+import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
+import { allowAllToggleBlocked, cfgReadFailText, toolsReadFailText } from './assistantHelpers'
 
 const { t } = useI18n()
+// /agent/* 除 GET /config 外全是 RequireAdmin：非管理员进这个页只会拿到满屏 403，
+// 故按 auth.isAdmin 收口入口（与 Workflow/NasServer 的页内守卫同一惯例）。
+const auth = useAuthStore()
 const scroller = ref<HTMLElement | null>(null)
 // 会话与流式聊天逻辑抽出为 composable（useAgentChat）。
 const {
   conversations,
+  convWindow,
   activeId,
   messages,
   loadingMsgs,
@@ -39,12 +45,16 @@ const apiKeyInput = ref('')
 const savingCfg = ref(false)
 // 用量统计（配置弹窗展示；本次运行以来累计，重启清零）。
 const stats = ref<AgentStats | null>(null)
+// 读不出来的原因：stats=null 会让整块用量消失，和「这次运行还没有调用」同形（#297）。
+const statsError = ref('')
 const toolSuccessRate = computed(() => {
   if (!stats.value || stats.value.tool_calls === 0) return '—'
   return Math.round((1 - stats.value.tool_errors / stats.value.tool_calls) * 100)
 })
 // 工具白名单：toolAllowAll=true → enabled_tools=[]（全开，新增工具自动可用）；false → 仅勾选的可用。
 const allTools = ref<ToolCatalogEntry[]>([])
+// 目录读取失败的原因：非空时「启用全部工具」开关锁死（空目录会被存成全开）。
+const toolsError = ref('')
 const toolAllowAll = ref(true)
 const enabledSet = ref<Set<string>>(new Set())
 const toolSections = computed(() => {
@@ -69,6 +79,8 @@ function toggleTool(name: string, checked: boolean) {
   enabledSet.value = s
 }
 function onToggleAllowAll(v: boolean) {
+  // 目录没读出来时这一改会把白名单存成全开（见 assistantHelpers 里的说明）。
+  if (allowAllToggleBlocked(toolsError.value)) return
   toolAllowAll.value = v
   // 从「全开」切到「自选」时，默认全部勾上，让用户从全启用开始按需收窄。
   if (!v && enabledSet.value.size === 0) enabledSet.value = new Set(allTools.value.map((t) => t.name))
@@ -91,19 +103,24 @@ function emptyCfg(): AgentConfig {
 async function openConfig() {
   try {
     cfg.value = await agentApi.getConfig()
-  } catch {
-    cfg.value = emptyCfg()
+  } catch (e: unknown) {
+    ElMessage.error(cfgReadFailText((e as Error).message))
+    return
   }
   apiKeyInput.value = ''
+  toolsError.value = ''
   try {
     allTools.value = await agentApi.tools()
-  } catch {
+  } catch (e: unknown) {
     allTools.value = []
+    toolsError.value = (e as Error).message || '未知原因'
   }
   try {
     stats.value = await agentApi.stats()
-  } catch {
+    statsError.value = ''
+  } catch (e: unknown) {
     stats.value = null
+    statsError.value = (e as Error).message || '未知原因'
   }
   // enabled_tools 为空 = 全开；否则按显式清单勾选。
   if (cfg.value.enabled_tools.length === 0) {
@@ -130,12 +147,21 @@ async function saveConfig() {
   }
 }
 
-onMounted(loadConversations)
+onMounted(() => {
+  if (auth.isAdmin) void loadConversations()
+})
 </script>
 
 <template>
   <div class="page">
-    <div class="layout">
+    <!-- 非管理员：入口收成一句说明，不给「暂无会话」的死胡同，也不发必然 403 的请求 -->
+    <EmptyState
+      v-if="!auth.isAdmin"
+      icon="🔒"
+      :title="t('assistant.adminOnly')"
+      :description="t('assistant.adminOnlyDesc')"
+    />
+    <div v-else class="layout">
       <!-- 会话侧栏 -->
       <aside class="glass sidebar">
         <div class="side-head">
@@ -146,6 +172,13 @@ onMounted(loadConversations)
           </div>
         </div>
         <div class="conv-list">
+          <div v-if="convWindow.truncated" class="conv-note">
+            {{
+              convWindow.total == null
+                ? t('assistant.convsTruncatedUnknown', { n: convWindow.shown })
+                : t('assistant.convsTruncated', { n: convWindow.shown, total: convWindow.total })
+            }}
+          </div>
           <div
             v-a11y-button
             v-for="c in conversations"
@@ -157,7 +190,7 @@ onMounted(loadConversations)
             <span class="conv-title">{{ c.title || t('assistant.untitledChat') }}</span>
             <el-button class="conv-del" size="small" link @click.stop="deleteConversation(c.id)">🗑</el-button>
           </div>
-          <EmptyState v-if="!conversations.length" icon="message" :title="t('assistant.noConversations')" />
+          <EmptyState v-if="!conversations.length" icon="💬" :title="t('assistant.noConversations')" />
         </div>
       </aside>
 
@@ -165,7 +198,7 @@ onMounted(loadConversations)
       <section class="glass chat">
         <div ref="scroller" class="msg-list">
           <template v-if="!units.length && !pending">
-            <EmptyState icon="message" :title="t('assistant.chatTitle')" :sub="t('assistant.chatSub')" />
+            <EmptyState icon="💬" :title="t('assistant.chatTitle')" :description="t('assistant.chatSub')" />
           </template>
           <template v-for="u in units" :key="u.id">
             <!-- 用户 -->
@@ -227,6 +260,9 @@ onMounted(loadConversations)
     <!-- 配置 -->
     <el-dialog v-model="showConfig" :title="t('assistant.configTitle')" width="560px">
       <el-form :model="cfg" label-width="120px" size="small">
+        <el-form-item v-if="!stats && statsError" :label="t('assistant.stats.usage')">
+          <span class="stat-warn">{{ t('assistant.stats.readFailed', { reason: statsError }) }}</span>
+        </el-form-item>
         <el-form-item v-if="stats" :label="t('assistant.stats.usage')">
           <div class="stats-grid">
             <div class="stat">
@@ -303,8 +339,14 @@ onMounted(loadConversations)
         /></el-form-item>
         <el-form-item :label="t('assistant.toolPerms')">
           <div class="tool-perms">
-            <el-switch :model-value="toolAllowAll" @update:model-value="(v: any) => onToggleAllowAll(v as boolean)" />
-            <span class="hint">{{ t('assistant.allToolsHint') }}</span>
+            <el-switch
+              :model-value="toolAllowAll"
+              :disabled="allowAllToggleBlocked(toolsError)"
+              @update:model-value="(v: any) => onToggleAllowAll(v as boolean)"
+            />
+            <span class="hint" :class="{ 'hint-warn': !!toolsError }">{{
+              toolsReadFailText(toolsError, t('assistant.allToolsHint'))
+            }}</span>
             <div v-if="!toolAllowAll" class="tool-groups">
               <div v-for="(sec, i) in toolSections" :key="i" class="tool-group">
                 <div class="tool-group-title" :class="sec.cls">{{ sec.title }}</div>

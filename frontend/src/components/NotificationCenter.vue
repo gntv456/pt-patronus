@@ -4,6 +4,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotices } from '@/composables/useNotices'
+import { applyGroupRead, groupReadNoticeKey } from '@/utils/noticeGroupRead'
 import { useWs } from '@/composables/useWs'
 import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import type { Notice, NoticeSource } from '@/api/notice'
@@ -15,6 +16,7 @@ const { t } = useI18n()
 const router = useRouter()
 const {
   notices,
+  loadFailed,
   unread,
   urgentUnread,
   load,
@@ -86,12 +88,16 @@ async function onBodyClick(n: Notice) {
 
 // 组头一键已读：不用先展开再逐条处理（高频场景：47 条站点离线批量确认）
 async function readGroup(g: Group) {
-  try {
-    await Promise.all(g.items.filter((n) => !n.read).map((n) => readOneApi(n.id)))
-    g.items.forEach((n) => (n.read = true))
-    g.unreadCount = 0
-  } catch {
-    ElMessage.warning(t('notices.actionFailed'))
+  const pending = g.items.filter((n) => !n.read)
+  if (!pending.length) return
+  // readOne 内部吞掉失败（不 reject），所以 Promise.all 的结果必须逐条取回来判断：
+  // 从前这里无条件把整组标成已读、未读清零，四条全失败也显示「本组已读完」（#294）。
+  const results = await Promise.all(pending.map((n) => readOneApi(n.id, true)))
+  const outcome = applyGroupRead(pending, results, g.unreadCount)
+  g.unreadCount = outcome.unreadLeft
+  const kind = groupReadNoticeKey(outcome)
+  if (kind !== 'all') {
+    ElMessage.warning(t(kind === 'none' ? 'nc.groupReadAllFailed' : 'nc.groupReadPartial', { n: outcome.failed }))
   }
 }
 
@@ -211,7 +217,9 @@ function onGroupLeave(el: Element) {
           </div>
         </div>
         <div class="nc-list">
-          <div v-if="!notices.length" class="nc-empty">{{ t('notices.emptyTitle') }}</div>
+          <div v-if="!notices.length" class="nc-empty">
+            {{ loadFailed ? t('notices.loadFailed') : t('notices.emptyTitle') }}
+          </div>
           <div v-for="g in grouped" :key="g.source" class="nc-group-wrap">
             <!-- 组头：折叠时显示彩色图标 + 类型名 + 未读 pill 徽标 + 最新时间 -->
             <div

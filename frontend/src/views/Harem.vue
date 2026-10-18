@@ -209,7 +209,6 @@ onUnmounted(() => abortCtrl?.abort())
         <el-table-column prop="status" :label="t('reseed.col.status')" width="90">
           <template #default="{ row }">
             <span class="pt-chip" :class="row.status === 'disabled' ? 'pt-chip--danger' : row.status === 'pending' ? 'pt-chip--warn' : 'pt-chip--success'">{{ row.status }}</span>
-            >
           </template>
         </el-table-column>
         <el-table-column :label="t('contract.uploadShort')" width="80" align="right"

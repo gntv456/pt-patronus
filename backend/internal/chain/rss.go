@@ -2,21 +2,17 @@ package chain
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
-	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/mmcdole/gofeed"
 )
 
@@ -59,15 +55,39 @@ func (c *RssChain) Create(r *models.RssSubscription) (*models.RssSubscription, e
 func (c *RssChain) Update(r *models.RssSubscription) error { return c.op.Update(r) }
 
 // Delete 删除。
-func (c *RssChain) Delete(id uint) error { return c.op.Delete(id) }
+// Delete 删 RSS 订阅源（连条目）。判定同 SubscribeChain.Delete：收在链层一处，
+// 供 HTTP 面与将来的工具面共用，不在每个调用方重抄一遍。
+func (c *RssChain) Delete(id uint) error {
+	if _, err := c.op.Get(id); err != nil {
+		return err
+	}
+	return c.op.Delete(id)
+}
 
 // ListItems 某订阅的条目。
 func (c *RssChain) ListItems(subID uint, limit int) ([]models.RssItem, error) {
 	return c.itemOp.ListBySubscription(subID, limit)
 }
 
-// Check 检查单个订阅：抓取→解析→过滤→去重→(可选)下载→通知。返回本轮新发现条数。
-func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int, error) {
+// CountItems 某订阅的条目总数（列表被上限截断时说「还有多少没显示」）。
+func (c *RssChain) CountItems(subID uint) (int64, error) { return c.itemOp.CountBySubscription(subID) }
+
+// RssCheckWindow 单轮检查的 feed 条目窗口。它挡的是**副作用突发**不是内存——gofeed 早已
+// 把整个 feed 解析进内存；首次同步大源时若不设上限，会把上千条目一次性写库，开了自动下载
+// 还会把上千种子推给下载器，而 cron 给一轮只有 2 分钟上下文，跑到一半被取消反而整轮作废。
+const RssCheckWindow = 200
+
+// RssCheckResult 一轮检查的账面。scanned/total/truncated 必须和新发现条数同行：
+// 只报「新发现 N 条」时，「源里 512 条只看了窗口内的 200 条」和「整个源都看过了」在界面上同形。
+type RssCheckResult struct {
+	New       int
+	Scanned   int
+	Total     int
+	Truncated bool
+}
+
+// Check 检查单个订阅：抓取→解析→过滤→去重→(可选)下载→通知。返回本轮账面。
+func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (*RssCheckResult, error) {
 	cookie := ""
 	if sub.SiteID != 0 {
 		if s, err := c.siteOp.Get(sub.SiteID); err == nil && s != nil {
@@ -83,7 +103,7 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		if e := c.op.MarkChecked(sub.ID); e != nil {
 			slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
 		}
-		return 0, fmt.Errorf("抓取 RSS 失败: %w", err)
+		return nil, fmt.Errorf("抓取 RSS 失败: %w", err)
 	}
 	feed, err := c.fp.ParseString(string(resp.Body))
 	if err != nil {
@@ -91,7 +111,7 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		if e := c.op.MarkChecked(sub.ID); e != nil {
 			slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
 		}
-		return 0, fmt.Errorf("解析 RSS 失败: %w", err)
+		return nil, fmt.Errorf("解析 RSS 失败: %w", err)
 	}
 
 	// 解析下载器（自动下载时用）
@@ -111,11 +131,26 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		size         int64
 		pub          *time.Time
 	}
-	cands := make([]rssCandidate, 0, len(feed.Items))
-	for i, item := range feed.Items {
-		if i >= 200 {
-			break
+	// 窗口取「哪 200 条」不能只按 feed 里的位置：RSS 不规定新旧顺序，不少站点/聚合器
+	// 按「旧→新」升序输出，此时最新条目排在末尾，取前 RssCheckWindow 条会让它们永远
+	// 落在窗口外——自动下载从此不再触发，而每轮界面都说「没有新条目」。
+	res := &RssCheckResult{Total: len(feed.Items)}
+	if res.Total > RssCheckWindow {
+		res.Scanned = RssCheckWindow
+		res.Truncated = true
+		slog.Warn("rss scan window truncated", "sub", sub.ID, "name", sub.Name,
+			"scanned", res.Scanned, "total", res.Total)
+	} else {
+		res.Scanned = res.Total
+	}
+	fromEnd := rssFeedAscending(feed.Items)
+	cands := make([]rssCandidate, 0, res.Scanned)
+	for i := 0; i < res.Scanned; i++ {
+		idx := i
+		if fromEnd {
+			idx = len(feed.Items) - 1 - i
 		}
+		item := feed.Items[idx]
 		guid := item.GUID
 		if guid == "" {
 			guid = item.Link
@@ -132,6 +167,8 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		if sub.Resolution != "" && !matchResolution(title, sub.Resolution) {
 			continue
 		}
+		// 上下限共用一个判据：旧写法是两条独立比较，「没给出体积」在下限下被筛掉、
+		// 在上限下被放行（方向相反，且设上限的用户恰恰是最不想拿到未知大小区间的那批）。
 		if sub.MinSize > 0 && size < sub.MinSize {
 			continue
 		}
@@ -191,13 +228,24 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		}
 		newCount++
 
-		// 自动下载
-		if sub.AutoDownload && dlID != 0 {
-			opts := rssAutoDownloadOptions(sub, cd.torrURL, cd.key)
-			if err := c.dlCh.Add(ctx, dlID, opts); err != nil {
+		// 自动下载。失败/无下载器一律回滚去重行（Delete）：条目只有「成功入队」或
+		// 「未处理待下轮重试」两种终态——否则下载器临时故障（重启/升级）即静默丢种，
+		// 条目永久躺在「已见未下载」死行里，即使故障恢复也不再重试。
+		if sub.AutoDownload {
+			if dlID == 0 {
+				slog.Warn("rss auto download skipped: no downloader configured", "sub", sub.ID, "title", cd.title)
+				if e := c.itemOp.Delete(it.ID); e != nil {
+					slog.Warn("rss item rollback failed", "sub", sub.ID, "err", e)
+				}
+			} else if err := c.dlCh.Add(ctx, dlID, rssAutoDownloadOptions(sub, cd.torrURL, cd.key)); err != nil {
 				slog.Warn("rss auto download failed", "sub", sub.ID, "title", cd.title, "err", err)
+				if e := c.itemOp.Delete(it.ID); e != nil {
+					slog.Warn("rss item rollback failed", "sub", sub.ID, "err", e)
+				}
 			} else {
-				_ = c.itemOp.MarkDownloaded(it.ID)
+				if e := c.itemOp.MarkDownloaded(it.ID); e != nil {
+					slog.Warn("RSS 条目「已下载」标记写失败：种子已进下载器，条目却停在已见未下载态", "sub", sub.ID, "item", it.ID, "title", cd.title, "err", e)
+				}
 				if c.notice != nil {
 					_ = c.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceRssHit,
@@ -212,10 +260,25 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 	if e := c.op.MarkChecked(sub.ID); e != nil {
 		slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
 	}
+	res.New = newCount
 	if newCount > 0 {
 		slog.Info("rss new items", "sub", sub.Name, "count", newCount)
 	}
-	return newCount, nil
+	return res, nil
+}
+
+// rssCheckFailNotice 组装「某个订阅本轮抓取/解析失败」的站内通知。
+// 单独成函数是因为这条路径在 cron 里没有别的读者：Check 的失败分支也调了 MarkChecked，
+// last_checked_at 照旧推进，列表里这条订阅始终显示「已检查」、新条目恒 0，
+// 只有日志一行 Warn ⇒ 用户学到的是「这个源就是没东西」，而不是「一直抓不到」。
+func rssCheckFailNotice(sub *models.RssSubscription, err error) notice.Input {
+	return notice.Input{
+		Source: notice.SourceRssCheckFail,
+		Key:    fmt.Sprintf("rss-checkfail:%d:%s", sub.ID, time.Now().Format("2006-01-02")),
+		Title:  "RSS 抓取失败：" + sub.Name,
+		Body:   errtext.Text(err), // 走文案单一来源（真机第一轮暴露：这里用 err.Error() 会把 SSRF/dial 原文贴进通知）
+		Level:  "warning",
+	}
 }
 
 // CheckAll cron 全局扫描入口：按各订阅 interval_min vs last_checked_at 决定是否到点。
@@ -223,6 +286,17 @@ func (c *RssChain) CheckAll(ctx context.Context) {
 	subs, err := c.op.ListEnabled()
 	if err != nil {
 		slog.Warn("rss list enabled failed", "err", err)
+		// 自曝：启用订阅读不出=整轮扫描不跑、RSS 命中漏推，渲染成「没有订阅」是假绿。
+		// 当天去重防 cron 刷屏；notice 可空（测试未装配时跳过）。
+		if c.notice != nil {
+			_ = c.notice.Notice(ctx, notice.Input{
+				Source: notice.SourceRssListFail,
+				Key:    "rss-listfail:" + time.Now().Format("2006-01-02"),
+				Title:  "RSS 订阅",
+				Body:   "本轮 RSS 扫描未能开始：读取订阅列表失败 — " + err.Error(),
+				Level:  "warning",
+			}, true)
+		}
 		return
 	}
 	for i := range subs {
@@ -244,6 +318,11 @@ func (c *RssChain) CheckAll(ctx context.Context) {
 			}()
 			if _, err := c.Check(sctx, sub); err != nil {
 				slog.Warn("rss check failed", "sub", sub.Name, "err", err)
+				// 只留日志＝没吭声：失败路径也推进了 last_checked_at，界面上这条订阅永远「健康」。
+				// 自曝一条按订阅+当天去重的通知（口径同本文件的 rss_list_fail）。
+				if c.notice != nil {
+					_ = c.notice.Notice(sctx, rssCheckFailNotice(sub, err), true)
+				}
 			}
 		}()
 		cancel()
@@ -262,95 +341,4 @@ func (c *RssChain) defaultDownloaderID() uint {
 		}
 	}
 	return list[0].ID
-}
-
-// rssItemKey guid 的稳定哈希（去重键）。
-func rssItemKey(guid string) string {
-	sum := sha1.Sum([]byte(guid))
-	return hex.EncodeToString(sum[:])[:16]
-}
-
-// rssItemDownload 从 gofeed.Item 取种子下载链接与大小（优先 enclosure）。
-func rssItemDownload(item *gofeed.Item) (url string, size int64) {
-	if len(item.Enclosures) > 0 {
-		enc := item.Enclosures[0]
-		url = enc.URL
-		size = site.ParseBytes(enc.Length)
-	}
-	if url == "" {
-		url = item.Link // 可能是磁力
-	}
-	return
-}
-
-func rssItemPubDate(item *gofeed.Item) *time.Time {
-	if item.PublishedParsed != nil {
-		return item.PublishedParsed
-	}
-	if item.UpdatedParsed != nil {
-		return item.UpdatedParsed
-	}
-	return nil
-}
-
-// rssMatchAny 标题命中 | 分隔任一关键词（空规则=放行）。
-func rssMatchAny(title, rules string) bool {
-	if strings.TrimSpace(rules) == "" {
-		return true
-	}
-	t := strings.ToLower(title)
-	for _, kw := range strings.Split(rules, "|") {
-		if k := strings.TrimSpace(kw); k != "" && strings.Contains(t, strings.ToLower(k)) {
-			return true
-		}
-	}
-	return false
-}
-
-// rssMatchNone 标题命中 | 分隔任一关键词即排除（空规则=不排除）。
-func rssMatchNone(title, rules string) bool {
-	if strings.TrimSpace(rules) == "" {
-		return true
-	}
-	t := strings.ToLower(title)
-	for _, kw := range strings.Split(rules, "|") {
-		if k := strings.TrimSpace(kw); k != "" && strings.Contains(t, strings.ToLower(k)) {
-			return false
-		}
-	}
-	return true
-}
-
-// rssAutoDownloadOptions 组装 RSS 自动下载的推种参数。
-// 整理契约对齐（P0 修复）：下载完成检测按 Category/Tag 白名单决定是否整理，
-// 用户不填分类时默认补 "subscribe"（与订阅链路一致），并追加 ptpsrc 标签
-// 让整理走标签秒级识别（Path A）——否则 RSS 自动下载的种子永不整理、
-// 待办也不显示（ShouldProcess 恒 false），链路在下载→整理交接处断裂。
-func rssAutoDownloadOptions(sub *models.RssSubscription, torrURL, itemKey string) downloader.AddOptions {
-	category := sub.Category
-	if category == "" {
-		category = "subscribe"
-	}
-	tags := parseCsv(sub.Tags)
-	tags = append(tags, "subscribe", transfer.EncodeMediaTag("rss", fmt.Sprintf("%d:%s", sub.ID, itemKey), ""))
-	return downloader.AddOptions{
-		URL: torrURL, Category: category,
-		Tags: tags, SavePath: sub.SavePath,
-		SiteID: sub.SiteID,
-	}
-}
-
-// parseCsv 逗号分隔 → 切片（去空）。
-func parseCsv(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return nil
-	}
-	parts := strings.Split(s, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if t := strings.TrimSpace(p); t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
 }

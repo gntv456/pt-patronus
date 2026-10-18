@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -30,15 +29,18 @@ func NewSiteOper(db *gorm.DB, c *security.Crypto) *SiteOper {
 	return &SiteOper{db: db, c: c}
 }
 
-// DecryptedPasskey 解密站点 PasskeyEnc；空或解密失败返回 ""（辅种拼下载链接用）。
-func (o *SiteOper) DecryptedPasskey(s *models.Site) string {
+// Passkey 解密站点 PasskeyEnc：区分「没存 passkey」（"", nil）与「存过但解不开」("", err)。
+// 备份导出这类「少一个字段就是丢数据」的调用方必须用这一版。
+func (o *SiteOper) Passkey(s *models.Site) (string, error) {
 	if s == nil || s.PasskeyEnc == "" {
-		return ""
+		return "", nil
 	}
-	pk, err := o.c.Decrypt(s.PasskeyEnc)
-	if err != nil {
-		return ""
-	}
+	return o.c.Decrypt(s.PasskeyEnc)
+}
+
+// DecryptedPasskey 是 Passkey 的单值包装：调用方按「没有 passkey 就退化成别的路径」处理时用。
+func (o *SiteOper) DecryptedPasskey(s *models.Site) string {
+	pk, _ := o.Passkey(s)
 	return pk
 }
 
@@ -158,7 +160,8 @@ func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 // 但全部包在一个事务内——把 N 次 fsync 压成 1 次（慢盘上 200 站从数十秒降到 <1s）。
 //
 // 按注册域去重：库内已存在 或 本批次已处理的注册域 → 跳过（对齐 MoviePilot，防备份导入产生
-// 重复站点/重复账号）。单条其他错误同样跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
+// 重复站点/重复账号）。非法 base_url（非 http/https）与 Create 同口径校验后跳过。
+// 单条其他错误同样跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
 // 返回成功创建的条数（调用方用 len(ins)-n 自算跳过数）。
 func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
 	if len(ins) == 0 {
@@ -179,6 +182,12 @@ func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
 			dom := dupDomain(in.BaseURL)
 			if dom != "" && seen[dom] {
 				continue // 同注册域已存在/已处理 → 跳过
+			}
+			// 与 Create 对齐的入口校验：导入路径（自身备份/PT-Depiler/MoviePilot）此前
+			// 绕过 validateBaseURL，javascript:/file:/相对路径可入库（见 Create 注释）；
+			// 非法条目跳过，调用方按成功数差异计为跳过。
+			if err := validateBaseURL(in.BaseURL); err != nil {
+				continue
 			}
 			if _, e := o.createOnDB(tx, in); e != nil {
 				continue
@@ -396,44 +405,4 @@ func (o *SiteOper) encryptSecrets(s *models.Site, in SiteInput) error {
 		s.PasswordEnc = enc
 	}
 	return nil
-}
-
-// UpsertConnectivity 覆盖写一站联通状态缓存（site_id 唯一：存在则更新，不存在则创建）并累加统计。
-// connected → Success++ 且（seconds>0 时）滑动平均更新 AvgSeconds；disconnected → Fail++；
-// disabled（停用站未发请求）不计统计。status/level/error_msg/checked_at 始终覆盖。
-// 四轮 P2 修复：SSE 矩阵、手动触发、快照 cron、workflow、CookieCloud 可对同站并发
-// 调用（此前注释宣称"单站串行"不成立），FirstOrCreate→Success++→Save 的读-改-写会
-// 丢累加。计数改 gorm.Expr 原子 SQL；滑动平均以 SQL 端计算（新均 = (旧均*(n-1)+本次)/n）。
-func (o *SiteOper) UpsertConnectivity(siteID uint, status, level, errMsg string, seconds float64) error {
-	now := time.Now()
-	// 确保行存在（site_id 唯一，冲突时忽略报错继续走更新）。
-	if err := o.db.Where(&models.SiteConnectivity{SiteID: siteID}).FirstOrCreate(&models.SiteConnectivity{SiteID: siteID}).Error; err != nil {
-		return err
-	}
-	updates := map[string]any{
-		"status":     status,
-		"level":      level,
-		"error_msg":  errMsg,
-		"checked_at": now,
-	}
-	switch status {
-	case "connected":
-		if seconds > 0 {
-			// 滑动平均：新均 = (旧均 × (n-1) + 本次) / n（n = success+1，SQL 端原子算）
-			updates["avg_seconds"] = gorm.Expr("(? * success + ?) / (success + 1)", gorm.Expr("avg_seconds"), seconds)
-		}
-		updates["success"] = gorm.Expr("success + 1")
-	case "disconnected":
-		updates["fail"] = gorm.Expr("fail + 1")
-	}
-	return o.db.Model(&models.SiteConnectivity{}).Where("site_id = ?", siteID).Updates(updates).Error
-}
-
-// ListConnectivity 返回全部站点联通状态缓存（GET /sites/status 进页面用，瞬时读、不发网络请求）。
-func (o *SiteOper) ListConnectivity() ([]models.SiteConnectivity, error) {
-	var list []models.SiteConnectivity
-	if err := o.db.Find(&list).Error; err != nil {
-		return nil, err
-	}
-	return list, nil
 }

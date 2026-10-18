@@ -19,7 +19,7 @@ func (h *SshAdminHandler) Sessions(c *gin.Context) {
 	cmd := `w -h 2>/dev/null`
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	resp := sshSessionListResp{Sessions: []sshSessionRow{}}
@@ -76,7 +76,7 @@ func (h *SshAdminHandler) KillSession(c *gin.Context) {
 	cmd := "kill -TERM " + pidStr + " 2>&1"
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !r.Success {
@@ -102,7 +102,7 @@ func (h *SshAdminHandler) Logs(c *gin.Context) {
 	cmd := "journalctl -u sshd -u ssh --no-pager -n " + strconv.Itoa(n) + ` 2>/dev/null | grep -E 'Accepted|Failed|Disconnected' || last -n ` + strconv.Itoa(n)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	resp := sshLogListResp{Logs: []sshLogRow{}}

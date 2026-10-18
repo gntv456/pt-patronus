@@ -90,8 +90,19 @@ export type AgentEvent =
   | { event: 'error'; data: { message: string } }
 
 export const agentApi = {
-  conversations: () =>
-    http.get<{ conversations: AgentConversation[] }>('/agent/conversations').then((r) => r.data.conversations ?? []),
+  conversationsPage: () =>
+    http
+      .get<{ conversations: AgentConversation[]; total?: number; limit?: number; truncated?: boolean }>(
+        '/agent/conversations',
+      )
+      .then((r) => ({
+        conversations: r.data.conversations ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? 0,
+        // 缺字段按「可能被截断」处理：单页 200 个会话封顶，别把一页说成建过的全部会话。
+        truncated: r.data.truncated ?? true,
+      })),
+  conversations: () => agentApi.conversationsPage().then((p) => p.conversations),
   messages: (id: number) =>
     http.get<{ messages: AgentMessage[] }>(`/agent/conversations/${id}/messages`).then((r) => r.data.messages ?? []),
   deleteConversation: (id: number) => http.delete(`/agent/conversations/${id}`).then((r) => r.data),

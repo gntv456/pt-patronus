@@ -22,6 +22,7 @@ defineProps<{
   releases: PluginRelease[]
   loading: boolean
   rollbacking: number | null
+  notice?: string
 }>()
 
 const emit = defineEmits<{
@@ -186,6 +187,7 @@ function permissionRiskType(perm: string) {
             t('common.refresh')
           }}</el-button>
         </div>
+        <el-alert v-if="notice" :title="notice" type="warning" show-icon :closable="false" />
         <el-table v-loading="loading" :data="logs" size="small" :empty-text="t('pad.noLogs')" max-height="320">
           <el-table-column :label="t('pad.time')" width="170">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>

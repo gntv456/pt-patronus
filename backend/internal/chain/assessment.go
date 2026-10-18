@@ -95,11 +95,12 @@ func NewAssessmentChain(siteCh *SiteChain, reg *assessment.Registry, op *oper.As
 }
 
 // AssessAll 跨站并发聚合考核（按 progress 降序）。单站 miss 走 singleflight 合并同 siteID 并发回源。
-func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []AssessmentCard {
+// 站点清单读失败交回错误（JSON 端点回 errcode），不渲染成「0 站考核」假绿。
+func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) ([]AssessmentCard, error) {
 	sites, err := c.siteCh.sites.ListActive()
 	if err != nil {
 		slog.Warn("assessment list sites failed", "err", err)
-		return nil
+		return nil, err
 	}
 	cards := make([]AssessmentCard, len(sites))
 	sem := make(chan struct{}, assessConcurrency)
@@ -108,6 +109,14 @@ func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []Assessmen
 		wg.Add(1)
 		safego.Go("assessment:110", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站必须交出它自己的 UNKNOWN 卡。safego 只记日志，而零值卡
+			// SiteID==0 会被下面的遍历整张丢掉 → 前端少一站且毫无痕迹（SSE 面已按此修过）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("assessment site panic", "site", s.Name, "err", r)
+					cards[i] = assessPanicCard(s, r)
+				}
+			}()
 			cards[i] = c.assessSite(ctx, sem, &s, force)
 		})
 	}
@@ -125,7 +134,7 @@ func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []Assessmen
 			out[j-1], out[j] = out[j], out[j-1]
 		}
 	}
-	return out
+	return out, nil
 }
 
 // AssessOne 单站考核（强制网络刷新；单站不限并发，sem=nil）。
@@ -187,12 +196,11 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 			c.mu.Lock()
 			c.cache[s.ID] = assessCacheEntry{tasks: tasks, at: time.Now()}
 			c.mu.Unlock()
-			return convertTaskToCard(s.ID, s.Name, primaryTask(tasks), ""), nil
 		}
 		return c.fetchAssessSite(ctx, sem, s, def, adapter, ""), nil
 	})
 	if waitErr != nil {
-		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: waitErr.Error()}
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: ctxErrText(ctx, waitErr)}
 	}
 	return card
 }
@@ -201,14 +209,19 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 // sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站 AssessOne 用）。
 func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter assessment.Adapter, uid string) AssessmentCard {
 	if err := acquireSemaphore(ctx, sem); err != nil {
-		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: err.Error()}
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: ctxErrText(ctx, err)}
 	}
 	if sem != nil {
 		defer func() { <-sem }()
 	}
+	// #407 本次快照的写库结果（nil=存住了）。提升到函数开头："n	// 缓存写入与返回卡片两处都要读它，而 BatchUpsert 只在有任务时才调。
+	var persistErr error
 	siteCtx, cancel := context.WithTimeout(ctx, assessTimeout)
 	defer cancel()
-	token := c.siteCh.credential(s, def)
+	token, cerr := c.siteCh.credentialWithErr(s, def)
+	if cerr != nil {
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: cerr.Error()}
+	}
 	// uid 缺失（独立路径 AssessAll/AssessOne）→ 回源 UserInfo 拿 uid，绝不裸访 userdetails.php。
 	// 聚合路径 AssessSiteWithUID 已直传 uid，跳过本次 UserInfo。
 	if uid == "" {
@@ -221,7 +234,7 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 		if errors.Is(err, site.ErrNotLoggedIn) {
 			return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: "未登录"}
 		}
-		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: err.Error()}
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: ctxErrText(siteCtx, err)}
 	}
 	// 持久化 + 内存缓存
 	if len(tasks) > 0 {
@@ -231,8 +244,13 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 		for _, ot := range oldTasks {
 			oldStatus[ot.TaskName] = ot.Status
 		}
-		if err := c.op.BatchUpsert(s.ID, assessToDB(tasks), time.Now()); err != nil {
-			slog.Warn("assessment BatchUpsert failed, results not persisted", "site", s.ID, "err", err)
+		// #407 写库失败不��只落日志：此前只 slog.Warn，然后照样把这份「没存住」的
+		// 数据写进内存缓存并返回一张不含 Error 的正常卡片 —— 界面上一切正常，
+		// 而库里仍是旧快照。用户在 TTL 内反复刷新都会看到同一份假新鲜数据。
+		// 现在把失败变成卡片上的可见错误（前端 Assessment.vue / SiteDetail.vue 有读者）。
+		persistErr = c.op.BatchUpsert(s.ID, assessToDB(tasks), time.Now())
+		if persistErr != nil {
+			slog.Warn("assessment BatchUpsert failed, results not persisted", "site", s.ID, "err", persistErr)
 		}
 		// 状态转换检测 → 通知（首次该任务无旧记录则跳过，避免初始化刷屏）
 		if c.notice != nil {
@@ -268,13 +286,22 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 			}
 		}
 	}
+	// #407 没存住的数据不进内存缓存：缓存一旦收下这份，用户在 TTL 内每次刷新都会
+	// 读到它（fetchAssessSite 是 force 之外也会命中的路径），而库里根本没有它。
 	c.mu.Lock()
-	c.cache[s.ID] = assessCacheEntry{tasks: tasks, at: time.Now()}
+	if persistErr == nil {
+		c.cache[s.ID] = assessCacheEntry{tasks: tasks, at: time.Now()}
+	}
 	c.mu.Unlock()
 
 	if len(tasks) == 0 {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "EXEMPT",
 			ProgressPercent: 100, AssessmentType: "暂无活跃任务"}
 	}
-	return convertTaskToCard(s.ID, s.Name, primaryTask(tasks), "")
+	card := convertTaskToCard(s.ID, s.Name, primaryTask(tasks), "")
+	if persistErr != nil {
+		// 状态/进度照实显示（用户刚看到的是真的），但带上「没存住」的原因。
+		card.Error = snapshotPersistErrText(persistErr)
+	}
+	return card
 }

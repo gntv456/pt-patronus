@@ -12,6 +12,10 @@ mixin SitesCheckinMixin on State<SitesPage> {
   String? _error;
   Map<int, SiteConnectivityStatus> _connectivity = {};
   bool _connectivityLoading = false;
+  /// #404 连通状态读不到时的原因（null = 读到了）。
+  /// 必须与 `_connectivity = {}` 一起看：空清单既可能是「全都没联通」，
+  /// 也可能是「这次没读到」，两者在界面上同形，而用户据此判断站点是否掉线。
+  String? _connectivityError;
   int? _checkining; // 正在签到的站点 id
   int? _testing; // 正在连接测试的站点 id
   bool _checkinAllLoading = false;
@@ -24,7 +28,10 @@ mixin SitesCheckinMixin on State<SitesPage> {
       final statuses = await SiteApi().statuses();
       if (!mounted) return;
       setState(() => _connectivity = {for (final s in statuses) s.siteId: s});
-    } catch (_) {
+    } catch (e) {
+      // #404 读不到连通状态时**必须说读不到**：静默回 {} 与「所有站都没联通」同形，
+      // 而这一页正是用户判断站点是否掉线的依据（仪表盘那份已在 #403 修过，这里是第二份拷贝）。
+      _connectivityError = errTextOf(e);
       if (mounted) setState(() => _connectivity = {});
     } finally {
       if (mounted) setState(() => _connectivityLoading = false);
@@ -87,6 +94,31 @@ mixin SitesCheckinMixin on State<SitesPage> {
     }
   }
 
+  /// #404 连通状态「这次没读到」时的原因对话框。
+  ///
+  /// 与 _showConnectivityReason 分开是因为两者语义不同：那一档是「读到了、站点真掉线」
+  /// （原因来自 site_connectivity 缓存里的 error）；这一档是「**没读到**」——
+  /// 缓存压根没取回来，原因来自这次请求本身。混在一起会把「没读到」说成「站点掉线」。
+  Future<void> _showConnectivityReadError(Site s) async {
+    final reason = _connectivityError;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('📊 ${s.name} 的连通状态没读到'),
+        content: Text(
+          reason ??
+              '这次没读到连通状态（不是「站点掉线」）：请下拉后重试。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showConnectivityReason(Site s) async {
     final status = _connectivity[s.id];
     if (status == null || status.state == SiteConnectivityState.connected) {
@@ -143,7 +175,13 @@ mixin SitesCheckinMixin on State<SitesPage> {
   Future<void> _checkinAll() async {
     setState(() => _checkinAllLoading = true);
     try {
-      final results = await SiteApi().checkinAll();
+      final res = await SiteApi().checkinAll();
+      // 「清单读不出」与「没有启用的站点」是两件事（#258）。
+      if (res.listError.isNotEmpty) {
+        _toast('站点清单读不出来：${res.listError}');
+        return;
+      }
+      final results = res.results;
       if (results.isEmpty) {
         _toast('没有启用的站点');
         return;

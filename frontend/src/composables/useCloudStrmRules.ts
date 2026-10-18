@@ -1,6 +1,46 @@
 import { ref, type Ref } from 'vue'
 import { cloudApi, type CloudDrive, type StrmRule, type StrmRecord, type StrmResult } from '@/api/cloud'
 
+// generateAllOutcome 把「全部规则生成」的跨规则汇总翻译成用户看到的那一句。
+// 回归：以前不管结果如何都弹「已触发全部规则生成」，全部规则失败（凭据过期、目录不存在）
+// 也显示成功，用户以为 .strm 已落地。
+export function generateAllOutcome(s?: {
+  rules: number
+  generated: number
+  skipped: number
+  file_errors: number
+  failed?: string[]
+}): { kind: 'success' | 'error' | 'info'; text: string } {
+  if (!s?.rules) return { kind: 'info', text: '没有启用中的 STRM 规则，未生成任何文件' }
+  const failed = s.failed?.length ?? 0
+  if (failed) return { kind: 'error', text: `${failed}/${s.rules} 条规则生成失败：${s.failed?.[0] ?? ''}` }
+  return {
+    kind: 'success',
+    text:
+      `全部规则生成完成：${s.rules} 条规则，新增/更新 ${s.generated}，跳过 ${s.skipped}` +
+      (s.file_errors ? `，单文件失败 ${s.file_errors}` : ''),
+  }
+}
+
+// 把「订阅追更」这一轮的账面翻成一句诚实的话。
+// 后端修复前恒回 {ok:true}，界面无论读失败、无订阅还是零链接都 toast「匹配完成」。
+export function subSyncOutcome(s?: { subs: number; records: number; linked: number; failed?: string[] }): {
+  kind: 'success' | 'error' | 'info'
+  text: string
+} {
+  if (s?.failed?.length) return { kind: 'error', text: `订阅追更未能完成：${s.failed[0]}` }
+  if (!s) return { kind: 'error', text: '订阅追更没有返回结果' }
+  if (!s.subs) return { kind: 'info', text: '没有生效中的订阅，本轮无需追更' }
+  if (!s.records)
+    return { kind: 'info', text: `网盘里没有待匹配的 STRM 记录（${s.subs} 条订阅），先用 STRM 规则扫描目录` }
+  return {
+    kind: 'success',
+    text:
+      `订阅追更完成：${s.subs} 条订阅 × ${s.records} 条待匹配记录，新链接 ${s.linked}` +
+      (s.linked ? '' : '（没有新命中）'),
+  }
+}
+
 function defaultRule() {
   return {
     name: '',
@@ -148,8 +188,8 @@ export function useCloudStrmRules(
     if (generatingAll.value) return
     generatingAll.value = true
     try {
-      await cloudApi.generateAll()
-      ElMessage.success('已触发全部规则生成')
+      const outcome = generateAllOutcome(await cloudApi.generateAll())
+      ElMessage[outcome.kind](outcome.text)
       setTimeout(loadRecords, 1500)
     } catch (e: any) {
       ElMessage.error(e?.message || '请求失败')
@@ -161,8 +201,8 @@ export function useCloudStrmRules(
     if (subsSyncing.value) return
     subsSyncing.value = true
     try {
-      await cloudApi.syncSubscriptions()
-      ElMessage.success('订阅追更匹配完成')
+      const outcome = subSyncOutcome(await cloudApi.syncSubscriptions())
+      ElMessage[outcome.kind](outcome.text)
     } catch (e: any) {
       ElMessage.error(e?.message || '请求失败')
     } finally {

@@ -6,6 +6,12 @@
 import { describe, expect, it } from 'vitest'
 import zhCN from './locales/zh-CN'
 import enUS from './locales/en-US'
+import cameraBridge from './locales/cameraBridge'
+
+// 摄像头接入指引是独立模块（主表在行数棘轮上，装不下这类易增长的长文案），
+// 实际 messages = 主表 + 指引模块（见 i18n/index.ts 的 loadLocale）。
+// 这里按同样口径比对两边：指引模块自身必须 zh/en 对齐，
+// 否则切到英文的设备监控页会静默回落中文。
 
 type Node = string | { [k: string]: Node }
 
@@ -23,8 +29,16 @@ function flatten(obj: Node, prefix = ''): Map<string, 'leaf' | 'branch'> {
   return out
 }
 
-const zhKeys = flatten(zhCN as Node)
-const enKeys = flatten(enUS as Node)
+// 主表与指引模块合并后再比对——实际 messages 就是这个组合（见 i18n/index.ts 的 loadLocale）。
+// 用 unknown 中转再断言为对象，避免 TS 把联合类型判成 string 拒绝展开。
+const zhKeys = flatten({
+  ...(zhCN as unknown as Record<string, Node>),
+  ...(cameraBridge.zh as unknown as Record<string, Node>),
+})
+const enKeys = flatten({
+  ...(enUS as unknown as Record<string, Node>),
+  ...(cameraBridge.en as unknown as Record<string, Node>),
+})
 
 describe('i18n 翻译表一致性', () => {
   it('两表 key 数量同级（zh 与 en 展开后条目数一致）', () => {

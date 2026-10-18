@@ -299,6 +299,16 @@ type MarketIndex struct {
 	AppVersion       string         `json:"app_version,omitempty"`
 	HostCapabilities []string       `json:"host_capabilities,omitempty"`
 	Plugins          []MarketPlugin `json:"plugins"`
+	// 聚合多源的账面：取到几个源、哪些源没取到及原因。缺这批字段，「配了 3 个源挂了 1 个」
+	// 与「仓库里就这些插件」在界面上同形，用户不会知道自己看到的是残缺清单。
+	SourcesOK     int                 `json:"sources_ok,omitempty"`
+	SourcesFailed []MarketSourceError `json:"sources_failed,omitempty"`
+}
+
+// MarketSourceError 聚合市场时单个源的失败记录（原因已走 errtext 中文口径）。
+type MarketSourceError struct {
+	Source string `json:"source"`
+	Error  string `json:"error"`
 }
 
 type MarketPublisher struct {

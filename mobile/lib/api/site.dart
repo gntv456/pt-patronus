@@ -1,5 +1,11 @@
 import '../core/api_client.dart';
 
+/// 一键签到的账面：逐站结果 + 「站点清单读不出来」的原因（空串=清单读到了）。
+typedef CheckinAllOutcome = ({
+  List<Map<String, dynamic>> results,
+  String listError,
+});
+
 class Site {
   final int id;
   final String name;
@@ -60,6 +66,33 @@ class SiteConnectivityStatus {
       error: j['error'] as String? ?? '',
     );
   }
+}
+
+/// 站点定义诊断（后端 internal/site 的四类「配置被静默忽略」）。
+class DefinitionDiagnostic {
+  final String kind; // bad_regexp / unknown_key / duplicate_id / skipped_subdir
+  final String site;
+  final String file;
+  final String detail;
+  const DefinitionDiagnostic({required this.kind, this.site = '', this.file = '', this.detail = ''});
+
+  factory DefinitionDiagnostic.fromJson(Map<String, dynamic> j) => DefinitionDiagnostic(
+        kind: j['kind'] as String? ?? '',
+        site: j['site'] as String? ?? '',
+        file: j['file'] as String? ?? '',
+        detail: j['detail'] as String? ?? '',
+      );
+
+  /// 界面上的定位对象：站点 id 优先，其次文件名。
+  String get target => site.isNotEmpty ? site : file;
+}
+
+/// 一次诊断读取的结果。`readError` 非空＝「没读到」，与 `items.isEmpty`（真的没问题）必须可区分
+/// ——否则手机上又会把读取失败讲成「一切正常」。
+class DefinitionDiagnostics {
+  final List<DefinitionDiagnostic> items;
+  final String readError;
+  const DefinitionDiagnostics({this.items = const [], this.readError = ''});
 }
 
 /// 站点定义（definitions/*.yaml 模板，供「添加站点」选择）。
@@ -145,6 +178,22 @@ class SiteApi {
     return list.map((e) => SiteDef.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// 站点定义诊断（独立端点，小 payload）。读失败回 `readError` 而不是抛出：
+  /// 诊断条是页面上的辅助信息，不能因为它失败就把站点列表一起带走；
+  /// 但也不能回空列表冒充「没有配置问题」，所以失败原因要原样带回给页面说。
+  Future<DefinitionDiagnostics> definitionDiagnostics() async {
+    try {
+      final r = await _api.get('/sites/definition-diagnostics');
+      final list = (r['diagnostics'] as List?) ?? const [];
+      return DefinitionDiagnostics(
+        items:
+            list.map((e) => DefinitionDiagnostic.fromJson(e as Map<String, dynamic>)).toList(growable: false),
+      );
+    } catch (e) {
+      return DefinitionDiagnostics(readError: e.toString());
+    }
+  }
+
   /// 添加站点。platform 由所选定义的 schema 推断；apiKey 仅 mteam/yemapt/fluxtorrent 等
   /// token 鉴权站用（FluxTorrent 为 fxo_ Token，passkey 可自动发现、手填仅兜底）；
   /// cookie/username/password 对齐 Web 添加表单（非馒头站可手填，留空不发）。
@@ -219,11 +268,15 @@ class SiteApi {
   Future<Map<String, dynamic>> checkin(int id) async =>
       _api.post('/sites/$id/checkin', <String, dynamic>{});
 
-  /// 一键签到全部启用站点，返回每站结果列表。
-  Future<List<Map<String, dynamic>>> checkinAll() async {
+  /// 一键签到全部启用站点，返回每站结果列表 + 「清单读不出来」的原因。
+  /// 只取 results 会把后端读不出站点清单讲成「没有启用的站点」（#258）。
+  Future<CheckinAllOutcome> checkinAll() async {
     final r = await _api.post('/sites/checkin', <String, dynamic>{});
     final list = (r['results'] as List?) ?? const [];
-    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return (
+      results: list.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+      listError: (r['list_error'] as String?) ?? '',
+    );
   }
 
   /// 签到历史记录（siteId=null 全部；按时间倒序，默认 100 条）。

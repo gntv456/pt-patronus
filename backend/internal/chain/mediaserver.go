@@ -106,6 +106,38 @@ func (c *MediaServerChain) LibraryScan(ctx context.Context, id uint, libraryID s
 	return cli.LibraryScan(ctx, libraryID)
 }
 
+// LibraryScanAll 扫描该服务器全部媒体库，返回成功扫描的库数。
+// 一个都没扫成功就不是成功：调用方（API/工具/插件）拿 scanned=0 或 error，
+// 不能像此前工具面那样把 library_id 传空后拿 scanned:1 —— 那会拼出 /Items//Refresh
+// 这种无效请求，或干脆什么都没做。
+func (c *MediaServerChain) LibraryScanAll(ctx context.Context, id uint) (int, error) {
+	cli, _, err := c.client(id)
+	if err != nil {
+		return 0, err
+	}
+	libs, err := cli.Libraries(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var scanned int
+	var lastErr error
+	for _, lib := range libs {
+		if e := cli.LibraryScan(ctx, lib.ID); e != nil {
+			lastErr = e
+			slog.Warn("media server scan-all: library scan failed", "server_id", id, "library", lib.Name, "err", e)
+			continue
+		}
+		scanned++
+	}
+	if scanned > 0 {
+		return scanned, nil
+	}
+	if lastErr != nil {
+		return 0, fmt.Errorf("%d 个库全部扫描失败: %w", len(libs), lastErr)
+	}
+	return 0, fmt.Errorf("该媒体服务器没有可扫描的库")
+}
+
 // Refresh 刷新库元数据。
 func (c *MediaServerChain) Refresh(ctx context.Context, id uint, libraryID string) error {
 	cli, _, err := c.client(id)
@@ -137,17 +169,20 @@ func (c *MediaServerChain) NotifyOne(ctx context.Context, id uint, title, body s
 	return cli.Notify(ctx, title, body)
 }
 
-// Cover 生成某库的封面拼图 JPEG 字节。
-func (c *MediaServerChain) Cover(ctx context.Context, id uint, libraryID string, opt mediaserver.CoverOptions) ([]byte, error) {
+// Cover 生成某库的封面拼图 JPEG 字节 + 本轮账面（贴上了几张、几张没地址、几张取失败）。
+func (c *MediaServerChain) Cover(ctx context.Context, id uint, libraryID string, opt mediaserver.CoverOptions) ([]byte, mediaserver.CoverStats, error) {
 	cli, _, err := c.client(id)
 	if err != nil {
-		return nil, err
+		return nil, mediaserver.CoverStats{}, err
 	}
 	return mediaserver.GenerateCover(ctx, cli, libraryID, opt)
 }
 
 // OnDownloadCompleted 下载完成钩子：对所有开启 RefreshOnDownload 的服务器触发整库扫描。
 // 单服务器失败不阻断其余；不向调用方报错（事件副作用，best-effort）。
+// 但「best-effort」不等于「无声」：以前所有失败都只打 Debug（默认日志级别看不见），
+// 广播出去的事件又只带 servers 数量，用户开了自动刷库却一台都没扫成时没有任何信号。
+// 现在服务器级失败打 Warn 并把原因放进事件（scanned/failures），前端与排障都能看见。
 func (c *MediaServerChain) OnDownloadCompleted(ctx context.Context, torrentName string) {
 	ms, err := c.op.ListRefreshOnDownload()
 	if err != nil || len(ms) == 0 {
@@ -155,24 +190,39 @@ func (c *MediaServerChain) OnDownloadCompleted(ctx context.Context, torrentName 
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
+	scanned := 0
+	var failures []string
 	for i := range ms {
 		srv := &ms[i]
 		cli, _, err := c.client(srv.ID)
 		if err != nil {
+			slog.Warn("media server refresh: client unavailable", "server", srv.Name, "err", err)
+			failures = append(failures, fmt.Sprintf("%s：连接配置不可用（%v）", srv.Name, err))
 			continue
 		}
 		libs, err := cli.Libraries(ctx)
 		if err != nil {
-			slog.Debug("media server libraries failed", "server", srv.Name, "err", err)
+			slog.Warn("media server refresh: libraries failed", "server", srv.Name, "err", err)
+			failures = append(failures, fmt.Sprintf("%s：库列表读取失败（%v）", srv.Name, err))
 			continue
 		}
+		ok := 0
 		for _, lib := range libs {
 			if err := cli.LibraryScan(ctx, lib.ID); err != nil {
-				slog.Debug("media server scan failed", "server", srv.Name, "library", lib.Name, "err", err)
+				slog.Warn("media server refresh: scan failed", "server", srv.Name, "library", lib.Name, "err", err)
+				continue
 			}
+			ok++
 		}
+		if ok == 0 && len(libs) > 0 {
+			failures = append(failures, fmt.Sprintf("%s：%d 个库全部扫描失败", srv.Name, len(libs)))
+		}
+		scanned += ok
 	}
-	c.Emit(ctx, "MediaServerRefresh", map[string]any{"trigger": "download", "name": torrentName, "servers": len(ms)})
+	c.Emit(ctx, "MediaServerRefresh", map[string]any{
+		"trigger": "download", "name": torrentName,
+		"servers": len(ms), "scanned": scanned, "failures": failures,
+	})
 }
 
 // ReceiveWebhook 接收媒体服务器播放/事件 webhook：best-effort 解析标题，发通知中心 + 广播事件。
@@ -182,15 +232,20 @@ func (c *MediaServerChain) OnDownloadCompleted(ctx context.Context, torrentName 
 // 来源校验（P2 修复）：服务器配置了 API Token 时恒定时间比对——阻断匿名伪造
 // 「媒体播放：<任意文案>」注入通知中心/外发渠道（TG 等钓鱼文本）。未配置 token 的
 // 服务器保留旧行为（部分 Emby webhook 模板不含 token 字段），伪造成本不变。
+// token 读取/解密失败按 fail-closed 处理（拒绝并告警）：密文损坏时旧实现把
+// 「校验不了」与「没配 token」同待，静默跳过校验，公开端点可被匿名伪造。
 func (c *MediaServerChain) ReceiveWebhook(ctx context.Context, id uint, payload []byte, providedToken string) {
 	m, err := c.op.Get(id)
 	if err != nil || !m.NotifyOnPlay {
 		return
 	}
-	if want, werr := c.op.Token(m); werr == nil && want != "" {
-		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(want)) != 1 {
-			return
-		}
+	want, werr := c.op.Token(m)
+	if werr != nil {
+		slog.Warn("mediaserver webhook token unreadable, reject", "server", m.Name, "err", werr)
+		return
+	}
+	if want != "" && subtle.ConstantTimeCompare([]byte(providedToken), []byte(want)) != 1 {
+		return
 	}
 	title, event := parseMediaWebhook(payload)
 	if title == "" {
@@ -199,7 +254,7 @@ func (c *MediaServerChain) ReceiveWebhook(ctx context.Context, id uint, payload 
 	c.Emit(ctx, "MediaServerWebhook", map[string]any{"server": m.Name, "event": event, "title": title})
 	if c.notice != nil {
 		_ = c.notice.Notice(ctx, notice.Input{
-			Source: "mediaserver",
+			Source: notice.SourceMediaServer,
 			Key:    fmt.Sprintf("ms:%d:%s", id, title),
 			Title:  fmt.Sprintf("媒体播放：%s", title),
 			Body:   fmt.Sprintf("%s · %s", m.Name, event),

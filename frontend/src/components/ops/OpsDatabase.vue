@@ -3,6 +3,8 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { databaseApi, type DBTable, type DBColumn, type DBQueryResult } from '@/api/database'
+// #397 行数显示口径的唯一来源（null → ?，不是 0）；组件不再自带一份判断。
+import { fmtRowCount } from './dbCountFmt'
 import GlassIcon from '@/components/GlassIcon.vue'
 
 const { t } = useI18n()
@@ -24,9 +26,16 @@ const filteredTables = computed(() =>
 async function loadTables() {
   loading.value = true
   try {
+    // #397 这一档不再 throw：行数读不出来时后端把表清单一起带回来（表名都有用），
+    // 页面照常渲染、把读不出行数的表标成 ?，并在这里把原因提示出来。
     const res = await databaseApi.tables()
     tables.value = res.tables
+    if (res.error) {
+      // 「? 不是 0 行」这句必须说：这一页上 0 只会被读成「数据没了」。
+      ElMessage.error(res.error)
+    }
   } catch (e: any) {
+    tables.value = []
     ElMessage.error(e.message)
   } finally {
     loading.value = false
@@ -58,11 +67,6 @@ async function runQuery() {
   }
 }
 
-function fmtNum(n: number): string {
-  if (n === undefined || n === null) return '-'
-  return n.toLocaleString()
-}
-
 onMounted(loadTables)
 </script>
 
@@ -83,7 +87,12 @@ onMounted(loadTables)
             @click="selectTable(t.name)"
           >
             <span class="db-table-name">{{ t.name }}</span>
-            <span class="db-table-count">{{ fmtNum(t.row_count) }}</span>
+            <span
+              class="db-table-count"
+              :class="{ unknown: t.row_count === null || t.row_count === undefined }"
+              :title="t.count_error || ''"
+              >{{ fmtRowCount(t.row_count) }}</span
+            >
           </button>
           <div v-if="!filteredTables.length" class="db-empty">{{ t('opsdb.noMatch') }}</div>
         </div>
@@ -230,6 +239,11 @@ onMounted(loadTables)
 .db-table-count {
   font-size: var(--fs-xs);
   color: var(--text-muted);
+}
+/* #397 行数未知：配色与「0 行」明确区分开，别让它看起来像一个小数字。 */
+.db-table-count.unknown {
+  color: var(--warning, var(--el-color-warning, #e6a23c));
+  font-weight: 600;
 }
 .db-empty {
   padding: var(--sp-4);

@@ -44,6 +44,7 @@ const {
   runResult,
   showResult,
   history,
+  historyWindow,
   showHistory,
   openHistory,
   viewRun,
@@ -285,6 +286,13 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 
     <!-- 历史 -->
     <el-dialog v-model="showHistory" :title="t('wfe.historyTitle')" width="560px">
+      <div v-if="historyWindow.truncated" class="hist-note">
+        {{
+          historyWindow.total == null
+            ? t('wfe.historyTruncatedUnknown', { n: historyWindow.shown })
+            : t('wfe.historyTruncated', { n: historyWindow.shown, total: historyWindow.total })
+        }}
+      </div>
       <el-table :data="history" size="small" @row-click="(r: WorkflowRun) => viewRun(r.id)">
         <el-table-column prop="id" label="#" width="60" />
         <el-table-column prop="state" :label="t('cloud.status')" width="90" />

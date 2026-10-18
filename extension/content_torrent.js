@@ -54,7 +54,7 @@
     btn = document.createElement('div')
     btn.id = 'ptp-float'
     Object.assign(btn.style, {
-      position: 'fixed', right: '18px', bottom: '76px', zIndex: 2147483646,
+      position: 'fixed', right: '18px', bottom: '268px', zIndex: 2147483648,
       padding: '9px 14px', borderRadius: '22px', cursor: 'pointer',
       background: 'linear-gradient(135deg,#4f7cff,#7a5cff)', color: '#fff',
       font: '600 13px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.28)',
@@ -83,6 +83,12 @@
   // —— 列表页批量工具：右下角悬浮球 + 上弹菜单 ——
   // 旧版是 sticky 顶栏（挤占页面顶部、推下站点内容）；改为与详情页浮钮同区的
   // 悬浮球：平时只显示「N 个种子 ⬇」小球，点击向上弹出三个操作，再点收起。
+  // 右下角槽位带（#359，与 #358 同一套约定）：
+  //   批量栏 bottom 18px（常驻，最低）→ 菜单 bottom 64px（展开时盖住批量栏）
+  //   → 浮钮 bottom 268px（浮于气泡之上）。
+  // 三者原先 zIndex 全同，叠放顺序取决于创建顺序（浮钮先建）⇒ 菜单展开就把浮钮盖住，
+  // 而菜单要靠点别处才收起，浮钮被盖就点不到。现在 zIndex 也分层：菜单/批量栏 2147483646，
+  // 浮钮 2147483648，凭据气泡 2147483647（在浮钮之上、菜单之下）。
   let bar = null
   let menu = null
   let listUrls = []
@@ -142,14 +148,23 @@
       b.disabled = true
       let ok = 0
       let fail = 0
+      // #380 批量推送此前只报计数、丢掉原因：`else fail++` 把 pushDownload 回的 error
+      // 直接扔了。而后台那个出口的原因相当具体（凭据库读不到 / 下载器连不上 / 没登录…），
+      // 用户看到「⚠ 3」无从判断该重试、该登录还是该去设置页，只会反复点。
+      // 同菜单 25 行外的批量收藏（#362）已经这么做了 —— 两个出口不该有两种披露标准。
+      let reason = ''
       b.textContent = '推送中…'
       for (const u of listUrls) {
         const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: u })
-        if (r && r.ok) ok++
-        else fail++
+        if (r && r.ok) { ok++; continue }
+        fail++
+        // 同一批只报第一个不同原因：重复刷屏没有新信息。
+        if (!reason && r && r.error) reason = String(r.error)
       }
-      b.textContent = `✅ ${ok}${fail ? ` / ⚠ ${fail}` : ''}`
-      setTimeout(() => { b.textContent = '⬇ 全部推送下载'; b.disabled = false }, 3500)
+      b.textContent = fail
+        ? `✅ ${ok} / ⚠ 失败 ${fail}${reason ? `：${reason}` : ''}`
+        : `✅ ${ok}`
+      setTimeout(() => { b.textContent = '⬇ 全部推送下载'; b.disabled = false }, reason ? 4500 : 3500)
     })
     mk('📋 复制全部链接', '#2c3145', async (ev) => {
       const b = ev.target
@@ -162,16 +177,26 @@
     mk('⭐ 收藏本页种子', '#8a6d1a', async (ev) => {
       const b = ev.target
       let n = 0
+      let fail = 0
+      let reason = ''
       for (const u of listUrls) {
         const r = await chrome.runtime.sendMessage({
           type: 'ptp-favorite', url: u,
           title: (document.querySelector('a[href*="details.php"]')?.textContent || '').trim(),
           site: location.hostname,
         })
-        if (r && r.ok) n++
+        // #362 从前是 `if (r && r.ok) n++`：后台失败时连回调都没有（r === undefined），
+        // 于是这条批量操作**一条都没存**，按钮却显示「⭐ 已收藏 0」——那句话读起来
+        // 像「收藏成功了 0 条」，而不是「全失败了」。用户只会反复点，不会去查存储。
+        // 现在失败单独计数，并把后台给的真实原因带出来（同一批只报第一个不同原因）。
+        if (r && r.ok) { n++; continue }
+        fail++
+        if (!reason && r && r.error) reason = String(r.error)
       }
-      b.textContent = `⭐ 已收藏 ${n}`
-      setTimeout(() => { b.textContent = '⭐ 收藏本页种子' }, 2500)
+      b.textContent = fail
+        ? `✅ 已收藏 ${n} / ⚠ 失败 ${fail}${reason ? `：${reason}` : ''}`
+        : `✅ 已收藏 ${n}`
+      setTimeout(() => { b.textContent = '⭐ 收藏本页种子' }, reason ? 4500 : 2500)
     })
     document.documentElement.appendChild(menu)
     // 点球外任意处收起菜单。
@@ -238,3 +263,4 @@
   setInterval(ensureAll, 1500)
   ensureAll()
 })()
+

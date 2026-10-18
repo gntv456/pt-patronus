@@ -2,6 +2,7 @@ package oper
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -133,14 +134,22 @@ func (o *PluginMarketOper) CreateInstance(pluginID, instanceKey string, configJS
 		return nil, errors.New("plugin id / instance key required")
 	}
 	var n int64
-	o.db.Model(&models.PluginInstance{}).Where("plugin_id = ? AND instance_key = ?", pluginID, instanceKey).Count(&n)
+	// 查重失败绝不能当「不存在」：idx_plugin_inst 只是普通索引（非唯一），
+	// 库里没有任何东西兜住「同一 plugin 内 instance_key 唯一」这条不变量，
+	// 一旦放行就落下同名实例，之后按 (plugin_id, instance_key) 取配置会随机命中其一。
+	if err := o.db.Model(&models.PluginInstance{}).Where("plugin_id = ? AND instance_key = ?", pluginID, instanceKey).Count(&n).Error; err != nil {
+		return nil, fmt.Errorf("查重失败（未创建，避免落下同名实例）: %w", err)
+	}
 	if n > 0 {
 		return nil, errors.New("实例名已存在（同一插件内实例名唯一）")
 	}
-	// SortOrder 追加到末尾（max+1）。
+	// SortOrder 追加到末尾（max+1）。取最大值失败同样中止：静默当 0 会让新实例插到队首，
+	// 把用户拖好的「天序」顺序打乱。
 	var maxOrder int
-	o.db.Model(&models.PluginInstance{}).Where("plugin_id = ?", pluginID).
-		Select("COALESCE(MAX(sort_order), 0)").Scan(&maxOrder)
+	if err := o.db.Model(&models.PluginInstance{}).Where("plugin_id = ?", pluginID).
+		Select("COALESCE(MAX(sort_order), 0)").Scan(&maxOrder).Error; err != nil {
+		return nil, fmt.Errorf("取排序位失败（未创建）: %w", err)
+	}
 	inst := models.PluginInstance{PluginID: pluginID, InstanceKey: instanceKey,
 		Enabled: true, ConfigJSON: configJSON, SortOrder: maxOrder + 1}
 	if err := o.db.Create(&inst).Error; err != nil {
@@ -160,6 +169,17 @@ func (o *PluginMarketOper) Instances(pluginID string) ([]models.PluginInstance, 
 func (o *PluginMarketOper) DeleteInstance(pluginID, instanceKey string) error {
 	return o.db.Where("plugin_id = ? AND instance_key = ?", pluginID, instanceKey).
 		Delete(&models.PluginInstance{}).Error
+}
+
+// GetInstance 按 (pluginID, instanceKey) 取单个分身实例（删除前的存在性判定用）。
+// 为什么不改 DeleteInstance 的返回契约：它的「再删一次也回 nil」是被测语义（插件目录清理
+// 与卸载级联会重复调用），存在性由调用方在这里查。
+func (o *PluginMarketOper) GetInstance(pluginID, instanceKey string) (*models.PluginInstance, error) {
+	var it models.PluginInstance
+	if err := o.db.Where("plugin_id = ? AND instance_key = ?", pluginID, instanceKey).First(&it).Error; err != nil {
+		return nil, err
+	}
+	return &it, nil
 }
 
 // SaveInstanceConfig 更新实例配置/启用态。

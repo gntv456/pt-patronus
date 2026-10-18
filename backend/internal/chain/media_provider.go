@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
@@ -86,6 +87,10 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 // ApplySettings 写入 SystemConfig（空字段跳过=不修改，便于 UI 只改部分项而不必重输全部），
 // 然后 rebuild 源切片使改动即时生效。
 func (p *MediaSourceProvider) ApplySettings(in MediaSettings) error {
+	// rebuild 必须在返回前跑一次，无论写到第几项失败：
+	// 原先只在全部写成功后 rebuild ⇒ 中途失败时 SystemConfig 已改、运行中的源仍是旧凭据，
+	// 而设置页读的是 SystemConfig（显示新值），界面与真实上游两套数同时存在。
+	defer p.rebuild()
 	updates := map[string]string{
 		cfgKeyTMDBAPIKey:     in.TMDBAPIKey,
 		cfgKeyTMDBAPIDomain:  in.TMDBAPIDomain,
@@ -100,10 +105,9 @@ func (p *MediaSourceProvider) ApplySettings(in MediaSettings) error {
 			continue // 空=不修改
 		}
 		if err := p.cfg.Set(k, v); err != nil {
-			return err
+			return fmt.Errorf("写入媒体源配置 %s 失败：%w", k, err)
 		}
 	}
-	p.rebuild()
 	return nil
 }
 

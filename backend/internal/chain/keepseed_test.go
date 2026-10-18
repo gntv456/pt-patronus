@@ -20,9 +20,11 @@ import (
 )
 
 // fakeDL 是辅种所需的最小下载器（reseedClient）：固定做种列表 + 记录 AddTorrent。
+// onAdd 非 nil 时在 AddTorrent 内调用（测试用于制造「添加成功后落库失败」等时序）。
 type fakeDL struct {
 	torrents []downloader.Torrent
 	added    []downloader.AddOptions
+	onAdd    func()
 }
 
 func TestTorrentInfoHashPrefersBTInfoHash(t *testing.T) {
@@ -39,6 +41,9 @@ func (f *fakeDL) ListTorrents(ctx context.Context) ([]downloader.Torrent, error)
 }
 func (f *fakeDL) AddTorrent(ctx context.Context, opts downloader.AddOptions) error {
 	f.added = append(f.added, opts)
+	if f.onAdd != nil {
+		f.onAdd()
+	}
 	return nil
 }
 

@@ -3,7 +3,9 @@ package v1
 import (
 	"fmt"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -150,10 +152,13 @@ func (h *MediaHandler) RecommendStream(c *gin.Context) {
 	page := atoiDefault(c.Query("page"), 1)
 	force := c.Query("refresh") == "1"
 	emit := beginSSE(c.Writer)
-	h.recommend.RecommendFeedsStream(c.Request.Context(), source, category, page, force, func(items []media.MediaInfo) {
+	sum := h.recommend.RecommendFeedsStream(c.Request.Context(), source, category, page, force, func(items []media.MediaInfo) {
 		emit("batch", gin.H{"results": items})
 	})
-	emit("done", gin.H{"page": page})
+	// done 帧带这一轮的账面（几个源、失败的是谁、有没有被源超时打掉）：
+	// 只回 page 时「少一源」在页面上就是少几行卡片，没人看得出来。
+	slog.Info("recommend stream done", "summary", sum.String(), "source", source, "category", category, "page", page)
+	emit("done", gin.H{"page": page, "sources": sum.Sources, "batches": sum.Batches, "failed": sum.Failed, "cached": sum.Cached})
 }
 
 // Discover 跨源关键词搜索媒体（?keyword=&year=&source=&type=）。复用 MediaChain.Search。
@@ -184,6 +189,12 @@ func (h *MediaHandler) Discover(c *gin.Context) {
 }
 func (h *MediaHandler) Poster(c *gin.Context) {
 	keyword := c.Query("keyword")
+	// 空关键词不能进跨源匹配：会以空 query 扇出真实外网搜索（实测 8s 才回），
+	// 并把结果按固定 cache key 落库被后续复用。
+	if strings.TrimSpace(keyword) == "" {
+		errcode.Respond(c, errcode.MediaKeywordRequired)
+		return
+	}
 	year := atoiDefault(c.Query("year"), 0)
 	url, err := h.mediaCh.MatchPoster(c.Request.Context(), keyword, year)
 	if err != nil {
@@ -247,6 +258,19 @@ func (h *MediaHandler) GetQuality(c *gin.Context) {
 	c.JSON(http.StatusOK, h.mediaCh.LoadQuality())
 }
 
+// respondMediaConfigWriteErr 媒体域配置写入失败的出口（#394）。
+//
+// 与 #387（字幕自动化配置）/ #392（辅种配置）同族，这一处是最纯粹的：单次写、
+// 没有「部分生效」的坑，纯粹是**分类错了**——SaveQuality 的失败只可能是
+// json.Marshal（结构体，实际不会）或 cfg.Set（存储写不进去：磁盘满/连接断/锁）。
+//
+// 旧形状 Internal.WithErr ⇒ 500「服务内部错误，请稍后重试」，而前端 MediaQuality.vue
+// 的 catch 直接 `ElMessage.error(e?.message)` ⇒ 这句话原样弹给用户。他只会反复点保存，
+// 而重试一万次也不会好（磁盘不会自己腾出空间）。
+func respondMediaConfigWriteErr(c *gin.Context, err error) {
+	errcode.Respond(c, errcode.SaveFailed.WithDetailKeepMessage(err))
+}
+
 // SetQuality 保存质量配置（PUT /media/quality）。整体覆盖；清空评分缓存即时生效。
 func (h *MediaHandler) SetQuality(c *gin.Context) {
 	var q chain.MediaQualityConfig
@@ -255,7 +279,8 @@ func (h *MediaHandler) SetQuality(c *gin.Context) {
 		return
 	}
 	if err := h.mediaCh.SaveQuality(q); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #394 存储写不进去是用户/运维能判断的失败，不该说成「服务内部错误」（见 helper 注释）。
+		respondMediaConfigWriteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -337,7 +362,17 @@ func (h *MediaHandler) Image(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("upstream %d %s", resp.StatusCode, ctype)})
 		return
 	}
+	const maxPosterBytes = 5 << 20
+	// 上游声明的体积超过代理上限：现在拒绝，而不是先发 200 再截一半。
+	// 头一旦发出就无法改状态码，浏览器只会画一张坏海报且不告诉用户为什么——
+	// 那种「图裂了」和「防盗链没配好 / 源站挂了」在界面上长得一样。
+	if resp.ContentLength > maxPosterBytes {
+		errcode.Respond(c, errcode.MediaImageTooLarge.WithErr(
+			fmt.Errorf("上游声明 %d 字节，代理上限 %d 字节", resp.ContentLength, maxPosterBytes)))
+		return
+	}
 	c.Header("Content-Type", ctype)
 	c.Header("Cache-Control", "public, max-age=86400")
-	_, _ = io.Copy(c.Writer, io.LimitReader(resp.Body, 5<<20))
+	httpclient.CopyBody(c.Writer, io.LimitReader(resp.Body, maxPosterBytes), "media image proxy",
+		resp.ContentLength, "host", u.Host)
 }

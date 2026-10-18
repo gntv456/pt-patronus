@@ -49,7 +49,7 @@ func (h *SshAdminHandler) Status(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl is-active %s 2>/dev/null; echo "---"; systemctl is-enabled %s 2>/dev/null`, svcName, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	parts := strings.SplitN(r.Stdout, "---", 2)
@@ -107,7 +107,7 @@ func (h *SshAdminHandler) Action(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl %s %s 2>&1`, in.Action, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 20)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !r.Success {
@@ -132,7 +132,7 @@ func (h *SshAdminHandler) ToggleEnable(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl %s %s 2>&1`, op, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !r.Success {
@@ -181,7 +181,7 @@ func (h *SshAdminHandler) Config(c *gin.Context) {
 	script := strings.Join(steps, " && ")
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 20)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !r.Success {

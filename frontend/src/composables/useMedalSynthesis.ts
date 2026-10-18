@@ -6,6 +6,7 @@ import {
   type GameRecord,
   type PlayResult,
 } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 export function useMedalSynthesis(siteId: Ref<number>) {
   const targets = ref<SynthesisTarget[]>([])
@@ -27,8 +28,8 @@ export function useMedalSynthesis(siteId: Ref<number>) {
   async function loadAll() {
     try {
       const [ts, st] = await Promise.all([
-        entertainmentApi.syntheses(siteId.value, 'medal_synthesis').catch(() => []),
-        entertainmentApi.stats(siteId.value, 'medal_synthesis').catch(() => null),
+        entertainmentApi.syntheses(siteId.value, 'medal_synthesis').catch(entFail('syntheses', [])),
+        entertainmentApi.stats(siteId.value, 'medal_synthesis').catch(entFail('stats', null)),
       ])
       targets.value = ts
       stats.value = st

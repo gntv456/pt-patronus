@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math"
 	"sync"
@@ -150,28 +151,80 @@ func dbTasksToAssess(dbTasks []models.AssessmentTask) []assessment.Task {
 	return out
 }
 
+// AssessStreamSummary 一轮流式考核的账面，供 SSE done/error 帧带出。
+type AssessStreamSummary struct {
+	Sites    int    `json:"sites"`   // 计划考核的启用站点数
+	Emitted  int    `json:"emitted"` // 实际推给前端的卡片数
+	Failed   int    `json:"failed"`  // 其中异常（panic）的站数
+	ListErr  string `json:"list_error,omitempty"`
+	Shortage int    `json:"shortage"` // Sites-Emitted：少推的站数，前端据此提示「N 站未返回」
+}
+
 // AssessAllStream 流式推送跨站考核：每站完成即 emit(card)。供 SSE 端点「加载一个显示一个」。
 // 与 AssessAll 不同：不排序（流式按到达顺序显示，渐进加载下排序反而使卡片跳动）；不走额外的
 // singleflight 编排——assessSite 内部每站已有 3 级缓存（内存→DB→网络）+ per-site singleflight，
 // 足以压低并发回源压力。force=true 各站强制网络刷新。
 // 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化实际写入。
-func (c *AssessmentChain) AssessAllStream(ctx context.Context, force bool, emit func(AssessmentCard)) {
+//
+// 每站一个 goroutine 由 safego 兜 panic：崩掉的那站以前一帧都不推，而 done 帧不带站数，
+// 前端无从察觉少了一站（同 41 号跨站搜索的「匿名空槽」形状）。现在崩站推自己那张
+// UNKNOWN 卡，并交回账面供 done 帧核对。
+// assessPanicCard 崩站那张兜底卡（JSON 面与 SSE 面共用，防两处文案/状态口径漂移）。
+func assessPanicCard(s models.Site, r any) AssessmentCard {
+	return AssessmentCard{
+		SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN",
+		Error: fmt.Sprintf("考核任务异常: %v", r),
+	}.normalized()
+}
+
+func (c *AssessmentChain) AssessAllStream(ctx context.Context, force bool, emit func(AssessmentCard)) AssessStreamSummary {
+	sum := AssessStreamSummary{}
 	sites, err := c.siteCh.sites.ListActive()
 	if err != nil {
 		slog.Warn("assessment list sites failed", "err", err)
-		return
+		sum.ListErr = err.Error()
+		return sum
 	}
+	sum.Sites = len(sites)
 	sem := make(chan struct{}, assessConcurrency)
 	var wg sync.WaitGroup
-	for _, s := range sites {
+	var mu sync.Mutex
+	for i := range sites {
+		s := sites[i]
 		wg.Add(1)
 		safego.Go("assessment:434", func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					sum.Failed++
+					mu.Unlock()
+					emit(assessPanicCard(s, r))
+					mu.Lock()
+					sum.Emitted++
+					mu.Unlock()
+				}
+			}()
 			card := c.assessSite(ctx, sem, &s, force)
-			if card.SiteID != 0 {
-				emit(card.normalized())
+			if card.SiteID == 0 {
+				// 站点标识缺失也不能整帧丢掉：借本次遍历的站补全，让它成为一张有名字的 UNKNOWN 卡。
+				card.SiteID, card.SiteName = s.ID, s.Name
+				if card.Status == "" {
+					card.Status = "UNKNOWN"
+				}
+				if card.Error == "" {
+					card.Error = "考核结果缺少站点标识"
+				}
 			}
+			emit(card.normalized())
+			mu.Lock()
+			sum.Emitted++
+			mu.Unlock()
 		})
 	}
 	wg.Wait()
+	if sum.Sites > sum.Emitted {
+		sum.Shortage = sum.Sites - sum.Emitted
+	}
+	return sum
 }

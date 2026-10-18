@@ -2,8 +2,10 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -42,17 +44,34 @@ func (h *AgentHandler) Upgrade(c *gin.Context) {
 	if url == "" {
 		url = defaultAgentDownloadURL
 	}
+	cmd, err := agentUpgradeCommand(url)
+	if err != nil {
+		// 没配校验值就别把注定被拒的命令发出去：agent 侧会拒（无校验=把执行权交给下载源），
+		// 但那边只会回一句「缺少 sha256 校验值」，看不出是服务端少配了环境变量、该去哪儿补。
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
+		return
+	}
 	cli, err := h.hub.FileClient(uint(id))
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
-	cmd := agentrpc.Command{Op: "upgrade", Dst: url, Checksum: os.Getenv("AGENT_CHECKSUM")}
 	if err := cli.Upgrade(ctx, cmd); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// agentUpgradeCommand 组装下发自更新命令。AGENT_CHECKSUM 支持两种写法：
+// 单个 sha256（所有 agent 同架构时）或 "amd64=<hex> arm64=<hex>"（按架构分别配置，agent 端自选）。
+// 空值一律不下发：agent 侧必然拒绝（拒绝无校验的二进制替换），提前失败才能给出可操作原因。
+func agentUpgradeCommand(downloadURL string) (agentrpc.Command, error) {
+	sum := strings.TrimSpace(os.Getenv("AGENT_CHECKSUM"))
+	if sum == "" {
+		return agentrpc.Command{}, fmt.Errorf("服务端未配置 AGENT_CHECKSUM，已拒绝下发无校验的自更新：请填写目标二进制的 sha256，多架构可写成「amd64=<hex> arm64=<hex>」")
+	}
+	return agentrpc.Command{Op: "upgrade", Dst: downloadURL, Checksum: sum}, nil
 }

@@ -159,7 +159,15 @@ export const workflowApi = {
   reset: (id: number) => http.post(`/workflows/${id}/reset`).then((r) => r.data),
   runs: (workflowId: number, limit = 20) =>
     http
-      .get<{ runs: WorkflowRun[] }>('/workflow-runs', { params: { workflow_id: workflowId, limit } })
-      .then((r) => r.data.runs ?? []),
+      .get<{ runs: WorkflowRun[]; total?: number; limit?: number; truncated?: boolean }>('/workflow-runs', {
+        params: { workflow_id: workflowId, limit },
+      })
+      .then((r) => ({
+        runs: r.data.runs ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? limit,
+        // 缺字段按「可能被截断」处理：不把一页说成整个运行历史。
+        truncated: r.data.truncated ?? true,
+      })),
   runDetail: (rid: number) => http.get<WorkflowRun>(`/workflow-runs/${rid}`).then((r) => r.data),
 }

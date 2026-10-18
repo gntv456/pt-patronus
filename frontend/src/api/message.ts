@@ -30,6 +30,9 @@ export interface MessageResult {
   site_name: string
   messages: Message[]
   error?: string
+  // 后端 omitempty：false 时字段缺席。true = 这一站的私信压根没适配（配置事实），
+  // 与「抓到了，这站没私信」区分开，别渲染成空信箱。
+  unsupported?: boolean
 }
 
 export interface ReplyResult {
@@ -72,7 +75,12 @@ export const messageApi = {
         for (const line of lines) {
           const t = line.trim()
           if (t) {
-            const r = JSON.parse(t) as MessageResult
+            // 末尾 done 行带 list_error=站点清单读失败（0 行输出），throw 留痕给视图 catch 弹错
+            const r = JSON.parse(t) as MessageResult & { done?: boolean; list_error?: string }
+            if (r.done) {
+              if (r.list_error) throw new Error(r.list_error)
+              continue
+            }
             onResult({ ...r, messages: r.messages || [] })
           }
         }

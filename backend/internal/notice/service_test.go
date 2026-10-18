@@ -3,10 +3,13 @@ package notice
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/notification"
 )
 
 // fakeStore 实现 Store 接口，记录调用以便断言去重/写库/广播路径。
@@ -24,9 +27,12 @@ func (f *fakeStore) Create(n *models.Notice) error {
 	return nil
 }
 func (f *fakeStore) List(unread bool, limit int) ([]models.Notice, error) { return f.notices, nil }
-func (f *fakeStore) MarkRead(id uint) error                               { return nil }
-func (f *fakeStore) MarkAllRead() error                                   { return nil }
-func (f *fakeStore) Delete(id uint) error                                 { return nil }
+func (f *fakeStore) Count(unread bool) (int64, error) {
+	return int64(len(f.notices)), nil
+}
+func (f *fakeStore) MarkRead(id uint) error { return nil }
+func (f *fakeStore) MarkAllRead() error     { return nil }
+func (f *fakeStore) Delete(id uint) error   { return nil }
 func (f *fakeStore) ClearAll() (int64, error) {
 	n := int64(len(f.notices))
 	f.notices = nil
@@ -93,6 +99,57 @@ func TestNoticeLevelDefault(t *testing.T) {
 	_ = svc.Notice(context.Background(), Input{Source: "s", Title: "t"}, false)
 	if got := store.notices[0].Level; got != "info" {
 		t.Fatalf("empty level should default to info, got %q", got)
+	}
+}
+
+// countingChannel 记录发送次数的假渠道；failFirst 模拟首次失败（重试后成功）。
+type countingChannel struct {
+	name      string
+	failFirst bool
+	mu        sync.Mutex
+	sends     int
+}
+
+func (c *countingChannel) Name() string { return c.name }
+func (c *countingChannel) Send(context.Context, notification.Message) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.sends++
+	if c.failFirst && c.sends == 1 {
+		return errors.New("boom")
+	}
+	return nil
+}
+func (c *countingChannel) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.sends
+}
+
+// TestNoticeRetryOnlyFailedChannels 外发失败重试只重发失败渠道：多渠道中一个失败时，
+// 已成功渠道不得重复收到推送（此前对全部渠道整体重发，用户收到重复消息）。
+func TestNoticeRetryOnlyFailedChannels(t *testing.T) {
+	oldDelay := noticeRetryDelay
+	noticeRetryDelay = 10 * time.Millisecond
+	t.Cleanup(func() { noticeRetryDelay = oldDelay })
+
+	okCh := &countingChannel{name: "ok"}
+	badCh := &countingChannel{name: "bad", failFirst: true}
+	mgr := notification.NewManager(okCh, badCh)
+	svc := NewService(&fakeStore{}, nil, mgr)
+
+	if err := svc.Notice(context.Background(), Input{Source: "s", Title: "t", Level: "danger"}, false); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && badCh.count() < 2 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := badCh.count(); got != 2 {
+		t.Fatalf("失败渠道应重发一次: sends=%d", got)
+	}
+	if got := okCh.count(); got != 1 {
+		t.Fatalf("已成功渠道不得重复推送: sends=%d", got)
 	}
 }
 

@@ -56,12 +56,27 @@ func (c *DockerLocalClient) Available() bool {
 	return err == nil
 }
 
+// endpoint 返回「本次实际在拨哪个地址」，纯字符串、不发请求。
+// 报错文案必须带上它：DOCKER_HOST 一旦设过，「默认走 /var/run/docker.sock」那句提示
+// 指的就是用户根本没在用的地址（同 #219：不说程序实际检查的哪个值）。
+func (c *DockerLocalClient) endpoint() string {
+	if c.scheme == "http+unix" {
+		return "unix://" + c.host
+	}
+	return c.scheme + "://" + c.host
+}
+
+// unixSockHint 是本机探测失败时的唯一出路提示。/var/run/docker.sock 在 Windows 原生
+// 运行时根本不存在（2026-10-13 实测：拨它回「A socket operation encountered a dead network」），
+// 只说「容器是否挂载了 socket」会把直接跑 exe 的用户引向一条不存在的路；设 DOCKER_HOST 才可用。
+const unixSockHint = "Windows/macOS 原生运行本程序时该地址不存在，可设 DOCKER_HOST=tcp://127.0.0.1:2375 后重启"
+
 // Probe 检测 Docker socket，返回具体错误原因（区分未挂载/权限/连接失败）。
 func (c *DockerLocalClient) Probe() (string, error) {
 	if c.scheme == "http+unix" {
 		info, err := os.Stat(c.host)
 		if err != nil {
-			return c.host, fmt.Errorf("socket 文件不存在：%s（容器是否挂载了 /var/run/docker.sock？）", c.host)
+			return c.host, fmt.Errorf("socket 文件不存在：%s（容器是否挂载了 /var/run/docker.sock？%s）", c.host, unixSockHint)
 		}
 		// socket 文件存在但无读写权限
 		if info.Mode()&0o666 == 0 {
@@ -69,7 +84,7 @@ func (c *DockerLocalClient) Probe() (string, error) {
 		}
 	}
 	if _, err := c.get(context.Background(), "/version", nil); err != nil {
-		return c.host, fmt.Errorf("socket 连接失败：%s（权限不足或 Docker 服务未运行）：%v", c.host, err)
+		return c.host, fmt.Errorf("socket 连接失败：%s（权限不足或 Docker 服务未运行）：%v（%s）", c.host, err, unixSockHint)
 	}
 	return c.host, nil
 }

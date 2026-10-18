@@ -2,7 +2,8 @@
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
-import { siteApi, type Site, type SiteDef } from '@/api/site'
+import { siteApi, type Site, type SiteDef, type DefinitionDiagnostic } from '@/api/site'
+import SiteDefinitionDiagnostics from '@/components/sites/SiteDefinitionDiagnostics.vue'
 import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
@@ -19,6 +20,9 @@ const { cookieAlerts } = useWs()
 
 const sites = ref<Site[]>([])
 const defs = ref<SiteDef[]>([])
+const defDiags = ref<DefinitionDiagnostic[]>([])
+const defDiagsFailed = ref(false)
+const defDiagsErrText = ref('')
 const loading = ref(false)
 // 站点连通状态：进页面瞬时显示上次结果 + 后台 SSE 逐站刷新（composable 封装缓存/节流/中断）。
 const { connectivity, refreshing, loadCached, refresh: refreshConnectivity } = useSiteConnectivity()
@@ -60,6 +64,7 @@ const {
   checkinAllLoading,
   recordsDrawer,
   records,
+  recordsWindow,
   recordsLoading,
   testSite,
   checkinSite,
@@ -74,8 +79,22 @@ async function load() {
   try {
     // 站点列表为主数据（失败即报）；definitions 仅建站下拉用，降级为空。
     const [nextSites, nextDefs] = await Promise.all([siteApi.list(), siteApi.definitions().catch(() => [])])
+    // 诊断单独读、读失败要标出来：静默退回空数组＝把「有 N 条规则没生效」这件事再丢一次。
+    const nextDiags = await siteApi
+      .definitionDiagnostics()
+      .then((d) => {
+        defDiagsFailed.value = false
+        defDiagsErrText.value = ''
+        return d
+      })
+      .catch((e) => {
+        defDiagsFailed.value = true
+        defDiagsErrText.value = String((e as Error)?.message ?? e)
+        return [] as DefinitionDiagnostic[]
+      })
     sites.value = nextSites
     defs.value = nextDefs
+    defDiags.value = nextDiags
   } catch (e) {
     ElMessage.error(t('sites.loadFailed'))
   } finally {
@@ -110,6 +129,7 @@ onMounted(load)
 
 <template>
   <div class="sites">
+    <SiteDefinitionDiagnostics :diags="defDiags" :failed="defDiagsFailed" :err-text="defDiagsErrText" />
     <div class="head">
       <h2 class="page-title">{{ t('sites.title') }}</h2>
       <div class="head-actions">
@@ -246,6 +266,13 @@ onMounted(load)
 
     <el-drawer v-model="recordsDrawer" :title="t('sites.records')" size="600">
       <div v-loading="recordsLoading">
+        <div v-if="recordsWindow.truncated" class="text-muted" style="margin-bottom: 8px">
+          {{
+            recordsWindow.total == null
+              ? t('sites.recordsTruncatedUnknown', { n: recordsWindow.shown })
+              : t('sites.recordsTruncated', { n: recordsWindow.shown, total: recordsWindow.total })
+          }}
+        </div>
         <el-table :data="records" style="width: 100%" max-height="100%">
           <el-table-column :label="t('sites.rec.time')" width="150">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>

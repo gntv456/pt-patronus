@@ -257,7 +257,12 @@ export function useSiteMatrixData(props: {
     historySiteName.value = row.site_name
     history.value = []
     try {
-      history.value = await dashboardApi.history(row.site_id, 30)
+      const res = await dashboardApi.history(row.site_id, 30)
+      history.value = res.points
+      if (res.truncated) {
+        // 后端有返回上限：不说的话，起点缺失的那段时间看起来就像「站点没数据」。
+        ElMessage.warning(`该站点 ${res.days} 天内共 ${res.total} 个快照，仅显示最近 ${res.points.length} 个`)
+      }
     } catch (error: unknown) {
       ElMessage.error((error as Error).message || '历史数据加载失败')
     } finally {

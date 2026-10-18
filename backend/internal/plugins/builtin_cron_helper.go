@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -46,7 +45,7 @@ func (cronHelperPlugin) HandleEvent(context.Context, Runtime, Event) error { ret
 func (cronHelperPlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	_ = ctx
 	if action != "next_runs" {
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 	expr := strings.TrimSpace(pluginString(input["expression"]))
 	if expr == "" {

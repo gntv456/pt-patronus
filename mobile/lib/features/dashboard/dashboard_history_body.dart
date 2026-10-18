@@ -9,12 +9,20 @@ import 'package:ptpatronus/widgets/pt_motion.dart';
 class DashboardHistoryBody extends StatelessWidget {
   final List<SiteHistoryPoint> points;
   final bool loading;
+
+  /// 非空 = 这次压根没读到，不能渲染成「暂无历史快照」。
+  final String? error;
+
+  /// 例如「该区间共 540 个快照，仅显示最近 500 个」。
+  final String? note;
   final String Function(int) fmtBytes;
   final String Function(String) fmtTime;
   const DashboardHistoryBody({
     super.key,
     required this.points,
     required this.loading,
+    this.error,
+    this.note,
     required this.fmtBytes,
     required this.fmtTime,
   });
@@ -27,6 +35,9 @@ class DashboardHistoryBody extends StatelessWidget {
         child: PTLoadingView(),
      );
    }
+    if (error != null) {
+      return PTEmptyState(text: error!);
+    }
     if (points.isEmpty) {
       return const PTEmptyState(text: '暂无历史快照');
     }
@@ -94,7 +105,7 @@ class DashboardHistoryBody extends StatelessWidget {
         ),
       ),
     ];
-    return SizedBox(
+    final table = SizedBox(
       width: double.infinity,
       child: PTAdaptiveTable<SiteHistoryPoint>(
         items: points,
@@ -147,6 +158,20 @@ class DashboardHistoryBody extends StatelessWidget {
           ),
         ),
       ),
+    );
+    if (note == null) return table;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Text(
+            note!,
+            style: TextStyle(fontSize: 12, color: context.dimText),
+          ),
+        ),
+        Flexible(child: table),
+      ],
     );
   }
 }

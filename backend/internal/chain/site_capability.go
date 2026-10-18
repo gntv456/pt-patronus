@@ -11,6 +11,10 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
+// HRWired 该站的 H&R 检测是否接了线（站点定义显式 hr.enabled: true）。
+// HR 默认关闭（多数内置定义没开），所以调用方必须把「没接线」与「抓到 0 条」分开记账。
+func (c *SiteChain) HRWired(s *models.Site) bool { return c.defFor(s).HR.Enabled }
+
 // HR 抓取站点 H&R 列表（适配器需实现 site.HRCapable）。
 // 站点定义未显式 hr.enabled: true 时直接返回空，避免对未开启 H&R 的站发请求。
 func (c *SiteChain) HR(ctx context.Context, s *models.Site) ([]site.HRTorrent, error) {
@@ -18,7 +22,10 @@ func (c *SiteChain) HR(ctx context.Context, s *models.Site) ([]site.HRTorrent, e
 	if !def.HR.Enabled {
 		return nil, nil
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out []site.HRTorrent
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		hc, ok := a.(site.HRCapable)
@@ -40,7 +47,10 @@ func (c *SiteChain) HR(ctx context.Context, s *models.Site) ([]site.HRTorrent, e
 // site.ErrSeedingListUnsupported）时 Supported=false，调用方应回退 UserInfo 汇总统计。
 func (c *SiteChain) SeedingStats(ctx context.Context, s *models.Site) (*site.SeedingStats, error) {
 	def := c.defFor(s)
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	out := &site.SeedingStats{}
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		lc, ok := a.(site.SeedingListCapable)
@@ -100,7 +110,10 @@ func (c *SiteChain) TorrentDetail(ctx context.Context, s *models.Site, detailURL
 // fetchTorrentDetail 调度适配器抓取并解析详情页，成功时写短缓存并清理过期条目。
 func (c *SiteChain) fetchTorrentDetail(ctx context.Context, s *models.Site, detailURL, key string) (*site.TorrentDetail, error) {
 	def := c.defFor(s)
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out *site.TorrentDetail
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		dc, ok := a.(site.TorrentDetailCapable)

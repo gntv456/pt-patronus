@@ -99,6 +99,14 @@ export interface MetricSnapshot {
   created_at: string
 }
 
+/** 告警分页结果：alerts 受单页上限约束，total 是同口径总数（含被截掉的部分）。 */
+export interface AlertPage {
+  alerts: MonitorAlert[]
+  total: number
+  limit: number
+  truncated: boolean
+}
+
 export interface MonitorAlert {
   id: number
   target_id: number
@@ -175,6 +183,8 @@ export interface OpsCredential {
   name: string
   type: 'ssh' | 'nas' | 'generic' | string
   username?: string
+  // has_* 一律表示「存过密文」，不要求能解密（主密钥换过时用于区分「没填」与「解不开」）
+  has_username: boolean
   has_password: boolean
   has_private_key: boolean
   tags: string
@@ -245,7 +255,14 @@ export const monitorApi = {
   probe: (id: number) =>
     http.post<{ ok: boolean; online: boolean; error?: string }>(`/monitors/${id}/probe`).then((r) => r.data),
   collect: (id: number) =>
-    http.post<{ ok: boolean; metrics?: Metrics; error?: string }>(`/monitors/${id}/collect`).then((r) => r.data),
+    http
+      .post<{ ok: boolean; metrics?: Metrics; error?: string }>(`/monitors/${id}/collect`)
+      // 采集失败后端回的是 200 + {ok:false, error:'中文原因'}（monitor.go:113）：
+      // 状态码与 metrics 字段都不说话。丢掉 error ⇒「这次没采到」在设备详情里被画成「有最新数据」（#251）。
+      .then((r) => {
+        if (!r.data.ok) throw new Error(r.data.error || '采集失败')
+        return r.data
+      }),
   power: (id: number, action: 'reboot' | 'shutdown') =>
     http.post<{ ok: boolean; error?: string }>(`/monitors/${id}/power`, { action }).then((r) => r.data),
   exec: (id: number, command: string, timeoutSec = 30) =>
@@ -259,14 +276,26 @@ export const monitorApi = {
         { timeout: Math.max(timeoutSec + 5, 15) * 1000 },
       )
       .then((r) => r.data),
+  // 快照列表有单页上限（默认 500、封顶 1000）：total/truncated 必须与清单同批返回，
+  // 否则趋势图把「最近 120 次采集」画成「这台设备的全部历史」。计数读不出时后端不下发
+  // total 且保守报 truncated=true，所以 total 是可选字段（不得用 ?? 0 伪造）。
   metrics: (id: number, since?: string, limit?: number) =>
     http
-      .get<{ snapshots: MetricSnapshot[] }>(`/monitors/${id}/metrics`, { params: { since, limit } })
-      .then((r) => r.data.snapshots ?? []),
-  alerts: (targetId?: number, unread = false) =>
-    http
-      .get<{ alerts: MonitorAlert[] }>('/monitor/alerts', { params: { target_id: targetId, unread } })
-      .then((r) => r.data.alerts ?? []),
+      .get<{
+        snapshots: MetricSnapshot[]
+        total?: number
+        limit: number
+        truncated: boolean
+      }>(`/monitors/${id}/metrics`, { params: { since, limit } })
+      .then((r) => r.data),
+  /** 告警列表（单页有上限：total/truncated 用来告知「还有多少没显示」，别把上限当全部） */
+  alerts: (targetId?: number, unread = false): Promise<AlertPage> =>
+    http.get<AlertPage>('/monitor/alerts', { params: { target_id: targetId, unread } }).then((r) => ({
+      alerts: r.data.alerts ?? [],
+      total: r.data.total ?? 0,
+      limit: r.data.limit ?? 0,
+      truncated: r.data.truncated === true,
+    })),
   readAlert: (id: number) => http.post(`/monitor/alerts/${id}/read`).then((r) => r.data),
   ackAlert: (id: number) => http.post(`/monitor/alerts/${id}/ack`).then((r) => r.data),
   silenceAlert: (id: number, minutes = 30) =>
@@ -282,8 +311,18 @@ export const monitorApi = {
 }
 
 export const commandRunApi = {
-  list: (limit = 20, source?: string) =>
-    http.get<{ runs: CommandRun[] }>('/ops/command-runs', { params: { limit, source } }).then((r) => r.data.runs ?? []),
+  listPage: (limit = 20, source?: string) =>
+    http
+      .get<{ runs: CommandRun[]; total?: number; limit?: number; truncated?: boolean }>('/ops/command-runs', {
+        params: { limit, source },
+      })
+      .then((r) => ({
+        runs: r.data.runs ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? limit,
+        truncated: r.data.truncated ?? true,
+      })),
+  list: (limit = 20, source?: string) => commandRunApi.listPage(limit, source).then((p) => p.runs),
   get: (id: number) => http.get<CommandRun>(`/ops/command-runs/${id}`).then((r) => r.data),
   create: (input: CommandRunInput) =>
     http

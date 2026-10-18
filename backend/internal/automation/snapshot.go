@@ -32,6 +32,13 @@ func (s *Service) runSnapshot() {
 	sites, err := s.siteOp.ListActive()
 	if err != nil {
 		slog.Warn("snapshot list sites failed", "err", err)
+		// 静默返回 = 本轮什么都没采集，而界面只会显示「上次检测时间」越来越旧，
+		// 看起来像站点全挂了。读库失败必须自己出声。
+		if s.notif != nil {
+			s.notif.Notify(ctx, notification.Message{
+				Title: "站点快照", Body: "本轮聚合快照未能开始：读取站点列表失败 — " + err.Error(), Level: "warning",
+			})
+		}
 		return
 	}
 	var agg snapshotAgg

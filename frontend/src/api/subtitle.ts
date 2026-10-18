@@ -32,9 +32,12 @@ export const subtitleApi = {
       .get<{ results: SubtitleResult[] }>('/subtitle/search', { params: { q, language } })
       .then((r) => r.data.results ?? []),
   // 下载（blob）→ 浏览器另存。返回 { filename, blob }。
+  // 超时对齐链层预算：SubtitleChain.Download 给源 30s（解 zip + 转码另算），
+  // 用全局 15s 会把「站点慢但会成功」掐成「请求超时，请稍后重试」——
+  // 而后端仍在跑，用户以为失败、文件却不会落地（同 #111 首屏超时的量法）。
   download: (sub: Partial<SubtitleResult>) =>
     http
-      .post<Blob>('/subtitle/download', sub, { responseType: 'blob' })
+      .post<Blob>('/subtitle/download', sub, { responseType: 'blob', timeout: 45000 })
       .then((r) => ({ blob: r.data, filename: parseFilename(r.headers['content-disposition']) })),
   getConfig: () => http.get<SubtitleConfig>('/subtitle/config').then((r) => r.data),
   setConfig: (cfg: Partial<SubtitleConfig>) => http.put('/subtitle/config', cfg).then((r) => r.data),

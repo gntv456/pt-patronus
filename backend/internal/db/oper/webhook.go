@@ -76,16 +76,17 @@ func (o *WebhookOper) Delete(id uint) error {
 	return o.db.Delete(&models.Webhook{}, id).Error
 }
 
-// DecryptedSecret 解密签名校验密钥；空或失败返回 ""。
-func (o *WebhookOper) DecryptedSecret(w *models.Webhook) string {
+// DecryptedSecret 解密签名校验密钥，并区分三种情况：
+//   - ("", nil)：没配密钥 —— 不验签是用户的选择；
+//   - (非空, nil)：正常验签；
+//   - ("", err)：配过但解不开（主密钥轮换 / 备份恢复到新实例）。
+//
+// 调用方必须把第三种当失败拒绝请求：把它当「没配密钥」会让该 webhook 静默变成任何人可触发。
+func (o *WebhookOper) DecryptedSecret(w *models.Webhook) (string, error) {
 	if w == nil || w.SecretEnc == "" {
-		return ""
+		return "", nil
 	}
-	s, err := o.c.Decrypt(w.SecretEnc)
-	if err != nil {
-		return ""
-	}
-	return s
+	return o.c.Decrypt(w.SecretEnc)
 }
 
 // MarkTriggered 记录一次触发：计数+1、时间、截断的 payload。

@@ -189,7 +189,7 @@ func (r *CloudTaskRunner) noticeDeleteLocalBlocked(t *models.CloudTask, strmErr 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = c.notice.Notice(ctx, notice.Input{
-		Source: "cloud",
+		Source: notice.SourceCloud,
 		Key:    fmt.Sprintf("strm-blocked:%s:%s", t.Kind, path.Base(t.CloudPath)),
 		Title:  "STRM 生成失败，已保留本地文件",
 		Body: fmt.Sprintf("上传成功但 STRM 登记失败，为防数据丢失未删除本地文件（%s）。"+
@@ -285,6 +285,8 @@ func (c *CloudChain) ImportTreeStrm(ctx context.Context, t *models.CloudTask) er
 		base = "/"
 	}
 	n := 0
+	failed := 0
+	var firstErr error
 	for _, line := range splitLines(p.Tree) {
 		line = trimSpace(line)
 		if line == "" || stringsContains(line, "---") { // 分隔行跳过
@@ -295,12 +297,21 @@ func (c *CloudChain) ImportTreeStrm(ctx context.Context, t *models.CloudTask) er
 		}
 		cp := joinCloudPath(base, line)
 		if err := c.UpsertStrm(ctx, t.DriveID, cp, p.OutputDir, p.Template, base); err != nil {
-			slog.Debug("import_tree: strm failed", "path", cp, "err", err)
+			failed++
+			if firstErr == nil {
+				firstErr = fmt.Errorf("%s: %w", cp, err)
+			}
+			slog.Warn("import_tree: strm failed", "path", cp, "err", err)
 			continue
 		}
 		n++
 	}
-	slog.Info("cloud: import tree done", "task", t.ID, "generated", n)
+	slog.Info("cloud: import tree done", "task", t.ID, "generated", n, "failed", failed)
+	// 逐行失败不静默：有失败即任务级报错（重试幂等——UpsertStrm 覆盖写，成功行重试无副本），
+	// 否则全失败仍标 success，用户在媒体库看不到条目却以为已导入。
+	if failed > 0 {
+		return fmt.Errorf("import_tree: 成功 %d 行，失败 %d 行（首个错误：%v）", n, failed, firstErr)
+	}
 	return nil
 }
 

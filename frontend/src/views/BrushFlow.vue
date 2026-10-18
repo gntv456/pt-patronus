@@ -144,7 +144,9 @@ async function save() {
 
 async function remove(task: BrushFlowTask) {
   try {
-    await ElMessageBox.confirm(t('brushflow.confirmDelete', { name: task.name }), t('messages.tip'), { type: 'warning' })
+    await ElMessageBox.confirm(t('brushflow.confirmDelete', { name: task.name }), t('messages.tip'), {
+      type: 'warning',
+    })
   } catch {
     return
   }
@@ -185,6 +187,12 @@ async function runAction(task: BrushFlowTask, kind: 'select' | 'sweep') {
 
 const showSeeds = ref(false)
 const seeds = ref<BrushFlowSeed[]>([])
+// 种子历史单页 500 条封顶：被截断时说出来，否则更早加入的种子在界面上凭空消失。
+const seedWindow = ref<{ shown: number; total?: number; truncated: boolean }>({
+  shown: 0,
+  total: undefined,
+  truncated: false,
+})
 const seedsLoading = ref(false)
 const seedsTask = ref('')
 
@@ -193,9 +201,12 @@ async function openSeeds(task: BrushFlowTask) {
   showSeeds.value = true
   seedsLoading.value = true
   try {
-    seeds.value = await brushflowApi.seeds(task.id)
+    const page = await brushflowApi.seeds(task.id)
+    seeds.value = page.seeds
+    seedWindow.value = { shown: page.seeds.length, total: page.total, truncated: page.truncated }
   } catch (e: any) {
     seeds.value = []
+    seedWindow.value = { shown: 0, total: undefined, truncated: false }
     ElMessage.error(e?.userMessage || e?.message || t('common.loadFailed'))
   } finally {
     seedsLoading.value = false
@@ -318,11 +329,27 @@ onMounted(() => {
       </EmptyState>
     </div>
 
-    <BrushFlowFormDialog v-model:visible="showForm" :form="form" :editing="!!editing" :sites="sites" :downloaders="downloaders" :filter-groups="filterGroups" :filter-group-array="filterGroupArray" @save="save"
-    @update:filter-group-array="(v: any) => (filterGroupArray = v)" />
+    <BrushFlowFormDialog
+      v-model:visible="showForm"
+      :form="form"
+      :editing="!!editing"
+      :sites="sites"
+      :downloaders="downloaders"
+      :filter-groups="filterGroups"
+      :filter-group-array="filterGroupArray"
+      @save="save"
+      @update:filter-group-array="(v: any) => (filterGroupArray = v)"
+    />
 
     <el-dialog v-model="showSeeds" :title="t('brushflow.seedsTitle', { name: seedsTask })" width="640px" top="8vh">
       <div v-loading="seedsLoading">
+        <div v-if="seedWindow.truncated" class="seed-note">
+          {{
+            seedWindow.total == null
+              ? t('brushflow.seedsTruncatedUnknown', { n: seedWindow.shown })
+              : t('brushflow.seedsTruncated', { n: seedWindow.shown, total: seedWindow.total })
+          }}
+        </div>
         <el-table :data="seeds" size="small" max-height="420" :empty-text="t('brushflow.noRecords')">
           <el-table-column prop="title" :label="t('rss.col.title')" show-overflow-tooltip />
           <el-table-column :label="t('rss.col.size')" width="90">

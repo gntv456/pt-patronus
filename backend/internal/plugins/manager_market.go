@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 )
@@ -34,27 +35,45 @@ func normalizeSources(sources []string) []string {
 
 // GetMarketSources 返回 UI 持久化的插件市场源列表（GitHub 仓库地址或任意 URL）；
 // 未设置或未注入 cfgOp 返回 nil。新 key 为空时回退读旧版单源 key（一次性迁移语义）。
-func (m *Manager) GetMarketSources() []string {
+// ErrMarketSourcesUnreadable：市场源**读不出来**（系统配置读失败，或那条记录被写坏）。
+// 它与「用户把源清空了」必须分开——两者在界面上都是空列表，而界面保存是整份替换：
+// 把读不出来当成清空，一次保存就把全部源抹掉，还会回一句「已保存 N 个市场源」。
+var ErrMarketSourcesUnreadable = errors.New("插件市场源读不出来")
+
+// MarketSourcesSnapshot 读出持久化的市场源，并带回「读不出来」这个事实。
+// GetMarketSources 是它的薄壳（内部拉取路径容忍无源，界面不容忍）。
+func (m *Manager) MarketSourcesSnapshot() ([]string, error) {
 	m.mu.RLock()
 	cfgOp := m.cfgOp
 	m.mu.RUnlock()
 	if cfgOp == nil {
-		return nil
+		return nil, nil
+	}
+	raw, err := cfgOp.Get(pluginMarketSourcesKey)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrMarketSourcesUnreadable, err)
 	}
 	var sources []string
-	if raw, err := cfgOp.Get(pluginMarketSourcesKey); err == nil && strings.TrimSpace(raw) != "" {
+	if strings.TrimSpace(raw) != "" {
 		if err := json.Unmarshal([]byte(raw), &sources); err != nil {
 			slog.Warn("parse plugin market sources", "err", err, "raw", raw)
-			sources = nil
+			return nil, fmt.Errorf("%w: 记录内容不是合法的源列表: %v", ErrMarketSourcesUnreadable, err)
 		}
 	}
 	if len(sources) == 0 {
 		// 迁移：新版列表为空时回退读旧版单源 key。
-		if old, err := cfgOp.Get(pluginMarketSourceKey); err == nil && strings.TrimSpace(old) != "" {
+		if old, oerr := cfgOp.Get(pluginMarketSourceKey); oerr == nil && strings.TrimSpace(old) != "" {
 			sources = []string{old}
 		}
 	}
-	return normalizeSources(sources)
+	return normalizeSources(sources), nil
+}
+
+func (m *Manager) GetMarketSources() []string {
+	// 内部取数路径本来就容忍「一个源都没有」，读不出来时沿用旧行为（空列表），
+	// 但界面条走 MarketSourcesSnapshot——那里空列表会被当成用户意图写回去。
+	sources, _ := m.MarketSourcesSnapshot()
+	return sources
 }
 
 // SetMarketSources 持久化插件市场源列表（normalize 后写入；空列表即清除，回退本地 plugin-market.json）。

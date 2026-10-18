@@ -60,7 +60,7 @@ func (g *GenericHTML) Search(ctx context.Context, def *site.SiteMetadata,
 	}
 	// 分发：Format 显式 json/html > 响应体首字节嗅探（{/[ → JSON，否则 HTML）。
 	if def.Format == "json" || (def.Format == "" && site.LooksLikeJSON(resp.Body)) {
-		return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+		return site.ParseJSONSearch(resp.Body, def, baseURL)
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
@@ -160,6 +160,11 @@ func (g *GenericHTML) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		if err := fetchUserInfoPages(ctx, &g.BaseHTMLAdapter, def, baseURL, cookie, u); err != nil {
 			return nil, err
 		}
+		if userInfoParsesEmpty(u) {
+			// 站点配了 user_info.pages 却一页都没读到 → 改版或错误页；
+			// 返空结构会被聚合任务当真实数据写进 site_stats 并标 connected。
+			return nil, emptyUserInfoErr(baseURL, "用户信息页")
+		}
 		return u, nil
 	}
 	if g.schema == "" || def.UserInfo.Path == "" || len(def.UserInfo.Fields) == 0 {
@@ -172,5 +177,10 @@ func (g *GenericHTML) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
 	}
-	return site.ParseUserInfo(doc, def), nil
+	parsed := site.ParseUserInfo(doc, def)
+	if userInfoParsesEmpty(parsed) {
+		// 路径与字段都配了却一个都没落到位 = 站点改版，不是「用户数据全 0」。
+		return nil, emptyUserInfoErr(baseURL, "用户信息页")
+	}
+	return parsed, nil
 }

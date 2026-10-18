@@ -17,6 +17,7 @@ const UNKNOWN_YEAR = '\u672a\u77e5'
 const STATUS_HEALTHY = '\u5065\u5eb7'
 const STATUS_CRITICAL = '\u75c5\u5371'
 const STATUS_CLOSED = '\u6b7b\u4ea1'
+const STATUS_UNKNOWN = '\u672a\u77e5'
 const filters = defineModel<{
   keyword: string
   year: string
@@ -41,6 +42,8 @@ const statusOptions = [
   { label: t('sh.healthy'), value: '\u5065\u5eb7' },
   { label: t('sh.critical'), value: '\u75c5\u5371' },
   { label: t('sh.dead'), value: '\u6b7b\u4ea1' },
+  // \u503c\u5fc5\u987b\u4e0e getStatusMeta('unknown').label \u5b8c\u5168\u4e00\u81f4\uff08\u7b5b\u9009\u6309 label \u6bd4\u5bf9\uff09
+  { label: t('sh.unknown'), value: STATUS_UNKNOWN },
 ]
 const typeOptions = [
   { label: t('sh.all'), value: '\u5168\u90e8' },
@@ -134,6 +137,13 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
         <div class="spt-vital spt-vital--closed">
           <span class="spt-vital__value">{{ summary?.closed ?? 0 }}</span>
           <span class="spt-vital__label">{{ t('sh.closed') }}</span>
+        </div>
+        <div class="spt-vital__divider" />
+        <!-- 探测不明：既不是健康也不是死亡。缺这一栏时 健康+病危+死亡 < 总数，
+             数字对不上而看不出少的是哪一类。 -->
+        <div class="spt-vital spt-vital--unknown">
+          <span class="spt-vital__value">{{ summary?.unknown ?? 0 }}</span>
+          <span class="spt-vital__label">{{ t('sh.unknown') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--anniv">

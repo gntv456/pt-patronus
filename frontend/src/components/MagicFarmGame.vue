@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type FarmState, type FarmItem, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const { t } = useI18n()
 const props = defineProps<{ siteId: number; game?: string }>()
@@ -12,7 +13,7 @@ const busy = ref(false)
 const last = ref<PlayResult | null>(null)
 
 async function refresh() {
-  farm.value = await entertainmentApi.farm(props.siteId, GAME.value).catch(() => farm.value)
+  farm.value = await entertainmentApi.farm(props.siteId, GAME.value).catch(entFail('farm', farm.value))
 }
 
 async function doAct(fn: () => Promise<PlayResult>) {

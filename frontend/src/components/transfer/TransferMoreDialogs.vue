@@ -352,9 +352,9 @@ const { t } = useI18n()
         </el-radio>
         <EmptyState
           v-if="!loadingTorrents && !completedTorrents.length"
-          icon="files"
+          icon="📁"
           :title="t('transfer.noCompleted')"
-          :sub="t('transfer.noCompletedSub')"
+          :description="t('transfer.noCompletedSub')"
         />
       </el-radio-group>
       <template #footer>

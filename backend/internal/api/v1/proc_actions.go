@@ -41,7 +41,7 @@ func (h *ProcHandler) Kill(c *gin.Context) {
 	cmd := fmt.Sprintf("kill -%s %s", sig, strconv.FormatUint(uint64(in.PID), 10))
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {

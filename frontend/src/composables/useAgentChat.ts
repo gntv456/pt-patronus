@@ -20,6 +20,12 @@ export type Unit = { id: string; data: Bubble | ToolStep }
 export function useAgentChat(getScroller: () => HTMLElement | null) {
   // —— 会话 ——
   const conversations = ref<AgentConversation[]>([])
+  // 侧栏会话清单：后端单页 200 个封顶，被截断时要说出来。
+  const convWindow = ref<{ shown: number; total?: number; truncated: boolean }>({
+    shown: 0,
+    total: undefined,
+    truncated: false,
+  })
   const activeId = ref<number | null>(null)
   const messages = ref<AgentMessage[]>([])
   const loadingMsgs = ref(false)
@@ -31,7 +37,13 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
 
   async function loadConversations() {
     try {
-      conversations.value = await agentApi.conversations()
+      const page = await agentApi.conversationsPage()
+      conversations.value = page.conversations
+      convWindow.value = {
+        shown: page.conversations.length,
+        total: page.total,
+        truncated: page.truncated,
+      }
       if (!activeId.value && conversations.value.length) await selectConversation(conversations.value[0].id)
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '加载会话失败')
@@ -132,6 +144,7 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
     let liveContent = ''
     let liveReasoning = ''
     const liveTools: { name: string; arguments: string; result?: string }[] = []
+    let liveError = ''
     try {
       const convId = await streamAgentChat(
         text,
@@ -152,20 +165,47 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
             if (t) t.result = ev.data.result
             updatePending(liveContent, liveReasoning, liveTools)
           } else if (ev.event === 'confirm_request') handleConfirm(ev.data)
-          else if (ev.event === 'error') ElMessage.error(ev.data.message)
+          else if (ev.event === 'error') {
+            liveError = ev.data.message || '本轮未完成'
+            ElMessage.error(liveError)
+          }
           nextTick(scrollToBottom)
         },
         abortCtrl.signal,
       )
       if (convId) activeId.value = convId
-      pending.value = null
-      if (activeId.value) await selectConversation(activeId.value) // 用 DB 规范化视图替换实时块
-      await loadConversations()
     } catch (e: unknown) {
-      if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '发送失败')
+      // 「停止」是用户自己的动作，不弹 toast，但仍要在记录里留一行——
+      // 否则实时气泡会永远停在「…」，界面谎报这一轮还在生成。
+      if ((e as Error).name === 'AbortError') liveError = '本轮已停止'
+      else {
+        liveError = (e as Error).message || '发送失败'
+        ElMessage.error(liveError)
+      }
     } finally {
       sending.value = false
       abortCtrl = null
+    }
+    pending.value = null
+    const conv = activeId.value
+    if (conv) await selectConversation(conv) // 用 DB 规范化视图替换实时块
+    await loadConversations()
+    // 出错那一轮后端不落助手消息，刷新后记录里只剩用户那句：用户看不出这轮跑过、
+    // 也不知道为什么没结果，重发还可能再触发一次写工具。把原因钉进会话记录。
+    // 放在清单刷新之后：侧栏可能自动切到别的会话，切走了就不该把这条塞进别人的记录。
+    if (liveError && activeId.value === conv) {
+      messages.value = [
+        ...messages.value,
+        {
+          id: -2,
+          conversation_id: conv ?? 0,
+          role: 'assistant',
+          content: '⚠ ' + liveError,
+          created_at: new Date().toISOString(),
+        },
+      ]
+      await nextTick()
+      scrollToBottom()
     }
   }
   function updatePending(
@@ -212,6 +252,7 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
 
   return {
     conversations,
+    convWindow,
     activeId,
     messages,
     loadingMsgs,

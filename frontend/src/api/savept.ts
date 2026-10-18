@@ -72,6 +72,8 @@ export interface SaveptSummary {
   healthy: number
   critical: number
   closed: number
+  /** 探测不明（连通性探测失败/上游未给状态）：healthy+critical+closed+unknown = total */
+  unknown: number
   bound: number
   available: number
   internal: number
@@ -94,5 +96,10 @@ export interface SaveptResult {
 }
 
 export const saveptApi = {
-  get: (refresh = false) => http.get<SaveptResult>(`/savept${refresh ? '?refresh=1' : ''}`).then((r) => r.data),
+  // 冷启动那一轮要并发探 60 个独有站（每站 8s 超时、12 路并发，最坏约 40s），
+  // 走默认 15s 超时的话重启后第一次打开必然「请求超时」，所以显式放宽。
+  get: (refresh = false) =>
+    http
+      .get<SaveptResult>(`/savept${refresh ? '?refresh=1' : ''}`, { timeout: 60000 })
+      .then((r) => r.data),
 }

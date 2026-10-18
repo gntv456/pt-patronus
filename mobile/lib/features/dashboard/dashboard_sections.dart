@@ -340,4 +340,45 @@ extension on _DashboardPageState {
       ),
     );
   }
+
+  Widget _kvCell(String label, String value, Color color) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: context.dimText.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
+          const SizedBox(height: 3),
+          Text(value,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: color)),
+        ]),
+      );
+
+  Widget _resBar(String label, double pct, String detail) {
+    final p = pct.clamp(0.0, 100.0);
+    final color = p >= 90
+        ? const Color(0xffe74c3c)
+        : p >= 80
+            ? const Color(0xfff39c12)
+            : const Color(0xff16a34a);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: TextStyle(fontSize: 12, color: context.dimText)),
+        Text('${p.toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      ]),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: p / 100,
+          minHeight: 7,
+          backgroundColor: context.dimText.withValues(alpha: 0.15),
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+        ),
+      ),
+      Text(detail, style: TextStyle(fontSize: 10, color: context.dimText)),
+    ]);
+  }
 }

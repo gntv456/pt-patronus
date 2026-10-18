@@ -113,6 +113,15 @@ extension on _SubscriptionsPageState {
                   '上次检查：${_fmtTime(s.lastCheckedAt)} · 类型 ${s.type == 'tv' ? '剧集' : '电影'} · 源 ${s.source}',
                   style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
+                // 「检查过」不等于「查得动」：本轮有站读不出来时把原因留在卡片上，
+                // 否则 1/2 个站失效与「确实没有新命中」是同一句文案（#262）。
+                if (s.lastCheckError.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '上次检查有问题：${s.lastCheckError}',
+                    style: const TextStyle(color: PTColors.warn, fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,

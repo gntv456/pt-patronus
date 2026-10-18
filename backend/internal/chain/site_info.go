@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -28,6 +30,9 @@ type FreeleechResult struct {
 	SiteName string               `json:"site_name"`
 	Notices  []site.SiteFreeleech `json:"notices"`
 	Error    string               `json:"error,omitempty"`
+	// Unsupported = 这一站的站免压根没接线（站点定义未开启该 capability），与「抓到了，
+	// 当前没有促销」分开：前者是配置事实，后者是站点现状（同 MessageResult.Unsupported）。
+	Unsupported bool `json:"unsupported,omitempty"`
 }
 
 // Normalize 保证 Notices 非 nil：nil 切片 JSON 序列化为 null，前端 .length/[0] 会崩
@@ -47,7 +52,16 @@ type AnnouncementResult struct {
 	Items     []site.AnnouncementItem `json:"items"`
 	FetchedAt time.Time               `json:"fetched_at"`
 	Error     string                  `json:"error,omitempty"`
+	// Unsupported = 这一站的公告没接线（站点定义未开启该 capability），区别于「抓到了，暂无公告」。
+	Unsupported bool `json:"unsupported,omitempty"`
 }
+
+// FreeleechWired / AnnouncementWired 该站的站免/公告是否接了线（站点定义开启对应 capability）。
+// 判定各只写这一处：聚合面与单站同步面共用，抄第二遍必漂移。
+func (c *SiteChain) FreeleechWired(s *models.Site) bool { return c.defFor(s).Freeleech.Enabled }
+
+// AnnouncementWired 见 FreeleechWired。
+func (c *SiteChain) AnnouncementWired(s *models.Site) bool { return c.defFor(s).Announcement.Enabled }
 
 // Normalize 保证 Items 非 nil：单站 SyncOne 在公告禁用/抓取失败时 ann 为 nil，
 // r.Items 保持零值 nil → 序列化 "items":null 致前端 .length 崩，兜底为 []。
@@ -64,7 +78,10 @@ func (c *SiteChain) Freeleech(ctx context.Context, s *models.Site) ([]site.SiteF
 	if !def.Freeleech.Enabled {
 		return nil, nil
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out []site.SiteFreeleech
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		fc, ok := a.(site.FreeleechCapable)
@@ -91,7 +108,10 @@ func (c *SiteChain) Announcements(ctx context.Context, s *models.Site) (*site.Si
 	if !def.Announcement.Enabled {
 		return nil, nil
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var out *site.SiteAnnouncement
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		ac, ok := a.(site.AnnouncementCapable)
@@ -115,13 +135,24 @@ func (c *SiteChain) Announcements(ctx context.Context, s *models.Site) (*site.Si
 	return out, err
 }
 
+// flPanicResult 崩站的兜底行（JSON 面与流式面共用，防两处口径漂移）：Notices 经 Normalize
+// 归一为 []，零值行的 site_id=0 + notices=nil 既匿名又会让前端 .length 崩。
+func flPanicResult(s models.Site, r any) FreeleechResult {
+	return FreeleechResult{
+		SiteID:   s.ID,
+		SiteName: s.Name,
+		Error:    fmt.Sprintf("站免抓取异常: %v", r),
+	}.Normalize()
+}
+
 // FreeleechAll 跨站并发聚合站免（阻塞，等全部站完成；带 per-site 缓存；force=true 跳过缓存）。
 // 给 MCP 工具/SiteDetail 等需一次性拿全量的调用方用；前端页面要"加载一个显示一个"用 FreeleechStream。
-func (c *SiteChain) FreeleechAll(ctx context.Context, force bool) []FreeleechResult {
+// 站点清单读失败交回错误，不渲染成「全部站无站免」假绿。
+func (c *SiteChain) FreeleechAll(ctx context.Context, force bool) ([]FreeleechResult, error) {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		slog.Warn("freeleech list sites failed", "err", err)
-		return nil
+		return nil, err
 	}
 	results := make([]FreeleechResult, len(sites))
 	sem := make(chan struct{}, infoFetchConcurrency)
@@ -130,21 +161,29 @@ func (c *SiteChain) FreeleechAll(ctx context.Context, force bool) []FreeleechRes
 		wg.Add(1)
 		safego.Go("site_info:130", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站交出它自己那一行（站名 + 空 notices + 原因）。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("freeleech site panic", "site", s.Name, "err", r)
+					results[i] = flPanicResult(s, r)
+				}
+			}()
 			results[i] = c.resolveFreeleech(ctx, sem, s, force)
 		})
 	}
 	wg.Wait()
-	return results
+	return results, nil
 }
 
 // FreeleechStream 流式聚合站免：每站解析完立即 emit（供 NDJSON/SSE 端点「加载一个显示一个」）。
 // 缓存命中的站秒级 emit，慢站（context deadline 15s）最后到达，不阻塞已就绪站的展示；
 // SWR/缓存/负缓存逻辑同聚合（复用 resolveFreeleech）。emit 由调用方保证并发安全（多 goroutine 同时回调）。
-func (c *SiteChain) FreeleechStream(ctx context.Context, force bool, emit func(FreeleechResult)) {
+// 返回值：站点清单读失败的错误消息（""=正常），供端点在流末尾补 done 行留痕。
+func (c *SiteChain) FreeleechStream(ctx context.Context, force bool, emit func(FreeleechResult)) string {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		slog.Warn("freeleech stream list sites failed", "err", err)
-		return
+		return err.Error()
 	}
 	sem := make(chan struct{}, infoFetchConcurrency)
 	var wg sync.WaitGroup
@@ -152,10 +191,18 @@ func (c *SiteChain) FreeleechStream(ctx context.Context, force bool, emit func(F
 		wg.Add(1)
 		safego.Go("site_info:152", func() {
 			defer wg.Done()
+			// per-site 隔离：崩站也必须 emit 一行，否则前端只看到「少一站」。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("freeleech stream site panic", "site", s.Name, "err", r)
+					emit(flPanicResult(s, r))
+				}
+			}()
 			emit(c.resolveFreeleech(ctx, sem, s, force))
 		})
 	}
 	wg.Wait()
+	return ""
 }
 
 // resolveFreeleech 解析单站站免结果（缓存命中/SWR/miss/force 同聚合逻辑），供聚合与流式复用。
@@ -171,7 +218,8 @@ func (c *SiteChain) resolveFreeleech(ctx context.Context, sem chan struct{}, s m
 			if time.Since(e.at) > freeleechCacheTTL {
 				c.refreshFreeleechAsync(s)
 			}
-			return FreeleechResult{SiteID: s.ID, SiteName: s.Name, Notices: e.notices}.Normalize()
+			return FreeleechResult{SiteID: s.ID, SiteName: s.Name, Notices: e.notices,
+				Unsupported: !c.FreeleechWired(&s)}.Normalize()
 		}
 	}
 	// miss：force 直接回源；否则 singleflight 合并同 siteID 并发回源。
@@ -191,17 +239,30 @@ func (c *SiteChain) resolveFreeleech(ctx context.Context, sem chan struct{}, s m
 			return c.fetchFreeleechOnce(ctx, sem, &s)
 		})
 	}
-	r := FreeleechResult{SiteID: s.ID, SiteName: s.Name}
+	return c.flRow(&s, ns, e)
+}
+
+// flRow 组装单站站免行（聚合尾与单站同步共用，防两处口径漂移）：未登录合成可读提示行、
+// 其它失败走中文翻译口、nil notices 归一为 []，并标上「这一站没接线」判定。
+func (c *SiteChain) flRow(s *models.Site, ns []site.SiteFreeleech, e error) FreeleechResult {
+	r := FreeleechResult{SiteID: s.ID, SiteName: s.Name, Unsupported: !c.FreeleechWired(s)}
 	switch {
 	case errors.Is(e, site.ErrNotLoggedIn):
 		ns = []site.SiteFreeleech{{SiteID: s.ID, SiteName: s.Name, Status: site.FreeleechFailed,
 			Title: "未登录", Content: "cookie 失效，请刷新登录", FetchedAt: time.Now()}}
 	case e != nil:
-		r.Error = e.Error()
+		r.Error = errtext.Text(e)
 		slog.Debug("freeleech fetch failed", "site", s.Name, "err", e)
 	}
 	r.Notices = ns
 	return r.Normalize()
+}
+
+// SyncFreeleech 单站强制刷新站免（/freeleech/sync/:id）：走与聚合面同一条 flRow 口径，
+// 并回写缓存——handler 自行拼结果时，「没接线」判定和中文原因两处都会掉。
+func (c *SiteChain) SyncFreeleech(ctx context.Context, s *models.Site) FreeleechResult {
+	ns, e := c.fetchFreeleechOnce(ctx, make(chan struct{}, 1), s)
+	return c.flRow(s, ns, e)
 }
 
 // fetchFreeleechOnce 抓单站站免（占一个 sem 槽、独立超时），成功时写缓存。
@@ -239,152 +300,4 @@ func (c *SiteChain) refreshFreeleechAsync(s models.Site) {
 			return c.fetchFreeleechOnce(ctx, make(chan struct{}, 1), &s)
 		})
 	}()
-}
-
-// annSFResult 是公告单次回源的 singleflight 结果（ann + 展示用 errMsg）。
-type annSFResult struct {
-	ann    *site.SiteAnnouncement
-	errMsg string
-}
-
-// AnnouncementsAll 跨站并发聚合公告（带 per-site 缓存；force=true 跳过缓存）。
-// 等全部站完成后一次性返回（MCP 工具/cron 用）；前端页面要"加载一个显示一个"用 AnnouncementsStream。
-func (c *SiteChain) AnnouncementsAll(ctx context.Context, force bool) []AnnouncementResult {
-	sites, err := c.sites.ListActive()
-	if err != nil {
-		slog.Warn("announcements list sites failed", "err", err)
-		return nil
-	}
-	results := make([]AnnouncementResult, len(sites))
-	sem := make(chan struct{}, infoFetchConcurrency)
-	var wg sync.WaitGroup
-	for i, s := range sites {
-		wg.Add(1)
-		safego.Go("site_info:262", func() {
-			defer wg.Done()
-			results[i] = c.resolveAnnouncement(ctx, sem, s, force)
-		})
-	}
-	wg.Wait()
-	return results
-}
-
-// resolveAnnouncement 解析单站公告结果（缓存命中/SWR/miss/force 同聚合逻辑），供聚合与流式复用。
-func (c *SiteChain) resolveAnnouncement(ctx context.Context, sem chan struct{}, s models.Site, force bool) AnnouncementResult {
-	if !force {
-		c.annMu.Lock()
-		e, ok := c.annCache[s.ID]
-		c.annMu.Unlock()
-		// SWR：缓存存在（含已过期）且有 ann → 立即返回旧值（秒回）；过期则后台异步刷新。
-		if ok && e.ann != nil {
-			if time.Since(e.at) > announcementCacheTTL {
-				c.refreshAnnouncementsAsync(s)
-			}
-			return annResult(s.ID, s.Name, e.ann, "")
-		}
-	}
-	var res annSFResult
-	if force {
-		res = c.fetchAnnouncementOnce(ctx, sem, &s)
-	} else {
-		res, _ = sfDo(&c.annSF, strconv.Itoa(int(s.ID)), func() (annSFResult, error) {
-			c.annMu.Lock()
-			ce, ok := c.annCache[s.ID]
-			c.annMu.Unlock()
-			if ok && time.Since(ce.at) <= announcementCacheTTL && ce.ann != nil {
-				return annSFResult{ann: ce.ann}, nil
-			}
-			return c.fetchAnnouncementOnce(ctx, sem, &s), nil
-		})
-	}
-	ann := res.ann
-	if ann == nil {
-		ann = &site.SiteAnnouncement{SiteID: s.ID, SiteName: s.Name, FetchedAt: time.Now()}
-	}
-	return annResult(s.ID, s.Name, ann, res.errMsg)
-}
-
-// AnnouncementsStream 流式聚合：每站解析完立即通过 emit 推送（不等全部），供前端"加载一个显示一个"。
-// 缓存命中的站秒级 emit，慢站（context deadline 15s）最后到达；缓存/SWR/负缓存逻辑同聚合。
-// emit 由调用方保证并发安全（多 goroutine 同时回调）。
-func (c *SiteChain) AnnouncementsStream(ctx context.Context, force bool, emit func(AnnouncementResult)) {
-	sites, err := c.sites.ListActive()
-	if err != nil {
-		slog.Warn("announcements stream list sites failed", "err", err)
-		return
-	}
-	sem := make(chan struct{}, infoFetchConcurrency)
-	var wg sync.WaitGroup
-	for _, s := range sites {
-		wg.Add(1)
-		safego.Go("site_info:319", func() {
-			defer wg.Done()
-			emit(c.resolveAnnouncement(ctx, sem, s, force))
-		})
-	}
-	wg.Wait()
-}
-
-// fetchAnnouncementOnce 抓单站公告（占一个 sem 槽、独立超时），成功时写缓存。
-// 失败/未登录不钉缓存（announcementCacheTTL 短，下次轮询重试）。
-func (c *SiteChain) fetchAnnouncementOnce(ctx context.Context, sem chan struct{}, s *models.Site) annSFResult {
-	sem <- struct{}{}
-	defer func() { <-sem }()
-	siteCtx, cancel := context.WithTimeout(ctx, infoFetchTimeout)
-	defer cancel()
-	ann, e := c.Announcements(siteCtx, s)
-	var errMsg string
-	if e != nil {
-		// 未登录同样作为错误暴露（与站免路径 FreeleechAll 一致）：否则 cookie 过期会被前端
-		// 误显为「暂无公告」，用户无从知晓该站需刷新登录。ErrNotLoggedIn 文本 "not logged in"
-		// 不含 "login" 子串，前端 friendlySiteError 匹配不到关键词会落到兜底「该站点获取失败」，
-		// 故此处补 "cookie"/"login" 关键词，使其译为「站点登录已失效，请在「站点」页重新配置 Cookie」。
-		if errors.Is(e, site.ErrNotLoggedIn) {
-			errMsg = "cookie expired or not logged in"
-		} else {
-			errMsg = e.Error()
-			slog.Debug("announcement fetch failed", "site", s.Name, "err", e)
-		}
-	}
-	if e == nil {
-		c.annMu.Lock()
-		c.annCache[s.ID] = annCacheEntry{ann: ann, at: time.Now()}
-		c.annMu.Unlock()
-	}
-	return annSFResult{ann: ann, errMsg: errMsg}
-}
-
-// refreshAnnouncementsAsync SWR 后台刷新：公告缓存过期时立即返回旧值后，异步拉最新写缓存。
-// 独立 ctx（不绑请求）+ sfDo 合并同 siteID（防刷新风暴）+ recover 防 panic。容量 1 的 sem
-// 仅占槽不阻塞（真实限流靠 sfDo 合并 + 站点有界），与消息路径 refreshMessagesAsync 等效。
-func (c *SiteChain) refreshAnnouncementsAsync(s models.Site) {
-	go func() {
-		defer func() { _ = recover() }()
-		_, _ = sfDo(&c.annSF, strconv.Itoa(int(s.ID)), func() (annSFResult, error) {
-			c.annMu.Lock()
-			ce, ok := c.annCache[s.ID]
-			c.annMu.Unlock()
-			if ok && ce.ann != nil && time.Since(ce.at) <= announcementCacheTTL { // double-check
-				return annSFResult{ann: ce.ann}, nil
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), infoFetchTimeout)
-			defer cancel()
-			return c.fetchAnnouncementOnce(ctx, make(chan struct{}, 1), &s), nil
-		})
-	}()
-}
-
-func annResult(id uint, name string, ann *site.SiteAnnouncement, errMsg string) AnnouncementResult {
-	items := ann.Items
-	if items == nil {
-		items = []site.AnnouncementItem{} // nil → [] 防 JSON null 致前端 .length 崩
-	}
-	r := AnnouncementResult{
-		SiteID: id, SiteName: name,
-		RawText:   ann.RawText,
-		Items:     items,
-		FetchedAt: ann.FetchedAt,
-		Error:     errMsg,
-	}
-	return r
 }

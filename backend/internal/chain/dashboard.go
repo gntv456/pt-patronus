@@ -2,15 +2,15 @@ package chain
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
+	"github.com/hxpt/ptpatronus/internal/errtext"
+	"log/slog"
 	"sync"
 	"sync/atomic"
-	"github.com/hxpt/ptpatronus/internal/bizmetrics"
-	"log/slog"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
-	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
 )
 
@@ -73,6 +73,10 @@ type DashboardOverview struct {
 	SiteCount       int            `json:"site_count"`
 	DownloaderCount int            `json:"downloader_count"`
 	NoDataSites     []NoDataSite   `json:"no_data_sites"` // 启用且非论坛、却无任何统计的站点（疑似 cookie 失效/未采集）
+	// StatReadError 非空表示「每站最新统计」这条查询本身失败（库锁/表异常）。
+	// 此时 NoDataSites 刻意留空：读不到统计不等于站点没数据，混在一起会让用户
+	// 白跑一趟去重登所有站点。前端据这两个字段区分「未采集」与「读取故障」。
+	StatReadError string `json:"stat_read_error,omitempty"`
 }
 
 // NoDataSite 标记一个「应采集却无数据」的 PT 站点（用于仪表盘首屏红色汇总）。
@@ -122,7 +126,9 @@ type DashboardChain struct {
 }
 
 // SetProgressEmitter 注入进度回调（app 装配期）。
-func (c *DashboardChain) SetProgressEmitter(fn func(done, total int, siteName string)) { c.emitProgress = fn }
+func (c *DashboardChain) SetProgressEmitter(fn func(done, total int, siteName string)) {
+	c.emitProgress = fn
+}
 
 // syncMu 全站同步单飞（二轮 P1-3）：手动触发与 cron 并发时只跑一个，
 // 避免双份逐站抓取打爆站点限流。
@@ -174,7 +180,14 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 	// 单 SQL 取每站最新统计（MAX(id) GROUP BY site_id），避免 N+1（原每站一次 First +
 	// ORDER BY filesort，100 站 = 100 次查询）。id 自增 ⇔ 时间递增，MAX(id) 即最新一条。
 	var latest []models.SiteStat
-	c.db.Where("id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)").Find(&latest)
+	// 错误不能吞：查询失败时 statMap 为空，下面每个站都会走「无统计」分支，
+	// 首屏于是报「疑似 cookie 失效/未采集」——把读取故障渲染成站点集体掉线。
+	if err := c.db.WithContext(ctx).
+		Where("id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)").
+		Find(&latest).Error; err != nil {
+		slog.Warn("dashboard read latest stats failed", "err", err)
+		out.StatReadError = errtext.Text(err)
+	}
 	statMap := make(map[uint]models.SiteStat, len(latest))
 	for _, st := range latest {
 		statMap[st.SiteID] = st
@@ -241,7 +254,8 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 		out.Totals.ClaimCount += item.ClaimCount
 		out.Totals.MaxClaim += item.MaxClaim
 		// 无数据站点：启用、非论坛、却无任何统计（疑似 cookie 失效/未采集）→ 仪表盘首屏红色汇总。
-		if s.IsActive && !isForumPlatform(s.Platform) &&
+		// 统计读取本身失败时不判——那是「读不到」，不是「没数据」。
+		if out.StatReadError == "" && s.IsActive && !isForumPlatform(s.Platform) &&
 			item.Uploaded == 0 && item.Downloaded == 0 && item.Seeding == 0 &&
 			item.SeedingSize == 0 && item.Bonus == 0 {
 			out.NoDataSites = append(out.NoDataSites, NoDataSite{SiteID: s.ID, SiteName: s.Name, Platform: s.Platform})
@@ -252,45 +266,6 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 	}
 	out.SiteCount = len(sites)
 	return out, nil
-}
-
-// recordStat 写入一条统计快照。
-// 与 automation.Service.recordStat 等价；chain 层独立实现以避免 import 循环
-// （automation 依赖 chain，故 chain 不能反向依赖 automation）。
-func (c *DashboardChain) recordStat(st *models.Site, ui *site.UserInfo) {
-	stat := &models.SiteStat{
-		SiteID:                    st.ID,
-		Level:                     ui.Level,
-		UserName:                  ui.Name,
-		UserID:                    ui.ID,
-		Email:                     ui.Email,
-		Uploaded:                  ui.Uploaded,
-		Downloaded:                ui.Downloaded,
-		Ratio:                     ui.Ratio,
-		TrueUploaded:              ui.TrueUploaded,
-		TrueDownloaded:            ui.TrueDownloaded,
-		TrueRatio:                 ui.TrueRatio,
-		Seeding:                   ui.Seeding,
-		Leeching:                  ui.Leeching,
-		SeedingSize:               ui.SeedingSize,
-		Uploads:                   ui.Uploads,
-		UniqueGroups:              ui.UniqueGroups,
-		PerfectFLAC:               ui.PerfectFLAC,
-		Invited:                   ui.Invited,
-		Bonus:                     ui.Bonus,
-		BonusPerHour:              ui.BonusPerHour,
-		SeedingBonus:              ui.SeedingBonus,
-		SeedingBonusPerHour:       ui.SeedingBonusPerHour,
-		RescueSeedingBonusPerHour: ui.RescueSeedingBonusPerHour,
-		ClaimCount:                ui.ClaimCount,
-		MaxClaim:                  ui.MaxClaim,
-		JoinDate:                  ui.JoinDate,
-		LastAccessAt:              ui.LastAccessAt,
-		SnapAt:                    time.Now(),
-	}
-	if err := c.db.Create(stat).Error; err != nil {
-		slog.Warn("dashboard record stat failed", "site", st.Name, "err", err)
-	}
 }
 
 // SyncAll 立即抓取所有启用站点的统计并写入快照，然后返回刷新后的总览。
@@ -371,22 +346,40 @@ type SiteHistoryPoint struct {
 	LastAccessAt              string    `json:"last_access_at"`
 }
 
-// History 返回某站点最近 days 天的统计快照（按时间倒序，最多 500 条）。
-func (c *DashboardChain) History(ctx context.Context, siteID uint, days int) ([]SiteHistoryPoint, error) {
+// HistoryRowLimit 单站历史快照单次最多返回的行数。上限本身可以保留（一次拉太多卡），
+// 但真实条数必须一起交出去：只回数组会让「该区间共 800 个快照」被渲染成「只有最近 500 个」，
+// 历史表/曲线的起点静默缺失，用户以为站点那段时间没数据。
+const HistoryRowLimit = 500
+
+// SiteHistoryResult 单站历史快照 + 账面。
+type SiteHistoryResult struct {
+	Points    []SiteHistoryPoint `json:"points"`
+	Days      int                `json:"days"`
+	Total     int64              `json:"total"`
+	Truncated bool               `json:"truncated"`
+}
+
+// History 返回某站点最近 days 天的统计快照（按时间倒序，最多 HistoryRowLimit 条）。
+func (c *DashboardChain) History(ctx context.Context, siteID uint, days int) (SiteHistoryResult, error) {
 	if days <= 0 || days > 365 {
 		days = 30
 	}
+	res := SiteHistoryResult{Days: days, Points: []SiteHistoryPoint{}}
 	since := time.Now().AddDate(0, 0, -days)
+	if err := c.db.WithContext(ctx).Model(&models.SiteStat{}).
+		Where("site_id = ? AND snap_at > ?", siteID, since).Count(&res.Total).Error; err != nil {
+		return res, err
+	}
 	var stats []models.SiteStat
 	if err := c.db.WithContext(ctx).
 		Where("site_id = ? AND snap_at > ?", siteID, since).
-		Order("snap_at DESC").Limit(500).
+		Order("snap_at DESC").Limit(HistoryRowLimit).
 		Find(&stats).Error; err != nil {
-		return nil, err
+		return res, err
 	}
-	out := make([]SiteHistoryPoint, 0, len(stats))
+	res.Points = make([]SiteHistoryPoint, 0, len(stats))
 	for _, s := range stats {
-		out = append(out, SiteHistoryPoint{
+		res.Points = append(res.Points, SiteHistoryPoint{
 			SnapAt: s.SnapAt, Level: s.Level,
 			Uploaded: s.Uploaded, Downloaded: s.Downloaded, Ratio: s.Ratio,
 			TrueUploaded: s.TrueUploaded, TrueDownloaded: s.TrueDownloaded, TrueRatio: s.TrueRatio,
@@ -397,7 +390,8 @@ func (c *DashboardChain) History(ctx context.Context, siteID uint, days int) ([]
 			LastAccessAt: s.LastAccessAt,
 		})
 	}
-	return out, nil
+	res.Truncated = res.Total > int64(len(res.Points))
+	return res, nil
 }
 
 // Trend 返回最近 days 天的按天聚合趋势。

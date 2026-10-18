@@ -22,15 +22,17 @@ func TestEnvelope_CloudInvalidType(t *testing.T) {
 	assertEnvelope(t, rec, "invalid_input")
 }
 
-// TestEnvelope_CloudUpdateMissing 更新不存在的网盘 → 500 + internal（chain 层不区分 not-found，
-// 统一 internal 收口；底层 record not found 细节保留在 WithErr 日志链，不进响应体）。
+// TestEnvelope_CloudUpdateMissing 更新一条已不存在的网盘记录 → 404 + cloud_drive_not_found。
+// 从前钉的是 500「chain 层不区分 not-found」：用户删掉云盘后另一个浏览器标签还在编辑，
+// 看到的是「服务内部错误」，以为程序坏了，其实是记录已经没了。
+// 不泄漏底层文本这条约束保留（响应体里不得出现 record not found）。
 func TestEnvelope_CloudUpdateMissing(t *testing.T) {
 	r, _ := setupCloudServer(t)
 	rec := doCloud(t, r, http.MethodPut, "/cloud/drives/999", `{"name":"x","type":"115","token":"t"}`)
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("应 500，got %d，body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("应 404，got %d，body=%s", rec.Code, rec.Body.String())
 	}
-	assertEnvelope(t, rec, "internal")
+	assertEnvelope(t, rec, "cloud_drive_not_found")
 	if !assertNoLeak(rec.Body.String()) {
 		t.Fatal("不应泄露底层错误细节")
 	}

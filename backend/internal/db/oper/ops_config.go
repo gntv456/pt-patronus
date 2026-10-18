@@ -114,10 +114,10 @@ func createOpsConfigHistory(tx *gorm.DB, item *models.OpsConfig) error {
 
 func validateOpsConfigInput(in OpsConfigInput) error {
 	if strings.TrimSpace(in.Key) == "" {
-		return fmt.Errorf("配置 Key 不能为空")
+		return invalidInput("配置 Key 不能为空")
 	}
 	if strings.TrimSpace(in.Name) == "" {
-		return fmt.Errorf("配置名称不能为空")
+		return invalidInput("配置名称不能为空")
 	}
 	format := normOpsConfigFormat(in.Format)
 	switch format {

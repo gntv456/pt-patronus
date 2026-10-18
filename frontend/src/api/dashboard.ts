@@ -58,6 +58,14 @@ export interface SiteHistoryPoint {
   last_access_at: string
 }
 
+// 单站历史快照 + 账面（对齐后端 chain.SiteHistoryResult）。
+export interface SiteHistoryResult {
+  points: SiteHistoryPoint[]
+  days: number
+  total: number
+  truncated: boolean
+}
+
 // 某一天的跨站聚合趋势点（对齐后端 TrendPoint / mobile DashboardTrendPoint）。
 export interface DashboardTrendPoint {
   day: string // "2026-06-19"
@@ -94,6 +102,9 @@ export interface DashboardOverview {
   site_count: number
   downloader_count: number
   no_data_sites: NoDataSite[]
+  // 后端读「每站最新统计」失败时的原因（库锁/表异常）。非空时 no_data_sites 必然为空：
+  // 读不到统计不等于站点没数据，两者必须分开渲染，否则用户会白跑一趟重登所有站。
+  stat_read_error?: string
 }
 
 // 无采集数据的 PT 站点（启用、非论坛、却无任何统计；疑似 cookie 失效/未采集）。
@@ -156,9 +167,11 @@ export interface Workbench {
     played_today: number
     strm_generated: number
   }
-  media_library: { configured: boolean; servers: MediaLibraryStat[] }
+  media_library: { configured: boolean; servers: MediaLibraryStat[]; error?: string }
   health_score: number
   generated_at: string
+  /** 某些区块读失败的原因（读不到 ≠ 没问题：待办/体检分已跳过这些块，需明示数据不完整） */
+  errors?: string[]
 }
 
 export const dashboardApi = {
@@ -168,8 +181,12 @@ export const dashboardApi = {
   // 仅刷新单个站点统计（站点明细「刷新数据」按钮）。
   syncOne: (siteId: number) => http.post<DashboardOverview>(`/dashboard/sync/${siteId}`).then((r) => r.data),
   // 单站点历史统计快照（站点明细「用户历史数据」按钮）。
+  // 后端单次最多返回 500 条，total/truncated 一起给出：只回数组会把「该区间 800 个快照」
+  // 渲染成「只有 500 个」，历史表起点静默缺失。
   history: (siteId: number, days = 30) =>
-    http.get<SiteHistoryPoint[]>(`/dashboard/history/${siteId}`, { params: { days } }).then((r) => r.data),
+    http
+      .get<SiteHistoryResult>(`/dashboard/history/${siteId}`, { params: { days } })
+      .then((r) => ({ ...r.data, points: r.data.points ?? [] })),
   // 按天聚合趋势（每站每日峰值跨站求和）：GET /dashboard/trend?days=N。
   trend: (days = 7) =>
     http

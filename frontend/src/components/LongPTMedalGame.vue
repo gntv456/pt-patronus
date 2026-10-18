@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { entertainmentApi, type MedalNode, type MedalShard } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const props = defineProps<{ siteId: number }>()
 
@@ -71,7 +72,7 @@ async function refresh() {
           (e as { response?: { data?: { error?: string } } })?.response?.data?.error || t('mg.loadFailed')
         return [] as MedalNode[]
       }),
-      entertainmentApi.medalShards(props.siteId, GAME).catch(() => null),
+      entertainmentApi.medalShards(props.siteId, GAME).catch(entFail('medalShards', null)),
     ])
     tree.value = treeData
     shards.value = shardData

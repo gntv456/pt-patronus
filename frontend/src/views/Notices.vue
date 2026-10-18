@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWs } from '@/composables/useWs'
+import { noticeFailReason } from '@/composables/useNotices'
 import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
@@ -16,6 +17,13 @@ const router = useRouter()
 const { notices: wsNotices } = useWs()
 const notices = ref<Notice[]>([])
 const loading = ref(false)
+// 取数窗口：后端一次只给最近 limit 条，被截断时必须说出来，
+// 否则「最近 200 条」被读成整个收件箱，超出部分的未读永远看不见。
+const inboxWindow = ref<{ shown: number; total?: number; truncated: boolean }>({
+  shown: 0,
+  total: undefined,
+  truncated: false,
+})
 
 // 来源类型元信息（图标 / 配色 / 中文名）
 const { meta } = useNoticeMeta()
@@ -28,7 +36,7 @@ const filter = ref<'all' | 'unread'>('all')
 const onlyUnread = computed(() => filter.value === 'unread')
 
 const unreadCount = computed(() => notices.value.filter((n) => !n.read).length)
-const urgentSources = new Set<NoticeSource>(['assess_fail', 'host_offline', 'nas_offline', 'site_offline'])
+const urgentSources = new Set<NoticeSource>(['assess_fail', 'host_offline', 'nas_offline', 'camera_offline', 'site_offline'])
 const urgentUnread = computed(() => notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length)
 
 // 分组折叠：按 source 聚合
@@ -69,7 +77,13 @@ function toggleGroup(source: string) {
 async function load() {
   loading.value = true
   try {
-    notices.value = await noticeApi.list()
+    const page = await noticeApi.listPage()
+    notices.value = page.notices ?? []
+    inboxWindow.value = {
+      shown: notices.value.length,
+      total: page.total,
+      truncated: page.truncated,
+    }
   } catch {
     ElMessage.warning(t('notices.loadFailed'))
   } finally {
@@ -86,22 +100,46 @@ watch(
   },
 )
 
+// 后端会把原因写进信封（404 说「通知不存在，可能已被删除，请刷新通知列表」），
+// 从前这四个处置出口一律 `catch { /* 静默 */ }`：用户点了没反应，只会反复点。
+function failReason(e: unknown): string {
+  return noticeFailReason(e, t('notices.actionFailed'))
+}
+
+// 逐条结算：一条失败不能带走整组（旧写法是 Promise.all，一条 404 就让剩下的原地不动，
+// 且因为异常被 catch 吞掉，连「哪条没删掉」都不说）。口径同下载器批量表（#43/#44）。
+async function settleAll(targets: Notice[], run: (n: Notice) => Promise<unknown>, onOk: (n: Notice) => void) {
+  if (!targets.length) return
+  const rs = await Promise.allSettled(targets.map((n) => run(n)))
+  let failed = 0
+  let reason = ''
+  rs.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      onOk(targets[i])
+    } else {
+      failed++
+      if (!reason) reason = failReason(r.reason)
+    }
+  })
+  if (failed > 0) ElMessage.warning(t('notices.partialFailed', { n: failed, reason }))
+}
+
 async function readOne(n: Notice) {
   try {
     await noticeApi.read(n.id)
     n.read = true
-  } catch {
-    /* 静默 */
+  } catch (e: unknown) {
+    ElMessage.warning(failReason(e))
   }
 }
 async function readGroup(g: Group) {
-  try {
-    await Promise.all(g.items.filter((n) => !n.read).map((n) => noticeApi.read(n.id)))
-    g.items.forEach((n) => (n.read = true))
-    g.unreadCount = 0
-  } catch {
-    /* 静默 */
-  }
+  await settleAll(
+    g.items.filter((n) => !n.read),
+    (n) => noticeApi.read(n.id),
+    (n) => {
+      n.read = true
+    },
+  )
 }
 async function readAll() {
   try {
@@ -116,17 +154,22 @@ async function removeOne(n: Notice) {
   try {
     await noticeApi.delete(n.id)
     notices.value = notices.value.filter((x) => x.id !== n.id)
-  } catch {
-    /* 静默 */
+  } catch (e: unknown) {
+    ElMessage.error(failReason(e))
   }
 }
 async function removeGroup(g: Group) {
-  try {
-    await Promise.all(g.items.map((n) => noticeApi.delete(n.id)))
-    const ids = new Set(g.items.map((n) => n.id))
+  const gone: number[] = []
+  await settleAll(
+    g.items,
+    (n) => noticeApi.delete(n.id),
+    (n) => {
+      gone.push(n.id)
+    },
+  )
+  if (gone.length) {
+    const ids = new Set(gone)
     notices.value = notices.value.filter((n) => !ids.has(n.id))
-  } catch {
-    /* 静默 */
   }
 }
 async function clearAll() {
@@ -191,6 +234,14 @@ onMounted(load)
         <el-button v-if="unreadCount" @click="readAll">{{ t('notices.markAllRead') }}</el-button>
         <el-button v-if="notices.length" type="danger" plain @click="clearAll">{{ t('common.clear') }}</el-button>
       </div>
+    </div>
+
+    <div v-if="inboxWindow.truncated" class="inbox-note">
+      {{
+        inboxWindow.total == null
+          ? t('notices.truncatedUnknown', { n: inboxWindow.shown })
+          : t('notices.truncated', { n: inboxWindow.shown, total: inboxWindow.total })
+      }}
     </div>
 
     <div class="groups">

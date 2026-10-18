@@ -99,7 +99,7 @@ func (c *SiteChain) snapshotSite(ctx context.Context, s *models.Site) SnapshotRe
 			res.MsgErr = e.Error()
 		}
 		res.Messages = msgs
-		c.writeMsgCache(s, site.MailboxInbox, msgs, res.MsgErr)
+		c.writeMsgCache(s, site.MailboxInbox, msgs, res.MsgErr, e)
 	}
 	return res
 }
@@ -114,7 +114,10 @@ func (c *SiteChain) indexInfo(ctx context.Context, s *models.Site) ([]site.SiteF
 	if !flEnabled && !annEnabled {
 		return nil, nil, nil
 	}
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, nil, cerr
+	}
 	flPath := def.Freeleech.Path
 	if flPath == "" {
 		flPath = "index.php"
@@ -190,7 +193,12 @@ func (c *SiteChain) writeInfoCache(s *models.Site, fl []site.SiteFreeleech, ann 
 }
 
 // writeMsgCache 把聚合抓取的消息写入 per-(site|mailbox) 缓存。
-func (c *SiteChain) writeMsgCache(s *models.Site, mailbox site.MailboxType, msgs []site.Message, errMsg string) {
+// cause 是本次抓取的原始错误：调用方中断（context.Canceled）不是站点故障，不缓存——
+// 否则一次切页/断连就把「context canceled」伪装成站点故障钉在缓存里，直到 TTL 过期。
+func (c *SiteChain) writeMsgCache(s *models.Site, mailbox site.MailboxType, msgs []site.Message, errMsg string, cause error) {
+	if errors.Is(cause, context.Canceled) {
+		return
+	}
 	if msgs == nil {
 		msgs = []site.Message{}
 	}

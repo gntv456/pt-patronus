@@ -33,12 +33,22 @@ func (h *RequestHandler) All(c *gin.Context) {
 		}
 		r, err := h.ch.Requests(c.Request.Context(), s, filled)
 		if err != nil && r == nil {
-			errcode.Respond(c, errcode.BadGateway.WithErr(err))
+			// #399 归统一判据：Requests 链层第一步也是 credentialWithErr，
+			// 主密钥换过/站点建在内网两种「重试不会好」的失败此前都被这句
+			// BadGateway.WithErr 整段吞进日志（界面只见「上游服务不可用，请稍后重试」）。
+			respondFetchError(c, err, errcode.BadGateway)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"sites": []*chain.RequestResult{r}})
 		return
 	}
-	results := h.ch.RequestsAll(c.Request.Context(), filled)
+	results, err := h.ch.RequestsAll(c.Request.Context(), filled)
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	if results == nil {
+		results = []chain.RequestResult{}
+	}
 	c.JSON(http.StatusOK, gin.H{"sites": results})
 }

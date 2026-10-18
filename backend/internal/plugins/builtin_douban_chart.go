@@ -130,5 +130,5 @@ func (doubanChartPlugin) ExecuteAction(ctx context.Context, rt Runtime, action s
 		cfg := rt.Config()
 		return map[string]any{"ok": true, "chart": pluginString(cfg["charts"])}, nil
 	}
-	return nil, fmt.Errorf("未知动作: %s", action)
+	return nil, unknownActionErr(action)
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 
@@ -66,7 +67,7 @@ func (h *DockerHandler) List(c *gin.Context) {
 		`echo "---END---"`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
@@ -103,11 +104,11 @@ func (h *DockerHandler) Inspect(c *gin.Context) {
 	cmd := "docker inspect --type container " + shellQuote(name)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
-		c.JSON(http.StatusBadGateway, gin.H{"error": result.Stderr})
+		c.JSON(http.StatusBadGateway, gin.H{"error": dockerActionErrorBody(result)})
 		return
 	}
 	var arr []dockerInspectContainer
@@ -131,7 +132,7 @@ func (h *DockerHandler) Stats(c *gin.Context) {
 	cmd := `docker stats --no-stream --format '{{json .}}' 2>/dev/null`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
@@ -164,7 +165,7 @@ func (h *DockerHandler) Logs(c *gin.Context) {
 	cmd := "docker logs --tail " + shellQuote(fmt.Sprintf("%d", tail)) + " " + shellQuote(name) + " 2>&1"
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": result.Stdout})
@@ -190,13 +191,13 @@ func (h *DockerHandler) act(c *gin.Context, subcmd string, needConfirm bool) {
 		}
 	}
 	cmd := "docker " + subcmd + " " + shellQuote(name)
-	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
+	result, err := h.runner.RunCommandNow(detachedAction(c.Request.Context()), id, cmd, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
-		c.JSON(http.StatusBadGateway, gin.H{"error": result.Stderr})
+		c.JSON(http.StatusBadGateway, gin.H{"error": dockerActionErrorBody(result)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -231,13 +232,13 @@ func (h *DockerHandler) Remove(c *gin.Context) {
 		flag = "-f "
 	}
 	cmd := "docker rm " + flag + shellQuote(name)
-	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
+	result, err := h.runner.RunCommandNow(detachedAction(c.Request.Context()), id, cmd, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
-		c.JSON(http.StatusBadGateway, gin.H{"error": result.Stderr})
+		c.JSON(http.StatusBadGateway, gin.H{"error": dockerActionErrorBody(result)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -261,13 +262,13 @@ func (h *DockerHandler) ImageRemove(c *gin.Context) {
 		return
 	}
 	cmd := "docker rmi " + shellQuote(ref)
-	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
+	result, err := h.runner.RunCommandNow(detachedAction(c.Request.Context()), id, cmd, 30)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	if !result.Success {
-		c.JSON(http.StatusBadGateway, gin.H{"error": result.Stderr})
+		c.JSON(http.StatusBadGateway, gin.H{"error": dockerActionErrorBody(result)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -285,9 +286,9 @@ func (h *DockerHandler) ComposeUp(c *gin.Context) {
 		return
 	}
 	cmd := "cd " + shellQuote(in.Path) + " && docker compose up -d 2>&1"
-	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 120)
+	result, err := h.runner.RunCommandNow(detachedAction(c.Request.Context()), id, cmd, 120)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "output": result.Stdout + result.Stderr})
@@ -309,10 +310,23 @@ func (h *DockerHandler) ComposeDown(c *gin.Context) {
 		return
 	}
 	cmd := "cd " + shellQuote(in.Path) + " && docker compose down 2>&1"
-	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 120)
+	result, err := h.runner.RunCommandNow(detachedAction(c.Request.Context()), id, cmd, 120)
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		respondOpsTargetError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "output": result.Stdout + result.Stderr})
+}
+
+// dockerActionErrorBody 从远程 docker 命令结果里取「能给用户看的原因」。
+// 退出码非零但 stderr 为空是真实存在的（部分子命令把提示写到 stdout，或干脆没有输出）；
+// 直接把 result.Stderr 回出去，界面就弹一条没有原因的 502——失败了却说不出为什么。
+func dockerActionErrorBody(result monitor.CommandResult) string {
+	if msg := strings.TrimSpace(result.Stderr); msg != "" {
+		return msg
+	}
+	if msg := strings.TrimSpace(result.Stdout); msg != "" {
+		return msg
+	}
+	return "容器操作未成功（docker 退出码非零，且未输出原因）"
 }

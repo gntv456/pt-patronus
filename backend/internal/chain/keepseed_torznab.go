@@ -12,9 +12,27 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/downloader"
 	"github.com/hxpt/ptpatronus/internal/keepseed"
+	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/torznab"
 )
+
+// reportTorznabFailure 上报 Torznab 搜索失败：slog.Warn + 站内通知（按天去重防刷屏）。
+// 此前仅 slog.Debug：Jackett/Prowlarr 端点坏掉（API Key 错/服务未起）时搜索永远返回空，
+// 用户只看到「没有候选」，无从发现 Torznab 源已失效。
+func (c *KeepSeedChain) reportTorznabFailure(ctx context.Context, err error) {
+	slog.Warn("torznab search failed", "err", err)
+	if c.notice == nil {
+		return
+	}
+	_ = c.notice.Notice(ctx, notice.Input{
+		Source: notice.SourceReseedFail,
+		Key:    "torznab",
+		Title:  "辅种 Torznab 搜索失败",
+		Body:   "已配置的 Torznab（Jackett/Prowlarr）端点搜索失败：" + err.Error() + "；辅种候选将缺失，请检查端点地址与 API Key",
+		Level:  "warning",
+	}, true)
+}
 
 // mediaIDHints 合并标题提取 + DownloadMediaLink（按 infohash）。
 func (c *KeepSeedChain) mediaIDHints(infoHash, name string) keepseed.IDHints {
@@ -103,7 +121,7 @@ func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, 
 	}
 	results, err := cli.Search(ctx, name, imdb, tmdb)
 	if err != nil {
-		slog.Debug("torznab search failed", "err", err, "q", name)
+		c.reportTorznabFailure(ctx, err)
 		return nil
 	}
 	out := make([]keepseed.Candidate, 0, len(results))

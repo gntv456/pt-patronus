@@ -57,7 +57,10 @@ func (f *Feishu) Send(ctx context.Context, msg Message) error {
 		Code int    `json:"code"`
 		Msg  string `json:"msg"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+	if err := decodeEnvelope("feishu", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 0 {
 		return fmt.Errorf("feishu: code %d: %s", be.Code, be.Msg)
 	}
 	return nil

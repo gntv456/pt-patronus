@@ -4,19 +4,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
 
 // TestUpsertConnectivityAtomicSQL 验证原子 SQL 累加/滑动平均（四轮 P2-4 改造的回归钉）：
 // success/fail 走 gorm.Expr 列级自增，avg_seconds 在 SQL 端算新均 = (旧均*n + 本次)/(n+1)。
 func TestUpsertConnectivityAtomicSQL(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openIsolatedDB(t)
 	if err := db.AutoMigrate(&models.SiteConnectivity{}); err != nil {
 		t.Fatal(err)
 	}
@@ -60,12 +54,9 @@ func TestUpsertConnectivityAtomicSQL(t *testing.T) {
 }
 
 // TestSiteCreateConcurrentSameDomain 并发建同域站点：唯一索引兜底下最多一条落库
-//（四轮 P2-5 迁移 v3/v4 + 冲突映射 ErrDuplicateSite 的回归钉）。
+// （四轮 P2-5 迁移 v3/v4 + 冲突映射 ErrDuplicateSite 的回归钉）。
 func TestSiteCreateConcurrentSameDomain(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openIsolatedDB(t)
 	if err := db.AutoMigrate(&models.Site{}); err != nil {
 		t.Fatal(err)
 	}

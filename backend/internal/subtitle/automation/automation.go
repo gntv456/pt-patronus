@@ -12,6 +12,7 @@ package subauto
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -225,7 +226,8 @@ const (
 	resultNone fetchResult = iota
 	resultDownloaded
 	resultSkipped
-	resultFailed
+	resultNotFound // 各源都答话了，但这部片确实没字幕（不是故障）
+	resultFailed   // 搜索报错 / 下载失败 / 落盘失败（原因随通知带出去）
 )
 
 // process 对每个视频文件搜字幕并落盘。单文件失败不影响其他；含 recover 兜底。
@@ -244,18 +246,31 @@ func (s *Service) process(m MediaInfo) {
 		timeout = 60 * time.Second
 	}
 
-	var downloaded, skipped, failed int
+	var downloaded, skipped, notFound, failed int
+	var reasons []string
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for _, video := range m.Files {
 		if !isVideoFile(video) {
 			continue
 		}
-		switch s.fetchForFile(ctx, cfg, video, m) {
+		res, reason := s.fetchForFile(ctx, cfg, video, m)
+		if reason != "" {
+			seen := false
+			for _, have := range reasons {
+				seen = seen || have == reason
+			}
+			if !seen && len(reasons) < 3 { // 通知留三条，多了没人读
+				reasons = append(reasons, reason)
+			}
+		}
+		switch res {
 		case resultDownloaded:
 			downloaded++
 		case resultSkipped:
 			skipped++
+		case resultNotFound:
+			notFound++
 		case resultFailed:
 			failed++
 		}
@@ -265,7 +280,12 @@ func (s *Service) process(m MediaInfo) {
 		if downloaded == 0 {
 			level = "warning"
 		}
-		body := fmt.Sprintf("下载 %d / 跳过 %d / 失败 %d", downloaded, skipped, failed)
+		// 「确实没字幕」与「没配上」必须分档：混进失败里，用户会以为自动化坏了；
+		// 而「没配上」的原因此前只有一行 Debug（默认级别看不见），通知里只有计数 ⇒ 现在带出去。
+		body := fmt.Sprintf("下载 %d / 跳过 %d / 未找到 %d / 失败 %d", downloaded, skipped, notFound, failed)
+		if len(reasons) > 0 {
+			body += "；原因：" + strings.Join(reasons, "、")
+		}
 		_ = s.notice.Notice(context.Background(), notice.Input{
 			Source: notice.SourceTransferDone,
 			Key:    "subtitle_auto:" + m.Title + ":" + firstFile(m.Files),
@@ -277,50 +297,71 @@ func (s *Service) process(m MediaInfo) {
 }
 
 // fetchForFile 为单个视频文件搜一条字幕并落盘。
-func (s *Service) fetchForFile(ctx context.Context, cfg Config, video string, m MediaInfo) fetchResult {
+// 返回 (结果, 原因)：原因只在「没配上」时非空，供通知正文说清是哪一步坏的。
+func (s *Service) fetchForFile(ctx context.Context, cfg Config, video string, m MediaInfo) (fetchResult, string) {
 	dir := filepath.Dir(video)
 	base := strings.TrimSuffix(filepath.Base(video), filepath.Ext(video))
 
 	// 1. 幂等 / 不覆盖：视频同目录已有任意同 basename 字幕 → 跳过。
 	existing := existingSubtitles(dir, base)
 	if len(existing) > 0 && cfg.OnlyIfMissing {
-		return resultSkipped
+		return resultSkipped, ""
 	}
 
 	// 2. 按语言优先级搜索（首个命中即下载）。
+	//    搜索报错＝故障（要带原因），各源都答话但没这条字幕＝常态（resultNotFound）。
 	query := buildQuery(m, video)
+	var lastErr string
 	for _, lang := range cfg.Languages {
 		subs, err := s.search.Search(ctx, query, lang)
 		if err != nil {
-			slog.Debug("subtitle automation search error", "query", query, "lang", lang, "err", err)
+			// Debug 在默认级别等于没说：整轮自动化没配上时这是唯一的原因线索。
+			slog.Warn("subtitle automation search error", "query", query, "lang", lang, "err", err)
+			lastErr = clipReason(fmt.Sprintf("%s 搜索失败: %v", lang, err))
 			continue
 		}
 		picked := pickSubtitle(subs, cfg)
 		if picked == nil {
-			continue
+			continue // 该语言没有候选（pickSubtitle 有候选时必返回值）
 		}
 		data, name, err := s.search.Download(ctx, *picked)
+		if err == nil && len(data) == 0 {
+			err = errors.New("下载内容为空") // 以前这里带着 err=nil 记一条「下载失败」
+		}
 		if err != nil || len(data) == 0 {
 			slog.Warn("subtitle automation download failed", "source", picked.Source, "source_id", picked.SourceID, "err", err)
+			lastErr = clipReason(fmt.Sprintf("%s 字幕下载失败: %v", picked.Source, err))
 			continue
 		}
 		subExt := subtitleExt(name, picked.Ext)
 		target := subtitlePath(dir, base, picked.LangCode, subExt)
 		if fileExists(target) {
-			return resultSkipped // 同语言同格式已存在（幂等）
+			return resultSkipped, "" // 同语言同格式已存在（幂等）
 		}
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			slog.Warn("subtitle automation mkdir failed", "dir", dir, "err", err)
-			return resultFailed
+			return resultFailed, clipReason("字幕目录建不出来: " + err.Error())
 		}
 		if err := os.WriteFile(target, data, 0o644); err != nil {
 			slog.Warn("subtitle automation write failed", "path", target, "err", err)
-			return resultFailed
+			return resultFailed, clipReason("字幕写盘失败: " + err.Error())
 		}
 		slog.Info("subtitle automation downloaded", "video", video, "lang", picked.LangCode, "source", picked.Source, "path", target)
-		return resultDownloaded
+		return resultDownloaded, ""
 	}
-	return resultFailed
+	if lastErr != "" {
+		return resultFailed, lastErr
+	}
+	return resultNotFound, ""
+}
+
+// clipReason 截短原因句：上游错误可能是一整段响应体，不能挤满通知正文。
+func clipReason(s string) string {
+	r := []rune(s)
+	if len(r) <= 80 {
+		return s
+	}
+	return string(r[:77]) + "…"
 }
 
 // pickSubtitle 按 provider 优先级选字幕（结果已按 Score 降序，故无 provider 偏好时取首个）。
@@ -355,4 +396,3 @@ func buildQuery(m MediaInfo, video string) string {
 	}
 	return strings.TrimSuffix(filepath.Base(video), filepath.Ext(video))
 }
-

@@ -18,6 +18,9 @@ const projects = ref<Project[]>([])
 const loading = ref(false)
 const scanDir = ref('')
 const available = ref(false)
+// 后端把「这次扫描不完整」的具体原因放在 scan_error 里（读不出根 / 某个项目的
+// compose 文件读不出来）。不接就只剩 available=false，看起来像「这里没有项目」。
+const scanError = ref('')
 const detailVisible = ref(false)
 const detailContent = ref('')
 const detailName = ref('')
@@ -35,6 +38,7 @@ async function refresh() {
     projects.value = r.projects || []
     scanDir.value = r.scan_dir
     available.value = r.available
+    scanError.value = r.scan_error || ''
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -105,13 +109,18 @@ onMounted(() => refresh())
 <template>
   <div class="compose-projects">
     <div v-if="!available" class="not-available glass">
+      <p v-if="scanError" class="scan-error">{{ scanError }}</p>
       <p>{{ t('cp.noMount') }}</p>
+      <!-- 实际检查的是 composeScanDir()（可用 COMPOSE_SCAN_DIR 改），不显示路径时
+           下面的挂载提示会把用户引向一个程序根本没看过的目录。 -->
+      <p class="hint">{{ t('cp.scanDir', { dir: scanDir, n: 0 }) }}</p>
       <p class="hint">{{ t('cp.hint1') }}<code>- ${'$'}{COMPOSE_ROOT:-/opt}:/host/compose:ro</code></p>
       <p class="hint">{{ t('cp.hint2Pre') }}<code>COMPOSE_ROOT</code>{{ t('cp.hint2Post') }}</p>
     </div>
     <div v-else v-loading="loading" class="project-list">
       <div class="list-head">
         <span>{{ t('cp.scanDir', { dir: scanDir, n: projects.length }) }}</span>
+        <span v-if="scanError" class="scan-error">{{ scanError }}</span>
         <el-button size="small" @click="refresh">{{ t('common.refresh') }}</el-button>
       </div>
       <div v-for="p in projects" :key="p.dir" class="project-card glass">
@@ -171,6 +180,11 @@ onMounted(() => refresh())
   padding: 24px;
   text-align: center;
 }
+.scan-error {
+  font-size: 12px;
+  color: var(--el-color-warning);
+}
+
 .not-available p {
   margin: 6px 0;
 }

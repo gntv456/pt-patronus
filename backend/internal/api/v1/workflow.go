@@ -2,13 +2,17 @@ package v1
 
 import (
 	"encoding/json"
+	"errors"
+
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
 // WorkflowHandler 处理工作流 CRUD、执行、触发器与运行历史。
@@ -119,10 +123,24 @@ func (h *WorkflowHandler) Get(c *gin.Context) {
 	}
 	wf, err := h.ch.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.WorkflowNotFound)
+		// #343 走统一判据：手抄的 Respond(WorkflowNotFound) 只判「不存在」，
+		// 不判 DB 真故障（WorkflowOper.Get 底层是 db.First）⇒ 磁盘满/连接断时
+		// 也会被说成「工作流不存在」。同文件 Delete/Enable 已经走 respondRecordError。
+		respondRecordError(c, err, errcode.WorkflowNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(wf))
+}
+
+// respondWorkflowErr 节点图校验不合法时把原因带回响应（原因是我们自己写的中文，
+// 例如「工作流节点图不合法：未知节点类型：xxx」），编辑图的人才知道哪儿错了；
+// 其它情况仍用泛化的「参数有误」（Go 运行时类型错误不该原样弹给用户）。
+func respondWorkflowErr(c *gin.Context, err error) {
+	if errors.Is(err, chain.ErrInvalidGraph) {
+		errcode.Respond(c, errcode.InvalidInput.WithDetail(err))
+		return
+	}
+	errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 }
 
 // Create 新建。
@@ -143,7 +161,7 @@ func (h *WorkflowHandler) Create(c *gin.Context) {
 	}
 	out, err := h.ch.Create(wf)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondWorkflowErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(out))
@@ -157,7 +175,10 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 	}
 	wf, err := h.ch.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.WorkflowNotFound)
+		// #343 走统一判据：手抄的 Respond(WorkflowNotFound) 只判「不存在」，
+		// 不判 DB 真故障（WorkflowOper.Get 底层是 db.First）⇒ 磁盘满/连接断时
+		// 也会被说成「工作流不存在」。同文件 Delete/Enable 已经走 respondRecordError。
+		respondRecordError(c, err, errcode.WorkflowNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	var in wfReq
@@ -183,7 +204,7 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 		wf.EventConditions = string(in.EventConditions)
 	}
 	if err := h.ch.Update(wf); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondWorkflowErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(wf))
@@ -196,7 +217,9 @@ func (h *WorkflowHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.ch.Delete(id); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// 删一条已经不存在的工作流：从前一律 500「服务内部错误」，
+		// 而同一族的其它 12 个域都回 200——两边都不对，先按「记录不存在」说清。
+		respondRecordError(c, err, errcode.WorkflowNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -210,7 +233,7 @@ func (h *WorkflowHandler) Run(c *gin.Context) {
 	}
 	run, err := h.ch.Run(c.Request.Context(), id, "manual", nil)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "run": runResponse(run)})
@@ -249,7 +272,7 @@ func (h *WorkflowHandler) Reset(c *gin.Context) {
 		return
 	}
 	if err := h.ch.Reset(id); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondRecordError(c, err, errcode.WorkflowNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"reset": id})
@@ -258,13 +281,9 @@ func (h *WorkflowHandler) Reset(c *gin.Context) {
 // ListRuns 运行历史（GET /workflow-runs?workflow_id=&limit=）。
 func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 	wfID, _ := strconv.ParseUint(c.Query("workflow_id"), 10, 64)
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 500 { // 上限封顶防 DoS
-		limit = 500
-	}
+	reqLimit, _ := strconv.Atoi(c.Query("limit"))
+	// 默认只有 20 条：不回显生效 limit、也不给总数，运行历史弹窗就把 20 条画成「就跑过这些」。
+	limit := oper.NormalizeRunLimit(reqLimit)
 	runs, err := h.ch.ListRuns(uint(wfID), limit)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
@@ -274,7 +293,18 @@ func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 	for i := range runs {
 		out = append(out, runResponse(&runs[i]))
 	}
-	c.JSON(http.StatusOK, gin.H{"runs": out})
+	// total/truncated 与清单同批给出（口径同 RSS / 云任务队列 / 收件箱 / 设备快照）；
+	// 计数读不出时保守报「可能被截断」，并省略 total，不编一个 0。
+	total, cntErr := h.ch.CountRuns(uint(wfID))
+	truncated := cntErr != nil || total > int64(len(out))
+	if cntErr != nil {
+		slog.Warn("workflow run count failed", "workflow_id", wfID, "err", cntErr)
+	}
+	resp := gin.H{"runs": out, "limit": limit, "truncated": truncated}
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // RunDetail 单次运行详情（GET /workflow-runs/:rid）。
@@ -286,7 +316,9 @@ func (h *WorkflowHandler) RunDetail(c *gin.Context) {
 	}
 	r, err := h.ch.GetRun(uint(rid))
 	if err != nil {
-		errcode.Respond(c, errcode.ResourceNotFound)
+		// #343 不再用通用 ResourceNotFound（「资源不存在」连对象都没说，用户不知道
+		// 缺的是哪次运行）。改走本域专属码 + 统一判据，DB 真故障也归 500 而非 404。
+		respondRecordError(c, err, errcode.WorkflowNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, runResponse(r))

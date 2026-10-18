@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,8 +12,16 @@ import (
 
 func (m *Manager) viewOf(p Plugin) (View, error) {
 	st, cfg, err := m.stateAndConfig(p)
-	if err != nil {
+	if err != nil && st == nil {
 		return View{}, err
+	}
+	lastErr := st.LastError
+	if err != nil {
+		// 一个插件的设置坏了，不能让整批插件列表一起消失（List 会因第一个错误直接 return，
+		// 其余正常插件就都看不见了）：这一行退回默认配置渲染，并把原因放进 last_error
+		// ——面板本来就渲染这一列。运行侧（动作/定时/事件）仍然严格拒绝，不在此降级。
+		cfg = p.DefaultConfig()
+		lastErr = err.Error()
 	}
 	manifest := p.Manifest()
 	normalizeManifest(&manifest)
@@ -36,7 +45,7 @@ func (m *Manager) viewOf(p Plugin) (View, error) {
 		Installed:                         st.Installed,
 		Config:                            cfg,
 		RuntimeStatus:                     runtimeStatus,
-		LastError:                         st.LastError,
+		LastError:                         lastErr,
 		LastEventAt:                       st.LastEventAt,
 		CreatedAt:                         st.CreatedAt,
 		UpdatedAt:                         st.UpdatedAt,
@@ -101,9 +110,18 @@ func (m *Manager) stateAndConfig(p Plugin) (*models.PluginState, map[string]any,
 	cfg := p.DefaultConfig()
 	if st.ConfigJSON != "" {
 		var saved map[string]any
-		if err := json.Unmarshal([]byte(st.ConfigJSON), &saved); err == nil {
-			cfg = mergeConfig(cfg, saved)
+		// 空串是「从没保存过设置」（用默认值，合法）；非空却解析不了说明库里这个值坏了
+		// （手工改库/旧版本格式）。静默退回默认配置会让插件拿着空密码照常执行动作，
+		// 也可能让定时任务与事件投递整轮不注册——两种都表现为「一切正常但什么都没做」，
+		// 所以这里拒绝，并把可恢复动作写进原因。
+		if err := json.Unmarshal([]byte(st.ConfigJSON), &saved); err != nil {
+			// 交回 st（不是 nil）：读侧（插件列表/详情）需要降级渲染这一行，
+			// 运行侧（动作/定时/事件）看到 err 自行拒绝。
+			return st, nil, &configUnreadableError{detail: fmt.Sprintf(
+				"插件 %s 已保存的设置无法解析（可能是手工改过数据库或旧版本格式）：请在插件设置页重新保存一次，当前拒绝用默认配置顶替", manifest.ID,
+			)}
 		}
+		cfg = mergeConfig(cfg, saved)
 	}
 	return st, cfg, nil
 }
@@ -117,7 +135,15 @@ func (m *Manager) handleEvent(ctx context.Context, id string, e Event) {
 		return
 	}
 	st, cfg, err := m.stateAndConfig(p)
-	if err != nil || !st.Enabled {
+	if err != nil {
+		// 读失败 ≠ 用户没启用：前者必须留下 last_error 与日志，否则订阅的事件整轮不投递
+		// 而插件面板毫无痕迹（面板会渲染 last_error，这条通道本来就有读者）。
+		now := time.Now()
+		_ = m.op.MarkEvent(id, now, err.Error())
+		m.log(id, logError, e.Type, err.Error(), e.Data)
+		return
+	}
+	if !st.Enabled {
 		return
 	}
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)

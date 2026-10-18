@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi } from '@/api/docker'
+import { createNotice } from '@/utils/dockerCreateFeedback'
 import { type DockerTemplate } from '@/data/dockerTemplates'
 import DockerWizardSteps from './DockerWizardSteps.vue'
 import { useI18n } from 'vue-i18n'
@@ -164,11 +165,14 @@ async function submit() {
       privileged: form.value.privileged || undefined,
       network_mode: form.value.networkMode !== 'bridge' ? form.value.networkMode : undefined,
     })
-    if (res.ok) {
-      ElMessage.success(t('dw.created'))
+    const n = createNotice(res, t)
+    if (n.kind === 'warning') ElMessage.warning(n.msg)
+    else if (n.kind === 'error') ElMessage.error(n.msg)
+    else ElMessage.success(n.msg)
+    if (n.close) {
       emit('update:visible', false)
       emit('created')
-    } else ElMessage.error(res.error || t('dw.createFailed'))
+    }
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {

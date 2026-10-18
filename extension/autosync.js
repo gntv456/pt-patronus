@@ -54,6 +54,68 @@ export async function browserFingerprint(baseURL) {
 
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
+// defaultDeps 是同步动作的真实出口（指纹/上行/下行/明细）。
+// 抽成可注入的 deps：逐站循环必须能被测试打到（否则「一站抛错会不会带走整批」只能靠读代码相信）。
+const defaultDeps = {
+  fingerprint: browserFingerprint,
+  push: pushBrowserToServer,
+  pull: pullServerToBrowser,
+  detailed: (cfg) => serverCookies(cfg, true),
+}
+
+// syncOneSite 处理单个站点，返回这一条的终态。
+// 关键：错误在**这一条**的范围内收住并回 action='failed'，不往外抛——
+// 往外抛会让 for 循环整批中断（曾经的形状：第 3 站被拒 ⇒ 第 4 站往后这一轮全不处理，
+// 而摘要只留一句笼统 error，用户既不知道是谁、也不知道少了哪些站）。
+export async function syncOneSite(s, cfg, isAdmin, deps) {
+  const name = s.name || s.base_url || String(s.id)
+  try {
+    const { header, fp } = await deps.fingerprint(s.base_url)
+    if (fp && fp !== s.fingerprint) {
+      await deps.push(cfg, s, header)
+      return { action: 'push', name }
+    }
+    if (!fp && (s.has_cookie || s.stale)) {
+      if (isAdmin && s.has_cookie) {
+        const list = await deps.detailed(cfg)
+        const detailed = list.find((x) => x.id === s.id)
+        if (detailed && detailed.cookie) {
+          const n = await deps.pull(s, detailed.cookie)
+          if (n > 0) return { action: 'pull', name }
+        }
+      }
+      // 非管理员静默跳过下行（reveal 需 admin；台账页有可视化指引）。
+      return { action: 'skip', name }
+    }
+    if (!fp && !s.has_cookie && !s.stale) return { action: 'dead', name }
+    return { action: 'skip', name }
+  } catch (e) {
+    return { action: 'failed', name, error: (e && e.message) || String(e) }
+  }
+}
+
+// syncPass 跑一遍站点名单，返回各项账面。单站失败只进 failed，不影响后续站点。
+export async function syncPass(sites, cfg, isAdmin, deps) {
+  const d = deps || defaultDeps
+  const out = { pushed: 0, pulled: 0, pushedNames: [], pulledNames: [], dead: [], failed: [] }
+  for (const s of sites) {
+    if (!s.is_active || !s.base_url) continue
+    const r = await syncOneSite(s, cfg, isAdmin, d)
+    if (r.action === 'push') {
+      out.pushed++
+      out.pushedNames.push(r.name)
+    } else if (r.action === 'pull') {
+      out.pulled++
+      out.pulledNames.push(r.name)
+    } else if (r.action === 'dead') {
+      out.dead.push(r.name)
+    } else if (r.action === 'failed') {
+      out.failed.push({ name: r.name, error: r.error })
+    }
+  }
+  return out
+}
+
 // notifyDead 双侧皆空的提醒（storage.local 记当天已提醒站点，去重）。
 async function notifyDead(names) {
   if (!names.length) return
@@ -75,7 +137,7 @@ async function notifyDead(names) {
 // syncNow 跑一轮双向同步；返回摘要（options 页展示「最近同步」用）。
 // 不抛错——自动任务失败只记状态；手动触发（options 页「立即同步」）由调用方决定提示。
 export async function syncNow() {
-  const result = { at: Date.now(), pushed: 0, pulled: 0, dead: [], error: '' }
+  const result = { at: Date.now(), pushed: 0, pulled: 0, dead: [], failed: [], error: '' }
   try {
     const cfg = await getConfig()
     if (!cfg.server || !cfg.token) {
@@ -84,33 +146,12 @@ export async function syncNow() {
     }
     const isAdmin = !!(cfg.user && cfg.user.is_admin)
     const sites = await serverCookies(cfg)
-    const pushedNames = []
-    const pulledNames = []
-    const deadNames = []
-    for (const s of sites) {
-      if (!s.is_active || !s.base_url) continue
-      const { header, fp } = await browserFingerprint(s.base_url)
-      if (fp && fp !== s.fingerprint) {
-        // → 上行：浏览器有且与服务器不同（新登录/轮换后首次发现）。
-        await pushBrowserToServer(cfg, s, header)
-        result.pushed++
-        pushedNames.push(s.name)
-      } else if (!fp && (s.has_cookie || s.stale)) {
-        // ← 下行：浏览器缺失、服务器有（含 stale 密文——交给 reveal 侧判定）。
-        if (isAdmin && s.has_cookie) {
-          const detailed = (await serverCookies(cfg, true)).find((x) => x.id === s.id)
-          if (detailed && detailed.cookie) {
-            const n = await pullServerToBrowser(s, detailed.cookie)
-            if (n > 0) { result.pulled++; pulledNames.push(s.name) }
-          }
-        }
-        // 非管理员静默跳过下行（reveal 需 admin；台账页有可视化指引）。
-      } else if (!fp && !s.has_cookie && !s.stale) {
-        deadNames.push(s.name)
-      }
-    }
-    result.dead = deadNames
-    result.detail = { pushed: pushedNames, pulled: pulledNames }
+    const pass = await syncPass(sites, cfg, isAdmin, defaultDeps)
+    result.pushed = pass.pushed
+    result.pulled = pass.pulled
+    result.dead = pass.dead
+    result.failed = pass.failed
+    result.detail = { pushed: pass.pushedNames, pulled: pass.pulledNames }
     await notifyDead(deadNames)
   } catch (e) {
     result.error = e.message

@@ -133,6 +133,18 @@ function timeAgo(iso: string): string {
 
 <template>
   <section class="workbench glass" v-loading="loading">
+    <!-- 数据不完整：后端某些区块读失败时会跳过对应待办与扣分，不提示就会让人
+         把「看不见」当成「没问题」。 -->
+    <el-alert
+      v-if="wb?.errors?.length"
+      class="wb-incomplete"
+      type="warning"
+      :closable="false"
+      show-icon
+      :title="t('wb.incomplete')"
+    >
+      <div v-for="e in wb.errors" :key="e" class="wb-incomplete-line">{{ e }}</div>
+    </el-alert>
     <!-- 顶栏：问候 + 体检分 -->
     <div class="wb-top">
       <div class="wb-hello">
@@ -243,6 +255,10 @@ function timeAgo(iso: string): string {
             <span class="lib-time">{{ timeAgo(s.synced_at) }}</span>
           </div>
         </template>
+        <!-- 读不到配置 ≠ 没配置：这里若落到下面的「去添加」引导，用户会重复新建一遍 -->
+        <div v-else-if="wb?.media_library?.error" class="wb-empty wb-lib-error">
+          {{ wb.media_library.error }}
+        </div>
         <div v-else class="wb-empty">
           {{ t('wb.noLibrary') }}
           <router-link to="/mediaserver">{{ t('wb.goAdd') }}</router-link>

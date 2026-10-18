@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'ent_read_fail.dart';
 
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -39,19 +40,23 @@ class _CsptScratchViewState extends State<CsptScratchView> {
   Future<void> _loadAll() async {
     try {
       final results = await Future.wait([
-        _api.stats(widget.siteId, 'cspt_scratch').catchError((_) => GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 2000)),
-        _api.buyOptions(widget.siteId, 'cspt_scratch').catchError((_) => <BuyOption>[]),
+        _api.stats(widget.siteId, 'cspt_scratch').catchError((e) { if (mounted) entReadFailed(context, 'panel', e); return GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 2000); }),
+        _api.buyOptions(widget.siteId, 'cspt_scratch').catchError((e) { if (mounted) entReadFailed(context, 'buyOptions', e); return <BuyOption>[]; }),
       ]);
       _stats = results[0] as GameStats;
       _options = results[1] as List<BuyOption>;
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'buyOptions', e);
+    }
     if (mounted) setState(() {});
   }
 
   Future<void> _refreshStats() async {
     try {
       _stats = await _api.stats(widget.siteId, 'cspt_scratch');
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     if (mounted) setState(() {});
   }
 

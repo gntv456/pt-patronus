@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // NovaHD 魔力值刮刮乐：余额 + 购买刮奖资格（消耗 5000） + 6 档规则 + 记录。
 // 后端 magic_scratch.php：buy(POST→HTML 抠 id) → scratch(POST→JSON) → settle。
@@ -29,7 +30,9 @@ class _NovaHDScratchViewState extends State<NovaHDScratchView> {
   Future<void> _load() async {
     try {
       _prizes = await _api.prizes(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'prizes', e);
+    }
     await _refresh();
     if (mounted) setState(() {});
   }
@@ -37,10 +40,14 @@ class _NovaHDScratchViewState extends State<NovaHDScratchView> {
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     try {
       _records = await _api.history(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
   }
 
   int get _remaining => _stats == null ? 0 : (_stats!.maxDaily - _stats!.todaySpins).clamp(0, _stats!.maxDaily);

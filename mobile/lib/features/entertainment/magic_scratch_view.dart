@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // 魔力刮刮乐（火花/琥珀）：统计（火花余额/今日次数）+ 刮卡 + 刮一张。
 class MagicScratchView extends StatefulWidget {
@@ -25,7 +26,9 @@ class _MagicScratchViewState extends State<MagicScratchView> {
   Future<void> _refreshStats() async {
     try {
       _stats = await _api.stats(widget.siteId, 'magic_scratch');
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     if (mounted) setState(() {});
   }
 

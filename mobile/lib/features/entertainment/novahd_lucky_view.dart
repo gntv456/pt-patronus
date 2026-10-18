@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // NovaHD 幸运抽奖：抽奖信息（余额/消耗/今日）+ 奖品列表 + 立即抽奖/连抽 10·20·50 + 记录。
 // 后端 fortune-wheel-spin.php：POST count → JSON {success, results:[{status,type,value,unit}]}。
@@ -29,7 +30,9 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
   Future<void> _load() async {
     try {
       _prizes = await _api.prizes(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'prizes', e);
+    }
     await _refresh();
     if (mounted) setState(() {});
   }
@@ -37,10 +40,14 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     try {
       _records = await _api.history(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
   }
 
   String _emoji(String name) {

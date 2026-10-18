@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type PrizeDef, type GameRecord } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const props = defineProps<{ siteId: number }>()
 
@@ -54,10 +55,10 @@ const multiSummary = computed(() => {
 })
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(entFail('stats', stats.value))
 }
 async function refreshHistory() {
-  records.value = await entertainmentApi.history(props.siteId, GAME).catch(() => [])
+  records.value = await entertainmentApi.history(props.siteId, GAME).catch(entFail('history', []))
 }
 
 // 计算让第 index 个扇区转到指针（顶部 12 点）下所需的累计角度
@@ -168,7 +169,7 @@ function drawWheel() {
 watch(prizes, () => nextTick(drawWheel))
 
 onMounted(async () => {
-  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(() => [] as PrizeDef[])
+  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(entFail('prizes', [] as PrizeDef[]))
   await Promise.all([refreshStats(), refreshHistory()])
   await nextTick(drawWheel)
 })

@@ -52,18 +52,24 @@ func (SunnyptAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("sunnypt assessment: status %d", resp.StatusCode)
 	}
-	return parseSunnyptAssessments(resp.Body), nil
+	return parseSunnyptAssessments(resp.Body)
 }
 
-func parseSunnyptAssessments(body []byte) []Task {
+func parseSunnyptAssessments(body []byte) ([]Task, error) {
 	var wrap struct {
-		Code int `json:"code"`
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
 		Data struct {
 			List []map[string]any `json:"list"`
 		} `json:"data"`
 	}
-	if json.Unmarshal(body, &wrap) != nil || wrap.Code != 0 {
-		return nil
+	// 非 JSON 与 code!=0 都是失败：旧写法一律 return nil，考核页于是显示「暂无考核」，
+	// 正处于考核期的用户看不到任何提醒（漏达标会被降级/封号）。
+	if err := json.Unmarshal(body, &wrap); err != nil {
+		return nil, fmt.Errorf("sunnypt 考核响应不是 JSON（可能是错误页或登录墙）: %w", err)
+	}
+	if wrap.Code != 0 {
+		return nil, fmt.Errorf("sunnypt 考核接口报错（code=%d msg=%s）", wrap.Code, strings.TrimSpace(wrap.Msg))
 	}
 	out := make([]Task, 0, len(wrap.Data.List))
 	for _, item := range wrap.Data.List {
@@ -105,7 +111,7 @@ func parseSunnyptAssessments(body []byte) []Task {
 			StartTime: start, EndTime: end, FetchedAt: time.Now(),
 		})
 	}
-	return out
+	return out, nil
 }
 
 func mapSunnyStatus(s string) Status {

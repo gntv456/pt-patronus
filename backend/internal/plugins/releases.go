@@ -32,11 +32,11 @@ func (m *Manager) Rollback(ctx context.Context, pluginID string, releaseID uint)
 		return nil, err
 	}
 	if rel.PluginID != pluginID {
-		return nil, errors.New("release does not belong to plugin")
+		return nil, ErrReleaseNotForPlugin
 	}
 	root := m.PluginRoot()
 	if root == "" {
-		return nil, errors.New("plugin root is not configured")
+		return nil, ErrPluginRootUnconfigured
 	}
 	dst := filepath.Join(root, pluginID)
 	if !isSubpath(root, dst) {
@@ -49,31 +49,54 @@ func (m *Manager) Rollback(ctx context.Context, pluginID string, releaseID uint)
 		stopPlugin(p)
 	}
 	backup := dst + ".rollback-" + time.Now().Format("20060102150405")
+	// keepBackupOnFailure：放回原位也失败时，那份改名出去的旧目录必须留着——
+	// 从前是无条件 defer RemoveAll(backup)，那会把唯一一份旧代码一起删掉。
+	keepBackupOnFailure := false
 	if _, err := os.Stat(dst); err == nil {
 		if err := os.Rename(dst, backup); err != nil {
 			return nil, err
 		}
-		defer os.RemoveAll(backup)
+		defer func() {
+			if !keepBackupOnFailure {
+				_ = os.RemoveAll(backup)
+			}
+		}()
 	}
 	if err := copyDir(rel.SnapshotDir, dst); err != nil {
-		_ = os.RemoveAll(dst)
-		if _, statErr := os.Stat(backup); statErr == nil {
-			_ = os.Rename(backup, dst)
+		if rerr := restoreRollbackBackup(dst, backup); rerr != nil {
+			keepBackupOnFailure = true
+			return nil, rerr
 		}
 		return nil, err
 	}
 	if _, err := m.LoadExternalDir(dst); err != nil {
-		_ = os.RemoveAll(dst)
-		if _, statErr := os.Stat(backup); statErr == nil {
-			_ = os.Rename(backup, dst)
+		if rerr := restoreRollbackBackup(dst, backup); rerr != nil {
+			keepBackupOnFailure = true
+			return nil, rerr
 		}
 		return nil, err
 	}
 	if err := m.op.SetActiveRelease(pluginID, releaseID); err != nil {
-		return nil, err
+		// 磁盘已经换成旧版本，账面却没记下当前版本——两份读数会长期不一致，不能只回「参数有误」。
+		return nil, fmt.Errorf("%w: %v", ErrRollbackLedgerNotWritten, err)
 	}
 	m.log(pluginID, logInfo, "release.rollback", fmt.Sprintf("plugin rolled back to %s", rel.Version), map[string]any{"release_id": releaseID})
 	return m.Get(pluginID)
+}
+
+// restoreRollbackBackup 回滚失败后把改名出去的旧目录放回原位。
+// 放回也失败时必须把它带回错误里：此刻磁盘上既没有新版也没有旧版，
+// 只说「回滚失败，请重试」会让人反复点，而旧代码其实还留在那个备份目录里。
+func restoreRollbackBackup(dst, backup string) error {
+	_ = os.RemoveAll(dst)
+	if _, err := os.Stat(backup); err != nil {
+		// 原本就没有插件目录（新装后首次回滚失败）——清空即回到初态，不算二次损失。
+		return nil
+	}
+	if err := os.Rename(backup, dst); err != nil {
+		return fmt.Errorf("%w (old version kept at %s): %v", ErrRollbackRestoreFailed, backup, err)
+	}
+	return nil
 }
 
 func (m *Manager) persistReleaseSnapshot(pluginID, version, action, source, archive, sha256, srcDir string, active bool) (*models.PluginRelease, error) {

@@ -103,7 +103,8 @@ class MessageApi {
     await _api.post('/messages/$siteId/delete', {'url': url});
   }
 
-  Future<void> markRead(int siteId, List<String> ids) async {
-    await _api.post('/messages/$siteId/markread', {'ids': ids});
-  }
+  /// 标记已读。返回响应体：站点常回 HTTP 200 却 `failed:1`（或明确不支持远程标记），
+  /// 成败要靠 body 判定，不能只等 Future 完成。
+  Future<Map<String, dynamic>> markRead(int siteId, List<String> ids) =>
+      _api.post('/messages/$siteId/markread', {'ids': ids});
 }

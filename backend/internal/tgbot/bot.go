@@ -16,7 +16,9 @@ import (
 )
 
 // TalkFunc 由 app.go 注入：按 chatKey 取/建会话并跑 agent，返回事件流（tgbot 不触 aiagent/oper）。
-type TalkFunc func(ctx context.Context, chatKey, text string) <-chan llm.Event
+// 第二个返回值是「会话都没建起来」这类硬失败：调用方必须走错误出口，不能退回空回复渲染
+// （历史缺陷：建会话失败 → 空流 → 回复「（已执行，无文本输出）」，把失败说成成功）。
+type TalkFunc func(ctx context.Context, chatKey, text string) (<-chan llm.Event, error)
 
 // ClearFunc 清空某 chatKey 的会话上下文（/clear 用）。
 type ClearFunc func(chatKey string)
@@ -234,8 +236,14 @@ func (b *Bot) handleUpdate(ctx context.Context, u tgUpdate) {
 	// 自然语言 → agent
 	b.sendChatAction(chatID, "typing")
 	var sb strings.Builder
-	stream := b.talk(ctx, chatKey, text)
+	stream, err := b.talk(ctx, chatKey, text)
+	if err != nil {
+		_ = b.sendMessage(chatID, "⚠️ "+err.Error())
+		return
+	}
+	sawEvent := false
 	for ev := range stream {
+		sawEvent = true
 		switch ev.Type {
 		case llm.EventText:
 			sb.WriteString(ev.Text)
@@ -246,7 +254,12 @@ func (b *Bot) handleUpdate(ctx context.Context, u tgUpdate) {
 	}
 	reply := strings.TrimSpace(sb.String())
 	if reply == "" {
-		reply = "（已执行，无文本输出）"
+		if sawEvent {
+			reply = "（已执行，无文本输出）"
+		} else {
+			// 零事件 = agent 侧在产出前就崩了（safego 静默 recover），不能渲染成「已执行」。
+			reply = "⚠️ 助手没有返回任何结果，请重试"
+		}
 	}
 	b.sendSplit(chatID, reply)
 }

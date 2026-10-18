@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 	tscodecs "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 )
 
 const (
 	hlsMaxSegs = 5     // ring：保留最近 N 个 ts 段（sliding window）
-	hlsClock   = 90000 // H264 RTP 时钟频率（Hz），PTS/DTS 单位
+	hlsClock   = 90000 // RTP 时钟频率（Hz），PTS/DTS 单位。H264/H265 同为 90kHz。
 	hlsMinDur  = 1.0   // 段时长下限（秒），防 0/负
 )
 
@@ -25,86 +26,70 @@ type hlsSegment struct {
 	data     []byte  // 完整 ts 段字节
 }
 
-// hlsSink 把 ProxySession 解出的 H264 AVCC 流转成 MPEG-TS 分片 + live HLS 播放列表，
+// hlsSink 把 ProxySession 解出的视频 AU 流转成 MPEG-TS 分片 + live HLS 播放列表，
 // 供标准播放器（media_kit/libmpv）消费。与 jessibuca 的裸 ES over WS 链路完全独立。
 //
-// 分段策略：IDR 作边界；每个新段新建 mpegts.Writer 并先写 PAT/PMT（WriteTables），
-// 保证每段可独立解码（HLS 规范要求）。ring 保留最近 hlsMaxSegs 段。
+// 分段策略：随机访问帧（IDR/CRA）作边界；每个新段新建 mpegts.Writer 并先写
+// PAT/PMT（WriteTables），保证每段可独立解码（HLS 规范要求）。ring 保留最近
+// hlsMaxSegs 段。H264 与 H265 共用本 sink，差异（track codec、DTS 提取器、
+// 参数集个数）全部收敛在各自的小函数里。
 type hlsSink struct {
-	sps []byte
-	pps []byte
+	codec VideoCodec
+	vps   []byte
+	sps   []byte
+	pps   []byte
 
-	mu           sync.Mutex
-	dtsExtractor *h264.DTSExtractor
-	track        *mpegts.Track
-	curBuf       *bytes.Buffer
-	curWriter    *mpegts.Writer
-	segStartPTS  int64
-	haveSegment  bool
-	segs         []*hlsSegment
-	mediaSeq     uint64
-	lastAccess   time.Time
+	mu          sync.Mutex
+	dtsH264     *h264.DTSExtractor
+	dtsH265     *h265.DTSExtractor
+	track       *mpegts.Track
+	curBuf      *bytes.Buffer
+	curWriter   *mpegts.Writer
+	segStartPTS int64
+	haveSegment bool
+	segs        []*hlsSegment
+	mediaSeq    uint64
+	lastAccess  time.Time
 }
 
-func newHLSSink(sps, pps []byte) *hlsSink {
-	return &hlsSink{sps: sps, pps: pps, lastAccess: time.Now()}
+func newHLSSink(codec VideoCodec, vps, sps, pps []byte) *hlsSink {
+	if codec == "" {
+		codec = CodecH264
+	}
+	return &hlsSink{codec: codec, vps: vps, sps: sps, pps: pps, lastAccess: time.Now()}
 }
 
-// writeAU 喂一个 H264 access unit（AVCC NALU 列表），pts 为 90kHz 单位。
-func (s *hlsSink) writeAU(pts int64, au [][]byte) {
+// writeAU 喂一个 access unit（AVCC NALU 列表，已剥离参数集），pts 为 90kHz 单位。
+func (s *hlsSink) writeAU(pts int64, codec VideoCodec, au [][]byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastAccess = time.Now()
-
-	// 过滤：捕获 SPS/PPS、丢 AUD、识别 IDR。
-	var filtered [][]byte
-	idr := false
-	nonIDR := false
-	for _, nalu := range au {
-		if len(nalu) == 0 {
-			continue
-		}
-		switch h264.NALUType(nalu[0] & 0x1F) {
-		case h264.NALUTypeSPS:
-			s.sps = nalu
-			continue
-		case h264.NALUTypePPS:
-			s.pps = nalu
-			continue
-		case h264.NALUTypeAccessUnitDelimiter:
-			continue
-		case h264.NALUTypeIDR:
-			idr = true
-		case h264.NALUTypeNonIDR:
-			nonIDR = true
-		}
-		filtered = append(filtered, nalu)
+	if codec != "" && codec != s.codec {
+		// 编码中途切换：extractor/track 全部作废重置，下一个 IDR 重新起段。
+		s.codec, s.dtsH264, s.dtsH265 = codec, nil, nil
+		s.curBuf, s.curWriter, s.haveSegment = nil, nil, false
 	}
-	au = filtered
-	if len(au) == 0 || (!idr && !nonIDR) {
+
+	idr := false
+	for _, n := range au {
+		if codecOfNalu(s.codec, n) == naluIDR {
+			idr = true
+			break
+		}
+	}
+	if len(au) == 0 {
 		return
 	}
 
-	// DTSExtractor 需在首个 IDR 初始化（在此之前静默丢弃）。
-	if s.dtsExtractor == nil {
-		if !idr {
-			return
-		}
-		s.dtsExtractor = &h264.DTSExtractor{}
-		s.dtsExtractor.Initialize()
-	}
-
-	// IDR 前补 SPS/PPS，保证段可独立解码。
-	if idr && len(s.sps) > 0 && len(s.pps) > 0 {
-		au = append([][]byte{s.sps, s.pps}, au...)
-	}
-
-	dts, err := s.dtsExtractor.Extract(au, pts)
+	// DTS 提取器需要 AU 内自带参数集（H264/H265 均如此：解析 POC 与参考帧集要读
+	// SPS/PPS）。故先补参数集再提取，之后同一条 AU 直接写出。
+	au = append(s.paramSets(), au...)
+	dts, err := s.extractDTS(pts, au, idr)
 	if err != nil {
 		return
 	}
 
-	// 分段边界：遇 IDR 先收尾上一段、再开新段。
+	// 分段边界：遇随机访问帧先收尾上一段、再开新段。
 	if idr {
 		if s.haveSegment {
 			s.finalizeSegment(pts)
@@ -114,13 +99,58 @@ func (s *hlsSink) writeAU(pts int64, au [][]byte) {
 	if s.curWriter == nil {
 		return
 	}
-	_ = s.curWriter.WriteH264(s.track, pts, dts, au)
+	if s.codec == CodecH265 {
+		_ = s.curWriter.WriteH265(s.track, pts, dts, au)
+	} else {
+		_ = s.curWriter.WriteH264(s.track, pts, dts, au)
+	}
+}
+
+// paramSets 返回该编码需要的参数集列表（H265: VPS,SPS,PPS；H264: SPS,PPS）。
+// 缺任一项返回 nil——半套参数集既不能解码也不该写进段里。
+func (s *hlsSink) paramSets() [][]byte {
+	if s.codec == CodecH265 {
+		if len(s.vps) == 0 || len(s.sps) == 0 || len(s.pps) == 0 {
+			return nil
+		}
+		return [][]byte{s.vps, s.sps, s.pps}
+	}
+	if len(s.sps) == 0 || len(s.pps) == 0 {
+		return nil
+	}
+	return [][]byte{s.sps, s.pps}
+}
+
+// extractDTS 提 DTS；extractor 需在首个随机访问帧初始化，之前静默丢弃。
+func (s *hlsSink) extractDTS(pts int64, au [][]byte, idr bool) (int64, error) {
+	if s.codec == CodecH265 {
+		if s.dtsH265 == nil {
+			if !idr {
+				return 0, fmt.Errorf("h265 dts extractor not initialized")
+			}
+			s.dtsH265 = &h265.DTSExtractor{}
+			s.dtsH265.Initialize()
+		}
+		return s.dtsH265.Extract(au, pts)
+	}
+	if s.dtsH264 == nil {
+		if !idr {
+			return 0, fmt.Errorf("h264 dts extractor not initialized")
+		}
+		s.dtsH264 = &h264.DTSExtractor{}
+		s.dtsH264.Initialize()
+	}
+	return s.dtsH264.Extract(au, pts)
 }
 
 // startSegment 开新段：新 buffer + 新 Writer，先写 PAT/PMT。
 func (s *hlsSink) startSegment(pts int64) {
 	s.curBuf = new(bytes.Buffer)
-	s.track = &mpegts.Track{Codec: &tscodecs.H264{}}
+	if s.codec == CodecH265 {
+		s.track = &mpegts.Track{Codec: &tscodecs.H265{}}
+	} else {
+		s.track = &mpegts.Track{Codec: &tscodecs.H264{}}
+	}
 	s.curWriter = &mpegts.Writer{W: s.curBuf, Tracks: []*mpegts.Track{s.track}}
 	if err := s.curWriter.Initialize(); err != nil {
 		s.curWriter = nil

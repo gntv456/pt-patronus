@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // 通用下注 View（批2）：按 game 后缀渲染玩法（押大小/双色球选号/翻面/红包/赛事押注）。
 class BetGameView extends StatefulWidget {
@@ -40,7 +41,9 @@ class _BetGameViewState extends State<BetGameView> {
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, widget.game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     if (mounted) setState(() {});
   }
 

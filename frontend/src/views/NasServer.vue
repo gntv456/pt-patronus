@@ -60,7 +60,6 @@ const { terminalVisible, terminalTarget, openTerminal, setWorkspace, focusExecPa
   activeTab,
 )
 
-
 const {
   credentials,
   credentialVisible,
@@ -94,9 +93,12 @@ const {
 const helpVisible = ref(false)
 const agentVisible = ref(false)
 
-
-const { filtered, unreadCount, hostCount, monitorCount, configCount, activeAlertCount, sshTargets } =
-  useNasDerived({ targets, alerts, opsConfigs, activeTab })
+const { filtered, unreadCount, hostCount, monitorCount, configCount, activeAlertCount, sshTargets } = useNasDerived({
+  targets,
+  alerts,
+  opsConfigs,
+  activeTab,
+})
 
 const {
   scriptFileInput,
@@ -147,16 +149,17 @@ const {
 })
 
 // 全量加载(设备/告警/凭据/配置/执行历史/最新指标)拆出 useNasLoader
-const { error, firstLoad, loadAll, retry } = useNasLoader({
-  isAdmin: auth.isAdmin,
-  targets,
-  alerts,
-  credentials,
-  opsConfigs,
-  commandRuns,
-  latestMap,
-  t: (k: string) => t(k),
-})
+const { error, firstLoad, alertsFailed, alertsTruncated, alertsTotal, runsTruncated, runsTotal, loadAll, retry } =
+  useNasLoader({
+    isAdmin: auth.isAdmin,
+    targets,
+    alerts,
+    credentials,
+    opsConfigs,
+    commandRuns,
+    latestMap,
+    t: (k: string) => t(k),
+  })
 
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
@@ -188,7 +191,6 @@ const {
 
 // 15s 轮询(隐藏暂停/可见恢复)拆出 useNasPolling
 useNasPolling(loadAll, 15000, loadCommandHistory)
-
 </script>
 
 <template>
@@ -199,8 +201,16 @@ useNasPolling(loadAll, 15000, loadCommandHistory)
       </div>
       <div class="np-actions">
         <el-button @click="helpVisible = true">{{ t('nas.help') }}</el-button>
-        <el-button :type="unreadCount ? 'danger' : 'default'" @click="alertVisible = true">
+        <el-button :type="unreadCount ? 'danger' : alertsFailed ? 'warning' : 'default'" @click="alertVisible = true">
           {{ t('nas.alerts') }}<span v-if="unreadCount" class="badge">{{ unreadCount }}</span>
+          <!-- 读不到 / 被上限截断都要说出来：不能因为拉取失败或只取了最近 200 条就显示成「没有未读」 -->
+          <span v-else-if="alertsFailed" class="badge">?</span>
+          <span
+            v-if="alertsTruncated"
+            class="badge"
+            :title="t('nas.alertsCapped', { shown: alerts.length, total: alertsTotal })"
+            >{{ t('nas.alertsCapped', { shown: alerts.length, total: alertsTotal }) }}</span
+          >
         </el-button>
         <el-button v-if="auth.isAdmin" @click="openCredentialCenter">{{ t('nas.credentials') }}</el-button>
         <el-button v-if="auth.isAdmin" @click="openConfigCenter">{{ t('trakt.config') }}</el-button>
@@ -244,6 +254,8 @@ useNasPolling(loadAll, 15000, loadCommandHistory)
       :exec-running="execRunning"
       :command-history="commandHistory"
       :command-runs="commandRuns"
+      :runs-truncated="runsTruncated"
+      :runs-total="runsTotal"
       :exec-logs="execLogs"
       :is-admin="auth.isAdmin"
       @update:exec-target-ids="execTargetIds = $event"
@@ -387,7 +399,16 @@ useNasPolling(loadAll, 15000, loadCommandHistory)
       <RtspPlayer v-if="previewTarget" :target="previewTarget" />
     </el-dialog>
 
-    <NasAlertDrawer :visible="alertVisible" :alerts="alerts" @update:visible="alertVisible = $event" @read="onReadAlert" @ack="onAckAlert" @silence="onSilenceAlert" @del="onDeleteAlert" @clear="onClearAlerts" />
+    <NasAlertDrawer
+      :visible="alertVisible"
+      :alerts="alerts"
+      @update:visible="alertVisible = $event"
+      @read="onReadAlert"
+      @ack="onAckAlert"
+      @silence="onSilenceAlert"
+      @del="onDeleteAlert"
+      @clear="onClearAlerts"
+    />
   </div>
 </template>
 

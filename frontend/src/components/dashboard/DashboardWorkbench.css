@@ -214,3 +214,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 数据不完整提示：后端逐块留痕的读取失败原因 */
+.wb-incomplete {
+  margin-bottom: 12px;
+}
+.wb-incomplete-line {
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  word-break: break-all;
+}

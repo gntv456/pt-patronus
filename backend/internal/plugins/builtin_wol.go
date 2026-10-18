@@ -86,7 +86,7 @@ func wolSend(mac net.HardwareAddr, broadcast string, port int) error {
 
 func (wolPlugin) ExecuteAction(ctx context.Context, rt Runtime, action string, input map[string]any) (map[string]any, error) {
 	if action != "wake" {
-		return nil, fmt.Errorf("未知动作: %s", action)
+		return nil, unknownActionErr(action)
 	}
 	cfg := rt.Config()
 	macStr := pluginString(input["mac"])

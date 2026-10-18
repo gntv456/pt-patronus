@@ -70,12 +70,12 @@ func (f *FluxTorrent) FetchHR(ctx context.Context, def *site.SiteMetadata,
 	out := make([]site.HRTorrent, 0, len(payload.Items))
 	for _, it := range payload.Items {
 		out = append(out, site.HRTorrent{
-			TorrentID: strconv.Itoa(it.TorrentID),
-			Title:     it.Name,
-			SeedTime:  fmt.Sprintf("已做种 %s / 需 %s", fluxDuration(it.SeededSeconds), fluxDuration(it.RequiredSeconds)),
-			Status:    fluxHRStatus(it),
+			TorrentID:    strconv.Itoa(it.TorrentID),
+			Title:        it.Name,
+			SeedTime:     fmt.Sprintf("已做种 %s / 需 %s", fluxDuration(it.SeededSeconds), fluxDuration(it.RequiredSeconds)),
+			Status:       fluxHRStatus(it),
 			DeadlineLeft: fmt.Sprintf("差 %s", fluxDuration(it.ShortfallSeconds)),
-			DetailURL: joinURL(baseURL, fmt.Sprintf("/torrent/%d", it.TorrentID)),
+			DetailURL:    joinURL(baseURL, fmt.Sprintf("/torrent/%d", it.TorrentID)),
 		})
 	}
 	return out, nil

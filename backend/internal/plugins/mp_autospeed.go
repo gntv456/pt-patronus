@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 )
 
 type autoSpeedPlugin struct{}
@@ -84,6 +83,6 @@ func (autoSpeedPlugin) ExecuteAction(ctx context.Context, rt Runtime, action str
 			"upload": []string{"https://speed.cloudflare.com/__up"},
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

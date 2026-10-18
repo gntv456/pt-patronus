@@ -3,13 +3,17 @@ package v1
 import (
 	"errors"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/plugins"
+	"io/fs"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/auth"
-	"github.com/hxpt/ptpatronus/internal/plugins"
+	"gorm.io/gorm"
 )
 
 type PluginHandler struct {
@@ -43,18 +47,6 @@ type pluginBridgeReq struct {
 	Params map[string]any `json:"params"`
 }
 
-type pluginInstallReq struct {
-	Source                      string                          `json:"source" binding:"max=256"`
-	ID                          string                          `json:"id" binding:"max=128"`
-	AcceptedPermissions         []string                        `json:"accepted_permissions" binding:"dive,max=64"`
-	AcceptedPermissionsByPlugin []pluginInstallPermissionAccept `json:"accepted_permissions_by_plugin" binding:"dive"`
-}
-
-type pluginInstallPermissionAccept struct {
-	ID                  string   `json:"id" binding:"max=128"`
-	AcceptedPermissions []string `json:"accepted_permissions" binding:"dive,max=64"`
-}
-
 type pluginPermissionReq struct {
 	AcceptedPermissions []string `json:"accepted_permissions" binding:"dive,max=64"`
 }
@@ -76,54 +68,6 @@ func (h *PluginHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"plugins": ps})
 }
 
-// MarketSources 返回 UI 持久化的插件市场源列表（GitHub 仓库地址或任意 URL）。
-// official 为官方市场仓库地址，供前端打「官方」标签与「恢复官方源」。
-func (h *PluginHandler) MarketSources(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources(), "official": plugins.OfficialMarketSource})
-}
-
-type pluginMarketSourcesReq struct {
-	Sources []string `json:"sources" binding:"dive,max=256"`
-}
-
-// SetMarketSources 持久化插件市场源列表。
-func (h *PluginHandler) SetMarketSources(c *gin.Context) {
-	var req pluginMarketSourcesReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	if err := h.manager.SetMarketSources(req.Sources); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources(), "official": plugins.OfficialMarketSource})
-}
-
-// TrustConfig 返回插件签名信任配置（官方只读公钥 + 用户受信公钥 + allow_unsigned）。
-func (h *PluginHandler) TrustConfig(c *gin.Context) {
-	c.JSON(http.StatusOK, h.manager.GetTrustConfig())
-}
-
-type pluginTrustConfigReq struct {
-	TrustedPublicKeys []string `json:"trusted_public_keys" binding:"dive,max=2048"` // ed25519 base64 公钥约 68 字符，给宽上界
-	AllowUnsigned     bool     `json:"allow_unsigned"`
-}
-
-// SetTrustConfig 持久化插件签名信任配置（受信公钥 + 是否允许未签名）。官方公钥只读不可改。
-func (h *PluginHandler) SetTrustConfig(c *gin.Context) {
-	var req pluginTrustConfigReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	if err := h.manager.SetTrustConfig(req.TrustedPublicKeys, req.AllowUnsigned); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
-		return
-	}
-	c.JSON(http.StatusOK, h.manager.GetTrustConfig())
-}
-
 func (h *PluginHandler) Get(c *gin.Context) {
 	p, err := h.manager.Get(c.Param("id"))
 	if err != nil {
@@ -135,11 +79,11 @@ func (h *PluginHandler) Get(c *gin.Context) {
 
 func (h *PluginHandler) Enable(c *gin.Context) {
 	if err := h.validateAcceptedPermissions(c); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		errcode.Respond(c, pluginStateError(err))
 		return
 	}
 	if err := h.manager.SetEnabled(c.Param("id"), true); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		errcode.Respond(c, pluginStateError(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": true})
@@ -147,7 +91,7 @@ func (h *PluginHandler) Enable(c *gin.Context) {
 
 func (h *PluginHandler) Disable(c *gin.Context) {
 	if err := h.manager.SetEnabled(c.Param("id"), false); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		errcode.Respond(c, pluginStateError(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": false})
@@ -164,7 +108,8 @@ func (h *PluginHandler) SaveConfig(c *gin.Context) {
 	}
 	p, err := h.manager.SaveConfig(c.Param("id"), in.Config)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 「插件没启用」「设置读不出来」不该和「配置值不合插件心意」挤在同一句 400 里（#287）。
+		errcode.Respond(c, pluginActionError(err))
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -181,7 +126,10 @@ func (h *PluginHandler) Action(c *gin.Context) {
 	}
 	out, err := h.manager.ExecuteAction(c.Request.Context(), c.Param("id"), in.Action, in.Input)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 插件动作跑挂不是用户的错：兜底给 plugin_action_failed（502，并把去处指向插件日志），
+		// 不再回「请求参数有误，请检查后重试」——那句话把插件崩溃、进程掉线、超时全推给输入框。
+		// 「动作名写错」由 ErrUnknownAction 单独留在 400（改输入有用），SaveConfig 仍按原口径兜底 400。
+		errcode.Respond(c, pluginActionErrorWith(err, errcode.PluginActionFailed))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "output": out})
@@ -189,12 +137,24 @@ func (h *PluginHandler) Action(c *gin.Context) {
 
 func (h *PluginHandler) Logs(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
-	logs, err := h.manager.Logs(c.Query("plugin_id"), limit)
+	pid := c.Query("plugin_id")
+	limit = oper.NormalizePluginLogLimit(limit)
+	logs, err := h.manager.Logs(pid, limit)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"logs": logs})
+	// total/truncated 与清单同批给出；计数读不出时保守报截断并省略 total，不编 0。
+	total, cntErr := h.manager.CountLogs(pid)
+	truncated := cntErr != nil || total > int64(len(logs))
+	if cntErr != nil {
+		slog.Warn("plugin log count failed", "plugin_id", pid, "err", cntErr)
+	}
+	resp := gin.H{"logs": logs, "limit": limit, "truncated": truncated}
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *PluginHandler) Asset(c *gin.Context) {
@@ -229,7 +189,11 @@ func (h *PluginHandler) AssetTicket(c *gin.Context) {
 	}
 	tk, exp, err := h.tickets.IssueScoped(c.GetUint("uid"), pluginAssetScope(c.Param("id")), pluginAssetTicketTTL)
 	if err != nil {
-		errcode.Respond(c, errcode.UpstreamFailed)
+		// #346 不是上游故障：IssueScoped 是纯进程内操作（生成随机字节→写内存 map→
+		// 清过期项），唯一会失败的是 rand.Read（本机随机源）。此前报 UpstreamFailed
+		// （502「上游服务不可用」）把用户指向网络/第三方服务，方向完全错；
+		// 且 err 未带，日志里也查不到。这里回本机故障码并挂上原因。
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -266,10 +230,36 @@ func (h *PluginHandler) Bridge(c *gin.Context) {
 	}
 	out, err := h.manager.Bridge(c.Request.Context(), c.Param("id"), in.Method, in.Params)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 插件动作跑挂不是「请求参数有误」：那是插件自己的故障，重试同一个动作不会变好（#287）。
+		errcode.Respond(c, pluginActionErrorWith(err, errcode.PluginActionFailed))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "result": out})
+}
+
+// pluginRollbackFailure 把回滚失败分成五种真实处境。从前一律 400「请求参数有误」，
+// 而回滚是破坏性动作——每次点都会先停插件、再把当前目录改名出去：
+// 「版本记录没了 / 快照文件没了 / 没配插件目录 / 旧目录没能放回 / 账面没写进去」
+// 没有一种能靠改输入框解决，被说成参数有误只会换来反复重试。
+func pluginRollbackFailure(err error) *errcode.Error {
+	switch {
+	case errors.Is(err, plugins.ErrRollbackRestoreFailed):
+		// WithDetail 会拿底层 Go 错误顶掉注册表里的中文文案（响应体只给 Message），
+		// 这里要留中文、把路径与原始错误交给日志（Respond 对 5xx 记 WARN）。
+		return errcode.PluginRollbackRestoreFailed.WithErr(err)
+	case errors.Is(err, plugins.ErrRollbackLedgerNotWritten):
+		return errcode.PluginRollbackLedgerUnwritten.WithErr(err)
+	case errors.Is(err, plugins.ErrPluginRootUnconfigured):
+		return errcode.PluginRootUnconfigured
+	case errors.Is(err, plugins.ErrReleaseNotForPlugin):
+		return errcode.PluginReleaseMismatch
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return errcode.PluginReleaseNotFound
+	case errors.Is(err, fs.ErrNotExist):
+		return errcode.PluginRollbackNoSnapshot
+	default:
+		return errcode.Internal.WithDetail(err)
+	}
 }
 
 func (h *PluginHandler) Rollback(c *gin.Context) {
@@ -280,7 +270,7 @@ func (h *PluginHandler) Rollback(c *gin.Context) {
 	}
 	out, err := h.manager.Rollback(c.Request.Context(), c.Param("id"), in.ReleaseID)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		errcode.Respond(c, pluginRollbackFailure(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -302,55 +292,15 @@ func (h *PluginHandler) PublishEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"published": true, "type": in.Type})
 }
 
-func (h *PluginHandler) Market(c *gin.Context) {
-	var (
-		idx *plugins.MarketIndex
-		err error
-	)
-	if q := c.Query("source"); q != "" {
-		// 单源覆盖（向后兼容）
-		idx, err = h.manager.FetchMarket(c.Request.Context(), q)
-	} else {
-		// 聚合全部已配置源
-		idx, err = h.manager.FetchMarketMulti(c.Request.Context(), nil)
-	}
-	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	c.JSON(http.StatusOK, idx)
-}
-
-func (h *PluginHandler) Install(c *gin.Context) {
-	var in pluginInstallReq
-	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	options := plugins.MarketInstallOptions{
-		AcceptedPermissions:         in.AcceptedPermissions,
-		AcceptedPermissionsByPlugin: make(map[string][]string, len(in.AcceptedPermissionsByPlugin)),
-	}
-	for _, item := range in.AcceptedPermissionsByPlugin {
-		if item.ID == "" {
-			continue
-		}
-		options.AcceptedPermissionsByPlugin[item.ID] = item.AcceptedPermissions
-	}
-	if len(options.AcceptedPermissionsByPlugin) == 0 {
-		options.AcceptedPermissionsByPlugin = nil
-	}
-	out, err := h.manager.InstallFromMarketWithOptions(c.Request.Context(), in.Source, in.ID, options)
-	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	c.JSON(http.StatusOK, out)
-}
-
 func (h *PluginHandler) Reload(c *gin.Context) {
 	out, err := h.manager.ReloadExternal(c.Param("id"))
 	if err != nil {
+		// 内置插件没有磁盘目录，重载必然撞 os 的 not-exist：说清「不用重载」，
+		// 别让用户以为是自己的操作参数有问题。
+		if errors.Is(err, fs.ErrNotExist) {
+			errcode.Respond(c, errcode.PluginNotReloadable.WithErr(err))
+			return
+		}
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
@@ -359,29 +309,64 @@ func (h *PluginHandler) Reload(c *gin.Context) {
 
 func (h *PluginHandler) Uninstall(c *gin.Context) {
 	if err := h.manager.Uninstall(c.Param("id")); err != nil {
+		if errors.Is(err, plugins.ErrPluginStateNotCleared) {
+			// 中文原因走 Message/WithDetail：WithErr 只进日志不进响应（#214 同族）。
+			errcode.Respond(c, errcode.PluginStateNotCleared.WithDetail(err))
+			return
+		}
+		if errors.Is(err, plugins.ErrPluginNotInstalled) {
+			errcode.Respond(c, errcode.PluginNotInstalled)
+			return
+		}
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"uninstalled": c.Param("id")})
 }
 
-func (h *PluginHandler) validateAcceptedPermissions(c *gin.Context) error {
-	if c.Request.ContentLength == 0 {
-		return nil
+// pluginActionError 把插件动作的失败分成本来就该不同的四类。从前一律 400「请求参数有误」：
+// 「该插件没启用」「本机没有这个插件」「设置读不出」都被推给用户去改输入，
+// 而这三件事没有一件能靠改输入框解决（真机实测：not found 被报成参数有误）。
+// pluginActionErrorWith 是同一条判据的可换兜底版本：已知的三档（设置读不出 / 未启用 / 没装）
+// 各归各码，剩下的交给调用方那一句——因为「保存设置失败」和「插件动作跑挂」不是同一件事，
+// 前者多半是用户改的配置值不合插件心意（400），后者是插件自己的故障（502，重试无用）。
+func pluginActionErrorWith(err error, fallback *errcode.Error) *errcode.Error {
+	switch {
+	case errors.Is(err, plugins.ErrPluginConfigUnreadable):
+		// 哨兵原文是英文（"plugin config unreadable"），WithDetail 会把它整句送进界面；
+		// 这里要的是注册好的那句中文（去哪儿重新保存）。#287 的用例当场抓到。
+		return errcode.PluginConfigUnreadable.WithErr(err)
+	case errors.Is(err, plugins.ErrPluginDisabled):
+		return errcode.PluginDisabled.WithErr(err)
+	case errors.Is(err, plugins.ErrPluginNotRegistered), errors.Is(err, plugins.ErrPluginNotInstalled):
+		return errcode.PluginNotInstalled.WithErr(err)
+	case errors.Is(err, plugins.ErrUnknownAction):
+		// 「这个插件没实现这个动作」确实是改输入有用的 400，但要把动作名和下一步给出来；
+		// 链层那句是自产中文（带「可在插件面板查看它支持的动作」），所以 WithDetail 直送界面。
+		return errcode.InvalidInput.WithDetail(err)
+	default:
+		return fallback.WithErr(err)
 	}
-	var in pluginPermissionReq
-	if err := c.ShouldBindJSON(&in); err != nil {
-		return err
+}
+
+func pluginActionError(err error) *errcode.Error {
+	return pluginActionErrorWith(err, errcode.InvalidInput)
+}
+
+// pluginStateError 是「启用 / 停用」两个出口共用的判据（同一条判定不在两处各抄一遍）。
+// 从前两者一律 InvalidInput：插件被别的已启用插件依赖、依赖没满足、权限清单没确认、
+// 甚至本机根本没这个插件，全被说成「请求参数有误，请检查后重试」——而这几件事
+// 没有一件能靠改输入框解决，用户只会反复点同一个开关。
+func pluginStateError(err error) *errcode.Error {
+	switch {
+	case errors.Is(err, errAcceptedPermissionsBad):
+		// body 真的读不出形状：这一档才该让用户检查请求内容。
+		return errcode.InvalidInput.WithErr(err)
+	case errors.Is(err, plugins.ErrPluginPermissionsPending):
+		return errcode.PluginPermissionsPending.WithDetail(err)
+	case errors.Is(err, plugins.ErrPluginStateRejected):
+		return errcode.PluginStateChangeRejected.WithDetail(err)
+	default:
+		return pluginActionErrorWith(err, errcode.PluginStateChangeRejected)
 	}
-	if in.AcceptedPermissions == nil {
-		return errors.New("accepted_permissions is required")
-	}
-	p, err := h.manager.Get(c.Param("id"))
-	if err != nil {
-		return err
-	}
-	if !plugins.PermissionSetEqual(in.AcceptedPermissions, p.Permissions) {
-		return errors.New("accepted permissions do not match plugin permissions")
-	}
-	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -20,7 +21,9 @@ func (n *NexusPHP) FetchFreeleech(ctx context.Context, def *site.SiteMetadata,
 	}
 	doc, resp, err := n.fetchDoc(ctx, baseURL, path, cookie)
 	if err != nil {
-		return singleFreeleech(site.FreeleechFailed, "", "", "", err.Error()), nil
+		// 文案走 errtext 单一来源：这里把失败转成一条 failed 通知（不返回错误），
+		// 直接 err.Error() 会把 "ssrf: blocked private/internal address: 127.0.0.1" 端上界面。
+		return singleFreeleech(site.FreeleechFailed, "", "", "", errtext.Text(err)), nil
 	}
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -59,8 +62,8 @@ func (n *NexusPHP) FetchIndexInfo(ctx context.Context, def *site.SiteMetadata,
 	doc, resp, err := n.fetchDoc(ctx, baseURL, path, cookie)
 	if err != nil {
 		return &site.IndexInfo{
-			Freeleech:    singleFreeleech(site.FreeleechFailed, "", "", "", err.Error()),
-			Announcement: &site.SiteAnnouncement{FetchedAt: time.Now(), Error: err.Error()},
+			Freeleech:    singleFreeleech(site.FreeleechFailed, "", "", "", errtext.Text(err)),
+			Announcement: &site.SiteAnnouncement{FetchedAt: time.Now(), Error: errtext.Text(err)},
 		}, nil
 	}
 	if loggedOut(resp, doc, def.NoLogin) {

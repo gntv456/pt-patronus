@@ -71,3 +71,9 @@
   color: var(--el-color-primary);
   text-decoration: none;
 }
+
+.items-note {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--el-color-warning);
+}

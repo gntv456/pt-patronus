@@ -68,21 +68,31 @@ func (n *FetchRSSNode) Execute(ctx context.Context, params map[string]any, ecx *
 	if err != nil {
 		return fmt.Errorf("解析 RSS 失败: %w", err)
 	}
+	// 大 feed 限流：护栏挡的是交给下游的种子数量（工作流可能逐条订阅/下载），不是解析内存。
+	// 截断必须写进节点消息——只说「获取 200 条」会让下一节点和运行日志把上限当成整个 feed。
 	added := 0
-	for i, item := range feed.Items {
-		if i >= 200 {
-			break // 大 feed 限流
-		}
-		torr := itemToTorrent(item, siteName)
+	scan := len(feed.Items)
+	if scan > fetchRSSItemLimit {
+		scan = fetchRSSItemLimit
+	}
+	for i := 0; i < scan; i++ {
+		torr := itemToTorrent(feed.Items[i], siteName)
 		if torr.DownloadURL == "" && torr.Title == "" {
 			continue
 		}
 		ecx.Torrents = append(ecx.Torrents, torr)
 		added++
 	}
-	ecx.Messages = append(ecx.Messages, fmt.Sprintf("RSS 获取 %d 条", added))
+	msg := fmt.Sprintf("RSS 获取 %d 条", added)
+	if len(feed.Items) > fetchRSSItemLimit {
+		msg = fmt.Sprintf("RSS 获取 %d 条（feed 共 %d 条，仅取前 %d 条，其余本轮未取）", added, len(feed.Items), fetchRSSItemLimit)
+	}
+	ecx.Messages = append(ecx.Messages, msg)
 	return nil
 }
+
+// fetchRSSItemLimit fetch_rss 节点单轮从 feed 取用的条目上限。
+const fetchRSSItemLimit = 200
 
 // itemToTorrent gofeed.Item → site.Torrent（优先 enclosure 的种子链接/大小）。
 func itemToTorrent(item *gofeed.Item, siteName string) site.Torrent {
@@ -140,7 +150,28 @@ func (n *SearchTorrentsNode) Execute(ctx context.Context, params map[string]any,
 	if kw == "" {
 		return fmt.Errorf("搜索关键字为空")
 	}
-	results := n.siteCh.SearchSites(ctx, kw, workflow.ParamString(params, "category"), nil)
+	results, err := n.siteCh.SearchSites(ctx, kw, workflow.ParamString(params, "category"), nil)
+	if err != nil {
+		return fmt.Errorf("跨站搜索失败: %w", err)
+	}
+	// 零站点参与 = 整轮什么都没搜（模板最常见的首次运行态），记成「搜索到 0 条」会被
+	// 读成「搜过了、确实没有」，必须让节点失败出声。
+	if len(results) == 0 {
+		return fmt.Errorf("没有可搜索的站点（请先在「站点」页添加并登录）")
+	}
+	failed := 0
+	var firstErr string
+	for _, sr := range results {
+		if sr.Error != "" {
+			failed++
+			if firstErr == "" {
+				firstErr = sr.SiteName + "：" + sr.Error
+			}
+		}
+	}
+	if failed > 0 && failed == len(results) {
+		return fmt.Errorf("%d 个站点搜索全部失败，未取得任何结果（首个：%s）", failed, firstErr)
+	}
 	total := 0
 	for _, sr := range results {
 		if sr.Error != "" {
@@ -158,7 +189,11 @@ func (n *SearchTorrentsNode) Execute(ctx context.Context, params map[string]any,
 			total++
 		}
 	}
-	ecx.Messages = append(ecx.Messages, fmt.Sprintf("搜索到 %d 条资源", total))
+	msg := fmt.Sprintf("搜索到 %d 条资源", total)
+	if failed > 0 {
+		msg += fmt.Sprintf("（%d/%d 个站点搜索失败，首个：%s）", failed, len(results), firstErr)
+	}
+	ecx.Messages = append(ecx.Messages, msg)
 	return nil
 }
 
@@ -197,9 +232,16 @@ func (n *FetchSiteStatsNode) Execute(ctx context.Context, params map[string]any,
 		Bonus      float64 `gorm:"column:bonus"`
 	}
 	var s statRow
-	if err := n.db.Table("site_stats").Where("site_id = ?", sid).
-		Order("snap_at DESC").Limit(1).Scan(&s).Error; err != nil {
-		return fmt.Errorf("读取站点统计失败: %w", err)
+	// Scan 在「零行」时不返回错误（ErrRecordNotFound 只有 First/Take 会给），
+	// 于是没采过样的站点会带着全 0 变量「成功」下去：播报文案说成「上传 0 / 分享率 0.00」，
+	// 下游条件分支也按这个假 0 决策。没有数据就是没有数据，必须报出来。
+	res := n.db.Table("site_stats").Where("site_id = ?", sid).
+		Order("snap_at DESC").Limit(1).Scan(&s)
+	if res.Error != nil {
+		return fmt.Errorf("读取站点统计失败: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("站点 %d 还没有采集到统计数据（先跑一次聚合快照）", sid)
 	}
 	if ecx.Variables == nil {
 		ecx.Variables = map[string]any{}

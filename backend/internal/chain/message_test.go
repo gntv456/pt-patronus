@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,19 +17,29 @@ import (
 )
 
 // fakeMsgAdapter 在 fakeAdapter 基础上加 MessageCapable：按 mailbox 返回不同数据，
-// atomic 计数 + 可选 proceed 阻塞（验 singleflight）+ 可选 err（验未登录）。
+// atomic 计数 + 可选 proceed 阻塞（验 singleflight）+ 可选 err（验未登录）+
+// 可选 panicHost（baseURL 命中时现场 panic，模拟适配器解析消息页崩溃，验 per-site 隔离）。
 type fakeMsgAdapter struct {
 	*fakeAdapter
 	byMailbox map[site.MailboxType][]site.Message
 	calls     int32
 	proceed   chan struct{} // 非 nil 时 FetchMessages 阻塞至 close
 	err       error
+	panicHost string
 }
 
-func (f *fakeMsgAdapter) FetchMessages(_ context.Context, _ *site.SiteMetadata, _, _ string, mailbox site.MailboxType) ([]site.Message, error) {
+func (f *fakeMsgAdapter) FetchMessages(ctx context.Context, _ *site.SiteMetadata, baseURL, _ string, mailbox site.MailboxType) ([]site.Message, error) {
 	atomic.AddInt32(&f.calls, 1)
+	if f.panicHost != "" && strings.Contains(baseURL, f.panicHost) {
+		panic("nil pointer dereference on malformed message page")
+	}
 	if f.proceed != nil {
-		<-f.proceed
+		// 阻塞期间调用方 ctx 结束要像真实 HTTP 客户端一样带错误返回（区分中断 vs 超时）。
+		select {
+		case <-f.proceed:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 	if f.err != nil {
 		return nil, f.err
@@ -233,5 +244,161 @@ func TestMessagesAllConcurrentDedup(t *testing.T) {
 		if len(r) != 1 || len(r[0].Messages) != 1 || r[0].Messages[0].Title != "M" {
 			t.Errorf("result[%d] = %+v want one site with M", i, r)
 		}
+	}
+}
+
+// TestMessagesCallerCancelNotCached 调用方中断（切信箱/关页面/断连 → context.Canceled）
+// 不得写进消息负缓存：否则一次中断就把该站伪装成「故障」钉满 TTL，期间所有人（含 cron/MCP
+// 的普通读）都看到同一个假错误，且 SWR 要等过期才重试。
+func TestMessagesCallerCancelNotCached(t *testing.T) {
+	src := &fakeMsgAdapter{
+		fakeAdapter: &fakeAdapter{schema: "nexusphp"},
+		byMailbox:   map[site.MailboxType][]site.Message{site.MailboxInbox: {{Title: "M"}}},
+		proceed:     make(chan struct{}),
+	}
+	ch, _ := newMsgChain(t, src)
+
+	caller, cancel := context.WithCancel(context.Background())
+	done := make(chan []MessageResult, 1)
+	go func() { done <- ch.MessagesAll(caller, site.MailboxInbox, true) }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for atomic.LoadInt32(&src.calls) < 1 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if atomic.LoadInt32(&src.calls) < 1 {
+		close(src.proceed)
+		<-done
+		t.Fatal("前提：回源尚未开始")
+	}
+	cancel()
+	res := <-done
+	if len(res) != 1 || !strings.Contains(res[0].Error, "context canceled") {
+		t.Fatalf("前提：中断应作为本次结果的错误暴露，got %+v", res)
+	}
+	close(src.proceed)
+
+	// 中断没进缓存 → 下一次正常读必须重新回源并拿到真实消息
+	res2 := ch.MessagesAll(context.Background(), site.MailboxInbox, false)
+	if got := atomic.LoadInt32(&src.calls); got != 2 {
+		t.Errorf("调用方中断被钉进负缓存：calls=%d want 2（应重新回源）", got)
+	}
+	if len(res2) != 1 || res2[0].Error != "" || len(res2[0].Messages) != 1 || res2[0].Messages[0].Title != "M" {
+		t.Errorf("正常读应拿到真实消息，got %+v", res2)
+	}
+}
+
+// TestMessagesTimeoutStaysCached 正控：真实抓取超时（DeadlineExceeded）仍按原设计负缓存
+// ——慢站短期不再重试，否则每次请求都被拖到超时。修复不能把这条一起关掉。
+func TestMessagesTimeoutStaysCached(t *testing.T) {
+	src := &fakeMsgAdapter{
+		fakeAdapter: &fakeAdapter{schema: "nexusphp"},
+		byMailbox:   map[site.MailboxType][]site.Message{site.MailboxInbox: {{Title: "M"}}},
+		proceed:     make(chan struct{}),
+	}
+	ch, _ := newMsgChain(t, src)
+	t.Cleanup(func() { close(src.proceed) })
+
+	caller, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	res := ch.MessagesAll(caller, site.MailboxInbox, true)
+	// 断言按语义（「超时」）而不是英文原文：逐条结果面的文案已收口到 errtext
+	// 单一来源（面向用户是中文），本例要守的是「超时必须作为错误暴露 + 仍被负缓存」。
+	if len(res) != 1 || !strings.Contains(res[0].Error, "超时") {
+		t.Fatalf("前提：超时应作为错误暴露，got %+v", res)
+	}
+
+	before := atomic.LoadInt32(&src.calls)
+	res2 := ch.MessagesAll(context.Background(), site.MailboxInbox, false)
+	if got := atomic.LoadInt32(&src.calls); got != before {
+		t.Errorf("超时结果应仍被负缓存（不再回源）：calls %d→%d", before, got)
+	}
+	if len(res2) != 1 || !strings.Contains(res2[0].Error, "超时") {
+		t.Errorf("普通读应回读钉住的超时错误，got %+v", res2)
+	}
+}
+
+// newMsgPanicChain 两站同 schema（消息能力只对 nexusphp 默认开启；混用 mteam 会在派发到适配器
+// 之前就短路，panic 通道压根走不到）：good 正常出消息，crash 的 baseURL 命中 panicHost ⇒
+// FetchMessages 现场 panic。
+func newMsgPanicChain(t *testing.T) *SiteChain {
+	t.Helper()
+	siteOp := oper.NewSiteOper(newChainDB(t), security.NewCrypto("seed"))
+	for _, name := range []string{"good", "crash"} {
+		if _, err := siteOp.Create(oper.SiteInput{
+			Name: name, Platform: "nexusphp", BaseURL: "https://" + name + ".example", IsActive: true,
+		}); err != nil {
+			t.Fatalf("创建站点 %s: %v", name, err)
+		}
+	}
+	mm := module.New()
+	mm.Register(&fakeMsgAdapter{
+		fakeAdapter: &fakeAdapter{schema: "nexusphp"},
+		byMailbox:   map[site.MailboxType][]site.Message{site.MailboxInbox: {{Title: "M"}}},
+		panicHost:   "crash",
+	})
+	return NewSiteChain(NewBase(mm, event.New()), siteOp, site.NewRegistry())
+}
+
+// TestMessagesAllReportsPanickingSite 崩站必须留下一行带站名与 panic 原因的记录。修复前
+// results[i] 停在零值：site_id=0、site_name=""、messages=nil（序列化成 JSON null），
+// 「这站崩了」被渲染成「这站没有消息」，而且前端对 null 取 .length 会崩。
+func TestMessagesAllReportsPanickingSite(t *testing.T) {
+	ch := newMsgPanicChain(t)
+
+	results := ch.MessagesAll(context.Background(), site.MailboxInbox, true)
+	if len(results) != 2 {
+		t.Fatalf("results len=%d want 2", len(results))
+	}
+	var crash *MessageResult
+	for i := range results {
+		if results[i].SiteName == "crash" {
+			crash = &results[i]
+		}
+	}
+	if crash == nil {
+		t.Fatalf("崩站必须带站名出现在结果里，got %+v", results)
+	}
+	if crash.SiteID == 0 {
+		t.Error("崩站行的 site_id 不应为零值")
+	}
+	if crash.Messages == nil {
+		t.Error("崩站行的 messages 必须是空数组（nil 会序列化成 JSON null）")
+	}
+	if !strings.Contains(crash.Error, "消息抓取异常") || !strings.Contains(crash.Error, "malformed message page") {
+		t.Errorf("崩站行要带中文前缀与 panic 载荷（后者证明真的走到了适配器），got error=%q", crash.Error)
+	}
+	for _, r := range results {
+		if r.SiteName == "good" && (r.Error != "" || len(r.Messages) != 1) {
+			t.Errorf("正常站应照常出消息，got %+v", r)
+		}
+	}
+}
+
+// TestMessagesStreamEmitsFrameForPanickingSite 流式（NDJSON/SSE）面同一轴：崩站一帧都不推，
+// 前端只看到「少一个站」，而 listErr 只覆盖清单读失败，帮不上这一路。
+func TestMessagesStreamEmitsFrameForPanickingSite(t *testing.T) {
+	ch := newMsgPanicChain(t)
+
+	var mu sync.Mutex
+	var got []MessageResult
+	if listErr := ch.MessagesStream(context.Background(), site.MailboxInbox, true, func(r MessageResult) {
+		mu.Lock()
+		got = append(got, r)
+		mu.Unlock()
+	}); listErr != "" {
+		t.Fatalf("listErr=%q", listErr)
+	}
+	if len(got) != 2 {
+		t.Fatalf("每站都该有一帧（含崩站），got %d 帧 %+v", len(got), got)
+	}
+	var crash *MessageResult
+	for i := range got {
+		if got[i].SiteName == "crash" {
+			crash = &got[i]
+		}
+	}
+	if crash == nil || !strings.Contains(crash.Error, "消息抓取异常") || !strings.Contains(crash.Error, "malformed message page") {
+		t.Fatalf("崩站帧要带中文前缀与 panic 载荷（后者证明真的走到了适配器），got %+v", got)
 	}
 }

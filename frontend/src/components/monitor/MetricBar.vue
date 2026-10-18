@@ -2,15 +2,19 @@
 import { computed } from 'vue'
 
 // MetricBar — CPU/内存/磁盘等百分比占用条（绿/黄/红三档，超阈值变色）。
+// value 缺失（离线/采集失败快照只带 online）时显示 "-" 而不是 0.0% 绿条——
+// 0 值是「空闲」，无读数不是 0，画成 0% 会把故障渲染成健康。
 const props = defineProps<{
   label: string
-  value?: number // 0-100
+  value?: number // 0-100；undefined = 无读数
   detail?: string // 附加文本（如 "8.0 GB / 16.0 GB"）
   warn?: number // 警戒阈值，默认 80
 }>()
 
+const hasValue = computed(() => props.value !== undefined && !Number.isNaN(props.value))
 const pct = computed(() => Math.min(100, Math.max(0, props.value ?? 0)))
 const level = computed(() => {
+  if (!hasValue.value) return 'none'
   const v = pct.value
   const w = props.warn ?? 80
   if (v >= w + 10) return 'danger'
@@ -23,10 +27,10 @@ const level = computed(() => {
   <div class="metric-bar">
     <div class="mb-head">
       <span class="mb-label">{{ label }}</span>
-      <span class="mb-val" :class="level">{{ pct.toFixed(1) }}%</span>
+      <span class="mb-val" :class="level">{{ hasValue ? pct.toFixed(1) + '%' : '-' }}</span>
     </div>
     <div class="mb-track">
-      <div class="mb-fill" :class="level" :style="{ width: pct + '%' }"></div>
+      <div class="mb-fill" :class="level" :style="{ width: hasValue ? pct + '%' : '0%' }"></div>
     </div>
     <div v-if="detail" class="mb-detail">{{ detail }}</div>
   </div>
@@ -58,6 +62,9 @@ const level = computed(() => {
 }
 .mb-val.danger {
   color: var(--pt-danger);
+}
+.mb-val.none {
+  color: var(--text-muted, #9ca3af);
 }
 .mb-track {
   height: 8px;

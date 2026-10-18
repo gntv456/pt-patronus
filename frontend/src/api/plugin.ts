@@ -218,6 +218,10 @@ export interface PluginMarketIndex {
   app_version?: string
   host_capabilities?: string[]
   plugins: PluginMarketItem[]
+  // 聚合多源的账面：后端取到几个源、哪些源没取到（原因）。没这批字段，「配了 3 个源挂了 1 个」
+  // 与「仓库里就这些插件」在界面上同形。
+  sources_ok?: number
+  sources_failed?: { source: string; error: string }[]
 }
 
 // 百鸟朝凤行（老树洞/蹦蹦新窝共用）。
@@ -283,10 +287,19 @@ export const pluginApi = {
     http
       .post<{ ok: boolean; output: Record<string, any> }>(`/plugins/${id}/action`, { action, input })
       .then((r) => r.data),
-  logs: (pluginId = '', limit = 100) =>
+  logsPage: (pluginId = '', limit = 100) =>
     http
-      .get<{ logs: PluginLog[] }>('/plugins/logs', { params: { plugin_id: pluginId, limit } })
-      .then((r) => r.data.logs ?? []),
+      .get<{ logs: PluginLog[]; total?: number; limit?: number; truncated?: boolean }>('/plugins/logs', {
+        params: { plugin_id: pluginId, limit },
+      })
+      .then((r) => ({
+        logs: r.data.logs ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? limit,
+        // 缺字段按「可能被截断」处理：单页封顶 500，别把一页说成插件的全部日志。
+        truncated: r.data.truncated ?? true,
+      })),
+  logs: (pluginId = '', limit = 100) => pluginApi.logsPage(pluginId, limit).then((p) => p.logs),
   publishEvent: (type = 'plugin.test', data: Record<string, any> = { source: 'web' }) =>
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') => http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),

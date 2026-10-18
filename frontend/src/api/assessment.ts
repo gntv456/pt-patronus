@@ -23,6 +23,15 @@ export interface AssessmentCard {
   error?: string
 }
 
+// AssessStreamSummary 与后端 chain.AssessStreamSummary 对齐：done 帧的账面。
+export interface AssessStreamSummary {
+  sites: number
+  emitted: number
+  failed?: number
+  shortage: number
+  list_error?: string
+}
+
 export const assessmentApi = {
   all: (refresh = false) =>
     http
@@ -30,13 +39,21 @@ export const assessmentApi = {
       // 后端 nil 切片序列化为 JSON null（EXEMPT/未配置时 metrics 为 null），归一为 [] 防模板 .length 崩溃
       .then((r) => (r.data.sites || []).map((c) => ({ ...c, metrics: c.metrics || [] }))),
   // 流式首屏：GET /assessment/stream（SSE），每站完成推一帧 batch（单元素数组），逐站 push。
-  allStream: (refresh = false, onCard: (card: AssessmentCard) => void, signal?: AbortSignal) =>
+  // done 帧带本轮账面（sites/emitted/shortage/list_error）：不给 onDone 调用方就看不到「少了一站」。
+  allStream: (
+    refresh = false,
+    onCard: (card: AssessmentCard) => void,
+    signal?: AbortSignal,
+    onDone?: (sum: AssessStreamSummary) => void,
+  ) =>
     streamSSE(
       `/api/v1/assessment/stream${refresh ? '?refresh=1' : ''}`,
       (event, data) => {
         if (event === 'batch' && data?.results?.length) {
           const card = (data.results as AssessmentCard[])[0]
           onCard({ ...card, metrics: card.metrics || [] })
+        } else if (event === 'done' && onDone) {
+          onDone(data as unknown as AssessStreamSummary)
         }
       },
       signal,

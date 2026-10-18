@@ -134,6 +134,11 @@ func (l *Local) Delete(ctx context.Context, p string) error {
 	if full == l.rootDir {
 		return fmt.Errorf("不允许删除存储根目录")
 	}
+	// os.RemoveAll 对「路径本来就不存在」返回 nil：删一条早被别的程序/另一个标签页
+	// 删掉的记录会被界面报成「已删除」，而那行还留在列表里。先判存在性，让空操作能红。
+	if _, err := os.Lstat(full); err != nil {
+		return err
+	}
 	return os.RemoveAll(full)
 }
 

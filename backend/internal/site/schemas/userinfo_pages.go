@@ -3,7 +3,6 @@ package schemas
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,10 +25,12 @@ func fetchUserInfoPages(ctx context.Context, a *BaseHTMLAdapter, def *site.SiteM
 		if err != nil {
 			continue
 		}
-		if resp.IsCloudflare() {
-			return fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		// CF 盾页与 5xx 错误页都不能当「这一页没数据」跳过：静默 continue 会让该页字段
+		// 恒 0 而整次读取仍报成功，全 0 快照就这么写进 site_stats 并标 connected。
+		if err := guardHTMLResp(resp, baseURL, joinURL(baseURL, path)); err != nil {
+			return err
 		}
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			return site.ErrNotLoggedIn
 		}
 		fields := userInfoPageFields(def, page)

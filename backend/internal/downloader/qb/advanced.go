@@ -15,7 +15,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
-
 // CachedStats 从已同步的 ServerState 直接构造全局速率（不触发新 Sync 请求）。
 // broadcaster 在 aggregate 里已调 ListTorrents→Sync，复用此缓存零额外开销。
 func (c *Client) CachedStats() *downloader.GlobalStats {
@@ -66,13 +65,16 @@ func (c *Client) AddTorrentFile(ctx context.Context, opts downloader.AddOptions)
 	}
 	data := buf.Bytes()
 	ct := w.FormDataContentType()
-	status, _, err := c.doBody(ctx, http.MethodPost, "/api/v2/torrents/add",
+	status, b, err := c.doBody(ctx, http.MethodPost, "/api/v2/torrents/add",
 		func() io.Reader { return bytes.NewReader(data) }, ct)
 	if err != nil {
 		return err
 	}
 	if status != 200 {
 		return fmt.Errorf("add(file) status %d", status)
+	}
+	if addFailed(b) {
+		return fmt.Errorf("add(file) failed: 下载器拒绝添加（重复种子/无效文件/保存路径不存在？）")
 	}
 	return nil
 }
@@ -127,12 +129,29 @@ func (c *Client) ListTags(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
+// checkWriteOK qB 的部分写操作（addTags / removeTags）HTTP 恒 200，成败只在响应正文里回
+// "ok." / "fail."；只看状态码就会把「下载器根本没改」报成成功（标签是刷流/删种/限流的分流依据）。
+// 另外 sid 过期时 qB 会返回 200 + 登录页 HTML，同样必须算失败。空正文（多数写端点）照旧算成功。
+func checkWriteOK(op string, body []byte) error {
+	s := strings.TrimSpace(string(body))
+	switch {
+	case s == "", strings.EqualFold(s, "ok"), strings.EqualFold(s, "ok."):
+		return nil
+	default:
+		preview := s
+		if len(preview) > 80 {
+			preview = preview[:80] + "…"
+		}
+		return fmt.Errorf("%s: 下载器未确认成功，返回 %q（fail.=标签/哈希无效；HTML=会话已过期，需重新登录 WebUI）", op, preview)
+	}
+}
+
 // AddTags 追加标签（tags 逗号分隔）。
 func (c *Client) AddTags(ctx context.Context, hashes []string, tags []string) error {
 	form := url.Values{}
 	form.Set("hashes", joinHashes(hashes))
 	form.Set("tags", strings.Join(tags, ","))
-	status, _, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/addTags",
+	status, body, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/addTags",
 		form.Encode(), "application/x-www-form-urlencoded")
 	if err != nil {
 		return err
@@ -140,7 +159,7 @@ func (c *Client) AddTags(ctx context.Context, hashes []string, tags []string) er
 	if status != 200 {
 		return fmt.Errorf("addTags status %d", status)
 	}
-	return nil
+	return checkWriteOK("addTags", body)
 }
 
 // RemoveTags 移除标签。
@@ -148,7 +167,7 @@ func (c *Client) RemoveTags(ctx context.Context, hashes []string, tags []string)
 	form := url.Values{}
 	form.Set("hashes", joinHashes(hashes))
 	form.Set("tags", strings.Join(tags, ","))
-	status, _, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/removeTags",
+	status, body, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/removeTags",
 		form.Encode(), "application/x-www-form-urlencoded")
 	if err != nil {
 		return err
@@ -156,7 +175,7 @@ func (c *Client) RemoveTags(ctx context.Context, hashes []string, tags []string)
 	if status != 200 {
 		return fmt.Errorf("removeTags status %d", status)
 	}
-	return nil
+	return checkWriteOK("removeTags", body)
 }
 
 // SetTags 覆盖式设置标签。qB 无原生覆盖接口，按 diff 实现：

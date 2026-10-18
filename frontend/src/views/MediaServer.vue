@@ -10,6 +10,7 @@ import {
   type MediaLibrary,
   type HealthReport,
 } from '@/api/mediaServer'
+import { subtitleFixOutcome } from './subtitleFixFeedback'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
@@ -55,8 +56,10 @@ async function fixSubtitles() {
   if (!healthReport.value) return
   fixingSubtitles.value = true
   try {
-    await mediaServerApi.fixSubtitles(healthReport.value)
-    ElMessage.success(t('mediaserver.subtitleFixAccepted'))
+    const r = await mediaServerApi.fixSubtitles(healthReport.value)
+    const o = subtitleFixOutcome(r?.queued ?? 0, healthReport.value.missing_subtitle ?? 0)
+    // queued=0 时不会有后台任务、也不会有通知，必须当场出声（见 subtitleFixOutcome）。
+    ElMessage[o.kind](t(o.key, o.params))
   } catch (e: any) {
     ElMessage.error(e?.message || t('mediaserver.subtitleFixFailed'))
   } finally {

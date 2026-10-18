@@ -1,6 +1,7 @@
 package oper
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -108,5 +109,33 @@ func TestFileStorageRclonePasswordLength(t *testing.T) {
 	}
 	if _, err := op.Create(FileStorageInput{Name: "好", Type: "webdav", URL: "https://a.b/dav", Password: strings.Repeat("x", 512)}); err != nil {
 		t.Fatalf("webdav password =512 应通过: %v", err)
+	}
+}
+
+// TestFileStorageValidateClassifiesAsInvalidInput 回归「拒绝」≠「拒得对」：
+// validateTypeFields / validatePasswordLength 原先不 wrap ErrInvalidInput，
+// handler 的 `errors.Is(err, ErrInvalidInput)` 分支永不命中 → 用户少填一个地址
+// 收到的是 500「服务内部错误，请稍后重试」，看起来像程序坏了而不是自己漏填。
+func TestFileStorageValidateClassifiesAsInvalidInput(t *testing.T) {
+	op := NewFileStorageOper(newFileStorageDB(t), security.NewCrypto("seed"))
+	bad := []struct {
+		name string
+		in   FileStorageInput
+	}{
+		{"webdav 缺地址", FileStorageInput{Name: "w", Type: "webdav"}},
+		{"alist 缺地址", FileStorageInput{Name: "a", Type: "alist"}},
+		{"本机缺根目录", FileStorageInput{Name: "l", Type: "local"}},
+		{"agent 未关联", FileStorageInput{Name: "g", Type: "agent"}},
+		{"未知类型", FileStorageInput{Name: "u", Type: "sftp", URL: "sftp://x"}},
+		{"密码超长", FileStorageInput{Name: "p", Type: "webdav", URL: "https://a.b/dav", Password: strings.Repeat("x", 513)}},
+	}
+	for _, tc := range bad {
+		_, err := op.Create(tc.in)
+		if err == nil {
+			t.Fatalf("%s 应被拒绝", tc.name)
+		}
+		if !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("%s 必须分类为 ErrInvalidInput（否则接口回 500），got %v", tc.name, err)
+		}
 	}
 }

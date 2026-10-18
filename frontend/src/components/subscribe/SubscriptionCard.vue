@@ -68,6 +68,11 @@ const emit = defineEmits<{
         {{ s.type === 'tv' ? t('subscriptions.type.tv') : t('subscriptions.type.movie') }} ·
         {{ t('subscriptions.sourceLabel') }} {{ s.source }}
       </div>
+      <!-- 「检查过」不等于「查得动」：本轮有站读不出来时把原因留在卡片上，
+           否则 3/10 个站失效与「确实没有新命中」是同一句文案。 -->
+      <div v-if="s.last_check_error" class="small" style="color: var(--el-color-warning)">
+        {{ t('subscriptions.checkIssue', { reason: s.last_check_error }) }}
+      </div>
       <div class="res-row">
         <span class="small">{{ t('subscriptions.resFilter') }}</span>
         <el-input

@@ -8,6 +8,9 @@ mixin MonitorDetailOpsMixin on State<MonitorDetailPage> {
   final _api = MonitorApi();
   Metrics? _cur;
   List<MetricSnapshot> _history = const [];
+
+  // 趋势图取数窗口：后端一次只给最近 limit 条，被截断时要在图上说清楚。
+  TrendWindow _trendWindow = const TrendWindow(shown: 0);
   List<MonitorAlert> _alerts = const [];
   bool _loading = false;
   bool _probing = false;
@@ -23,6 +26,7 @@ mixin MonitorDetailOpsMixin on State<MonitorDetailPage> {
     if (t.type == 'camera') return 'onvif';
     return t.host.isEmpty ? 'local' : 'ssh';
   }
+
   bool get _canPower {
     final t = widget.target;
     if (t.type == 'camera') return false;
@@ -34,6 +38,7 @@ mixin MonitorDetailOpsMixin on State<MonitorDetailPage> {
     }
     return false;
   }
+
   Future<void> _initPlayer() async {
     try {
       final p = Player();
@@ -62,9 +67,21 @@ mixin MonitorDetailOpsMixin on State<MonitorDetailPage> {
         _api.alerts(targetId: widget.target.id),
       ]);
       if (!mounted) return;
+      final page = results[1] as MetricsPage;
+      final collected = results[0] as CollectResult;
+      // 采集失败时后端回的是 200 + {ok:false, error:'中文原因'}。从前这里只取
+      // metrics，ok/error 一字不读 ⇒「这次没采到」和「刚采到新数」在页面上同形（#251）。
+      if (!collected.ok) {
+        _toast('本次采集失败：${collected.error ?? "未知原因"}（下方为历史数据）');
+      }
       setState(() {
-        _cur = (results[0] as CollectResult).metrics;
-        _history = results[1] as List<MetricSnapshot>;
+        _cur = collected.metrics;
+        _history = page.snapshots;
+        _trendWindow = TrendWindow(
+          shown: page.snapshots.length,
+          total: page.total,
+          truncated: page.truncated,
+        );
         _alerts = results[2] as List<MonitorAlert>;
         _loading = false;
       });

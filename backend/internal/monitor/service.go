@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/notice"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // Notifier 发送告警通知的回调（由 app.go 适配到 NotificationChain，解耦 monitor 与 chain/notification）。
@@ -21,10 +21,14 @@ type Store interface {
 	Get(id uint) (*models.MonitorTarget, error)
 	Credentials(t *models.MonitorTarget) (Credentials, error)
 	RecordSnapshot(t *models.MonitorTarget, m Metrics, err error) (Metrics, error)
+	// RecordProbe 只更新设备的在线状态（手动探活），不产生度量快照。
+	RecordProbe(t *models.MonitorTarget, online bool, err error) error
 	UpdateRTSPURL(id uint, url string) error
 	CreateAlert(a *models.MonitorAlert) error
 	ResolveOpenAlerts(targetID uint, metric string) error
 	LastOpenAlert(targetID uint, metric string) (*models.MonitorAlert, error)
+	// ActiveSilenceUntil 取该设备该指标仍未到期的静默截止点（没有则 nil）。
+	ActiveSilenceUntil(targetID uint, metric string, now time.Time) (*time.Time, error)
 }
 
 // Service 编排监控采集：单 ticker 扫表 → 到点并发采集（ctx 超时）→ 写快照 → 告警评估。
@@ -38,6 +42,8 @@ type Service struct {
 // targetLocks per-target 串行锁（四轮 P2 修复：pull tick / 手动 CollectNow / agent
 // push 三源可对同一 target 并发 RecordSnapshot——computeNetRate 双双读到同一条 prev
 // 把速率算成 0 或翻倍，同刻双快照污染图表；对标 transfer 的 hashLock 范式）。
+// 后来加的手动探活 ProbeNow 也写目标状态，是这份清单的第四个写者：新增写者时必须一起加锁，
+// 否则清单只是注释里的装饰（RecordProbe 只写状态行，仍与 tick 抢同一目标的状态字段）。
 var targetLocks sync.Map // targetID → *sync.Mutex
 
 // NewService 构造。tick<=0 默认 10s。ns 为站内通知中心（离线告警发通知；nil 跳过）。
@@ -61,7 +67,6 @@ func (s *Service) Run(ctx context.Context) {
 		}
 	}
 }
-
 
 func lockTarget(id uint) func() {
 	v, _ := targetLocks.LoadOrStore(id, &sync.Mutex{})
@@ -170,7 +175,20 @@ func (s *Service) ProbeNow(ctx context.Context, id uint) (bool, error) {
 		return false, ErrUnsupported
 	}
 	creds, _ := s.store.Credentials(t)
-	return c.Probe(ctx, t, creds)
+	online, err := c.Probe(ctx, t, creds)
+	// 手动探活也要落账。从前结果只进一条 3 秒就消失的 toast：设备没启用轮询时
+	// （enabled=false，轮询永远不做）卡片一直显示「未检测」，用户看不出自己点过，
+	// 这一次探测也留不下任何记录（last_error/last_checked_at 全空）。
+	// 但只记状态、不写度量快照：探活没有 CPU/内存/累计字节，落成 Online=true 的空快照
+	// 既凭空造出一个 0% 读数，又会顶掉 computeNetRate 的累计基准，下次采集的速率爆表。
+	// 与轮询/CollectNow/agent push 同一把 per-target 锁（那三源的注释列了写者清单，
+	// 手动探活是后加入的第四个写者，漏加就会与到点的 tick 同时读写同一条 prev）。
+	unlock := lockTarget(t.ID)
+	defer unlock()
+	if e := s.store.RecordProbe(t, online, err); e != nil {
+		slog.Warn("manual probe not persisted", "id", id, "err", e)
+	}
+	return online, err
 }
 
 // IngestAgentReport 接收 agent push 上报的指标，复用 pull 链路的存储+告警（绕过 Collector）。

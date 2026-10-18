@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
@@ -11,11 +12,11 @@ import (
 // —— 分类 / 标签 ——
 
 func (c *DownloadChain) SetCategory(ctx context.Context, id uint, hashes []string, category string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetCategory(ctx, hashes, category)
+	return d.SetCategory(ctx, hs, category)
 }
 
 func (c *DownloadChain) ListCategories(ctx context.Context, id uint) ([]string, error) {
@@ -35,63 +36,72 @@ func (c *DownloadChain) ListTags(ctx context.Context, id uint) ([]string, error)
 }
 
 func (c *DownloadChain) SetTags(ctx context.Context, id uint, hashes []string, tags []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetTags(ctx, hashes, tags)
+	if err := requireValues("标签", tags); err != nil {
+		return err
+	}
+	return d.SetTags(ctx, hs, tags)
 }
 
 func (c *DownloadChain) AddTags(ctx context.Context, id uint, hashes []string, tags []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.AddTags(ctx, hashes, tags)
+	if err := requireValues("标签", tags); err != nil {
+		return err
+	}
+	return d.AddTags(ctx, hs, tags)
 }
 
 func (c *DownloadChain) RemoveTags(ctx context.Context, id uint, hashes []string, tags []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.RemoveTags(ctx, hashes, tags)
+	if err := requireValues("标签", tags); err != nil {
+		return err
+	}
+	return d.RemoveTags(ctx, hs, tags)
 }
 
 // —— 生命周期 ——
 
 func (c *DownloadChain) Recheck(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.Recheck(ctx, hashes)
+	return d.Recheck(ctx, hs)
 }
 
 func (c *DownloadChain) Reannounce(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.Reannounce(ctx, hashes)
+	return d.Reannounce(ctx, hs)
 }
 
 func (c *DownloadChain) SetLocation(ctx context.Context, id uint, hashes []string, location string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetLocation(ctx, hashes, location)
+	return d.SetLocation(ctx, hs, location)
 }
 
 // —— 限速 ——
 
 func (c *DownloadChain) SetLimits(ctx context.Context, id uint, hashes []string, limits downloader.Limits) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetLimits(ctx, hashes, limits)
+	return d.SetLimits(ctx, hs, limits)
 }
 
 func (c *DownloadChain) GetSpeedLimits(ctx context.Context, id uint) (*downloader.Limits, error) {
@@ -139,6 +149,12 @@ func (c *DownloadChain) ListTrackers(ctx context.Context, id uint, hash string) 
 }
 
 func (c *DownloadChain) AddTrackers(ctx context.Context, id uint, hash string, urls []string) error {
+	if strings.TrimSpace(hash) == "" {
+		return ErrEmptyHashes
+	}
+	if err := requireValues("Tracker 地址", urls); err != nil {
+		return err
+	}
 	d, err := c.mgr.Get(ctx, id)
 	if err != nil {
 		return err
@@ -147,6 +163,12 @@ func (c *DownloadChain) AddTrackers(ctx context.Context, id uint, hash string, u
 }
 
 func (c *DownloadChain) RemoveTrackers(ctx context.Context, id uint, hash string, urls []string) error {
+	if strings.TrimSpace(hash) == "" {
+		return ErrEmptyHashes
+	}
+	if err := requireValues("Tracker 地址", urls); err != nil {
+		return err
+	}
 	d, err := c.mgr.Get(ctx, id)
 	if err != nil {
 		return err
@@ -157,43 +179,43 @@ func (c *DownloadChain) RemoveTrackers(ctx context.Context, id uint, hash string
 // —— 做种限制 / 队列 / 强制 / 顺序 / Peers / 分类增删（P2）——
 
 func (c *DownloadChain) SetShareLimits(ctx context.Context, id uint, hashes []string, limits downloader.ShareLimits) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetShareLimits(ctx, hashes, limits)
+	return d.SetShareLimits(ctx, hs, limits)
 }
 
 func (c *DownloadChain) SetQueuePriority(ctx context.Context, id uint, hashes []string, action string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetQueuePriority(ctx, hashes, action)
+	return d.SetQueuePriority(ctx, hs, action)
 }
 
 func (c *DownloadChain) SetForceStart(ctx context.Context, id uint, hashes []string, enable bool) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.SetForceStart(ctx, hashes, enable)
+	return d.SetForceStart(ctx, hs, enable)
 }
 
 func (c *DownloadChain) ToggleSequentialDownload(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.ToggleSequentialDownload(ctx, hashes)
+	return d.ToggleSequentialDownload(ctx, hs)
 }
 
 func (c *DownloadChain) ToggleFirstLastPiece(ctx context.Context, id uint, hashes []string) error {
-	d, err := c.mgr.Get(ctx, id)
+	d, hs, err := c.clientForHashes(ctx, id, hashes)
 	if err != nil {
 		return err
 	}
-	return d.ToggleFirstLastPiece(ctx, hashes)
+	return d.ToggleFirstLastPiece(ctx, hs)
 }
 
 func (c *DownloadChain) ListPeers(ctx context.Context, id uint, hash string) ([]downloader.Peer, error) {
@@ -221,6 +243,11 @@ func (c *DownloadChain) EditCategory(ctx context.Context, id uint, name, savePat
 }
 
 func (c *DownloadChain) DeleteCategories(ctx context.Context, id uint, names []string) error {
+	// 空列表在 qB 侧只是 categories=""（删不掉任何东西、返回 200），不是「全部删除」——
+	// 但上层照样报「已删除分类」，仍是空操作报成功。
+	if err := requireValues("分类", names); err != nil {
+		return err
+	}
 	d, err := c.mgr.Get(ctx, id)
 	if err != nil {
 		return err

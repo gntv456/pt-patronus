@@ -53,13 +53,21 @@ const status = computed(() => {
   if (props.target.last_online) return { cls: 'online', text: t('dc.online') }
   return { cls: 'offline', text: t('dc.offline') }
 })
+// 快照里没有可展示指标时按「无数据」渲染（走 dc-nodata 显示 last_error）：
+// 采集失败落 {"online":false}、手动探活只落 {"online":true}——以前两者都被当成有数据，
+// CPU/内存条画成绿色 0.0%，还把真正的失败原因盖掉了。
+const usable = computed<Metrics | null>(() => {
+  const m = props.metrics
+  if (!m || m.online === false) return null
+  return Object.keys(m).some((k) => k !== 'online') ? m : null
+})
 // 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
 const diskStats = computed(() => {
   const seen = new Set<number>()
   const devs = new Set<string>()
   let t = 0,
     u = 0
-  for (const d of props.metrics?.disks ?? []) {
+  for (const d of usable.value?.disks ?? []) {
     if (d.total <= 0 || devs.has(d.device || '') || seen.has(d.total)) continue
     devs.add(d.device || '')
     seen.add(d.total)
@@ -94,7 +102,7 @@ const canTerminal = computed(
     props.target.type === 'host' &&
     (props.target.protocol === 'ssh' || (!props.target.protocol && !!props.target.host)),
 )
-const extra = computed<Record<string, unknown>>(() => props.metrics?.extra || {})
+const extra = computed<Record<string, unknown>>(() => usable.value?.extra || {})
 
 function extraText(key: string, fallback = '-'): string {
   const value = extra.value[key]
@@ -154,33 +162,33 @@ const serviceRows = computed(() => {
     </div>
 
     <div class="dc-body">
-      <template v-if="isServiceMonitor && metrics">
+      <template v-if="isServiceMonitor && usable">
         <div v-for="row in serviceRows" :key="row.label" class="dc-info">
           <span>{{ row.label }}</span
           >{{ row.value }}
         </div>
       </template>
-      <template v-else-if="target.type !== 'camera' && metrics">
-        <MetricBar label="CPU" :value="metrics.cpu_usage" />
+      <template v-else-if="target.type !== 'camera' && usable">
+        <MetricBar label="CPU" :value="usable.cpu_usage" />
         <MetricBar
           :label="t('dc.memory')"
-          :value="metrics.mem_usage"
-          :detail="metrics.mem_total ? `${fmtBytes(metrics.mem_used ?? 0)} / ${fmtBytes(metrics.mem_total)}` : ''"
+          :value="usable.mem_usage"
+          :detail="usable.mem_total ? `${fmtBytes(usable.mem_used ?? 0)} / ${fmtBytes(usable.mem_total)}` : ''"
         />
         <MetricBar v-if="diskUsage !== undefined" :label="t('dc.disk')" :value="diskUsage" :detail="diskDetail" />
       </template>
-      <template v-else-if="target.type === 'camera' && metrics?.device_info">
+      <template v-else-if="target.type === 'camera' && usable?.device_info">
         <div class="dc-info">
           <span>{{ t('dc.vendor') }}</span
-          >{{ metrics.device_info.manufacturer || '-' }}
+          >{{ usable.device_info.manufacturer || '-' }}
         </div>
         <div class="dc-info">
           <span>{{ t('dc.model') }}</span
-          >{{ metrics.device_info.model || '-' }}
+          >{{ usable.device_info.model || '-' }}
         </div>
         <div class="dc-info">
           <span>{{ t('dc.firmware') }}</span
-          >{{ metrics.device_info.firmware || '-' }}
+          >{{ usable.device_info.firmware || '-' }}
         </div>
       </template>
       <div v-else class="dc-nodata">
@@ -190,8 +198,8 @@ const serviceRows = computed(() => {
         }}</el-button>
       </div>
 
-      <div v-if="metrics?.net_rx_rate !== undefined && target.type !== 'camera'" class="dc-net">
-        ↓ {{ fmtSpeed(metrics.net_rx_rate ?? 0) }} · ↑ {{ fmtSpeed(metrics.net_tx_rate ?? 0) }}
+      <div v-if="usable?.net_rx_rate !== undefined && target.type !== 'camera'" class="dc-net">
+        ↓ {{ fmtSpeed(usable.net_rx_rate ?? 0) }} · ↑ {{ fmtSpeed(usable.net_tx_rate ?? 0) }}
       </div>
     </div>
 

@@ -109,24 +109,30 @@ export const dockerApi = {
       .then((r) => r.data),
   removeImage: (targetId: number, ref: string, confirmRisk = false) =>
     http
-      .post<DockerOpsAck>(
-        `/ops/docker/${targetId}/images/remove`,
-        { confirm_risk: confirmRisk },
-        { params: { ref } },
-      )
+      .post<DockerOpsAck>(`/ops/docker/${targetId}/images/remove`, { confirm_risk: confirmRisk }, { params: { ref } })
       .then((r) => r.data),
+  // compose 启动/停止是分钟级动作（拉镜像），且服务端已把执行上下文与客户端断开解绑
+  // （detachedAction：客户端断了命令照样跑完）。默认 15s 超时会在成功前就先报「请求超时」，
+  // 所以按本仓长动作惯例关掉客户端上限，让界面等到真实结果。
   composeUp: (targetId: number, path: string) =>
-    http.post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/up`, { path }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/up`, { path }, { timeout: 0 })
+      .then((r) => r.data),
   composeDown: (targetId: number, path: string, confirmRisk = false) =>
     http
-      .post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/down`, {
-        path,
-        confirm_risk: confirmRisk,
-      })
+      .post<{ ok: boolean; output: string }>(
+        `/ops/docker/${targetId}/compose/down`,
+        {
+          path,
+          confirm_risk: confirmRisk,
+        },
+        { timeout: 0 },
+      )
       .then((r) => r.data),
 
   // === 本机模式（Docker Engine API / docker.sock，无需 SSH）===
-  localStatus: () => http.get<{ available: boolean }>('/ops/docker/local/status').then((r) => r.data),
+  localStatus: () =>
+    http.get<{ available: boolean; endpoint?: string; error?: string }>('/ops/docker/local/status').then((r) => r.data),
   localList: () => http.get<DockerListResp>('/ops/docker/local/list').then((r) => r.data),
   localStats: () => http.get<{ stats: DockerStatsRow[] }>('/ops/docker/local/stats').then((r) => r.data),
   localInspect: (name: string) =>
@@ -152,15 +158,22 @@ export const dockerApi = {
       .then((r) => r.data),
 
   // === 本机扩展：拉取镜像 / 清理 / 卷网络管理 ===
+  // pull/prune 是分钟级动作，且服务端已把执行与客户端断开解绑（detachedAction）；
+  // 默认 15s 超时会在成功之前先报「请求超时」，按本仓长动作惯例关掉上限。
   localPull: (ref: string) =>
     http
       .post<{ ok: boolean; progress?: string; error?: string }>('/ops/docker/local/images/pull', null, {
         params: { ref },
+        timeout: 0,
       })
       .then((r) => r.data),
   localPrune: (type: 'container' | 'image' | 'volume' | 'network') =>
     http
-      .post<{ ok: boolean; result?: Record<string, unknown> }>('/ops/docker/local/prune', { confirm_risk: true }, { params: { type } })
+      .post<{ ok: boolean; result?: Record<string, unknown> }>(
+        '/ops/docker/local/prune',
+        { confirm_risk: true },
+        { params: { type }, timeout: 0 },
+      )
       .then((r) => r.data),
   localVolumeCreate: (name: string, driver?: string) =>
     http.post<DockerOpsAck>('/ops/docker/local/volumes', { name, driver }).then((r) => r.data),
@@ -179,20 +192,33 @@ export const dockerApi = {
   localComposeCheck: () =>
     http.get<{ available: boolean; version?: string }>('/ops/docker/local/compose/check').then((r) => r.data),
   localComposeUp: (content: string, name?: string) =>
-    http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/up', { content, name }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/up', { content, name }, { timeout: 0 })
+      .then((r) => r.data),
   localComposeDown: (content: string, name?: string) =>
     http
-      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/down', { content, name, confirm_risk: true })
+      .post<{ ok: boolean; output?: string }>(
+        '/ops/docker/local/compose/down',
+        { content, name, confirm_risk: true },
+        { timeout: 0 },
+      )
       .then((r) => r.data),
+  // validate 的服务端预算是 30s，客户端不该在 15s 就先报超时。
   localComposeValidate: (content: string, name?: string) =>
     http
-      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/validate', { content, name })
+      .post<{ ok: boolean; output?: string }>(
+        '/ops/docker/local/compose/validate',
+        { content, name },
+        { timeout: 30000 },
+      )
       .then((r) => r.data),
 
   // === Compose 项目扫描（挂载宿主目录）===
   localProjects: () =>
     http
-      .get<{ projects: any[]; scan_dir: string; available: boolean }>('/ops/docker/local/compose/projects')
+      .get<{ projects: any[]; scan_dir: string; available: boolean; scan_error?: string }>(
+        '/ops/docker/local/compose/projects',
+      )
       .then((r) => r.data),
   localProjectDetail: (dir: string) =>
     http
@@ -207,11 +233,15 @@ export const dockerApi = {
       .then((r) => r.data),
   localProjectAction: (dir: string, action: 'up' | 'down' | 'restart' | 'pull') =>
     http
-      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/project/action', {
-        dir,
-        action,
-        confirm_risk: true,
-      })
+      .post<{ ok: boolean; output?: string }>(
+        '/ops/docker/local/compose/project/action',
+        {
+          dir,
+          action,
+          confirm_risk: true,
+        },
+        { timeout: 0 },
+      )
       .then((r) => r.data),
 
   // === 创建容器 + exec 终端 ===
@@ -230,7 +260,12 @@ export const dockerApi = {
     network_mode?: string
   }) =>
     http
-      .post<{ ok: boolean; id?: string; error?: string }>('/ops/docker/local/containers/create', data)
+      // started/start_error 只在勾了 auto_start 时出现：容器建好但没起来，
+      // 过去后端把 start 的错误丢掉，界面一律报「创建成功」。
+      .post<{ ok: boolean; id?: string; error?: string; started?: boolean; start_error?: string }>(
+        '/ops/docker/local/containers/create',
+        data,
+      )
       .then((r) => r.data),
   // exec 终端的 WebSocket URL（前端自行 new WebSocket）
   localExecURL: (name: string, cmd = '/bin/sh') => {

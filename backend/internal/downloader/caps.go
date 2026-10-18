@@ -90,6 +90,13 @@ var typeCaps = map[string]Caps{
 	},
 }
 
+// HasType 报告下载器类型是否已登记（建/改下载器时的入口校验用，防 typo 建成一个
+// 什么也做不了、caps 走 minimalCaps 兜底的哑记录）。
+func HasType(typ string) bool {
+	_, ok := typeCaps[typ]
+	return ok
+}
+
 // Capabilities 返回某下载器类型的能力位；未登记返回 minimalCaps（保守兜底）。
 func Capabilities(typ string) Caps {
 	if c, ok := typeCaps[typ]; ok {

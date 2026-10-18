@@ -122,6 +122,7 @@ type SaveptSummary struct {
 	Healthy   int `json:"healthy"`
 	Critical  int `json:"critical"`
 	Closed    int `json:"closed"`
+	Unknown   int `json:"unknown"`   // 探测不明（连通性探测失败/上游无状态）；保证四项相加=总数
 	Bound     int `json:"bound"`     // 已绑定（本地存在）
 	Available int `json:"available"` // 可添加（名称匹配但本地未配）
 	// 细分统计（喂前端 ICU 头部生命体征）

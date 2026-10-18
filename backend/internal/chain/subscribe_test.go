@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/media"
+	"github.com/hxpt/ptpatronus/internal/notice"
 )
 
 type subscriptionPosterSource struct {
@@ -34,13 +36,13 @@ func TestRatingGate(t *testing.T) {
 	subCh := &SubscribeChain{mediaCh: lowCh}
 
 	// 订阅开启评分闸门 + 低分 → 拦截。
-	held, reason := subCh.ratingGate(context.Background(), &models.Subscription{Title: "Bad"}, true)
+	held, reason, _ := subCh.ratingGate(context.Background(), &models.Subscription{Title: "Bad"}, true)
 	if !held || reason == "" {
 		t.Fatalf("expected held with reason, got held=%v reason=%q", held, reason)
 	}
 
 	// 订阅未开启评分闸门 → 放行（全局默认关）。
-	held, _ = subCh.ratingGate(context.Background(), &models.Subscription{Title: "Bad"}, false)
+	held, _, _ = subCh.ratingGate(context.Background(), &models.Subscription{Title: "Bad"}, false)
 	if held {
 		t.Fatal("expected not held when guard disabled")
 	}
@@ -50,14 +52,14 @@ func TestRatingGate(t *testing.T) {
 		{Source: "tmdb", Title: "Good", Rating: 8.5, VoteCount: 5000, ReleaseDate: "2010-01-01"},
 	}})
 	highSub := &SubscribeChain{mediaCh: highCh}
-	held, _ = highSub.ratingGate(context.Background(), &models.Subscription{Title: "Good"}, true)
+	held, _, _ = highSub.ratingGate(context.Background(), &models.Subscription{Title: "Good"}, true)
 	if held {
 		t.Fatal("expected not held for high-rated media")
 	}
 
 	// 未装配 mediaCh → 始终放行（fail-open / 置灰）。
 	noneSub := &SubscribeChain{mediaCh: nil}
-	held, _ = noneSub.ratingGate(context.Background(), &models.Subscription{Title: "X"}, true)
+	held, _, _ = noneSub.ratingGate(context.Background(), &models.Subscription{Title: "X"}, true)
 	if held {
 		t.Fatal("expected not held when mediaCh is nil")
 	}
@@ -164,5 +166,48 @@ func TestCheckSerializedPerSubscription(t *testing.T) {
 
 	if maxInFlight > 1 {
 		t.Errorf("expected serialized Check (max in-flight 1), got %d", maxInFlight)
+	}
+}
+
+// TestSubscribeListFailureNotifies：订阅 cron CheckAll 读订阅列表失败时，
+// 不得静默返回（渲染成「没有要检查的订阅」）——必须发站内通知留痕，且当天去重。
+func TestSubscribeListFailureNotifies(t *testing.T) {
+	db := newChainDB(t)
+	subOp := oper.NewSubscriptionOper(db)
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+	if _, e := subOp.ListActive(); e == nil {
+		t.Fatal("前提不成立：关闭 DB 后 ListActive 仍成功")
+	}
+
+	noticeDB := newChainDB(t)
+	if err := noticeDB.AutoMigrate(&models.Notice{}); err != nil {
+		t.Fatal(err)
+	}
+	ns := notice.NewService(oper.NewNoticeOper(noticeDB), nil, nil)
+	ch := &SubscribeChain{op: subOp, notice: ns}
+
+	ch.CheckAll(context.Background())
+	ch.CheckAll(context.Background()) // 第二轮验证当天去重
+
+	ns2 := oper.NewNoticeOper(noticeDB)
+	got, err := ns2.List(false, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, x := range got {
+		if x.Source == notice.SourceSubscribeListFail {
+			n++
+			if x.Level != "warning" {
+				t.Errorf("通知级别应为 warning，got %q", x.Level)
+			}
+		}
+	}
+	if n == 0 {
+		t.Error("ListActive 失败应发 subscribe_list_fail 站内通知，实际一条没有（假绿）")
+	}
+	if n > 1 {
+		t.Errorf("同天多轮失败应去重为 1 条，实际 %d 条", n)
 	}
 }

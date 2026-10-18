@@ -8,11 +8,13 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 
-	"strings")
+	"strings"
+)
 
 // checkWithDefaults 检查单个订阅（用传入全局默认计算有效设置）：跨站搜 → 分辨率过滤 → 去重 → 推送 → 通知。
 func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subscription, gd GlobalDefaults) (int, error) {
@@ -23,7 +25,7 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		if dlID == 0 {
 			// 持续型状态：稳定 Key 当天去重（此前每轮 cron 每订阅刷一条，淹没真实告警）。
 			c.noticeStable(ctx, sub, "no-downloader", "订阅检查："+sub.Title, "未配置默认下载器，已跳过自动下载", "warning")
-			if err := c.op.MarkChecked(sub.ID); err != nil {
+			if err := c.op.MarkCheckedWithResult(sub.ID, "未配置默认下载器，本轮没有搜索"); err != nil {
 				slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 			}
 			return 0, fmt.Errorf("no default downloader")
@@ -31,24 +33,36 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 	}
 
 	// SiteIDs 有效值（订阅空→全局默认；都空→全部活跃站，SearchSites 已处理）。
-	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, eff.SiteIDs)
+	results, err := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, eff.SiteIDs)
+	if err != nil {
+		if err := c.op.MarkCheckedWithResult(sub.ID, "跨站搜索失败："+errtext.Text(err)); err != nil {
+			slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
+		}
+		return 0, fmt.Errorf("跨站搜索失败: %w", err)
+	}
 
 	// 多评分低分保护：闸门开启则命中种子前先查聚合评分；未通过则本轮整体跳过 + 通知。
 	// 评分查询失败 fail-open（不阻断下载——外网评分服务故障不应让订阅停摆）。
-	if held, reason := c.ratingGate(ctx, sub, eff.EnableRatingGuard); held {
+	held, reason, gateSkip := c.ratingGate(ctx, sub, eff.EnableRatingGuard)
+	if held {
 		// 持续型状态（闸门未通过会连续多轮 held）：稳定 Key 当天去重。
 		c.noticeStable(ctx, sub, "rating-guard", "订阅评分保护："+sub.Title,
 			fmt.Sprintf("未通过质量闸门：%s（本轮跳过）", reason), "warning")
-		if err := c.op.MarkChecked(sub.ID); err != nil {
+		if err := c.op.MarkCheckedWithResult(sub.ID, fmt.Sprintf("未通过质量闸门：%s（本轮跳过）", reason)); err != nil {
 			slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 		}
 		return 0, nil
 	}
 
 	// 候选种子扁平化（带 SiteName），供规则引擎统一排序。
+	// 逐站失败从前是 `if sr.Error != "" { continue }` 一声不响：10 个站里 3 个 cookie 失效时，
+	// 界面上「上次检查 <时间>」照常刷新，用户读到的是「确实没有新命中」。
+	// 现在把失败站点记进本轮账面（卡片 + 当天去重通知），并继续用可读的那些站的结果。
 	var all []site.Torrent
+	var siteFails []string
 	for _, sr := range results {
 		if sr.Error != "" {
+			siteFails = append(siteFails, fmt.Sprintf("%s（%s）", sr.SiteName, clipRunes(sr.Error, 40)))
 			continue
 		}
 		for _, t := range sr.Torrents {
@@ -61,6 +75,29 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			t.SiteID = sr.SiteID
 			all = append(all, t)
 		}
+	}
+	checkErr := ""
+	// 闸门开着但本轮没判（外网评分故障 / 评分模块未装配）：放行是设计，但「没被校验过」
+	// 必须进本轮账面，否则低分片被推走时卡片与通知看起来跟「评分合格」一模一样。
+	if gateSkip != "" {
+		checkErr = gateSkip
+		c.noticeStable(ctx, sub, "rating-guard-skipped", "订阅低分保护未生效："+sub.Title,
+			gateSkip+"（本轮照常推送，等评分恢复后才会真正拦）", "warning")
+	}
+	if len(siteFails) > 0 {
+		shown := siteFails
+		if len(shown) > 3 {
+			shown = append(append([]string{}, shown[:3]...), "…")
+		}
+		siteNote := fmt.Sprintf("%d/%d 个站本轮读不出来：%s", len(siteFails), len(results), strings.Join(shown, "、"))
+		if checkErr != "" {
+			checkErr += "；" + siteNote
+		} else {
+			checkErr = siteNote
+		}
+		// 持续型状态（站坏了会连续多轮都读不出来）：稳定 Key 当天去重，不刷屏。
+		c.noticeStable(ctx, sub, "site-unavailable", "订阅检查："+sub.Title,
+			checkErr+"，本轮只用上了其余站的结果", "warning")
 	}
 	// 标题匹配确认：对标 MP match_torrent。用订阅媒体别名集（Title+OriginalTitle+Names）精确匹配，
 	// 接受集覆盖种子语言时收紧（过滤无关），无该语言别名时放行（不误杀跨语言合法命中）。
@@ -144,13 +181,24 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 	// 推送（按 PriOrder 降序，去重 + 洗版门控 + 推送 + 通知）。
 	pushed := 0
 	epPri := loadEpisodePriority(sub.EpisodePriority) // 剧集洗版按集进度（非洗版/电影不使用）
+	// 电影洗版的「是否已有基线」判据：未配规则组时候选 PriOrder 全为 0，没有画质信息可比，
+	// 只能靠「推过没有」决定要不要放行首版。查询失败按「已推过」处理——宁可少推也不重复下载
+	// （与下方 HitExists 出错即跳过同一策略）。
+	movieHasBaseline := true
+	if eff.BestVersion && sub.Type == "movie" {
+		if ok, err := c.op.HasAnyHit(sub.ID); err == nil {
+			movieHasBaseline = ok
+		} else {
+			slog.Warn("subscribe HasAnyHit failed, assume baseline present", "sub", sub.ID, "err", err)
+		}
+	}
 	for _, cand := range ranked {
 		t, pri := cand.t, cand.pri
 		// 洗版门控：候选画质须严格优于已记录最优才推送（避免重复下同级/更低版）。
 		if eff.BestVersion {
 			if sub.Type == "movie" {
-				if pri <= sub.CurrentPriority {
-					continue // 未更优
+				if !interestedMovie(sub.CurrentPriority, pri, movieHasBaseline) {
+					continue
 				}
 			} else {
 				keys, seasonPack := episodeKeys(t.Title)
@@ -173,7 +221,7 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			URL:      t.DownloadURL,
 			Category: "subscribe",
 			// 二轮 P3-3：订阅标题含逗号时 qb 按逗号拆出碎片脏标签——入列前清洗。
-			Tags: sanitizeTorrentTags("subscribe", sub.Title, transfer.EncodeMediaTag(sub.Source, sub.SourceID, sub.Type)),
+			Tags:   sanitizeTorrentTags("subscribe", sub.Title, transfer.EncodeMediaTag(sub.Source, sub.SourceID, sub.Type)),
 			SiteID: t.SiteID,
 		}
 		if sub.SavePath != "" {
@@ -205,6 +253,9 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		if eff.BestVersion {
 			if sub.Type == "movie" {
 				sub.CurrentPriority = pri
+				// 首版落地后基线即成立：本轮及后续候选必须有画质信息且严格更优才再推
+				// （否则无规则组时同一轮的多个站点会被一起放行，一次下好几份）。
+				movieHasBaseline = true
 			} else {
 				keys, seasonPack := episodeKeys(t.Title)
 				updateEpisodePriority(epPri, keys, seasonPack, pri)
@@ -212,7 +263,7 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		}
 	}
 
-	if err := c.op.MarkChecked(sub.ID); err != nil {
+	if err := c.op.MarkCheckedWithResult(sub.ID, checkErr); err != nil {
 		slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 	}
 	// 洗版进度持久化 + 完成判定。
@@ -260,4 +311,13 @@ func isDuplicateTorrentErr(err error) bool {
 	return strings.Contains(msg, "duplicate") ||
 		strings.Contains(msg, "already exists") ||
 		strings.Contains(msg, "already in session")
+}
+
+// clipRunes 按 rune 截断（订阅卡片那一行要短；英文按字节截会切出半个字）。
+func clipRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
 }

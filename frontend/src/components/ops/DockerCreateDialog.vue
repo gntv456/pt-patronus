@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi } from '@/api/docker'
+import { createNotice } from '@/utils/dockerCreateFeedback'
 
 const { t } = useI18n()
 const props = defineProps<{ visible: boolean }>()
@@ -75,11 +76,14 @@ async function submit() {
       restart_policy: form.value.restart_policy,
       auto_start: form.value.auto_start,
     })
-    if (res.ok) {
-      ElMessage.success(t('dw.created'))
+    const n = createNotice(res, t)
+    if (n.kind === 'warning') ElMessage.warning(n.msg)
+    else if (n.kind === 'error') ElMessage.error(n.msg)
+    else ElMessage.success(n.msg)
+    if (n.close) {
       emit('update:visible', false)
       emit('created')
-    } else ElMessage.error(res.error || t('dw.createFailed'))
+    }
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {

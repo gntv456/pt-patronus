@@ -1,9 +1,10 @@
-﻿package monitor
+package monitor
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -39,14 +40,22 @@ func (c NASCollector) Power(ctx context.Context, t *models.MonitorTarget, creds 
 	if !isSupportedPowerAction(action) {
 		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
 	}
+	var perr error
 	switch strings.ToLower(t.Vendor) {
 	case "truenas", "freenas":
-		return powerTrueNAS(ctx, c.hc, t, creds, action)
+		perr = powerTrueNAS(ctx, c.hc, t, creds, action)
 	case "snmp":
 		return fmt.Errorf("%w for nas/snmp", ErrUnsupportedPowerAction)
 	default:
-		return powerSynology(ctx, c.hc, t, creds, action)
+		perr = powerSynology(ctx, c.hc, t, creds, action)
 	}
+	// NAS 的 reboot/shutdown 一生效就会掐断正在等回执的 HTTP 连接，
+	// 那类传输层错误按「已下发」处理（判据与 SSH 通道共用一份）。
+	if perr != nil && powerDispatchConfirmed(perr) {
+		slog.Info("nas power action lost the reply (expected)", "target", t.Name, "action", action, "err", perr)
+		return nil
+	}
+	return perr
 }
 
 func (c NASCollector) collect(ctx context.Context, t *models.MonitorTarget, creds Credentials) (Metrics, error) {

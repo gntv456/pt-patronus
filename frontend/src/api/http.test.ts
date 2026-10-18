@@ -171,3 +171,42 @@ describe('鉴权失效：清 token + 回登录', () => {
     expect(window.location.pathname).toBe('/login')
   })
 })
+
+// #305：responseType:'blob' 的端点失败时 body 也是 Blob。
+// 直接读 data.code / data.message 永远是 undefined，后端写好的中文原因必然被
+// 按状态码兜底的泛化文案顶掉（封面拼图、字幕下载两个端点每次都中招）。
+const COVER_FAIL_MSG = '封面一张都没取到：15 条里 0 条有图片地址'
+
+function blobOf(text: string, type: string): Blob {
+  return new Blob([text], { type })
+}
+
+describe('blob 端点的错误信封仍能翻成人话（#305）', () => {
+  it('Blob 里的 code/message 被解出来，err.message 用后端那句', async () => {
+    const env = { code: 'media_cover_no_image', error: COVER_FAIL_MSG, message: COVER_FAIL_MSG }
+    rejectWith(axiosErr({ status: 502, data: blobOf(JSON.stringify(env), 'application/json') }))
+    const e: any = await http.get('/mediaserver/1/cover').then(() => null, (err: any) => err)
+    expect(e.code).toBe('media_cover_no_image')
+    expect(e.message).toBe(COVER_FAIL_MSG)
+  })
+
+  it('正控：非 JSON 的 Blob（反代 HTML 错误页）不塞进提示，仍走状态码兜底', async () => {
+    rejectWith(axiosErr({ status: 502, data: blobOf('<html><body>502 Bad Gateway nginx</body></html>', 'text/html') }))
+    const e: any = await http.get('/mediaserver/1/cover').then(() => null, (err: any) => err)
+    expect(e.code).toBeUndefined()
+    expect(e.message).not.toContain('nginx')
+    expect(e.message).toBe('服务暂时不可用，请稍后重试')
+  })
+
+  it('正控：普通 JSON 信封的读取路径没被改坏', async () => {
+    rejectWith(
+      axiosErr({
+        status: 409,
+        data: { code: 'plugin_permissions_pending', message: '启用前需要先确认这个插件声明的权限' },
+      }),
+    )
+    const e: any = await http.post('/plugins/x/enable').then(() => null, (err: any) => err)
+    expect(e.code).toBe('plugin_permissions_pending')
+    expect(e.message).toBe('启用前需要先确认这个插件声明的权限')
+  })
+})

@@ -5,6 +5,8 @@ import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 
+import 'ent_read_fail.dart';
+
 part 'bigsmallopsmixin.dart';
 part 'bigsmall_widgets.dart';
 

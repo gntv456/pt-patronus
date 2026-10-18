@@ -12,15 +12,43 @@ import (
 	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
+	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/hxcard"
 	"github.com/hxpt/ptpatronus/internal/mcp"
+	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/plugins"
+	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/version"
 )
+
+// wireSubtitleStack 字幕链装配：多源 Provider（ASSRT/OpenSubtitles API + SubHD/Zimuku 抓取）
+// → SubtitleChain → 健康中心一键补齐注入 → 字幕自动化服务启动。从 New() 拆出，逻辑零变化。
+// 返回的 error 由调用方负责 wsCancel() 收尾。
+func wireSubtitleStack(cfg *config.Config, cfgOp *oper.SystemConfigOper, base chain.Base, bus *event.Bus,
+	noticeSvc *notice.Service, mediaServerCh *chain.MediaServerChain) (*chain.SubtitleChain, *subauto.Service, error) {
+	// 源凭据走 SystemConfig（回退 env ASSRT_TOKEN/OPENSUBTITLES_KEY），UI 改动即时 rebuild。
+	subtitleProvider, err := chain.NewSubtitleSourceProvider(cfgOp, chain.SubtitleSettings{
+		AssrtToken:       cfg.AssrtToken,
+		OpenSubtitlesKey: cfg.OpenSubtitlesKey,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
+	// 媒体健康中心联动：missing_subtitle 一键补齐（复用字幕搜索/下载源）。
+	mediaServerCh.SetSubtitleFixer(chain.SubtitleChainAdapter{Ch: subtitleCh})
+
+	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（Bazarr /
+	// ChineseSubFinder 模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
+	// 通知走 noticeSvc；默认关闭，用户经 /subtitle/automation/config 开启。异步 handler 不阻塞整理。
+	subAutoSvc := subauto.New(bus, subtitleCh, cfgOp, noticeSvc)
+	subAutoSvc.Start()
+	return subtitleCh, subAutoSvc, nil
+}
 
 // wireNotificationDefaults 从 env 配置构建通知通道默认值（UI 未覆盖时的回退）。
 func wireNotificationDefaults(cfg *config.Config) chain.NotificationSettings {

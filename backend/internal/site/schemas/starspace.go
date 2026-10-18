@@ -26,9 +26,10 @@ var starSpaceLevelMap = map[string]string{
 
 func fetchStarSpaceUserInfo(ctx context.Context, hc *httpclient.Client, def *site.SiteMetadata, baseURL, cookie string) (*site.UserInfo, error) {
 	u := &site.UserInfo{}
-	index, resp, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/p_index/index.php", cookie)
+	index, resp, err := fetchHTMLDoc(ctx, hc, baseURL, "/p_index/index.php", cookie)
 	if err != nil {
-		return u, nil
+		// 首页都没读到就返空结构当成功，等于把站点故障报成「该号 0 上传 0 做种」。
+		return nil, err
 	}
 	if loggedOut(resp, index, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -41,18 +42,21 @@ func fetchStarSpaceUserInfo(ctx context.Context, hc *httpclient.Client, def *sit
 		}
 	}
 	if u.ID != "" {
-		if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/p_user/user_detail.php?uid="+url.QueryEscape(u.ID), cookie); err == nil {
+		if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/p_user/user_detail.php?uid="+url.QueryEscape(u.ID), cookie); err == nil {
 			parseStarSpaceDetail(doc, u)
 		}
-		if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/p_torrent/torrent_user.php?uid="+url.QueryEscape(u.ID)+"&pop=8", cookie); err == nil {
+		if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/p_torrent/torrent_user.php?uid="+url.QueryEscape(u.ID)+"&pop=8", cookie); err == nil {
 			u.Seeding, u.SeedingSize = parseStarSpaceTorrentTable(doc)
 		}
-		if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/p_torrent/torrent_user.php?uid="+url.QueryEscape(u.ID)+"&pop=7", cookie); err == nil {
+		if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/p_torrent/torrent_user.php?uid="+url.QueryEscape(u.ID)+"&pop=7", cookie); err == nil {
 			u.Uploads = parseStarSpaceUploads(doc)
 		}
 	}
-	if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/p_bonus/bonus_hour.php", cookie); err == nil {
+	if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/p_bonus/bonus_hour.php", cookie); err == nil {
 		u.BonusPerHour = site.ToFloat64(doc.Find("tr#tr_list td").Last().Text())
+	}
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "首页与资料页")
 	}
 	return u, nil
 }

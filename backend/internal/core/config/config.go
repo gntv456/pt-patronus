@@ -46,6 +46,10 @@ type Config struct {
 	AuthVIPLevel    int    // minimum VIP level required
 	VIPGraceDays    int    // VIP 宽限天数（好学不可达时缓存 VIP 的有效期），默认 3
 	DemoMode        bool   // 显式开启演示登录（默认关闭，仅用于本地评审/公开演示）
+	// AllowPrivateSites 放行把「站点」建在内网/环回地址（默认关闭，站点抓取保持 SSRF 守卫）。
+	// 场景：自建站点（如本机 Docker 起的 FluxTorrent）、NAS/局域网 tracker——站长侧是常态需求。
+	// 开启后站点抓取客户端不再拦 127.0.0.1/10.x/192.168.x 等目标。
+	AllowPrivateSites bool
 
 	// 通知通道（首启 env 引导默认；运行时以 SystemConfig「设置→通知」为准，UI 热改）
 	BarkServer string
@@ -141,6 +145,7 @@ func Load() (*Config, error) {
 		AuthVIPLevel:            getenvInt("AUTH_VIP_LEVEL", 1),
 		VIPGraceDays:            getenvInt("VIP_GRACE_DAYS", 3),
 		DemoMode:                getenvBool("DEMO_MODE", false),
+		AllowPrivateSites:       getenvBool("ALLOW_PRIVATE_SITES", false),
 		BarkServer:              getenv("BARK_SERVER", ""),
 		BarkKey:                 getenv("BARK_KEY", ""),
 		TGToken:                 getenv("TELEGRAM_TOKEN", ""),
@@ -179,24 +184,24 @@ func Load() (*Config, error) {
 		BackupDir:         getenv("BACKUP_DIR", ""),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
-		TMDBAPIKey:         getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),
-		TMDBAPIDomain:      getenv("TMDB_API_DOMAIN", "api.tmdb.org"),
-		DoubanSecret:       getenv("DOUBAN_SECRET", ""),
-		DoubanAppKey:       getenv("DOUBAN_API_KEY", ""),
-		BangumiToken:       getenv("BANGUMI_TOKEN", ""),
-		CunguangjiBase:     getenvFallback("CUNGUANGJI_BASE", "XINGGUANGJI_BASE", "https://dj.hxpt.org"),
-		OMDbAPIKey:         getenv("OMDB_API_KEY", ""),
-		AssrtToken:         getenv("ASSRT_TOKEN", ""),
-		OpenSubtitlesKey:   getenv("OPENSUBTITLES_KEY", ""),
-		CORSAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", ""),
-		APIKey:             getenv("API_KEY", ""),
-		MetricsToken:       getenvFallback("METRICS_TOKEN", "API_KEY", ""),
-		TrustedProxies:     getenv("TRUSTED_PROXIES", ""),
-		LoginRatePerMin:    getenvInt("LOGIN_RATE_PER_MIN", 10),
-		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
-		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
+		TMDBAPIKey:           getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),
+		TMDBAPIDomain:        getenv("TMDB_API_DOMAIN", "api.tmdb.org"),
+		DoubanSecret:         getenv("DOUBAN_SECRET", ""),
+		DoubanAppKey:         getenv("DOUBAN_API_KEY", ""),
+		BangumiToken:         getenv("BANGUMI_TOKEN", ""),
+		CunguangjiBase:       getenvFallback("CUNGUANGJI_BASE", "XINGGUANGJI_BASE", "https://dj.hxpt.org"),
+		OMDbAPIKey:           getenv("OMDB_API_KEY", ""),
+		AssrtToken:           getenv("ASSRT_TOKEN", ""),
+		OpenSubtitlesKey:     getenv("OPENSUBTITLES_KEY", ""),
+		CORSAllowedOrigins:   getenv("CORS_ALLOWED_ORIGINS", ""),
+		APIKey:               getenv("API_KEY", ""),
+		MetricsToken:         getenvFallback("METRICS_TOKEN", "API_KEY", ""),
+		TrustedProxies:       getenv("TRUSTED_PROXIES", ""),
+		LoginRatePerMin:      getenvInt("LOGIN_RATE_PER_MIN", 10),
+		GlobalRatePerSec:     getenvInt("GLOBAL_RATE_PER_SEC", 20),
+		UpdateManifestURL:    getenv("UPDATE_MANIFEST_URL", ""),
 		UpdateManifestPubKey: getenv("UPDATE_MANIFEST_PUBKEY", ""),
-		SafeMode:           getenvBool("SAFE_MODE", false),
+		SafeMode:             getenvBool("SAFE_MODE", false),
 		EntertainmentEnabled: getenvBool("ENTERTAINMENT_ENABLED", false),
 	}
 	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")

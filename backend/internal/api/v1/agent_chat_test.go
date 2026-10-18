@@ -34,7 +34,7 @@ func setupAgentChatServer(t *testing.T) *gin.Engine {
 	convOp := oper.NewAgentConversationOper(db)
 	msgOp := oper.NewAgentMessageOper(db)
 	h := NewAgentChatHandler(nil,
-		convOp.List, convOp.Create, convOp.Delete, msgOp.ListByConv,
+		convOp.List, convOp.Count, convOp.Create, convOp.Delete, convOp.Get, msgOp.ListByConv,
 		oper.NewSystemConfigOper(db), security.NewCrypto("agent-test-seed"))
 	r := gin.New()
 	r.POST("/agent/chat", h.Chat)
@@ -91,9 +91,15 @@ func TestAgentChat_Conversations(t *testing.T) {
 		t.Fatalf("不存在会话消息语义: %d %s", rec.Code, rec.Body.String())
 	}
 
+	// 旧断言写的是「删除不存在会话应幂等 200」——那是 GORM Delete 未命中不报错时被钉下来的
+	// 假成功：侧栏拿 200 弹「已删除」，而这条会话其实早被别的标签页删掉了。
+	// 现在按 #204 的口径回 404 + 本域码，让操作者知道该刷新会话列表。
 	rec = doAgent(t, r, http.MethodDelete, "/agent/conversations/999", "")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("删除不存在会话应幂等 200，got %d", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("删除不存在会话应 404，got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "agent_conversation_not_found") {
+		t.Fatalf("body=%s 应带 agent_conversation_not_found", rec.Body.String())
 	}
 }
 
@@ -110,4 +116,23 @@ func TestAgentChat_ConfigAndStats(t *testing.T) {
 	}
 
 	// stats/tools 依赖 agent 主体（nil 在测试装配下不可用）——不在本用例范围。
+}
+
+// TestAgentChatNotReadyCreatesNoConversation 回归：AI 助手不可用时要在**建会话之前**拦住。
+// 修复前顺序是「建会话 → 进 SSE 流 → 才报未启用」，于是每点一次「发送」都在会话列表
+// 里留一条空会话（真机连点 3 次 = 3 条垃圾会话）。
+func TestAgentChatNotReadyCreatesNoConversation(t *testing.T) {
+	r := setupAgentChatServer(t)
+	rec := doAgent(t, r, http.MethodPost, "/agent/chat", `{"message":"你好"}`)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("未就绪应 503 快速失败，got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "agent_disabled") {
+		t.Fatalf("应带 agent_disabled 码，got %s", rec.Body.String())
+	}
+	// 关键断言：会话列表必须还是空的（修复前有 1 条）。
+	list := doAgent(t, r, http.MethodGet, "/agent/conversations", "")
+	if strings.Contains(list.Body.String(), `"id":1`) {
+		t.Fatalf("失败请求不得留下会话，got %s", list.Body.String())
+	}
 }

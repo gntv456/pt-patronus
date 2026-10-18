@@ -17,6 +17,14 @@ export function fmtSpeed(bytesPerSec: number): string {
   return `${fmtBytes(bytesPerSec)}/s`
 }
 
+/**
+ * 可选数值渲染：字段缺席（平台不支持该指标 / 采集失败，后端 `omitempty` 直接不出现）
+ * 时不能兜成 0——0 是一个可信读数，会把「这台机器没有负载指标」画成「负载极低」。
+ */
+export function fmtNumOr(v: number | null | undefined, digits = 2, absent = '—'): string {
+  return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(digits) : absent
+}
+
 // 时间格式化：ISO 字符串 / unix 秒 → 本地可读串；空值或零值（0001-01-01，未完成）返回占位 '-'。
 export function fmtTime(s: string | number | null | undefined): string {
   if (s === null || s === undefined || s === '') return '-'

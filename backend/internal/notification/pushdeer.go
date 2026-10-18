@@ -71,7 +71,10 @@ func (p *PushDeer) Send(ctx context.Context, msg Message) error {
 		Msg   string `json:"msg"`
 		Error string `json:"error"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+	if err := decodeEnvelope("pushdeer", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 0 {
 		if be.Msg != "" {
 			return fmt.Errorf("pushdeer: code %d: %s", be.Code, be.Msg)
 		}

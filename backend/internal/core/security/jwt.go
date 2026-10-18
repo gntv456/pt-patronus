@@ -28,13 +28,27 @@ const absoluteLifetime = 7 * 24 * time.Hour
 
 // JWT issues and verifies HS256 tokens.
 type JWT struct {
-	secret  []byte
-	expires time.Duration
+	secret []byte
+	// legacySecret 升级前的原始 SECRET_KEY 字节（#406）。只用于**验签**：
+	// 存量 token 用旧密钥签的，改派生后必须仍能验过，否则升级即全站登出。
+	// 签发一律用 secret（新派生），不再用 legacy —— 否则新 token 仍与 AES 同源。
+	legacySecret []byte
+	expires      time.Duration
 }
 
 // NewJWT builds a JWT helper with the given signing secret and expiry (minutes).
+//
+// #406 域分隔：此前是 []byte(secret) 直接当 HMAC 密钥，与 AES-at-rest 的 HKDF
+// 派生出来的密钥毫无隔离 —— 而 aes-at-rest 那侧的注释一直写着「与 JWT 签名密钥
+// 同源不同派生」，实际并没有。现在签名密钥也走 HKDF（不同的 info 串）。
+//
+// 兼容：验签同时接受旧的原始字节，所以升级不需要用户重新登录。
 func NewJWT(secret string, expireMin int) *JWT {
-	return &JWT{secret: []byte(secret), expires: time.Duration(expireMin) * time.Minute}
+	return &JWT{
+		secret:       DeriveKey(secret, hkdfInfoJWT),
+		legacySecret: []byte(secret),
+		expires:      time.Duration(expireMin) * time.Minute,
+	}
 }
 
 // Expires reports the token lifetime（登录 cookie MaxAge 与之对齐）。
@@ -92,18 +106,33 @@ func (j *JWT) issue(userID uint, username string, isAdmin bool, tokenVersion uin
 
 // Parse validates the token and returns its claims.
 func (j *JWT) Parse(token string) (*Claims, error) {
-	c := &Claims{}
-	parsed, err := jwt.ParseWithClaims(token, c, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+	// #406 兼容：先用新派生密钥验（升级后签发的一律是它），失败再试旧的原始字节。
+	// 两段都要，是因为存量 token 用旧密钥签的 —— 只认新密钥会让升级变成全站登出。
+	// 两段密钥都验不过才返回错误；错误取最后一次的即可（签名不符时信息一致）。
+	var lastErr error
+	for _, key := range [][]byte{j.secret, j.legacySecret} {
+		if len(key) == 0 {
+			continue
 		}
-		return j.secret, nil
-	})
-	if err != nil {
-		return nil, err
+		c := &Claims{}
+		parsed, err := jwt.ParseWithClaims(token, c, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("unexpected signing method")
+			}
+			return key, nil
+		})
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if !parsed.Valid {
+			lastErr = errors.New("invalid token")
+			continue
+		}
+		return c, nil
 	}
-	if !parsed.Valid {
-		return nil, errors.New("invalid token")
+	if lastErr == nil {
+		lastErr = errors.New("invalid token")
 	}
-	return c, nil
+	return nil, lastErr
 }

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,8 @@ import (
 func (h *PluginHandler) MarketCharts(c *gin.Context) {
 	out, err := h.manager.MarketCharts(c.Request.Context())
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		// #370 三类失败分档见 marketOperErr。
+		marketOperErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -24,7 +26,8 @@ func (h *PluginHandler) MarketCharts(c *gin.Context) {
 func (h *PluginHandler) MarketFavorites(c *gin.Context) {
 	out, err := h.manager.MarketFavorites(c.Request.Context())
 	if err != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		// #370 同 MarketCharts。
+		marketOperErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plugins": out})
@@ -34,7 +37,9 @@ func (h *PluginHandler) MarketFavorites(c *gin.Context) {
 func (h *PluginHandler) FavoritePlugin(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.manager.FavoritePlugin(id); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// #370 收藏失败最常见的是「市场运营层没装配」，说成「参数有误」会让人
+		// 反复点、反复去改那个根本改不了的插件 id。
+		marketOperErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"favorited": id})
@@ -44,7 +49,8 @@ func (h *PluginHandler) FavoritePlugin(c *gin.Context) {
 func (h *PluginHandler) UnfavoritePlugin(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.manager.UnfavoritePlugin(id); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// #370 同 FavoritePlugin。
+		marketOperErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"unfavorited": id})
@@ -61,6 +67,46 @@ func (h *PluginHandler) PluginInstances(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"instances": insts, "single_instance": h.manager.SingleInstance(id)})
 }
 
+// marketOperErr 插件市场运营出口（榜单 / 收藏 / 取消收藏）的失败分档。
+//
+// #370 这四条出口从前各写各的：收藏两条回 InvalidInput(400「请求参数有误」)，
+// 榜单两条回 BadGateway(502「上游服务不可用，请稍后重试」)。而它们真正会遇到的失败有三类：
+//
+//	ErrMarketOperUnavailable 市场运营层没装配 —— 该去开配置，重试无用
+//	ErrMarketUnreachable        市场源取不到（网络/上游非 2xx）—— 该稍后重试
+//	其余                        请求侧问题（缺 id 之类）—— 400 是对的
+//
+// 两种旧错法都指错方向：收藏失败说「参数有误」让人去改那个改不了的插件 id；
+// 榜单拉不到说「上游服务不可用，稍后重试」而真相是市场层没接上数据，重试一万次也一样。
+//
+// 刻意复用 instanceErr 对同一哨兵给出的档（DependencyMissing），不另立一套 ——
+// 同一个失败在两条路上必须显示同一句话。
+func marketOperErr(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, plugins.ErrMarketOperUnavailable):
+		errcode.Respond(c, errcode.DependencyMissing.WithErr(err))
+	case errors.Is(err, plugins.ErrMarketUnreachable):
+		errcode.Respond(c, errcode.PluginMarketUnreachable.WithErr(err))
+	default:
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+	}
+}
+
+// instanceErr 是「建分身」这条路的分档：单实例插件（该用主实例）、市场运营层没装配
+// （该去开配置）、其它写失败。三种从前全被压成 400「请求参数有误」（#287）。
+func instanceErr(err error) *errcode.Error {
+	switch {
+	case errors.Is(err, plugins.ErrSingleInstance):
+		// 链层那句是「插件 X 为单实例插件，不支持分身」——只说是什么，不说下一步；
+		// 界面要的是可执行的一句（直接用主实例），所以用注册文案，原句进日志。
+		return errcode.PluginSingleInst.WithErr(err)
+	case errors.Is(err, plugins.ErrMarketOperUnavailable):
+		return errcode.DependencyMissing.WithErr(err)
+	default:
+		return errcode.SaveFailed.WithErr(err)
+	}
+}
+
 // CreatePluginInstance POST /plugins/:id/instances —— 分神（建分身；单实例插件 400）。
 func (h *PluginHandler) CreatePluginInstance(c *gin.Context) {
 	id := c.Param("id")
@@ -74,7 +120,7 @@ func (h *PluginHandler) CreatePluginInstance(c *gin.Context) {
 	}
 	inst, err := h.manager.CreatePluginInstance(id, in.InstanceKey, marshalConfig(in.Config))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		errcode.Respond(c, instanceErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, inst)
@@ -102,7 +148,9 @@ func (h *PluginHandler) SavePluginInstanceConfig(c *gin.Context) {
 func (h *PluginHandler) DeletePluginInstance(c *gin.Context) {
 	id, key := c.Param("id"), c.Param("key")
 	if err := h.manager.DeletePluginInstance(id, key); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 「本来就没有」要区别于别的失败：从前一律 400「请求参数有误」，
+		// 用户以为按钮坏了，其实该刷新页面（同 #204 那一族）。
+		respondRecordError(c, err, errcode.PluginInstanceNotFound, errcode.InvalidInput, errcode.InvalidInput)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": key})

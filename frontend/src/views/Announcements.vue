@@ -94,6 +94,7 @@ onUnmounted(() => abortCtrl?.abort())
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.items.length" class="count">{{ t('announcements.count', { n: r.items.length }) }}</span>
           <span v-else-if="r.error" class="err-tag" :title="r.error">{{ friendlySiteError(r.error) }}</span>
+          <span v-else-if="r.unsupported" class="text-muted">{{ t('announcements.notAdapted') }}</span>
           <span v-else class="text-muted">{{ t('announcements.none') }}</span>
           <span class="spacer"></span>
           <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">{{

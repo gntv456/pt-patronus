@@ -11,6 +11,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -35,6 +36,12 @@ func (c *ContractChain) Get(id uint) (*models.ContractRule, error) { return c.op
 func (c *ContractChain) Upsert(r *models.ContractRule) error       { return c.op.Upsert(r) }
 func (c *ContractChain) Delete(id uint) error                      { return c.op.Delete(id) }
 
+// ErrRuleDisabled 未启用的契约规则既不会被 cron 检查，也不该被手动「检查」说成跑过。
+// 从前返回 Status:"ok" + Detail:"规则未启用"，而界面的状态标签读的是库里的 last_status、
+// Detail 又没人渲染，卡片于是直接画出「实时：分享率 0.00 · 做种 0 · 上传 0.0GiB」
+// 四个看着完全可信的读数——实际上一个站点都没访问过。
+var ErrRuleDisabled = errors.New("保种契约规则未启用：本次不会访问任何站点，请先打开该规则的开关再检查")
+
 // CheckResult 单次契约检查结果。
 type CheckResult struct {
 	RuleID          uint     `json:"rule_id"`
@@ -42,6 +49,7 @@ type CheckResult struct {
 	SiteName        string   `json:"site_name"`
 	Status          string   `json:"status"` // ok | breach | error
 	Detail          string   `json:"detail,omitempty"`
+	Measured        bool     `json:"measured"` // 是否真读到了站点数据；false=这次没取数（未到生效时间等），界面不得画读数
 	Ratio           float64  `json:"ratio"`
 	Seeding         int      `json:"seeding"`
 	UploadGB        float64  `json:"upload_gb"`
@@ -110,7 +118,7 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 		return nil, err
 	}
 	if !rule.Enabled {
-		return &CheckResult{RuleID: ruleID, SiteID: rule.SiteID, Status: "ok", Detail: "规则未启用"}, nil
+		return nil, ErrRuleDisabled
 	}
 	now := time.Now()
 	// 开始时间未到 → 不考核
@@ -131,15 +139,17 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 	ui, err := c.siteCh.UserInfo(ctx, st)
 	if err != nil {
 		slog.Warn("contract UserInfo failed", "rule", ruleID, "site", st.Name, "err", err)
-		if e := c.op.MarkChecked(ruleID, "error", err.Error()); e != nil {
+		if e := c.op.MarkChecked(ruleID, "error", errtext.Text(err)); e != nil {
 			slog.Warn("contract MarkChecked failed", "rule", ruleID, "err", e)
 		}
-		return &CheckResult{RuleID: ruleID, SiteID: rule.SiteID, SiteName: st.Name, Status: "error", Detail: err.Error()}, nil
+		// Detail/last_error 会直接显示在保种契约页，站点侧抓取失败要经 errtext
+		// （SSRF、超时、未登录都翻成中文；DB 之类的未知错误仍原样留痕）。
+		return &CheckResult{RuleID: ruleID, SiteID: rule.SiteID, SiteName: st.Name, Status: "error", Detail: errtext.Text(err)}, nil
 	}
 	// 做种基数：默认整站汇总；官种契约或体积下限时拉逐条明细切基数
 	base := seedingBase{Count: ui.Seeding, Size: ui.SeedingSize}
 	res := &CheckResult{
-		RuleID: ruleID, SiteID: rule.SiteID, SiteName: st.Name,
+		RuleID: ruleID, SiteID: rule.SiteID, SiteName: st.Name, Measured: true,
 		Ratio: ui.Ratio, Seeding: ui.Seeding, UploadGB: float64(ui.Uploaded) / float64(1<<30),
 		SeedingSizeGB: float64(ui.SeedingSize) / float64(1<<30),
 	}
@@ -147,8 +157,19 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 		stats, derr := c.siteCh.SeedingStats(ctx, st)
 		switch {
 		case derr != nil && !errors.Is(derr, ErrNotSupported) && !errors.Is(derr, site.ErrSeedingListUnsupported):
-			// 网络瞬时失败：沿用 ui 汇总基数，不阻断（下次 cron 重试）
+			// 瞬时失败：仅体积下限的规则可以退回 ui 汇总基数（同一口径的近似，下次 cron 再拉）。
+			// 但官种契约的判定维度就是「官种做种数/体积」，明细拉不到就没有这个维度——
+			// 拿全量做种数顶上去会把「官种没保住」判成达标，违例被静默吞掉。
 			slog.Warn("contract SeedingStats failed", "rule", ruleID, "err", derr)
+			if rule.OfficialOnly {
+				d := "官种做种明细拉取失败，本周期无法核验：" + errtext.Text(derr)
+				res.Status = "error"
+				res.Detail = d
+				if e := c.op.MarkChecked(ruleID, "error", d); e != nil {
+					slog.Warn("contract MarkChecked failed", "rule", ruleID, "status", "error", "err", e)
+				}
+				return res, nil
+			}
 		case stats != nil && stats.Supported:
 			res.SeedingOfficial = stats.Official.Count
 			res.SeedingSizeGB = float64(stats.Total.Size) / float64(1<<30)
@@ -177,7 +198,7 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 		c.Emit(ctx, "ContractBreach", map[string]any{"site_id": rule.SiteID, "breaches": breaches})
 		if c.notice != nil {
 			_ = c.notice.Notice(ctx, notice.Input{
-				Source: "contract",
+				Source: notice.SourceContract,
 				Key:    fmt.Sprintf("contract:%d:%s", rule.SiteID, contractPeriodKey(rule, now)),
 				Title:  fmt.Sprintf("保种契约告警 · %s", st.Name),
 				Body:   "未达标：" + strings.Join(breaches, "；"),
@@ -196,11 +217,27 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 // CheckAll 定时入口：遍历所有启用规则检查（单条失败不阻断其余）。
 func (c *ContractChain) CheckAll(ctx context.Context) {
 	rules, err := c.op.ListEnabled()
-	if err != nil || len(rules) == 0 {
+	if err != nil {
+		slog.Warn("contract list enabled failed", "err", err)
+		// 自曝：规则清单读不出=本轮契约检查整轮跳过，当天不检查也不告警、界面无感。当天去重。
+		if c.notice != nil {
+			_ = c.notice.Notice(ctx, notice.Input{
+				Source: notice.SourceContractListFail,
+				Key:    "contract-listfail:" + time.Now().Format("2006-01-02"),
+				Title:  "保种契约",
+				Body:   "本轮契约检查未能开始：读取启用规则失败 — " + err.Error(),
+				Level:  "warning",
+			}, true)
+		}
 		return
 	}
 	for _, r := range rules {
-		if _, err := c.Check(ctx, r.ID); err != nil {
+		// runGuarded：单条规则的 panic 不得让同轮其余规则全漏检（当天不检查=违约无人知）。
+		err := runGuarded(func() error {
+			_, e := c.Check(ctx, r.ID)
+			return e
+		})
+		if err != nil {
 			slog.Warn("contract check failed", "rule", r.ID, "err", err) // 单条失败不阻断
 		}
 	}

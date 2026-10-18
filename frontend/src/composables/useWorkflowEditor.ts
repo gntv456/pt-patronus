@@ -164,9 +164,21 @@ export function useWorkflowEditor(flowId: string) {
   // 调色板拖拽 → 画布
   // —— 保存/运行（拆至 useWorkflowEditorRun.ts）——
   const { buildInput, save, run } = useWorkflowEditorRun({
-    name, description, triggerType, timer, eventType, eventConditions, enabled,
-    saving, running, dirty, toObject, router, wfId,
-    markDirty, load,
+    name,
+    description,
+    triggerType,
+    timer,
+    eventType,
+    eventConditions,
+    enabled,
+    saving,
+    running,
+    dirty,
+    toObject,
+    router,
+    wfId,
+    markDirty,
+    load,
     workflowApi,
   })
 
@@ -198,19 +210,26 @@ export function useWorkflowEditor(flowId: string) {
   }
 
   // 保存
-  
-  
+
   // 运行
   const runResult = ref<WorkflowRun | null>(null)
   const showResult = ref(false)
-  
+
   // 历史
   const history = ref<WorkflowRun[]>([])
   const showHistory = ref(false)
+  // 后端一次只给最近 limit 条（默认 20、封顶 500）：被截断时要在弹窗里说清楚。
+  const historyWindow = ref<{ shown: number; total?: number; truncated: boolean }>({
+    shown: 0,
+    total: undefined,
+    truncated: false,
+  })
   async function openHistory() {
     if (!wfId.value) return
     try {
-      history.value = await workflowApi.runs(wfId.value, 20)
+      const page = await workflowApi.runs(wfId.value, 20)
+      history.value = page.runs
+      historyWindow.value = { shown: page.runs.length, total: page.total, truncated: page.truncated }
       showHistory.value = true
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '历史加载失败')
@@ -334,6 +353,7 @@ export function useWorkflowEditor(flowId: string) {
     runResult,
     showResult,
     history,
+    historyWindow,
     showHistory,
     openHistory,
     viewRun,

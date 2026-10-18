@@ -116,7 +116,7 @@ func TestMTeamExamineMetrics(t *testing.T) {
 
 func TestMTeamExamineAcceptsNumericCode(t *testing.T) {
 	body := []byte(`{"code":0,"data":[{"name":"numeric-code","uploadTarget":"1073741824","uploaded":"1073741824"}]}`)
-	tasks := parseMTeamExamine(body)
+	tasks := mustParseMTeam(t, body)
 	if len(tasks) != 1 || tasks[0].Name != "numeric-code" {
 		t.Fatalf("tasks=%+v", tasks)
 	}
@@ -133,7 +133,7 @@ func TestMTeamExamineTimeString(t *testing.T) {
 		"startTime": "2026-01-01 00:00:00",
 		"endTime":   "2026-12-31 23:59:59"
 	}]}`)
-	tasks := parseMTeamExamine(body)
+	tasks := mustParseMTeam(t, body)
 	if len(tasks) != 1 {
 		t.Fatalf("tasks: got %d want 1", len(tasks))
 	}
@@ -166,7 +166,7 @@ func TestMTeamExamineTimeNumeric(t *testing.T) {
 		"startTime": 1735689600,
 		"endTime":   1798761599
 	}]}`)
-	tasks := parseMTeamExamine(body)
+	tasks := mustParseMTeam(t, body)
 	if len(tasks) != 1 {
 		t.Fatalf("tasks: got %d want 1", len(tasks))
 	}
@@ -189,7 +189,7 @@ func TestMTeamExamineRelativeTime(t *testing.T) {
 		"uploaed":      1073741824,
 		"description":"距離考核結束還有4 天，考核期間不享受所有魔力加成。"
 	}]}`)
-	tasks := parseMTeamExamine(body)
+	tasks := mustParseMTeam(t, body)
 	if len(tasks) != 1 {
 		t.Fatalf("tasks: got %d want 1 (no date fields → must still produce task from countdown)", len(tasks))
 	}
@@ -217,7 +217,7 @@ func TestMTeamExamineNoMetrics(t *testing.T) {
 		"name":"保种考核",
 		"notice":"距离考核结束还有 7 天"
 	}]}`)
-	tasks := parseMTeamExamine(body)
+	tasks := mustParseMTeam(t, body)
 	if len(tasks) != 1 {
 		t.Fatalf("tasks: got %d want 1 (countdown-only item must not be skipped)", len(tasks))
 	}

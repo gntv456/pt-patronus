@@ -15,9 +15,13 @@ const syncingId = ref<number | null>(null)
 
 // 站点的归类状态（汇总与筛选共用同一判定，避免两处分类逻辑漂移）：
 // error/failed→failed，否则取首条 notice 状态，缺失（未开启检测/空）→none。
-type FilterKey = 'all' | FreeleechStatus
-function siteStatus(r: FreeleechResult): FreeleechStatus {
+type SiteBucket = FreeleechStatus | 'unsupported'
+type FilterKey = 'all' | SiteBucket
+function siteStatus(r: FreeleechResult): SiteBucket {
   if (r.error || r.notices[0]?.status === 'failed') return 'failed'
+  // 未适配 ≠ 当前没有：落进 default 会被计入「暂无站免」，汇总就把「从没查过」说成
+  // 「查过了、没有」——用户据此判断「这些站都没促销」，而真实原因是平台没接线。
+  if (r.unsupported) return 'unsupported'
   const top = r.notices[0]?.status
   if (top === 'active') return 'active'
   if (top === 'upcoming') return 'upcoming'
@@ -36,6 +40,7 @@ const summary = computed(() => {
   let active = 0,
     upcoming = 0,
     none = 0,
+    unsupported = 0,
     failed = 0
   for (const r of results.value) {
     switch (siteStatus(r)) {
@@ -48,11 +53,14 @@ const summary = computed(() => {
       case 'failed':
         failed++
         break
+      case 'unsupported':
+        unsupported++
+        break
       default:
         none++
     }
   }
-  return { total: results.value.length, active, upcoming, none, failed }
+  return { total: results.value.length, active, upcoming, none, unsupported, failed }
 })
 
 // 顶层筛选：点 chip 按状态过滤站点卡片；再点同一个 = 取消（回 all）。
@@ -87,7 +95,7 @@ const filteredResults = computed(() => {
 function toggleFilter(key: FilterKey) {
   filter.value = filter.value === key ? 'all' : key
 }
-// 汇总条 5 个 tile（站点=全部 + 4 状态），模板 v-for 渲染。color 走 statusColor（懒引用）。
+// 汇总条 6 个 tile（站点=全部 + 5 状态），模板 v-for 渲染。color 走 statusColor（懒引用）。
 const tiles = computed(() => [
   { key: 'all' as FilterKey, label: t('freeleech.tile.sites'), value: summary.value.total, color: '' },
   {
@@ -103,6 +111,12 @@ const tiles = computed(() => [
     color: statusColor.upcoming,
   },
   { key: 'none' as FilterKey, label: t('freeleech.tile.none'), value: summary.value.none, color: statusColor.none },
+  {
+    key: 'unsupported' as FilterKey,
+    label: t('freeleech.notAdapted'),
+    value: summary.value.unsupported,
+    color: statusColor.none,
+  },
   {
     key: 'failed' as FilterKey,
     label: t('freeleech.tile.failed'),
@@ -242,7 +256,8 @@ onUnmounted(() => abortCtrl?.abort())
           }}</el-button>
         </div>
         <div v-if="r.error" class="err">{{ r.error }}</div>
-        <div v-else-if="!r.notices.length" class="text-muted">{{ t('freeleech.notEnabled') }}</div>
+        <div v-else-if="r.unsupported" class="text-muted">{{ t('freeleech.notAdapted') }}</div>
+        <div v-else-if="!r.notices.length" class="text-muted">{{ t('freeleech.noPromo') }}</div>
         <div v-else class="notices">
           <div v-for="(n, i) in expanded[r.site_id] ? r.notices : r.notices.slice(0, 1)" :key="i" class="notice">
             <div class="notice-title">{{ n.title }}</div>

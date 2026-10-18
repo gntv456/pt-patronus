@@ -116,7 +116,10 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.SubscriptionNotFound)
+		// #345 与本文件 Delete 的 respondRecordError 同一判据：手抄的
+		// Respond(SubscriptionNotFound) 只判「不存在」，不判 DB 真故障
+		// （SubscriptionOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.SubscriptionNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	var in subReq
@@ -173,7 +176,9 @@ func (h *SubscribeHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.subCh.Delete(id); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// 存在性判定在链层（HTTP / AI 工具 / 批量取消共用），这里只做归类：
+		// 「本来就没有」必须区别于「真失败」，否则用户对着 500 反复点。
+		respondRecordError(c, err, errcode.SubscriptionNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -187,12 +192,15 @@ func (h *SubscribeHandler) Check(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.SubscriptionNotFound)
+		// #345 与本文件 Delete 的 respondRecordError 同一判据：手抄的
+		// Respond(SubscriptionNotFound) 只判「不存在」，不判 DB 真故障
+		// （SubscriptionOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.SubscriptionNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	n, err := h.subCh.Check(c.Request.Context(), s)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "pushed": 0, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "pushed": 0, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "pushed": n})
@@ -240,7 +248,7 @@ func (h *SubscribeHandler) Batch(c *gin.Context) {
 			err = h.subCh.Delete(id)
 		}
 		if err != nil {
-			failed = append(failed, failure{ID: id, Error: err.Error()})
+			failed = append(failed, failure{ID: id, Error: userErrText(err)})
 		} else {
 			succeeded++
 		}
@@ -323,7 +331,10 @@ func (h *SubscribeHandler) ResetFields(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.SubscriptionNotFound)
+		// #345 与本文件 Delete 的 respondRecordError 同一判据：手抄的
+		// Respond(SubscriptionNotFound) 只判「不存在」，不判 DB 真故障
+		// （SubscriptionOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.SubscriptionNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	var req struct {

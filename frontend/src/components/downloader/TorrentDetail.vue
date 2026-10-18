@@ -22,8 +22,11 @@ async function loadPeers() {
   try {
     const r = await downloaderApi.peers(props.downloaderId, props.torrent.hash)
     peers.value = r.peers ?? []
-  } catch {
+  } catch (e: unknown) {
+    // 从前这条 catch 完全静默：peer 列表读不出来时和「这个种子一个连接都没有」同形，
+    // 而这正是排障时最要看区别的一处。
     peers.value = []
+    ElMessage.warning((e as Error).message || t('common.loadFailed'))
   } finally {
     peersLoading.value = false
   }
@@ -54,8 +57,8 @@ async function op(fn: () => Promise<DownloaderResult>, ok: string) {
     const r = await fn()
     if (r.ok) ElMessage.success(ok)
     else ElMessage.warning(r.error || t('td.failed'))
-  } catch {
-    ElMessage.error(t('common.requestFailed'))
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || t('common.requestFailed'))
   }
 }
 

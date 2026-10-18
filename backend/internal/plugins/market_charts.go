@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"time"
 
@@ -132,6 +133,11 @@ func (m *Manager) UnfavoritePlugin(pluginID string) error {
 
 var ErrMarketOperUnavailable = errMarketOper{}
 
+// ErrSingleInstance 让「这个插件是单实例插件」这一档能被接口层认出来。
+// 从前 CreatePluginInstance 的所有失败（含这句中文）都被压成 400「请求参数有误」，
+// 而用户没有任何可检查的输入——他要的是「直接用主实例，别建分身」。
+var ErrSingleInstance = errors.New("单实例插件")
+
 type errMarketOper struct{}
 
 func (errMarketOper) Error() string { return "市场运营层未装配" }
@@ -164,7 +170,12 @@ func (m *Manager) CreatePluginInstance(pluginID, instanceKey, configJSON string)
 
 type errSingleInstance struct{ id string }
 
-func (e errSingleInstance) Error() string { return "插件 " + e.id + " 为单实例插件，不支持分身" }
+func (e errSingleInstance) Error() string {
+	return "插件 " + e.id + " 为单实例插件，不支持分身"
+}
+
+// Unwrap 挂上哨兵：文案不变（可能有用例钉着原句），但接口层终于能 errors.Is 认出这一档。
+func (e errSingleInstance) Unwrap() error { return ErrSingleInstance }
 
 // PluginInstances 列实例（按天序）。
 func (m *Manager) PluginInstances(pluginID string) ([]models.PluginInstance, error) {
@@ -184,6 +195,9 @@ func (m *Manager) DeletePluginInstance(pluginID, instanceKey string) error {
 	m.mu.RUnlock()
 	if mop == nil {
 		return ErrMarketOperUnavailable
+	}
+	if _, err := mop.GetInstance(pluginID, instanceKey); err != nil {
+		return err
 	}
 	return mop.DeleteInstance(pluginID, instanceKey)
 }

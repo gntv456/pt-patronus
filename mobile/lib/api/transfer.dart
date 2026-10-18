@@ -41,24 +41,24 @@ class TransferHistory {
   });
 
   factory TransferHistory.fromJson(Map<String, dynamic> j) => TransferHistory(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        src: j['src'] as String? ?? '',
-        dest: j['dest'] as String? ?? '',
-        mode: j['mode'] as String? ?? '',
-        type: j['type'] as String? ?? '',
-        title: j['title'] as String? ?? '',
-        year: (j['year'] as num?)?.toInt() ?? 0,
-        source: j['source'] as String? ?? '',
-        sourceId: j['source_id'] as String? ?? '',
-        seasons: j['seasons'] as String? ?? '',
-        episodes: j['episodes'] as String? ?? '',
-        posterUrl: j['poster_url'] as String? ?? '',
-        downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
-        downloadHash: j['download_hash'] as String? ?? '',
-        status: j['status'] as String? ?? '',
-        errorMsg: j['error_msg'] as String? ?? '',
-        createdAt: j['created_at'] as String? ?? '',
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    src: j['src'] as String? ?? '',
+    dest: j['dest'] as String? ?? '',
+    mode: j['mode'] as String? ?? '',
+    type: j['type'] as String? ?? '',
+    title: j['title'] as String? ?? '',
+    year: (j['year'] as num?)?.toInt() ?? 0,
+    source: j['source'] as String? ?? '',
+    sourceId: j['source_id'] as String? ?? '',
+    seasons: j['seasons'] as String? ?? '',
+    episodes: j['episodes'] as String? ?? '',
+    posterUrl: j['poster_url'] as String? ?? '',
+    downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
+    downloadHash: j['download_hash'] as String? ?? '',
+    status: j['status'] as String? ?? '',
+    errorMsg: j['error_msg'] as String? ?? '',
+    createdAt: j['created_at'] as String? ?? '',
+  );
 }
 
 // TransferConfig — 整理配置（对齐后端 transfer.Config）。
@@ -96,60 +96,81 @@ class TransferConfig {
   });
 
   factory TransferConfig.fromJson(Map<String, dynamic> j) => TransferConfig(
-        enabled: j['enabled'] as bool? ?? true,
-        mode: j['mode'] as String? ?? 'link',
-        movieDir: j['movie_dir'] as String? ?? '/media/movies',
-        tvDir: j['tv_dir'] as String? ?? '/media/tv',
-        categories: ((j['categories'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        skipTags: ((j['skip_tags'] as List?) ?? const []).map((e) => e.toString()).toList(),
-        organizeTag: j['organize_tag'] as String? ?? 'organize',
-        typeFolder: j['type_folder'] as bool? ?? true,
-        categoryFolder: j['category_folder'] as bool? ?? false,
-        movieRename: j['movie_rename'] as String? ?? '',
-        tvRename: j['tv_rename'] as String? ?? '',
-        scrape: j['scrape'] as String? ?? 'missing_only',
-        refreshLibrary: j['refresh_library'] as bool? ?? true,
-        overwriteFiles: j['overwrite_files'] as bool? ?? false,
-      );
+    enabled: j['enabled'] as bool? ?? true,
+    mode: j['mode'] as String? ?? 'link',
+    movieDir: j['movie_dir'] as String? ?? '/media/movies',
+    tvDir: j['tv_dir'] as String? ?? '/media/tv',
+    categories: ((j['categories'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    skipTags: ((j['skip_tags'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    organizeTag: j['organize_tag'] as String? ?? 'organize',
+    typeFolder: j['type_folder'] as bool? ?? true,
+    categoryFolder: j['category_folder'] as bool? ?? false,
+    movieRename: j['movie_rename'] as String? ?? '',
+    tvRename: j['tv_rename'] as String? ?? '',
+    scrape: j['scrape'] as String? ?? 'missing_only',
+    refreshLibrary: j['refresh_library'] as bool? ?? true,
+    overwriteFiles: j['overwrite_files'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'enabled': enabled,
-        'mode': mode,
-        'movie_dir': movieDir,
-        'tv_dir': tvDir,
-        'categories': categories,
-        'skip_tags': skipTags,
-        'organize_tag': organizeTag,
-        'type_folder': typeFolder,
-        'category_folder': categoryFolder,
-        'movie_rename': movieRename,
-        'tv_rename': tvRename,
-        'scrape': scrape,
-        'refresh_library': refreshLibrary,
-        'overwrite_files': overwriteFiles,
-      };
+    'enabled': enabled,
+    'mode': mode,
+    'movie_dir': movieDir,
+    'tv_dir': tvDir,
+    'categories': categories,
+    'skip_tags': skipTags,
+    'organize_tag': organizeTag,
+    'type_folder': typeFolder,
+    'category_folder': categoryFolder,
+    'movie_rename': movieRename,
+    'tv_rename': tvRename,
+    'scrape': scrape,
+    'refresh_library': refreshLibrary,
+    'overwrite_files': overwriteFiles,
+  };
 }
 
 class TransferApi {
   final _api = ApiClient();
 
-  // GET /transfer/history?status=&limit=
-  Future<List<TransferHistory>> history(String status, int limit) async {
-    final q = <String>[];
-    if (status.isNotEmpty) q.add('status=$status');
-    q.add('limit=$limit');
+  Future<({List<TransferHistory> items, int? total, bool truncated})>
+  historyPage(String status, int limit) async {
+    final q = <String>['limit=$limit'];
+    if (status.isNotEmpty) q.insert(0, 'status=$status');
     final r = await _api.get('/transfer/history?${q.join('&')}');
     final list = (r['history'] as List?) ?? const [];
-    return list.map((e) => TransferHistory.fromJson(e as Map<String, dynamic>)).toList();
+    return (
+      items: list
+          .map((e) => TransferHistory.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (r['total'] as num?)?.toInt(),
+      // 缺 truncated 字段按「可能被截断」处理：不给「这就是全部」的假安心。
+      truncated: r['truncated'] as bool? ?? true,
+    );
   }
 
-  Future<TransferConfig> getConfig() async => TransferConfig.fromJson(await _api.get('/transfer/config'));
+  // GET /transfer/history?status=&limit=
+  Future<List<TransferHistory>> history(String status, int limit) async {
+    final p = await historyPage(status, limit);
+    return p.items;
+  }
 
-  Future<void> setConfig(TransferConfig c) => _api.put('/transfer/config', c.toJson());
+  Future<TransferConfig> getConfig() async =>
+      TransferConfig.fromJson(await _api.get('/transfer/config'));
+
+  Future<void> setConfig(TransferConfig c) =>
+      _api.put('/transfer/config', c.toJson());
 
   // POST /transfer/organize {downloader_id, hash} → {result}
   Future<Map<String, dynamic>?> organize(int downloaderId, String hash) async {
-    final r = await _api.post('/transfer/organize', {'downloader_id': downloaderId, 'hash': hash});
+    final r = await _api.post('/transfer/organize', {
+      'downloader_id': downloaderId,
+      'hash': hash,
+    });
     return r['result'] as Map<String, dynamic>?;
   }
 

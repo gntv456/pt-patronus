@@ -2,6 +2,7 @@ package v1
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/aiagent"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/llm"
 )
 
@@ -17,8 +19,10 @@ import (
 type AgentChatHandler struct {
 	agent      *aiagent.Agent
 	convList   func() ([]models.AgentConversation, error)
+	convCount  func() (int64, error)
 	convCreate func(*models.AgentConversation) error
 	convDelete func(uint) error
+	convGet    func(uint) (*models.AgentConversation, error)
 	msgList    func(uint) ([]models.AgentMessage, error)
 	kv         aiagent.KVStore
 	crypto     aiagent.Crypto
@@ -27,13 +31,25 @@ type AgentChatHandler struct {
 // NewAgentChatHandler 构造。conv/msg 回调由 app.go 绑 oper。
 func NewAgentChatHandler(agent *aiagent.Agent,
 	convList func() ([]models.AgentConversation, error),
+	convCount func() (int64, error),
 	convCreate func(*models.AgentConversation) error,
 	convDelete func(uint) error,
+	convGet func(uint) (*models.AgentConversation, error),
 	msgList func(uint) ([]models.AgentMessage, error),
 	kv aiagent.KVStore, crypto aiagent.Crypto,
 ) *AgentChatHandler {
-	return &AgentChatHandler{agent: agent, convList: convList, convCreate: convCreate, convDelete: convDelete, msgList: msgList, kv: kv, crypto: crypto}
+	return &AgentChatHandler{agent: agent, convList: convList, convCount: convCount, convCreate: convCreate, convDelete: convDelete, convGet: convGet, msgList: msgList, kv: kv, crypto: crypto}
 }
+
+// errorSafeCount 让缺注入的计数口以错误收场（fail-closed），而不是报 0。
+func errorSafeCount(f func() (int64, error)) (int64, error) {
+	if f == nil {
+		return 0, errNoConvCounter
+	}
+	return f()
+}
+
+var errNoConvCounter = errors.New("conversation counter unavailable")
 
 type agentChatReq struct {
 	ConversationID uint   `json:"conversation_id"`
@@ -51,6 +67,25 @@ func (h *AgentChatHandler) Chat(c *gin.Context) {
 		errcode.Respond(c, errcode.AgentMsgRequired)
 		return
 	}
+	// 建会话之前先预检配置：否则每点一次「发送」都会先落一条空会话、再在流里报
+	// 「未启用」，用户什么也没得到却在会话列表里攒了垃圾条目。
+	switch h.agent.Ready() {
+	case aiagent.ReadyDisabled:
+		errcode.Respond(c, errcode.AgentDisabled)
+		return
+	case aiagent.ReadyConfigUnreadable:
+		// 判在 Disabled 之前才有意义：读失败时默认值的 Enabled 就是 false。
+		errcode.Respond(c, errcode.AgentConfigUnreadable)
+		return
+	case aiagent.ReadyNoKey:
+		errcode.Respond(c, errcode.AgentNoAPIKey)
+		return
+	case aiagent.ReadyKeyUnreadable:
+		errcode.Respond(c, errcode.AgentKeyUnreadable)
+		return
+	}
+	// 建会话之前先预检配置：否则每点一次「发送」都会先落一条空会话、再在流里报
+	// 「未启用」，用户什么也没得到却在会话列表里攒了垃圾条目。
 	convID := in.ConversationID
 	if convID == 0 {
 		conv := &models.AgentConversation{}
@@ -131,7 +166,15 @@ func (h *AgentChatHandler) Conversations(c *gin.Context) {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"conversations": cs})
+	// total/truncated 与清单同批给出（口径同收件箱 / 整理历史 / 运行历史）：
+	// 计数读不出时保守报「可能被截断」并省略 total。
+	total, cntErr := errorSafeCount(h.convCount)
+	truncated := cntErr != nil || total > int64(len(cs))
+	resp := gin.H{"conversations": cs, "limit": oper.AgentConvListLimit, "truncated": truncated}
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Messages 单会话消息（含 reasoning/tool_calls）。
@@ -152,6 +195,9 @@ func (h *AgentChatHandler) Messages(c *gin.Context) {
 func (h *AgentChatHandler) DeleteConversation(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.convGet, id, errcode.AgentConversationNotFound) {
 		return
 	}
 	if err := h.convDelete(id); err != nil {
@@ -214,18 +260,49 @@ type agentConfigReq struct {
 
 // GetConfig 读 provider 配置（脱敏，api_key 仅留 _configured）。
 func (h *AgentChatHandler) GetConfig(c *gin.Context) {
-	ac, _ := aiagent.Load(h.kv, h.crypto)
+	ac, _, err := aiagent.Load(h.kv, h.crypto)
+	if errors.Is(err, aiagent.ErrConfigUnreadable) {
+		// 从前这里把错误丢掉、回 200 + 默认值 + api_key_configured:false，
+		// 面板于是显示「还没配过」——用户重填一遍就把真配置覆盖掉。
+		errcode.Respond(c, errcode.AgentConfigUnreadable.WithErr(err))
+		return
+	}
 	c.JSON(http.StatusOK, aiagent.Redacted(ac))
 }
 
 // SetConfig 写 provider 配置。api_key 非空才加密覆盖。
+// respondAgentSecretWriteErr AI 助手 API Key **密封失败**的出口（#395）。
+//
+// 这一支与「存储写不进去」是完全不同的两件事，不能共用一个 500：
+//
+//	密封失败   → 主密钥（SECRET_KEY）那侧：换过密钥、密文格式不对、随机源故障。
+//	              用户该去确认 SECRET_KEY —— 重试一万次也不会好。
+//	存储写失败 → kv.Set 写不进去（磁盘满/连接断/锁）。用户该腾空间/查库。
+//
+// 旧形状两处都是 Internal.WithErr ⇒ 前端 Assistant.vue 的 catch 直接把它当 err.message 弹出来，
+// 用户看到「服务内部错误，请稍后重试」⇒ 反复点保存，而主密钥不会因为重试而恢复。
+// 文案范式与 WebhookSecretUnavailable 同一族（那条码早就点名「可能更换过主密钥」）。
+func respondAgentSecretWriteErr(c *gin.Context, err error) {
+	errcode.Respond(c, errcode.AgentSecretWriteFailed.WithDetailKeepMessage(err))
+}
+
+// respondAgentConfigWriteErr AI 助手配置**存储写失败**的出口（#395）。
+func respondAgentConfigWriteErr(c *gin.Context, err error) {
+	errcode.Respond(c, errcode.SaveFailed.WithDetailKeepMessage(err))
+}
 func (h *AgentChatHandler) SetConfig(c *gin.Context) {
 	var in agentConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	existing, _ := aiagent.Load(h.kv, h.crypto)
+	existing, _, err := aiagent.Load(h.kv, h.crypto)
+	if errors.Is(err, aiagent.ErrConfigUnreadable) {
+		// 这份 existing 是合并基准：读失败时它是默认值、APIKeyEnc 为空，
+		// 用户只改个 model 点保存也会把还在的 API Key 抹掉。读不出来就不写。
+		errcode.Respond(c, errcode.AgentConfigUnreadable.WithErr(err))
+		return
+	}
 	cfg := existing
 	cfg.Enabled = in.Enabled
 	cfg.Provider = in.Provider
@@ -240,13 +317,14 @@ func (h *AgentChatHandler) SetConfig(c *gin.Context) {
 	if strings.TrimSpace(in.APIKey) != "" {
 		enc, err := h.crypto.Encrypt(strings.TrimSpace(in.APIKey))
 		if err != nil {
-			errcode.Respond(c, errcode.Internal.WithErr(err))
+			// #395 密封失败是主密钥侧的问题，与「存储写不进去」不是一回事。
+			respondAgentSecretWriteErr(c, err)
 			return
 		}
 		cfg.APIKeyEnc = enc
 	}
 	if err := aiagent.SaveConfig(h.kv, cfg); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondAgentConfigWriteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, aiagent.Redacted(cfg))

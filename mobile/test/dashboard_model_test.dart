@@ -122,4 +122,35 @@ void main() {
     expect(p.seeding, 0);
     expect(p.bonus, 0);
   });
+
+  // #255：移动端从前没有 stat_read_error 这个字段，后端那句原因在解析层就蒸发，
+  // 于是库读失败在手机上画成「每站 0 上传 0 下载」且没有任何说明。
+  test('DashboardOverview 带出每站统计的读取失败原因', () {
+    final o = DashboardOverview.fromJson({
+      'sites': [
+        {'site_id': 1, 'site_name': '好学'},
+      ],
+      'site_count': 1,
+      'downloader_count': 2,
+      'stat_read_error': 'database is locked',
+    });
+    expect(o.statReadError, 'database is locked');
+    // 读失败时数字仍是 0：只有这条账面能把它和「真没数据」分开。
+    expect(o.uploaded, 0);
+  });
+
+  test('正常读数不带原因（缺字段/空串都算没有，不许画出一条假告警）', () {
+    expect(
+      DashboardOverview.fromJson({'sites': [], 'site_count': 0}).statReadError,
+      isNull,
+    );
+    expect(
+      DashboardOverview.fromJson({
+        'sites': [],
+        'site_count': 0,
+        'stat_read_error': '   ',
+      }).statReadError,
+      isNull,
+    );
+  });
 }

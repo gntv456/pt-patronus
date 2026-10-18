@@ -4,6 +4,9 @@
 // 再喂给 <img>；TMDB/Cover Art 等公网 CDN 直连即可。失败/无图回退占位图标。
 import { ref, watch, onUnmounted } from 'vue'
 import { http } from '@/api/http'
+// #405 图片 src 同样要过协议白名单：这个组件的 url 来自豆瓣/TMDB 等第三方响应
+// （含 CelebrityDialog 的 avatar），外部可控。javascript:/data: 一律拒掉。
+import { safeUrl } from '@/utils/safeUrl'
 
 const props = defineProps<{ url: string; kind?: string }>()
 
@@ -17,9 +20,11 @@ async function resolve() {
     URL.revokeObjectURL(blobUrl)
     blobUrl = ''
   }
-  const u = props.url
+  // #405 协议白名单在此收口：safeUrl 放过 http(s)/mailto/相对路径，其余一律拒。
+  const u = safeUrl(props.url)
   if (!u) {
     src.value = ''
+    failed.value = !!props.url   // 有 url 但被拒 ⇒ 显示占位，而不是静默空白
     return
   }
   // 公网 CDN 直连（不防盗链、无需鉴权）

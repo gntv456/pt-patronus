@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
 )
 
@@ -10,6 +11,12 @@ import (
 // 用户显式开启才暴露（风险自担，见 config.example.yaml 告知）。
 func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 	if !d.Cfg.EntertainmentEnabled {
+		// 整组不注册时，前端菜单/页面照样会往 /entertainment 打请求，只会拿到通用
+		// 404「请求的资源不存在」——那是「路径不存在」的意思，不是「功能被关掉」。
+		// 这里挂一个说明性入口，把默认关闭与下一步（开环境变量）说清楚。
+		disabled := func(c *gin.Context) { errcode.Respond(c, errcode.EntertainmentDisabled) }
+		guarded.Any("/entertainment", disabled)
+		guarded.Any("/entertainment/*path", disabled)
 		return
 	}
 	entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))

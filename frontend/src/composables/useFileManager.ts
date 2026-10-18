@@ -3,6 +3,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'
 import { agentApi, type Agent } from '@/api/monitor'
+import { useAuthStore } from '@/stores/auth'
 
 // 存储项统一：本地/WebDAV/SMB 等（可读写）｜云盘（115/夸克/123，只读 + STRM）。
 export type StorageItem = { kind: 'fs'; fs: FileStorage } | { kind: 'cloud'; drive: CloudDrive }
@@ -12,10 +13,18 @@ type ConnState = 'checking' | 'ok' | 'fail'
 const ILLEGAL_NAME_RE = /[\/\\:*?"<>|]/
 
 export function useFileManager() {
+  const auth = useAuthStore()
   const list = ref<StorageItem[]>([])
   const loading = ref(false)
   const agents = ref<Agent[]>([])
+  // Agent 列表读失败的原因：空下拉既可能是「真没配」也可能是「没读到」，界面必须分得清。
+  const agentsError = ref('')
   const current = ref<StorageItem | null>(null)
+  // 云盘列表读失败置位：区分「没配网盘」与「网盘列表没读到」。
+  const drivesFailed = ref(false)
+  // 存储后端（/storages 整组是 admin-only）同样要分得开：读失败 / 无权限 / 真的没配。
+  const fsFailed = ref(false)
+  const fsForbidden = ref(false)
 
   const statusMap = ref<Record<string, { state: ConnState; error?: string }>>({})
   const testing = ref<string | null>(null)
@@ -102,8 +111,39 @@ export function useFileManager() {
   // ── 加载 ──
   async function loadStorages() {
     loading.value = true
+    drivesFailed.value = false
+    fsFailed.value = false
+    fsForbidden.value = false
     try {
-      const [fsList, drives] = await Promise.all([fileApi.list(), cloudApi.listDrives().catch(() => [])])
+      let drives: CloudDrive[] = []
+      let fsList: FileStorage[] = []
+      let dFail = false
+      let fFail = false
+      // 两侧各自留痕、互不阻断：旧写法只给云盘那侧挂了 catch，
+      // 存储后端读失败（含非管理员必然的 403）会把整个 Promise.all 抛掉，
+      // 连带本可正常浏览的云盘也进不了侧栏——只剩一条错误提示。
+      const fsP = (async () => {
+        if (!auth.isAdmin) {
+          fsForbidden.value = true
+          return
+        }
+        try {
+          fsList = await fileApi.list()
+        } catch (e: unknown) {
+          if ((e as { response?: { status?: number } }).response?.status === 403) fsForbidden.value = true
+          else fFail = true
+        }
+      })()
+      const cloudP = (async () => {
+        try {
+          drives = await cloudApi.listDrives()
+        } catch {
+          dFail = true
+        }
+      })()
+      await Promise.all([fsP, cloudP])
+      fsFailed.value = fFail
+      drivesFailed.value = dFail
       list.value = [
         ...fsList.map((f) => ({ kind: 'fs' as const, fs: f })),
         ...drives.map((d) => ({ kind: 'cloud' as const, drive: d })),
@@ -120,8 +160,13 @@ export function useFileManager() {
   async function loadAgents() {
     try {
       agents.value = await agentApi.list()
-    } catch {
+      agentsError.value = ''
+    } catch (e: unknown) {
+      // 从前这里只写 agents.value = []：读失败和「这台主机真没配 Agent」在界面上是同一个空下拉，
+      // 用户会以为自己没建过（或去重复建一个）。原因带出来，重开对话框会自动再取一次。
       agents.value = []
+      // http 拦截器已把后端信封的 message 改写进 err.message（无则退回异常名）。
+      agentsError.value = (e as Error)?.message || '未知错误'
     }
   }
 
@@ -248,7 +293,11 @@ export function useFileManager() {
   return {
     list,
     loading,
+    drivesFailed,
+    fsFailed,
+    fsForbidden,
     agents,
+    agentsError,
     current,
     statusMap,
     testing,

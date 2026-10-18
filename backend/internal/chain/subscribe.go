@@ -96,7 +96,16 @@ func (c *SubscribeChain) subscriptionPoster(ctx context.Context, sub *models.Sub
 }
 
 // Delete 删除（handler 用）。
-func (c *SubscribeChain) Delete(id uint) error { return c.op.Delete(id) }
+// Delete 取消订阅。存在性判定放在这一层而不是 handler：
+// GORM 的 Delete 对未命中主键不报错（RowsAffected=0），不查就分不清「删掉了」与
+// 「本来就没有」——从前 HTTP 面弹「已取消」、批量台账把空删计成 succeeded、
+// AI 工具 subscribe_delete 也回 {"deleted":id}，三条旁路同谎。
+func (c *SubscribeChain) Delete(id uint) error {
+	if _, err := c.op.Get(id); err != nil {
+		return err
+	}
+	return c.op.Delete(id)
+}
 
 // Update 编辑（resolution/downloader/status/save_path 等）。
 // 用列级 Updates 仅写用户可编辑字段，不覆盖 cron 维护的 last_checked_at/current_priority/episode_priority。
@@ -165,6 +174,17 @@ func (c *SubscribeChain) CheckAll(ctx context.Context) {
 	subs, err := c.op.ListActive()
 	if err != nil {
 		slog.Warn("subscribe list active failed", "err", err)
+		// 自曝：订阅列表读不出=整轮漏检，渲染成「没有要检查的订阅」是假绿。
+		// 当天去重防 cron 刷屏；notice 可空（测试未装配时跳过）。
+		if c.notice != nil {
+			_ = c.notice.Notice(ctx, notice.Input{
+				Source: notice.SourceSubscribeListFail,
+				Key:    "subscribe-listfail:" + time.Now().Format("2006-01-02"),
+				Title:  "媒体订阅",
+				Body:   "本轮订阅检查未能开始：读取订阅列表失败 — " + err.Error(),
+				Level:  "warning",
+			}, true)
+		}
 		return
 	}
 	gd := loadGlobalDefaults(c.cfgOp)
@@ -172,14 +192,22 @@ func (c *SubscribeChain) CheckAll(ctx context.Context) {
 		// per-subscription 互斥：与 Create 建后异步 Check 串行，防同订阅并发重复推送。
 		unlock := c.lockCheck(subs[i].ID)
 		sctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		n, err := c.checkWithDefaults(sctx, &subs[i], gd)
+		// per-sub recover：单个坏订阅 panic（站点适配器/过滤/评分闸门 bug）不得拖累同轮其它订阅的检查。
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("subscribe check panic recovered", "sub", subs[i].Title, "panic", r)
+				}
+			}()
+			n, err := c.checkWithDefaults(sctx, &subs[i], gd)
+			if err != nil {
+				slog.Warn("subscribe check failed", "title", subs[i].Title, "err", err)
+			} else if n > 0 {
+				slog.Info("subscribe hits pushed", "title", subs[i].Title, "count", n)
+			}
+		}()
 		cancel()
 		unlock()
-		if err != nil {
-			slog.Warn("subscribe check failed", "title", subs[i].Title, "err", err)
-		} else if n > 0 {
-			slog.Info("subscribe hits pushed", "title", subs[i].Title, "count", n)
-		}
 	}
 }
 

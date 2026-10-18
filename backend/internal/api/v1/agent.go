@@ -68,7 +68,7 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, nil, errcode.InvalidInput, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"agent": res.Agent, "plain_secret": res.PlainSecret})
@@ -93,7 +93,10 @@ func (h *AgentHandler) Delete(c *gin.Context) {
 	}
 	a, err := h.op.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.AgentNotFound)
+		// #347 与本文件 Enable 的 respondRecordError 同一判据：手抄的
+		// Respond(AgentNotFound) 只判「不存在」，不判 DB 真故障
+		// （AgentOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.AgentNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
@@ -115,7 +118,7 @@ func (h *AgentHandler) Rotate(c *gin.Context) {
 	}
 	secret, err := h.op.ResetSecret(id)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondRecordError(c, err, errcode.AgentNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plain_secret": secret})

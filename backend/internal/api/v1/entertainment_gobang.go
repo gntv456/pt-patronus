@@ -1,25 +1,36 @@
 package v1
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
-	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
 )
 
 // gobangSiteErr 站点侧错误分类：cookie 失效/未登录（站点 message 含「登录」）→
-// SiteAuthRejected（提示更新站点 cookie），其余透传 BadGateway（含站点原文案日志）。
+// SiteAuthRejected（提示更新站点 cookie），其余交娱乐域公共判据。
+//
+// 从前兜底是一句裸 BadGateway「上游服务不可用，请稍后重试」：这九个只读全景出口
+// 于是把「这个游戏没有五子棋面板」（该换游戏）、「站点凭据解不开」（该去重新保存，
+// 而且确实没发请求）和真的网络故障说成同一句话，用户只能反复重试。
 func gobangSiteErr(c *gin.Context, err error) {
 	if err != nil && strings.Contains(err.Error(), "请先登录") {
 		errcode.Respond(c, errcode.SiteAuthRejected.WithErr(err))
 		return
 	}
-	errcode.Respond(c, errcode.BadGateway.WithErr(err))
+	entReadErr(c, err)
+}
+
+// gobangSpendSiteErr 同款判据，但这条路会消耗游戏币/蜂蜜：扣费语义由 spendErr 交代。
+func gobangSpendSiteErr(c *gin.Context, err error) {
+	if err != nil && strings.Contains(err.Error(), "请先登录") {
+		errcode.Respond(c, errcode.SiteAuthRejected.WithErr(err))
+		return
+	}
+	spendErr(c, err)
 }
 
 // GobangState 五子棋全景快照（蜂巢：对局列表/蜂蜜汇总/周榜）。
@@ -63,12 +74,9 @@ func (h *EntertainmentHandler) GobangAction(c *gin.Context) {
 	}
 	res, err := h.ent.GobangAction(c.Request.Context(), id, c.Param("game"), req.Action, req.Params)
 	if err != nil {
-		if errors.Is(err, chain.ErrDuplicateSpend) {
-			// spendGuard 拦下的双击/重放：429 而非 BadGateway（同 Play 的 spendErr 语义）。
-			c.JSON(http.StatusTooManyRequests, gin.H{"code": errcode.DuplicateSpend.Code, "message": err.Error(), "error": err.Error()})
-			return
-		}
-		gobangSiteErr(c, err)
+		// 双击/重放（ErrDuplicateSpend → 429）已在 gobangSpendSiteErr 的公共判据里，
+		// 这里从前又抄了一遍，两处措辞一改就漂移。
+		gobangSpendSiteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)

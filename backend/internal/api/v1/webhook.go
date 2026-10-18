@@ -69,7 +69,14 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 	}
 
 	// 可选 HMAC 签名校验（X-Signature / X-Hub-Signature-256 = hmac-sha256(body, secret) hex）
-	if secret := h.op.DecryptedSecret(wh); secret != "" {
+	secret, secErr := h.op.DecryptedSecret(wh)
+	if secErr != nil {
+		// 配过密钥却解不开 ≠ 没配密钥：fail-closed，否则主密钥轮换后这个端点静默裸奔。
+		slog.Error("webhook secret unreadable, rejecting request", "webhook", wh.Name, "err", secErr)
+		errcode.Respond(c, errcode.WebhookSecretUnavailable.WithErr(secErr))
+		return
+	}
+	if secret != "" {
 		sig := strings.TrimPrefix(c.GetHeader("X-Signature"), "sha256=")
 		if sig == "" {
 			sig = strings.TrimPrefix(c.GetHeader("X-Hub-Signature-256"), "sha256=")
@@ -116,21 +123,40 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 		h.bus.Publish(c.Request.Context(), "webhook", payload)
 	}
 
-	// 落通知中心（一次性，不去重）
+	// 先记账面，再决定通知怎么说。面板读的是 trigger_count / last_triggered_at，
+	// 这条写失败从前被 `_ =` 丢掉：通知照旧说「已接收」，面板却停在上一次触发，
+	// 用户只会去查外部系统有没有打进来，不会怀疑这张表没写进去。
+	recordErr := h.op.MarkTriggered(wh.ID, string(raw))
+	if recordErr != nil {
+		slog.Warn("webhook 触发记录落库失败：面板的触发次数/最近触发时间仍是上一次的值",
+			"webhook_id", wh.ID, "webhook", wh.Name, "err", recordErr)
+	}
 	if h.notice != nil {
-		_ = h.notice.Notice(c.Request.Context(), notice.Input{
-			Source: notice.SourceWebhook, Title: "Webhook 触发：" + wh.Name,
-			Body: fmt.Sprintf("已接收请求（%d 字节）%s", len(raw), func() string {
-				if triggered {
-					return "，已触发工作流"
-				}
-				return ""
-			}()), Level: "info",
-		}, false)
+		_ = h.notice.Notice(c.Request.Context(), webhookTriggerNotice(wh.Name, len(raw), triggered, recordErr), false)
 	}
 
-	_ = h.op.MarkTriggered(wh.ID, string(raw))
 	c.JSON(http.StatusOK, gin.H{"ok": true, "triggered_workflow": triggered})
+}
+
+// webhookTriggerNotice 把「这次触发往通知中心写什么」收成一处（判定 + 文案），
+// 这样「账面没记上」这一态可以被直接证伪，而不必造一个会写失败的数据库。
+func webhookTriggerNotice(name string, rawLen int, triggered bool, recordErr error) notice.Input {
+	body := fmt.Sprintf("已接收请求（%d 字节）", rawLen)
+	if triggered {
+		body += "，已触发工作流"
+	}
+	level := "info"
+	if recordErr != nil {
+		body += "；但「触发次数 / 最近触发时间」没能记进面板：" + recordErr.Error() +
+			"（面板上看到的仍是上一次触发，别据此判断外部系统没打进来）"
+		level = "warn"
+	}
+	return notice.Input{
+		Source: notice.SourceWebhook,
+		Title:  "Webhook 触发：" + name,
+		Body:   body,
+		Level:  level,
+	}
 }
 
 // List 全部 webhook（管理端）。
@@ -158,7 +184,10 @@ func (h *WebhookHandler) Create(c *gin.Context) {
 		Name: in.Name, Token: genToken(), TargetWorkflowID: in.TargetWorkflowID, Enabled: true,
 	}
 	if err := h.op.Create(w, in.Secret); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #385 与 Update / Rotate 同一判据：密文写失败（主密钥侧）与库写失败都归
+		// SaveFailed，并把原因带进响应体。旧形状 Internal.WithErr 把原因丢进日志、
+		// 界面只显示「服务内部错误，请稍后重试」——而 Create 是最常走的那条新建路径。
+		respondWebhookWriteErr(c, err)
 		return
 	}
 	out, err := h.op.Get(w.ID)
@@ -170,6 +199,22 @@ func (h *WebhookHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"webhook": out, "token": w.Token})
 }
 
+// respondWebhookWriteErr Webhook 写出口（Update / Rotate）的失败分类。
+//
+// #371 这两处从前是 Internal.WithErr(err)，界面只显示「服务内部错误，请稍后重试」。
+// 而 op.Update 里可能失败的两步，用户都至少能判断方向：
+//
+//	Encrypt 失败 → 主密钥（SECRET_KEY）那侧的问题。SaveFailed 的文案本来就点名了
+//	               「若提示主密钥相关，请检查 SECRET_KEY 是否被更换」，就是给这种场景写的，
+//	               但写出口从没走到它 ⇒ 用户反复点保存，重试一万次也不会好。
+//	db.Save 失败 → 库写不进去（磁盘满/连接断/锁），同样不该说成「内部错误」这种无从下手的话。
+//
+// 附带把原因带进响应体（旧形状是 WithErr 只进日志，用户与运维都拿不到线索）。
+// 读侧不归这里管：按 id 取记录仍走 #345 的 respondRecordError（不存在 → 404）。
+func respondWebhookWriteErr(c *gin.Context, err error) {
+	errcode.Respond(c, errcode.SaveFailed.WithDetail(err))
+}
+
 // Update 编辑（secret 空=保留）。
 func (h *WebhookHandler) Update(c *gin.Context) {
 	id, ok := parseID(c)
@@ -178,7 +223,9 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 	}
 	w, err := h.op.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.WebhookNotFound)
+		// #345 与本文件 Delete 的 requireExists 同一判据：手抄的 Respond(WebhookNotFound)
+		// 只判「不存在」，不判 DB 真故障（WebhookOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.WebhookNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	var in webhookReq
@@ -192,7 +239,8 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 	w.TargetWorkflowID = in.TargetWorkflowID
 	w.Enabled = in.Enabled
 	if err := h.op.Update(w, in.Secret); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #371 密文写失败（主密钥侧）与库写失败都归 SaveFailed，详见该函数注释。
+		respondWebhookWriteErr(c, err)
 		return
 	}
 	out, err := h.op.Get(id)
@@ -210,12 +258,15 @@ func (h *WebhookHandler) Rotate(c *gin.Context) {
 	}
 	w, err := h.op.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.WebhookNotFound)
+		// #345 与本文件 Delete 的 requireExists 同一判据：手抄的 Respond(WebhookNotFound)
+		// 只判「不存在」，不判 DB 真故障（WebhookOper.Get 底层是 db.First）。
+		respondRecordError(c, err, errcode.WebhookNotFound, errcode.InvalidInput, errcode.Internal)
 		return
 	}
 	w.Token = genToken()
 	if err := h.op.Update(w, ""); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #371 同 Update：Rotate 也会真的写库（token 换了），失败要说清是写失败。
+		respondWebhookWriteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": w.Token})
@@ -225,6 +276,9 @@ func (h *WebhookHandler) Rotate(c *gin.Context) {
 func (h *WebhookHandler) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
+		return
+	}
+	if !requireExists(c, h.op.Get, id, errcode.WebhookNotFound) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {

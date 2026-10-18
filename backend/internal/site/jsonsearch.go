@@ -158,20 +158,27 @@ func BuildJSONSearchURL(baseURL string, def *SiteMetadata, keyword string, page 
 // 支持 selector 单数与 selectors 复数回退（镜像 Extract）；:self 取整行 stringify；
 // 抽到值过 ApplyFilters（parse_size/parse_time/regexp/replace 等复用）。
 // 数字用 UseNumber 保留原样，避免大字节科学计数法。
-func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
+//
+// 失败语义：响应非合法 JSON（登录页/风控页/网关错误页），或行选择器全部未命中
+// （响应结构与站点定义不符）→ 返回 error，不得伪装成「无结果」——否则用户会误以为
+// 站点真的没有匹配资源，链路故障在日志/UI 上完全不可见。合法的空结果 =
+// 某个行路径命中空数组（返回 0 条 + nil error）。
+func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) ([]Torrent, error) {
 	if def == nil {
-		return nil
+		return nil, fmt.Errorf("站点定义为空")
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
 	var root any
 	if err := dec.Decode(&root); err != nil {
-		return nil
+		return nil, fmt.Errorf("响应不是合法 JSON（可能是登录页/风控页/网关错误页）: %w", err)
 	}
 	rowSelectors := def.Selectors.Rows.Selectors
 	if len(rowSelectors) == 0 && def.Selectors.Rows.Selector != "" {
 		rowSelectors = []string{def.Selectors.Rows.Selector}
 	}
+	// 首个能命中数组的选择器即终态：空数组是合法「无结果」答案，不被后续
+	// 未命中选择器覆盖成报错（多选择器是回退候选，非并集）。
 	var rows []any
 	for _, rowSelector := range rowSelectors {
 		var rowsNode any
@@ -180,13 +187,16 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 		} else {
 			rowsNode = jsonNavigate(root, rowSelector)
 		}
-		rows, _ = rowsNode.([]any)
-		if len(rows) > 0 {
+		if arr, ok := rowsNode.([]any); ok {
+			rows = arr
 			break
 		}
 	}
 	if rows == nil {
-		return nil
+		if len(rowSelectors) == 0 {
+			return nil, fmt.Errorf("站点定义缺少种子列表（rows）选择器")
+		}
+		return nil, fmt.Errorf("种子列表路径 %v 未命中（未登录、被风控或站点响应已改版）", rowSelectors)
 	}
 	base, _ := url.Parse(baseURL)
 	out := []Torrent{}
@@ -244,7 +254,7 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 		}
 		out = append(out, t)
 	}
-	return out
+	return out, nil
 }
 
 func ParseJSONUserInfoFields(body []byte, fields map[string]ElementQuery, u *UserInfo) {

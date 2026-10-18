@@ -182,6 +182,40 @@ func bfEvictionLess(i, j downloader.Torrent) bool {
 	return li.Before(lj)
 }
 
+// bfEvictBySize 体积淘汰：总量超 limit 时按 bfEvictionLess 顺序挑出要删的种子，
+// 返回互不相交的 (evict, remain)。remain 必须不含已淘汰项——调用方拿它去设原生限流，
+// 混进刚删掉的哈希会让 TR/Deluge 的 torrent-set 整批报错，真留下的种子反而设不上限。
+// 未超限返回 (nil, 原样 kept)。不修改传入切片的顺序之外的内容。
+func bfEvictBySize(kept []downloader.Torrent, limit int64) (evict, remain []downloader.Torrent) {
+	var total int64
+	for _, tr := range kept {
+		total += tr.Size
+	}
+	if total <= limit {
+		return nil, kept
+	}
+	sorted := append([]downloader.Torrent(nil), kept...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return bfEvictionLess(sorted[i], sorted[j])
+	})
+	evictHashes := make(map[string]bool)
+	for _, tr := range sorted {
+		if total <= limit {
+			break
+		}
+		evict = append(evict, tr)
+		evictHashes[tr.Hash] = true
+		total -= tr.Size
+	}
+	remain = make([]downloader.Torrent, 0, len(kept)-len(evict))
+	for _, tr := range kept {
+		if !evictHashes[tr.Hash] {
+			remain = append(remain, tr)
+		}
+	}
+	return evict, remain
+}
+
 // bfShareLimits 把任务的删除阈值（DeleteRatio/DeleteSeedHours）映射为下载器原生 ShareLimits。
 // 未配维度（值 0）→ -1（全局默认，不覆盖下载器设置）。
 // DeleteUploadMB 无原生对应（qb share limit 仅 ratio/time），仅应用层删种。

@@ -12,6 +12,7 @@ import {
   type DriveInput,
 } from '@/api/cloud'
 import type { StrmRule, StrmRecord } from '@/api/cloud'
+import { strmRepairNotices } from './strmRepairNotices'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
@@ -88,7 +89,7 @@ async function doStrmRepair() {
   repairing.value = true
   try {
     const r = await cloudApi.strmRepair()
-    ElMessage.success(t('cloud.strmRepaired', { repaired: r.repaired, skipped: r.skipped }))
+    for (const n of strmRepairNotices(r, t)) ElMessage[n.kind](n.text)
   } catch (e) {
     ElMessage.error((e as Error).message || t('cloud.repairFailed'))
   } finally {
@@ -132,6 +133,12 @@ const {
 
 // ---- 云端任务队列 + 目录树导入 ----
 const tasks = ref<CloudTask[]>([])
+// 队列列表有单页上限：账面（生效 limit / total / truncated）要跟着清单走，否则「最近 50 条」画成「整个队列」。
+const tasksMeta = ref<{ total?: number; limit: number; truncated: boolean }>({
+  total: undefined,
+  limit: 50,
+  truncated: false,
+})
 const taskStatusFilter = ref('')
 const showImportTree = ref(false)
 const importing = ref(false)
@@ -145,9 +152,10 @@ let taskFailCount = 0
 async function loadTasks() {
   const seq = ++tasksSeq
   try {
-    const list = await cloudApi.listTasks(taskStatusFilter.value)
+    const res = await cloudApi.listTasks(taskStatusFilter.value)
     if (seq !== tasksSeq) return
-    tasks.value = list
+    tasks.value = res.tasks ?? []
+    tasksMeta.value = { total: res.total, limit: res.limit, truncated: res.truncated }
     taskFailCount = 0
     // 失败停轮询后手动刷新成功：恢复轮询判定（hasActiveTask 未变时 watch 不触发）。
     syncTaskPolling()
@@ -335,7 +343,26 @@ onMounted(async () => {
     <p v-else class="sub embedded-sub">{{ t('cloud.subEmbedded') }}</p>
 
     <el-tabs v-model="activeTab" class="tabs">
-      <CloudDrivesTab :drives="drives" mode="cloud" :testing="testing" :organizing="organizing" :repairing="repairing" :loading="loading" :quotas="quotas" :fmt-size="(n?: number) => fmtSize(n ?? 0)" @generate="(r: any) => generateOne(r)" @test="testDrive" @quota="loadQuota" @browse="(d: any) => openBrowse(d, () => {})" @create="openCreateDrive" @edit="openEditDrive" @remove="removeDrive" @auth="openAuth115" @organize="doOrganize" @repair="doStrmRepair" />
+      <CloudDrivesTab
+        :drives="drives"
+        mode="cloud"
+        :testing="testing"
+        :organizing="organizing"
+        :repairing="repairing"
+        :loading="loading"
+        :quotas="quotas"
+        :fmt-size="(n?: number) => fmtSize(n ?? 0)"
+        @generate="(r: any) => generateOne(r)"
+        @test="testDrive"
+        @quota="loadQuota"
+        @browse="(d: any) => openBrowse(d, () => {})"
+        @create="openCreateDrive"
+        @edit="openEditDrive"
+        @remove="removeDrive"
+        @auth="openAuth115"
+        @organize="doOrganize"
+        @repair="doStrmRepair"
+      />
       <CloudRulesTab
         :rules="rules"
         :generating="generating"
@@ -345,8 +372,20 @@ onMounted(async () => {
         @edit="openEditRule"
         @remove="removeRule"
       />
-      <CloudRecordsTab :records="records" :tasks="tasks" :loading="loading" :drive-name="driveName" :fmt-size="(n?: number) => fmtSize(n ?? 0)" v-model:task-status-filter="taskStatusFilter" @remove-record="removeRecord" @retry-task="retryTask" @remove-task="removeTask" @load-tasks="loadTasks"
-      @show-import-tree="showImportTree = true" />
+      <CloudRecordsTab
+        :records="records"
+        :tasks="tasks"
+        :tasks-meta="tasksMeta"
+        :loading="loading"
+        :drive-name="driveName"
+        :fmt-size="(n?: number) => fmtSize(n ?? 0)"
+        v-model:task-status-filter="taskStatusFilter"
+        @remove-record="removeRecord"
+        @retry-task="retryTask"
+        @remove-task="removeTask"
+        @load-tasks="loadTasks"
+        @show-import-tree="showImportTree = true"
+      />
     </el-tabs>
 
     <CloudDialogs

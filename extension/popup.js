@@ -94,14 +94,14 @@ async function loadDownloads() {
     $('dlName').textContent = `${dl.name || '下载器'} · ${dls.length} 台`
     const list = await listTorrents(cfg, dl.id)
     const arr = (list && (list.torrents || list)) || []
-    renderDlList(cfg, dl.id, arr)
+    renderDlList(cfg, dl.id, arr, (list && list.error) || '')
     $('dlList').dataset.loaded = '1'
     // 弹窗存活期内 5s 轮询速率/进度（popup 关闭即停）。
     if (dlTimer) clearInterval(dlTimer)
     dlTimer = setInterval(async () => {
       try {
         const l2 = await listTorrents(cfg, dl.id)
-        renderDlList(cfg, dl.id, (l2 && (l2.torrents || l2)) || [])
+        renderDlList(cfg, dl.id, (l2 && (l2.torrents || l2)) || [], (l2 && l2.error) || '')
         const st = await globalStats(cfg, dl.id).catch(() => null)
         if (st) {
           $('dlDl').textContent = fmtBytes(st.dl_rate || 0) + '/s'
@@ -115,7 +115,7 @@ async function loadDownloads() {
   }
 }
 
-function renderDlList(cfg, dlId, arr) {
+function renderDlList(cfg, dlId, arr, readError = '') {
   const box = $('dlList')
   box.innerHTML = ''
   // 活动任务（下载中/暂停）优先，做种靠后，最多 20 条。
@@ -126,6 +126,12 @@ function renderDlList(cfg, dlId, arr) {
     return ai - bi
   }).slice(0, 20)
   if (!sorted.length) {
+    // 后端在「读不到下载器」时回 {torrents: [], error:'原因'}：把它当成「暂无任务」
+    // 就是让扩展弹窗说「这台没任务」，而实际是连不上（#260 同一形状，第三个客户端）。
+    if (readError) {
+      box.innerHTML = `<div class="dlitem"><div class="t" style="color:var(--danger)">任务清单读不出来：${esc(String(readError).slice(0, 80))}</div></div>`
+      return
+    }
     box.innerHTML = '<div class="dlitem"><div class="t" style="color:var(--ink-3)">暂无任务</div></div>'
     return
   }
@@ -480,6 +486,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('checkinTxt').textContent = '签到中…'
     try {
       const body = await api(cfg, '/api/v1/sites/checkin', { method: 'POST' })
+      // 后端读不出站点清单时回 {results: [], list_error:'原因'}：只取 results 会把一次
+      // 查询失败渲染成绿色 ✅ 0/0 —— 用户以为「签过了，只是没有站」，实际是数据库读不动（#263）。
+      if (body && body.list_error) {
+        $('checkinTxt').textContent = `⚠ 清单读不出：${String(body.list_error).slice(0, 14)}`
+        return
+      }
       const rs = body.results || []
       const ok = rs.filter((r) => r.success).length
       $('checkinTxt').textContent = `✅ ${ok}/${rs.length}`

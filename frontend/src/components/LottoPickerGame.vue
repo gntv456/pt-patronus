@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { entertainmentApi, type GameStats, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // 双色球选球器富组件（批14）：红区 33 球选 6 + 蓝区 16 球选 1，机选/清空，
 // 覆盖麒麟 hdkylin_lotto / 织梦 zmpt_lotto（Selection="r,r,r,r,r,r|b"）
@@ -44,7 +45,7 @@ function clearAll() {
 }
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(entFail('stats', stats.value))
 }
 
 async function bet() {

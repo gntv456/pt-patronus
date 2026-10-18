@@ -48,10 +48,12 @@ export type PowerAction = 'reboot' | 'shutdown'
 export interface DeviceDetailState {
   latest: Ref<Metrics | null>
   snaps: Ref<MetricSnapshot[]>
+  /** 趋势图取数窗口（后端有单页上限）：被截断时必须显示在图上 */
+  trendWindow: Ref<{ shown: number; total?: number; truncated: boolean }>
   loading: Ref<boolean>
   powerLoading: Ref<PowerAction | ''>
-  cpuSeries: Ref<number[]>
-  memSeries: Ref<number[]>
+  cpuSeries: Ref<(number | null)[]>
+  memSeries: Ref<(number | null)[]>
   diskStats: Ref<{ total: number; used: number; usage: number | undefined }>
   diskUsage: Ref<number | undefined>
   diskTotal: Ref<number>
@@ -78,11 +80,19 @@ export function useDeviceDetail(
 ): DeviceDetailState {
   const latest = ref<Metrics | null>(null)
   const snaps = ref<MetricSnapshot[]>([])
+  // 趋势图的取数窗口（后端有单页上限）：被截断时要在图上说清楚，不然用户以为看的是全history
+  const trendWindow = ref<{ shown: number; total?: number; truncated: boolean }>({
+    shown: 0,
+    total: undefined,
+    truncated: false,
+  })
   const loading = ref(false)
   const powerLoading = ref<PowerAction | ''>('')
 
-  function seriesOf(pick: (m: Metrics) => number | undefined): number[] {
-    return snaps.value.map((s) => pick(parseMetrics(s) ?? ({} as Metrics)) ?? 0)
+  // 无读数的快照（离线/采集失败/手动探活只带 online）返回 null 断口，
+  // 不能补成 0——那会把掉线时段画成「CPU 跌到 0%」的假断崖。
+  function seriesOf(pick: (m: Metrics) => number | undefined): (number | null)[] {
+    return snaps.value.map((s) => pick(parseMetrics(s) ?? ({} as Metrics)) ?? null)
   }
 
   const cpuSeries = computed(() => seriesOf((m) => m.cpu_usage))
@@ -167,9 +177,17 @@ export function useDeviceDetail(
     try {
       // 先 collect 写入含网速的新快照，再拉历史——避免 Promise.all 竞态：
       // collect 返回值若未带回 net_*_rate，详情会显示 0 B/s，而库里快照其实已有速率。
-      await monitorApi.collect(target.value.id).catch(() => null)
-      const s = await monitorApi.metrics(target.value.id, undefined, 120)
+      // 采集失败后端回的是 200 + {ok:false, error:'原因'}：以前这里 .catch(() => null) 整份闷掉，
+      // 于是「这次没采到」和「刚采到新数」在屏幕上同形（#251）。历史照旧要能看，但要说清是历史。
+      try {
+        await monitorApi.collect(target.value.id)
+      } catch (e: unknown) {
+        ElMessage.warning(`本次采集失败：${(e as Error).message || '未知原因'}（下方显示的是历史数据）`)
+      }
+      const res = await monitorApi.metrics(target.value.id, undefined, 120)
+      const s = res.snapshots ?? []
       snaps.value = s
+      trendWindow.value = { shown: s.length, total: res.total, truncated: res.truncated }
       const raw = s.length ? parseMetrics(s[s.length - 1]) : null
       latest.value = withNetRate(s, raw)
     } finally {
@@ -220,6 +238,7 @@ export function useDeviceDetail(
   return {
     latest,
     snaps,
+    trendWindow,
     loading,
     powerLoading,
     cpuSeries,

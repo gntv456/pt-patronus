@@ -71,6 +71,7 @@ ENTERTAINMENT_ENABLED=false # 娱乐游戏自动化（转盘/下注/红包雨等
                             # 一经查实存在封号风险，风险由使用者自行承担。仅在明确了解并接受风险后置 true 开启。
 
 DEMO_MODE=false            # true 时登录页显示“浏览演示环境”（默认关闭；仅用于本地评审/公开演示，生产不建议开启）
+ALLOW_PRIVATE_SITES=false  # true 时站点抓取放行内网/环回地址（自建 tracker：本机 Docker 的 FluxTorrent、NAS 上的 PT 站）。默认关闭，保持 SSRF 守卫
 
 
 

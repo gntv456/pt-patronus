@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type BetRequest } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // 通用下注组件（批2）：按 game.id 后缀渲染不同玩法（押大小/双色球选号/翻面/红包/赛事押注）。
 const { t } = useI18n()
@@ -27,7 +28,7 @@ const mode = computed(() => {
 })
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(entFail('stats', stats.value))
 }
 async function doBet(req: BetRequest) {
   if (playing.value) return

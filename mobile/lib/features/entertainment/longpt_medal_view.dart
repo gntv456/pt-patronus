@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
+import 'ent_read_fail.dart';
 
 // LongPT 六十四卦勋章：爻碎片合成 + 金字塔升级（太极→两仪→四象→八卦→六十四卦）。
 class LongPTMedalView extends StatefulWidget {
@@ -47,7 +48,9 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
     }
     try {
       _shards = await _api.medalShards(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'medalShards', e);
+    }
     if (mounted) setState(() => _loading = false);
   }
 

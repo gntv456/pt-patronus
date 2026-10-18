@@ -178,18 +178,15 @@ func (g *GenericJSON) sunnyptFetchMessageContent(ctx context.Context, def *site.
 		return "", nil
 	}
 	path := "/api/v1/chat/history?roomId=" + url.QueryEscape(roomID) + "&count=200"
-	body, _, err := g.sunnyGet(ctx, apiBase, cookie, path)
+	body, st, err := g.sunnyGet(ctx, apiBase, cookie, path)
 	if err != nil {
 		return "", err
 	}
-	var raw struct {
-		Code int             `json:"code"`
-		Data json.RawMessage `json:"data"`
+	data, err := sunnyData(body, st)
+	if err != nil {
+		return "", err
 	}
-	if json.Unmarshal(body, &raw) != nil || raw.Code != 0 {
-		return "", nil
-	}
-	return strings.Join(sunnyChatHistoryLines(raw.Data), "\n"), nil
+	return strings.Join(sunnyChatHistoryLines(data), "\n"), nil
 }
 
 func sunnyChatHistoryLines(data json.RawMessage) []string {

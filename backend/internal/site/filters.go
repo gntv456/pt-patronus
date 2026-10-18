@@ -18,17 +18,11 @@ func ApplyFilters(raw string, fs []Filter) string {
 		switch f.Name {
 		case "regexp":
 			// args 形如 "pattern:::N"：取第 N 个捕获组（默认 1；0 取全匹配）
-			pat := f.Args
-			groupIdx := 1
-			if i := strings.Index(pat, ":::"); i >= 0 {
-				if gi, err := strconv.Atoi(pat[i+3:]); err == nil && gi >= 0 {
-					groupIdx = gi
-					pat = pat[:i]
-				}
-			}
-			re, err := regexp.Compile(pat)
-			if err != nil {
-				continue
+			re, groupIdx, ok := compileFilterPattern(f.Args)
+			if !ok {
+				// 正则编译不出来＝这条规则永远提不出东西，与未命中同一终态；
+				// 绝不能保留原始文本往下走（会被 parse_size/parse_number 抽成无关数字）。
+				return ""
 			}
 			m := re.FindStringSubmatch(s)
 			switch {
@@ -168,17 +162,10 @@ func ApplyFilters(raw string, fs []Filter) string {
 		case "sum_size":
 			s = strconv.FormatInt(SumBytes(s), 10)
 		case "sum_matches":
-			pat := f.Args
-			groupIdx := 1
-			if i := strings.Index(pat, ":::"); i >= 0 {
-				if gi, err := strconv.Atoi(pat[i+3:]); err == nil && gi >= 0 {
-					groupIdx = gi
-					pat = pat[:i]
-				}
-			}
-			re, err := regexp.Compile(pat)
-			if err != nil {
-				continue
+			re, groupIdx, ok := compileFilterPattern(f.Args)
+			if !ok {
+				// 同上：编不出正则就不是「合计为 0」，而是「提不出值」，给空值。
+				return ""
 			}
 			var total float64
 			for _, m := range re.FindAllStringSubmatch(s, -1) {

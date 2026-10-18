@@ -5,13 +5,16 @@ import "time"
 
 // OpsCredential — 运维凭据中心。密码/私钥加密存储；明文只在创建/更新入参中出现，不回传。
 type OpsCredential struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	Name          string    `gorm:"size:64;not null" json:"name"`
-	Type          string    `gorm:"size:16;index;not null" json:"type"` // ssh | nas | generic
-	UsernameEnc   string    `gorm:"type:text" json:"-"`
-	PasswordEnc   string    `gorm:"type:text" json:"-"`
-	PrivateKeyEnc string    `gorm:"type:text" json:"-"`
-	Username      string    `gorm:"-" json:"username,omitempty"`
+	ID            uint   `gorm:"primaryKey" json:"id"`
+	Name          string `gorm:"size:64;not null" json:"name"`
+	Type          string `gorm:"size:16;index;not null" json:"type"` // ssh | nas | generic
+	UsernameEnc   string `gorm:"type:text" json:"-"`
+	PasswordEnc   string `gorm:"type:text" json:"-"`
+	PrivateKeyEnc string `gorm:"type:text" json:"-"`
+	Username      string `gorm:"-" json:"username,omitempty"`
+	// HasUsername 与 HasPassword/HasPrivateKey 同口径：只看密文是否存在，不要求能解密。
+	// 少了它，主密钥换过后列表会显示「无用户名」，同一行却写着「密码 · 私钥」，自相矛盾。
+	HasUsername   bool      `gorm:"-" json:"has_username"`
 	HasPassword   bool      `gorm:"-" json:"has_password"`
 	HasPrivateKey bool      `gorm:"-" json:"has_private_key"`
 	Tags          string    `gorm:"size:255" json:"tags"`

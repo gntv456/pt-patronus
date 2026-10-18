@@ -36,7 +36,10 @@ func TestParseJSONSearchHDBits(t *testing.T) {
 			"category": {Selector: "type_category"},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://hdbits.org")
+	ts, err := ParseJSONSearch(body, def, "https://hdbits.org")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 {
 		t.Fatalf("len=%d", len(ts))
 	}
@@ -58,7 +61,10 @@ func TestParseJSONSearchFormatsNumericSizeBytes(t *testing.T) {
 			"size":  {Selector: "size"},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://json.test")
+	ts, err := ParseJSONSearch(body, def, "https://json.test")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 {
 		t.Fatalf("len=%d", len(ts))
 	}
@@ -76,7 +82,10 @@ func TestParseJSONSearchHumanReadableSizePreserved(t *testing.T) {
 			"size":  {Selector: "size"},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://json.test")
+	ts, err := ParseJSONSearch(body, def, "https://json.test")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 {
 		t.Fatalf("len=%d", len(ts))
 	}
@@ -95,7 +104,10 @@ func TestParseJSONSearchNested(t *testing.T) {
 			"size":    {Selector: "size"},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://zhuque.in")
+	ts, err := ParseJSONSearch(body, def, "https://zhuque.in")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 || ts[0].Title != "T" || ts[0].Seeders != 3 {
 		t.Errorf("嵌套路径解析错误: %+v", ts)
 	}
@@ -110,7 +122,10 @@ func TestParseJSONSearchRowsSelectorsFallback(t *testing.T) {
 			"seeders": {Selector: "seeding"},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://huno.test")
+	ts, err := ParseJSONSearch(body, def, "https://huno.test")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 || ts[0].Title != "Fallback" || ts[0].Seeders != 4 {
 		t.Fatalf("rows selectors fallback failed: %+v", ts)
 	}
@@ -119,7 +134,10 @@ func TestParseJSONSearchRowsSelectorsFallback(t *testing.T) {
 func TestParseJSONSearchRootArrayRowsSelf(t *testing.T) {
 	body := []byte(`[{"id":123,"name":"Root Array","size":2147483648,"seeders":8,"leechers":1,"timesCompleted":22,"category":"Movie"}]`)
 	def := &SiteMetadata{Selectors: DefaultRartrackerSelectors()}
-	ts := ParseJSONSearch(body, def, "https://superbits.example")
+	ts, err := ParseJSONSearch(body, def, "https://superbits.example")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 {
 		t.Fatalf("len=%d", len(ts))
 	}
@@ -141,9 +159,61 @@ func TestParseJSONSearchSelectorsFallback(t *testing.T) {
 			"download": {Selectors: []string{"download_link", "download_url"}},
 		},
 	}}
-	ts := ParseJSONSearch(body, def, "https://x.com")
+	ts, err := ParseJSONSearch(body, def, "https://x.com")
+	if err != nil {
+		t.Fatalf("ParseJSONSearch: %v", err)
+	}
 	if len(ts) != 1 || ts[0].DownloadURL != "https://x.com/dl/1.torrent" {
 		t.Errorf("复数回退+ResolveURL 错误: %+v", ts)
+	}
+}
+
+// TestParseJSONSearchNonJSONErrors：body 非 JSON（登录页/风控页/网关错误页）必须报错，
+// 不得伪装成「0 条资源」——否则站点故障在搜索 UI 上完全不可见。
+func TestParseJSONSearchNonJSONErrors(t *testing.T) {
+	def := &SiteMetadata{Selectors: SiteSelectors{Rows: ElementQuery{Selector: "data"}}}
+	ts, err := ParseJSONSearch([]byte("<html><body>请先登录</body></html>"), def, "https://x.com")
+	if err == nil {
+		t.Fatalf("HTML 登录页必须报错，got %d 条", len(ts))
+	}
+	if len(ts) != 0 {
+		t.Fatalf("报错时不应带结果，got %d 条", len(ts))
+	}
+}
+
+// TestParseJSONSearchRowsMissErrors：合法 JSON 但行路径未命中（未登录/风控/改版特征）
+// 必须报错，不得伪装成「无结果」。
+func TestParseJSONSearchRowsMissErrors(t *testing.T) {
+	def := &SiteMetadata{Selectors: SiteSelectors{Rows: ElementQuery{Selector: "data.torrents"}}}
+	ts, err := ParseJSONSearch([]byte(`{"ret":-1,"msg":"请先登录"}`), def, "https://x.com")
+	if err == nil {
+		t.Fatalf("行路径未命中必须报错，got %d 条", len(ts))
+	}
+}
+
+// TestParseJSONSearchEmptyRowsNoError：正控——合法空结果（路径命中空数组）不是故障，
+// 必须返回 0 条 + nil error，否则每个「查无资源」的正常搜索都会变成报错。
+func TestParseJSONSearchEmptyRowsNoError(t *testing.T) {
+	def := &SiteMetadata{Selectors: SiteSelectors{Rows: ElementQuery{Selector: "data.torrents"}}}
+	ts, err := ParseJSONSearch([]byte(`{"data":{"torrents":[]}}`), def, "https://x.com")
+	if err != nil {
+		t.Fatalf("空数组是合法空结果，不该报错: %v", err)
+	}
+	if len(ts) != 0 {
+		t.Fatalf("len=%d, want 0", len(ts))
+	}
+}
+
+// TestParseJSONSearchEmptyArrayFirstSelectorWins：多选择器回退时，首个命中的空数组
+// 即终态（合法空结果），不得被后续未命中的回退选择器覆盖成报错。
+func TestParseJSONSearchEmptyArrayFirstSelectorWins(t *testing.T) {
+	def := &SiteMetadata{Selectors: SiteSelectors{Rows: ElementQuery{Selectors: []string{"data.torrents", "data.list"}}}}
+	ts, err := ParseJSONSearch([]byte(`{"data":{"torrents":[]}}`), def, "https://x.com")
+	if err != nil {
+		t.Fatalf("首个选择器命中空数组应视为合法空结果: %v", err)
+	}
+	if len(ts) != 0 {
+		t.Fatalf("len=%d, want 0", len(ts))
 	}
 }
 

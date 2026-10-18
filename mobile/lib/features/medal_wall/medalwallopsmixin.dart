@@ -3,11 +3,12 @@ part of 'package:ptpatronus/features/medal_wall/medal_wall_page.dart';
 
 mixin MedalWallOpsMixin on State<MedalWallPage> {
 
-  final _api = MedalWallApi();
-  StreamSubscription<List<Medal>>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
+  late final _api = MedalWallApi(frames: widget.frames);
+  StreamSubscription<MedalStreamEvent>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   List<Medal> _medals = [];
   bool _loading = true;
   String? _error;
+  String? _streamBanner; // done 帧账面：已有数据时的顶部常驻说明
   String _filter = 'all'; // all/owned/available/out_of_stock/wearing
   List<int> _selectedSiteIds = []; // 站点多选筛选（按 site_id），空=全部
   Future<void> _load({bool refresh = false}) {
@@ -16,11 +17,21 @@ mixin MedalWallOpsMixin on State<MedalWallPage> {
       _medals = [];
       _loading = true;
       _error = null;
+      _streamBanner = null;
     });
     _sub = _api.allStream(refresh: refresh).listen(
-      (cards) {
+      (ev) {
         if (!mounted) return;
-        setState(() => _medals = [..._medals, ...cards]);
+        setState(() {
+          _medals = [..._medals, ...ev.cards];
+          // 一张卡都没到却说清单读失败：别把「读不到」画成「没有勋章」。
+          final notice = streamNoticeOf(
+            arrived: _medals.length,
+            listError: ev.listError,
+          );
+          _error = notice.error ?? _error;
+          _streamBanner = notice.banner ?? _streamBanner;
+        });
       },
       onDone: () {
         if (mounted) setState(() => _loading = false);

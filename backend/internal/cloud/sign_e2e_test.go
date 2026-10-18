@@ -64,7 +64,7 @@ func TestSignPlacementE2E(t *testing.T) {
 			OutputDir: dir, CloudPath: "/媒体/电影/a.mkv", Template: "{direct}{cloudpath}",
 			FileName: "a.mkv", DriveID: 9, DirectBase: "/api/v1/cloud/direct", SignFunc: fn,
 		}
-		if err := WriteStrmFile(w); err != nil {
+		if _, err := WriteStrmFile(w); err != nil {
 			t.Fatal(err)
 		}
 		line := readSingleStrm(t, dir)

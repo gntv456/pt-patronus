@@ -48,15 +48,23 @@ let resizeObserver: ResizeObserver | null = null
 
 // 从 localStorage 加载自定义快速命令
 function loadQuickCmds() {
+  // 两份本地存储各自 try：从前共用一个 try + 空 catch，快捷命令被写坏时
+  // 面板直接回落默认值——用户看到的是「我存的命令没了」，一句提示都没有（#296）。
   try {
     const saved = localStorage.getItem('ops_terminal_quickcmds')
     if (saved) {
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed) && parsed.length) quickCmds.value = parsed
     }
+  } catch {
+    ElMessage.warning(t('ot.qcReadFailed'))
+  }
+  try {
     const cfg = localStorage.getItem('ops_terminal_config')
     if (cfg) termConfig.value = { ...termConfig.value, ...JSON.parse(cfg) }
-  } catch {}
+  } catch {
+    ElMessage.warning(t('ot.qcCfgFailed'))
+  }
 }
 function saveQuickCmds() {
   localStorage.setItem('ops_terminal_quickcmds', JSON.stringify(quickCmds.value))

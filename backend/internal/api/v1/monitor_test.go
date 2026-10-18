@@ -40,6 +40,7 @@ func setupMonitorServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 	r.POST("/monitor/targets", h.Create)
 	r.PUT("/monitor/targets/:id", h.Update)
 	r.DELETE("/monitor/targets/:id", h.Delete)
+	r.DELETE("/monitor/alerts/:id", h.DeleteAlert)
 	r.POST("/monitor/targets/:id/probe", h.Probe)
 	r.GET("/monitor/targets/:id/metrics", h.Metrics)
 	return r, db

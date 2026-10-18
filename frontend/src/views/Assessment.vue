@@ -26,6 +26,12 @@ async function load(refresh = false) {
         cards.value.push(card)
       },
       ctrl.signal,
+      (sum) => {
+        // done 帧的账面：整轮没跑成（站点列表读不出）或少推了站，都要说出来，
+        // 否则界面只剩「暂无考核数据」的空状态，看起来像「没有站点要考核」。
+        if (sum?.list_error) ElMessage.warning(t('assessment.streamListFailed', { error: sum.list_error }))
+        else if (sum?.shortage > 0) ElMessage.warning(t('assessment.streamShortage', { n: sum.shortage }))
+      },
     )
   } catch (e: unknown) {
     if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('assessment.loadFailed'))

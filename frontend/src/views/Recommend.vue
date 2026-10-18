@@ -63,6 +63,14 @@ async function load(refresh = false) {
         feedItems.value.push(...items)
       },
       ctrl.signal,
+      (sum) => {
+        // 后端每个源各 15s 超时（与 axios 全局超时同值）：某源没回来时页面只是少几行卡片，
+        // 看着像「今天就这些」，所以要把「哪几个源没回来」说出来。
+        const failed = sum.failed ?? []
+        if (failed.length && abortCtrl === ctrl) {
+          ElMessage.warning(t('recommend.partialSources', { list: failed.slice(0, 3).join('；') }))
+        }
+      },
     )
     if (feedItems.value.length < PAGE_MIN_HINT) hasMore.value = false
   } catch (e: unknown) {

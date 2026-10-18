@@ -117,12 +117,19 @@ export interface TransferSummary {
 }
 
 export const transferApi = {
-  history: (status = '', limit = 200) =>
+  historyPage: (status = '', limit = 200) =>
     http
-      .get<{ history: TransferHistory[] }>('/transfer/history', {
+      .get<{ history: TransferHistory[]; total?: number; limit?: number; truncated?: boolean }>('/transfer/history', {
         params: { ...(status ? { status } : {}), limit },
       })
-      .then((r) => r.data.history ?? []),
+      .then((r) => ({
+        history: r.data.history ?? [],
+        total: r.data.total,
+        limit: r.data.limit ?? limit,
+        // 缺字段按「可能被截断」处理：单页封顶 500，别把一页说成全部整理记录。
+        truncated: r.data.truncated ?? true,
+      })),
+  history: (status = '', limit = 200) => transferApi.historyPage(status, limit).then((p) => p.history),
   summary: (withItems = false, limit = 50) =>
     http
       .get<TransferSummary>('/transfer/summary', {
@@ -151,7 +158,7 @@ export const transferApi = {
   batchDeleteHistory: (ids: number[]) =>
     http.post<{ deleted: number; failed: number[] }>('/transfer/history/batch-delete', { ids }).then((r) => r.data),
   clearFailedHistory: () => http.post<{ deleted: number }>('/transfer/history/clear-failed').then((r) => r.data),
-  sweep: () => http.post('/transfer/sweep').then((r) => r.data),
+  sweep: () => http.post<{ ok: boolean; msg: string }>('/transfer/sweep', null).then((r) => r.data),
   // 目录监视配置（重启进程生效）。
   getDirwatchConfig: () => http.get<DirwatchConfig>('/transfer/dirwatch').then((r) => r.data),
   setDirwatchConfig: (cfg: DirwatchConfig) => http.put('/transfer/dirwatch', cfg).then((r) => r.data),
@@ -191,6 +198,8 @@ export const transferApi = {
         group: string
         is_tv: boolean
         matched?: { title: string; year: number; type: string } | null
+        // 媒体源查询失败的原因（与「没匹配上」分开：前者要去看源凭据/网络，后者才补识别词）。
+        media_error?: string
       }>('/transfer/recognize/test', { name, year, media })
       .then((r) => r.data),
   // ---- 识别词云端共享（仓库 CRUD + 拉取预览 + 一键合并导入；本地优先不覆盖） ----

@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"strings"
 )
 
@@ -148,6 +147,6 @@ func (xiaomiRouterPlugin) ExecuteAction(ctx context.Context, rt Runtime, action 
 		}
 		return res, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

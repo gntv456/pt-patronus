@@ -3,6 +3,7 @@ package mediaserver
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -81,11 +82,26 @@ func DefaultCoverOptions() CoverOptions {
 	return CoverOptions{Cols: 3, Rows: 3, ThumbW: 200, ThumbH: 300}
 }
 
-// GenerateCover 取某库最近 N=Cols×Rows 条目的封面，拼成网格 JPEG 字节。
+// ErrNoCoverPlaced 表示「有条目但一张封面都没贴上」。区别于「库里就是没海报」：
+// 前者要的是媒体服务器图片通道（可达性/授权），后者是正常的空态。
+var ErrNoCoverPlaced = errors.New("封面一张都没取到")
+
+// CoverStats 一轮封面拼图的账面。格子留黑有两种完全不同的原因：条目本来没封面、
+// 封面取不到（图接口不可达/未授权）。以前两者都只体现为「一块黑」，全失败也回 200，
+// 用户读到的是「这批新片都没海报」，而真实情况往往是媒体服务器的图片通道整个坏了。
+type CoverStats struct {
+	Items     int // 本轮参与拼图的条目数
+	Placed    int // 成功贴上画布的封面数
+	NoImage   int // 条目没有封面地址
+	FetchFail int // 有地址但取图失败
+}
+
+// GenerateCover 取某库最近 N=Cols×Rows 条目的封面，拼成网格 JPEG 字节 + 账面。
 //
-// 单张拉取失败跳过（对应格子留空背景色），保证整体可用；这是「海报墙」预览，
-// 个别条目无封面属正常。缩略图用 area-average 降采样（无第三方依赖，画质优于最近邻）。
-func GenerateCover(ctx context.Context, c Client, libraryID string, opt CoverOptions) ([]byte, error) {
+// 单张失败跳过（对应格子留背景色），保证部分可用；但当 items>0 而 placed==0 时
+// 返回错误：一张都没贴上，回一张全黑的"成功图"就是谎报（调用方据错误码出声）。
+// 缩略图用 area-average 降采样（无第三方依赖，画质优于最近邻）。
+func GenerateCover(ctx context.Context, c Client, libraryID string, opt CoverOptions) ([]byte, CoverStats, error) {
 	if opt.Cols <= 0 || opt.Rows <= 0 {
 		opt = DefaultCoverOptions()
 	}
@@ -99,8 +115,9 @@ func GenerateCover(ctx context.Context, c Client, libraryID string, opt CoverOpt
 	limit := opt.Cols * opt.Rows
 	items, err := c.RecentItems(ctx, libraryID, limit)
 	if err != nil {
-		return nil, fmt.Errorf("拉取条目: %w", err)
+		return nil, CoverStats{}, fmt.Errorf("拉取条目: %w", err)
 	}
+	st := CoverStats{Items: len(items)}
 
 	canvasW := opt.Cols * opt.ThumbW
 	canvasH := opt.Rows * opt.ThumbH
@@ -113,23 +130,32 @@ func GenerateCover(ctx context.Context, c Client, libraryID string, opt CoverOpt
 			break
 		}
 		if it.ImageURL == "" {
+			st.NoImage++
 			continue
 		}
 		img, err := c.FetchImage(ctx, it)
 		if err != nil {
-			continue // 单张失败跳过
+			st.FetchFail++
+			continue // 单张失败跳过（但仍计入账面）
 		}
 		thumb := resizeImage(img, opt.ThumbW, opt.ThumbH)
 		col, row := i%opt.Cols, i/opt.Cols
 		dp := image.Pt(col*opt.ThumbW, row*opt.ThumbH)
 		drawAt(canvas, thumb, dp)
+		st.Placed++
+	}
+
+	if st.Items > 0 && st.Placed == 0 {
+		return nil, st, fmt.Errorf(
+			"%w：%d 个条目里 %d 个没有封面地址、%d 个取图失败（媒体服务器的图片通道可能不可达或未授权）",
+			ErrNoCoverPlaced, st.Items, st.NoImage, st.FetchFail)
 	}
 
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, canvas, &jpeg.Options{Quality: 82}); err != nil {
-		return nil, fmt.Errorf("encode jpeg: %w", err)
+		return nil, st, fmt.Errorf("encode jpeg: %w", err)
 	}
-	return buf.Bytes(), nil
+	return buf.Bytes(), st, nil
 }
 
 // fillBG 用纯色填满整张图。

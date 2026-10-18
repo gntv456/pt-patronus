@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
@@ -26,6 +27,18 @@ var (
 	// ErrNotTorrent 表示响应不是合法 .torrent（HTML 伪装/未知页面），防把 HTML 当种子推下载器。
 	ErrNotTorrent = errors.New("download response is not a valid torrent file")
 )
+
+// #401 把上面两个哨兵登记进 errtext：下载推送的出口是 opResult → userErrText
+// (=errtext.Text)，而 Text 从前不认它们 → 兜底原样返回英文原文，用户看到
+// 「下载 .torrent 失败: site cookie invalid or expired (download redirected to login)」。
+// Cookie 失效是下载失败里最常见的一种，英文既没点名字段也没给下一步。
+//
+// 为何由 chain 登记而不在 errtext 里直接 errors.Is：errtext 被 chain 依赖（chain → errtext），
+// 反向 import 就是环。判据仍留在 errtext 一处（单一来源），只是「哪些哨兵」改成可注册。
+func init() {
+	errtext.Register(ErrCookieInvalid, errtext.SiteCookieInvalid)
+	errtext.Register(ErrNotTorrent, errtext.NotTorrentFile)
+}
 
 // FetchTorrentFile 用站点凭据（cookie 为主，必要时补 passkey）把 downloadURL 指向的
 // .torrent 下载成字节。对标 MoviePilot TorrentHelper.download_torrent：MP 自己用站点 cookie
@@ -49,15 +62,31 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 	def := c.defFor(s)
 	// sunnypt:下载走 Bearer 直连 api.sunnypt.top(主站 cookie 会话层对后端不可用,须用 accessToken)。
 	if def != nil && def.ID == "sunnypt" {
-		return c.fetchSunnyptTorrentFile(ctx, downloadURL, c.credential(s, def))
+		cred, cerr := c.credentialWithErr(s, def)
+		if cerr != nil {
+			return nil, "", cerr
+		}
+		return c.fetchSunnyptTorrentFile(ctx, downloadURL, cred)
 	}
 	// schema 分流：mteam/rousi 的 download URL 自带临时 token/passkey，下载器可直连；
 	// 且 mteam 用 cookie 下载反致错（对标 MP 注释「涉及解析地址的不使用Cookie下载种子，否则MT会出错」）。
 	if def != nil && (def.Schema == "mteam" || def.Schema == "rousi") {
 		return nil, "", ErrDelegatedToDownloader
 	}
-	cookie := c.credential(s, def)
+	cookie, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, "", cerr
+	}
 	passkey := c.sites.DecryptedPasskey(s)
+	// fluxtorrent：兼容层 download.php 只认 ?passkey=；凭据包是 JSON Token 串，既不是 cookie
+	// （seedCookies 解析不出任何 k=v，等于匿名请求），也不能当 Cookie 头发。缺 passkey 时给可执行的
+	// 提示，而不是让下游把「从未配过 cookie 的站」报成 Cookie 失效。
+	if def != nil && def.Schema == "fluxtorrent" {
+		if passkey == "" {
+			return nil, "", errors.New("FluxTorrent 下载需要 passkey：请先对该站点执行连接测试/用户信息抓取（站点会自动下发 passkey 并回写），或在站点凭据中手填 passkey")
+		}
+		cookie = ""
+	}
 	if cookie == "" && passkey == "" {
 		return nil, "", ErrDelegatedToDownloader // 无任何凭据，让下载器试原 URL
 	}
@@ -73,7 +102,9 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 	}
 	resp, gerr := c.hc.Get(ctx, dlURL, cookie, true)
 	if gerr != nil {
-		return nil, "", fmt.Errorf("fetch torrent: %w", gerr)
+		// *url.Error 携带完整请求 URL；错误文本会进容器日志并经 API 回显前端 →
+		// 明文 passkey 即下载凭证，脱敏后再包装。
+		return nil, "", fmt.Errorf("fetch torrent: %s", sanitizeURLSecrets(gerr.Error()))
 	}
 	content, err = c.classifyAndConfirm(ctx, resp, s.BaseURL, dlURL, cookie)
 	if err != nil {
@@ -94,6 +125,15 @@ func (c *SiteChain) FetchTorrentFileByID(ctx context.Context, siteID uint, downl
 	return c.FetchTorrentFile(ctx, s, downloadURL)
 }
 
+// urlSecretParamRe 匹配 URL 文本中的凭据类 query 参数（passkey=下载凭证；rsskey/token/
+// sign/api_key 常见于 RSS 与直链）。值段排除 &/空白/引号，避免吞掉后续参数。
+var urlSecretParamRe = regexp.MustCompile(`(?i)\b(passkey|rsskey|api[_-]?key|token|sign|auth|key)=[^&\s"']+`)
+
+// sanitizeURLSecrets 将含 URL 文本中的凭据类参数值替换为 ***（日志/前端错误回显用）。
+func sanitizeURLSecrets(s string) string {
+	return urlSecretParamRe.ReplaceAllString(s, "$1=***")
+}
+
 // classifyAndConfirm 对 download 响应分类：合法 .torrent 直接返回；NexusPHP 首次下载确认页
 // 则 POST 确认后重判；登录页/HTML 报错。对标 MP 处理 download.php 确认表单。
 func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Response, baseURL, dlURL, cookie string) ([]byte, error) {
@@ -111,7 +151,7 @@ func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Res
 		if !sameHost(baseURL, action) {
 			return nil, fmt.Errorf("download confirm action cross-site blocked: %s", action)
 		}
-		slog.Info("torrent download confirm page detected, posting", "url", dlURL)
+		slog.Info("torrent download confirm page detected, posting", "url", sanitizeURLSecrets(dlURL))
 		postResp, perr := c.hc.PostFormAjaxWith(ctx, action, cookie, form, dlURL, nil, true)
 		if perr != nil {
 			return nil, fmt.Errorf("post confirm: %w", perr)

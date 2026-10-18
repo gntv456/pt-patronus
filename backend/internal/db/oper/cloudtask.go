@@ -80,11 +80,42 @@ func (o *CloudTaskOper) UpdateProgress(id uint, pct int) error {
 		Update("progress", pct).Error
 }
 
-// List 按状态列任务（status 空=全部；时间倒序，limit 上限 200）。
-func (o *CloudTaskOper) List(status string, limit int) ([]models.CloudTask, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+// 任务列表的默认/上限条数。归一化只留一份：handler 要回显**生效的** limit 并据此算
+// truncated，两处各写一遍必然漂移（界面拿到的 limit 与后端真正用的数不一致）。
+const (
+	CloudTaskListDefault = 50
+	CloudTaskListLimit   = 200
+)
+
+// NormalizeCloudTaskLimit 非法或留空取默认，超上限取上限（不再悄悄退回默认值）。
+func NormalizeCloudTaskLimit(n int) int {
+	if n <= 0 {
+		return CloudTaskListDefault
 	}
+	if n > CloudTaskListLimit {
+		return CloudTaskListLimit
+	}
+	return n
+}
+
+// Count 某状态下的任务总数（status 空=全部）。列表有上限，不把总数带出去，界面就把
+// 「最近 50 条」当成「整个队列」——积压时最骗人：看起来像快排完了。
+func (o *CloudTaskOper) Count(status string) (int64, error) {
+	var n int64
+	q := o.db.Model(&models.CloudTask{})
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if err := q.Count(&n).Error; err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+// List 按状态列任务（status 空=全部；id 倒序）。limit 走 NormalizeCloudTaskLimit，与 handler
+// 回显给界面的生效值同源。
+func (o *CloudTaskOper) List(status string, limit int) ([]models.CloudTask, error) {
+	limit = NormalizeCloudTaskLimit(limit)
 	q := o.db.Order("id desc").Limit(limit)
 	if status != "" {
 		q = q.Where("status = ?", status)
@@ -96,10 +127,22 @@ func (o *CloudTaskOper) List(status string, limit int) ([]models.CloudTask, erro
 	return ts, nil
 }
 
+// ErrTaskNotRetryable 只有「失败中」的任务能手动重试。
+// 条件 UPDATE 对不存在的 id 或已不是 failed 的任务影响 0 行且不报错，
+// 不判 RowsAffected 就会把「什么都没做」报成「已重新排队」。
+var ErrTaskNotRetryable = errors.New("任务不存在或已不是失败状态，无法重试")
+
 // Retry 把 failed 任务重入队（手动重试入口）。
 func (o *CloudTaskOper) Retry(id uint) error {
-	return o.db.Model(&models.CloudTask{}).Where("id = ? AND status = ?", id, "failed").
-		Updates(map[string]any{"status": "pending", "attempts": 0, "error": ""}).Error
+	res := o.db.Model(&models.CloudTask{}).Where("id = ? AND status = ?", id, "failed").
+		Updates(map[string]any{"status": "pending", "attempts": 0, "error": ""})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrTaskNotRetryable
+	}
+	return nil
 }
 
 // Delete 删除任务记录。

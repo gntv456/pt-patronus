@@ -123,20 +123,68 @@ func TestFirstHxptUser(t *testing.T) {
 	db := setupAuthDB(t)
 	h := &AuthHandler{db: db}
 
-	if !h.firstHxptUser() {
+	if !mustFirstHxptUser(t, h) {
 		t.Fatal("空 DB 应回报首用户")
 	}
 	db.Create(&models.User{Username: "oidc-alice", HxptUID: "oidc:alice", IsAdmin: true})
-	if !h.firstHxptUser() {
+	if !mustFirstHxptUser(t, h) {
 		t.Fatal("仅有 OIDC 用户时仍应为首 HXPT 用户")
 	}
 	db.Create(&models.User{Username: "emergency-bob", HxptUID: "emergency:bob"})
-	if !h.firstHxptUser() {
+	if !mustFirstHxptUser(t, h) {
 		t.Fatal("有 emergency 用户时仍应为首 HXPT 用户")
 	}
 	db.Create(&models.User{Username: "hxpt-user-001", HxptUID: "hxpt-001"})
-	if h.firstHxptUser() {
+	if mustFirstHxptUser(t, h) {
 		t.Fatal("已有 HXPT 用户后不应再报首用户")
+	}
+}
+
+func mustFirstHxptUser(t *testing.T, h *AuthHandler) bool {
+	t.Helper()
+	first, err := h.firstHxptUser()
+	if err != nil {
+		t.Fatalf("firstHxptUser: %v", err)
+	}
+	return first
+}
+
+// TestFirstUserGatesFailClosedOnQueryError 「查不出来」绝不能被当成「还没有主人」：
+// 那会同时打开单用户硬限制并把这次登录者提成 admin（DB 抖动即可提权）。
+func TestFirstUserGatesFailClosedOnQueryError(t *testing.T) {
+	db := setupAuthDB(t)
+	db.Create(&models.User{Username: "owner", HxptUID: "hxpt-owner", IsAdmin: true})
+	if err := db.Migrator().DropTable(&models.User{}); err != nil {
+		t.Fatalf("drop users: %v", err)
+	}
+	h := &AuthHandler{db: db}
+
+	if _, err := h.existingRealUserUID(); err == nil {
+		t.Fatal("表已不存在：existingRealUserUID 必须报错")
+	}
+	if first, err := h.firstHxptUser(); err == nil || first {
+		t.Fatalf("firstHxptUser 必须 fail-closed，got first=%v err=%v", first, err)
+	}
+	if first, err := h.firstOIDCUser(); err == nil || first {
+		t.Fatalf("firstOIDCUser 必须 fail-closed，got first=%v err=%v", first, err)
+	}
+}
+
+// TestExistingRealUserUIDNoOwnerIsNotAnError 正控：表在但一个真实用户都没有 → ("", nil)，
+// 首位登录者仍可成为 admin（否则新实例装不起来）。
+func TestExistingRealUserUIDNoOwnerIsNotAnError(t *testing.T) {
+	db := setupAuthDB(t)
+	h := &AuthHandler{db: db}
+
+	uid, err := h.existingRealUserUID()
+	if err != nil {
+		t.Fatalf("确实没有主人不应报错: %v", err)
+	}
+	if uid != "" {
+		t.Fatalf("空库应返回空 UID，got %q", uid)
+	}
+	if first, err := h.firstHxptUser(); err != nil || !first {
+		t.Fatalf("空库应回报首用户，got first=%v err=%v", first, err)
 	}
 }
 

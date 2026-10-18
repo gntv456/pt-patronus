@@ -45,6 +45,9 @@ type WorkbenchEvent struct {
 type WorkbenchMediaLibrary struct {
 	Configured bool               `json:"configured"`
 	Servers    []MediaLibraryStat `json:"servers"`
+	// Error 非空表示「配置读不出来」，与「真的一个都没配」是两回事：
+	// 前者提示排障，后者才该引导去添加。
+	Error string `json:"error,omitempty"`
 }
 
 // MediaLibraryStat 单服务器库计数（电影/剧集由 Library.Type 聚合）。
@@ -86,6 +89,9 @@ type Workbench struct {
 	// 体检分（轻量：无外部探测，仅 DB/队列派生；完整诊断走 /system/doctor）
 	HealthScore int       `json:"health_score"`
 	GeneratedAt time.Time `json:"generated_at"`
+	// Errors 逐条记录「这一块没读到」的原因。首屏全是 0/空时用户无法区分「真的没事」
+	// 与「查询失败所以看不见」，而待办与体检分又会把空值当事实放大成假告警或假安心。
+	Errors []string `json:"errors,omitempty"`
 }
 
 // greeting 由服务端本地时间生成问候语（前端也有兜底）。
@@ -116,12 +122,18 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	out := &Workbench{GeneratedAt: now}
 	db := c.db
+	// note 记录某一域的读取失败：既进日志也进响应的 Errors，供前端提示「数据不完整」。
+	note := func(section string, err error) {
+		if err == nil {
+			return
+		}
+		slog.Warn("workbench section read failed", "section", section, "err", err)
+		out.Errors = append(out.Errors, section+"读取失败: "+err.Error())
+	}
 
 	// ---- 站点域 ----
 	var sites []models.Site
-	if err := db.Find(&sites).Error; err != nil {
-		slog.Warn("workbench: list sites failed", "err", err)
-	}
+	note("站点列表", db.Find(&sites).Error)
 	active := 0
 	for _, s := range sites {
 		if s.IsActive {
@@ -132,23 +144,28 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 	noData := 0
 	if len(sites) > 0 {
 		var latest []models.SiteStat
-		db.Where("id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)").Find(&latest)
-		statMap := make(map[uint]models.SiteStat, len(latest))
-		for _, st := range latest {
-			statMap[st.SiteID] = st
-		}
-		for _, s := range sites {
-			if !s.IsActive || isForumPlatform(s.Platform) {
-				continue
+		err := db.Where("id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)").Find(&latest).Error
+		note("站点最新统计", err)
+		// 读失败时 statMap 必空，逐站判「无采集数据」会凭空造出 N 条待办、
+		// 还把体检分扣下去——「读不到」不是「没数据」，这一块整段跳过。
+		if err == nil {
+			statMap := make(map[uint]models.SiteStat, len(latest))
+			for _, st := range latest {
+				statMap[st.SiteID] = st
 			}
-			if st, ok := statMap[s.ID]; ok && (st.Uploaded > 0 || st.Downloaded > 0 || st.Seeding > 0) {
-				continue
+			for _, s := range sites {
+				if !s.IsActive || isForumPlatform(s.Platform) {
+					continue
+				}
+				if st, ok := statMap[s.ID]; ok && (st.Uploaded > 0 || st.Downloaded > 0 || st.Seeding > 0) {
+					continue
+				}
+				noData++
+				out.Todos = append(out.Todos, WorkbenchTodo{
+					Kind: "no_data_site", Title: s.Name, Detail: "无采集数据（Cookie 失效或未采集）",
+					Link: "/sites", Level: "warning",
+				})
 			}
-			noData++
-			out.Todos = append(out.Todos, WorkbenchTodo{
-				Kind: "no_data_site", Title: s.Name, Detail: "无采集数据（Cookie 失效或未采集）",
-				Link: "/sites", Level: "warning",
-			})
 		}
 	}
 	out.Summary.SitesActive = active
@@ -156,15 +173,15 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 
 	// ---- 订阅域 ----
 	var subNew, subHits int64
-	db.Model(&models.Subscription{}).Where("created_at >= ?", dayStart).Count(&subNew)
-	db.Model(&models.SubscriptionHit{}).Where("created_at >= ?", dayStart).Count(&subHits)
+	note("今日新增订阅", db.Model(&models.Subscription{}).Where("created_at >= ?", dayStart).Count(&subNew).Error)
+	note("今日订阅命中", db.Model(&models.SubscriptionHit{}).Where("created_at >= ?", dayStart).Count(&subHits).Error)
 	out.Summary.SubscriptionsNew = int(subNew)
 	out.Summary.SubscriptionsHits = int(subHits)
 
 	// ---- 整理域（今日成功/失败）----
 	var orgDone, orgFailed int64
-	db.Model(&models.TransferHistory{}).Where("created_at >= ? AND status = ?", dayStart, "success").Count(&orgDone)
-	db.Model(&models.TransferHistory{}).Where("created_at >= ? AND status = ?", dayStart, "failed").Count(&orgFailed)
+	note("今日整理成功", db.Model(&models.TransferHistory{}).Where("created_at >= ? AND status = ?", dayStart, "success").Count(&orgDone).Error)
+	note("今日整理失败", db.Model(&models.TransferHistory{}).Where("created_at >= ? AND status = ?", dayStart, "failed").Count(&orgFailed).Error)
 	out.Summary.DownloadsDone = int(orgDone)
 	out.Summary.OrganizeFailed = int(orgFailed)
 	if orgFailed > 0 {
@@ -177,8 +194,8 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 
 	// ---- 云端任务（今日成功 + 当前排队；动态进度）----
 	var cloudDone, cloudPending int64
-	db.Model(&models.CloudTask{}).Where("updated_at >= ? AND status = ?", dayStart, "success").Count(&cloudDone)
-	db.Model(&models.CloudTask{}).Where("status IN ?", []string{"pending", "running"}).Count(&cloudPending)
+	note("今日云端任务成功", db.Model(&models.CloudTask{}).Where("updated_at >= ? AND status = ?", dayStart, "success").Count(&cloudDone).Error)
+	note("云端任务排队数", db.Model(&models.CloudTask{}).Where("status IN ?", []string{"pending", "running"}).Count(&cloudPending).Error)
 	out.Summary.CloudTasksDone = int(cloudDone)
 	out.Summary.CloudTasksPending = int(cloudPending)
 
@@ -193,11 +210,16 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 		Down int64
 	}
 	var rows []dayAgg
-	db.Raw("SELECT substr(snap_at,1,10) AS day, SUM(uploaded) AS up, SUM(downloaded) AS down FROM site_stats WHERE snap_at >= ? GROUP BY substr(snap_at,1,10) ORDER BY day DESC LIMIT 2", yday+" 00:00:00").Scan(&rows)
+	// 每站每天只取最后一张快照（MAX(id)，与 Overview 同口径）。uploaded/downloaded 是累计值，
+	// 4h cron 一天能写 6 行，直接 SUM 会把同一个站按行数重复计入；今天行数少于昨天时
+	// 差值成了大负数，前端 max(0,…) 一钳位「今日上传」就恒显 0 B。
+	// 第二行也必须正好是昨天：否则前天的行会被当成昨天，差值同样失真。
+	note("今日流量增量", db.Raw("SELECT substr(snap_at,1,10) AS day, SUM(uploaded) AS up, SUM(downloaded) AS down FROM site_stats WHERE snap_at >= ? AND id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id, substr(snap_at,1,10)) GROUP BY substr(snap_at,1,10) ORDER BY day DESC LIMIT 2", yday+" 00:00:00").Scan(&rows).Error)
 	for _, r := range rows {
-		if r.Day == today {
+		switch r.Day {
+		case today:
 			todayAgg.Up, todayAgg.Down = r.Up, r.Down
-		} else {
+		case yday:
 			ydayAgg.Up, ydayAgg.Down = r.Up, r.Down
 		}
 	}
@@ -206,18 +228,18 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 
 	// ---- 今日 STRM 生成 ----
 	var strmCnt int64
-	db.Model(&models.StrmRecord{}).Where("created_at >= ?", dayStart).Count(&strmCnt)
+	note("今日 STRM 生成", db.Model(&models.StrmRecord{}).Where("created_at >= ?", dayStart).Count(&strmCnt).Error)
 	out.Summary.StrmGenerated = int(strmCnt)
 
 	// ---- 今日播放（webhook 事件通知近似）----
 	var played int64
-	db.Model(&models.Notice{}).
-		Where("created_at >= ? AND source = ?", dayStart, "media_play").Count(&played)
+	note("今日播放统计", db.Model(&models.Notice{}).
+		Where("created_at >= ? AND source = ?", dayStart, "media_play").Count(&played).Error)
 	out.Summary.PlayedToday = int(played)
 
 	// ---- 今日动态：notice 最近 20 条 + 进行中的云端任务（带进度）----
 	var notices []models.Notice
-	db.Where("created_at >= ?", dayStart).Order("created_at DESC").Limit(20).Find(&notices)
+	note("今日动态", db.Where("created_at >= ?", dayStart).Order("created_at DESC").Limit(20).Find(&notices).Error)
 	for _, n := range notices {
 		out.Events = append(out.Events, WorkbenchEvent{
 			Source: n.Source, Title: n.Title, Level: n.Level, CreatedAt: n.CreatedAt,
@@ -225,7 +247,7 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 	}
 	if cloudPending > 0 {
 		var running []models.CloudTask
-		db.Where("status IN ?", []string{"pending", "running"}).Order("updated_at DESC").Limit(10).Find(&running)
+		note("进行中的云端任务", db.Where("status IN ?", []string{"pending", "running"}).Order("updated_at DESC").Limit(10).Find(&running).Error)
 		for _, t := range running {
 			p := t.Progress
 			out.Events = append(out.Events, WorkbenchEvent{
@@ -300,6 +322,10 @@ func (c *MediaServerChain) MediaLibraryOverview(ctx context.Context) WorkbenchMe
 	out := WorkbenchMediaLibrary{Configured: false, Servers: []MediaLibraryStat{}}
 	servers, err := c.List()
 	if err != nil {
+		// 读不出来 ≠ 没配置：不区分的话首屏会对一个配了 Emby/Plex 的库显示「未配置媒体库，去添加」，
+		// 用户顺着去新建一遍，反而造成重复配置。
+		slog.Warn("workbench: list media servers failed", "err", err)
+		out.Error = "媒体服务器列表读取失败: " + err.Error()
 		return out
 	}
 	if len(servers) == 0 {
@@ -316,7 +342,9 @@ func (c *MediaServerChain) MediaLibraryOverview(ctx context.Context) WorkbenchMe
 		}
 		libs, err := cli.Libraries(ctx)
 		if err != nil {
-			slog.Debug("workbench: media server libraries failed", "server", s.Name, "err", err)
+			// 一台媒体的库列表读不出，界面上它是「0 个库」而不是「这次没读到」——
+			// Debug 级在默认日志级别下等于没有留痕，必须 Warn。
+			slog.Warn("workbench: media server libraries failed", "server", s.Name, "err", err)
 			out.Servers = append(out.Servers, stat)
 			continue
 		}
@@ -324,6 +352,10 @@ func (c *MediaServerChain) MediaLibraryOverview(ctx context.Context) WorkbenchMe
 		for _, lib := range libs {
 			items, err := cli.LibraryItems(ctx, lib.ID)
 			if err != nil {
+				// 单个库读不出就裸 continue ⇒ 总数被静默少算一个库，
+				// 与「那个库真的是空的」在界面上同形（工作台是看全局的地方）。
+				slog.Warn("workbench: library items failed, library skipped",
+					"server", s.Name, "library", lib.ID, "name", lib.Name, "err", err)
 				continue
 			}
 			for _, it := range items {

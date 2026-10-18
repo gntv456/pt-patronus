@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -112,7 +113,8 @@ func (n *NexusPHP) MarkRead(ctx context.Context, def *site.SiteMetadata,
 	u := "messages.php?action=markread&ids=" + url.QueryEscape(strings.Join(itemIDs, ","))
 	resp, err := n.hc.PostForm(ctx, joinURL(baseURL, u), cookie, "", true)
 	if err != nil {
-		return &site.BatchResult{Failed: len(itemIDs), Errors: []string{err.Error()}}, nil
+		// 逐条结果面的原因要有中文读者（界面直接展示 errors[0]），别把 "context deadline exceeded" 弹给用户。
+		return &site.BatchResult{Failed: len(itemIDs), Errors: []string{errtext.Text(err)}}, nil
 	}
 	if loggedOut(resp, nil, def.NoLogin) {
 		return &site.BatchResult{Failed: len(itemIDs), Errors: []string{"未登录"}}, site.ErrNotLoggedIn
@@ -139,7 +141,7 @@ func (n *NexusPHP) markReadOneByOne(ctx context.Context, baseURL, cookie string,
 		resp, err := n.hc.PostForm(ctx, joinURL(baseURL, u), cookie, "", true)
 		if err != nil {
 			r.Failed++
-			r.Errors = append(r.Errors, fmt.Sprintf("%s: %s", id, err.Error()))
+			r.Errors = append(r.Errors, fmt.Sprintf("%s: %s", id, errtext.Text(err)))
 			continue
 		}
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {

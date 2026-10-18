@@ -72,8 +72,15 @@ func (s *Service) Fetch(ctx context.Context, force bool) (*Result, error) {
 				return stale, errStaleFallback
 			}
 			cards, alerts := parseSavept(string(body))
-			if cards == nil {
-				cards = []SaveptSiteCard{}
+			// 200 但解析出 0 张卡 = 上游改版/结构变化，解析器已瞎。不能当成功缓存 6h，
+			// 把「监护室没有站点」渲染给用户；走降级路径（有旧缓存回旧缓存，没有则报错）。
+			if len(cards) == 0 {
+				stale := s.staleSnapshot()
+				if stale == nil {
+					return nil, errParseEmpty
+				}
+				slog.Warn("savept page parsed 0 cards, serving stale cache", "alerts", len(alerts))
+				return stale, errStaleFallback
 			}
 			if alerts == nil {
 				alerts = []SaveptAlert{}
@@ -174,6 +181,9 @@ func (cloudflareErr) Error() string { return "savept.icu blocked by cloudflare" 
 // errStaleFallback 内部信号：抓取失败但降级返回旧缓存（不向外抛）。
 var errStaleFallback = errors.New("savept stale fallback")
 
+// errParseEmpty 上游页面解析出 0 张卡（结构可能已改版），无旧缓存可降级时向外抛。
+var errParseEmpty = errors.New("savept page parsed 0 cards")
+
 // applyPlatformDetails 用本地 definitions 补 detail.schema（平台）。ptseek 已覆盖其余字段，
 // 平台信息只有 definitions 有；命中域名即填，未命中跳过。
 // cards 已是本次请求的独立副本，但 Detail 是共享指针——直接写会污染全局缓存
@@ -203,6 +213,9 @@ func (s *Service) applyPlatformDetails(cards []SaveptSiteCard) {
 const (
 	probeConcurrency = 12
 	probeTimeout     = 8 * time.Second
+	// probeBatch 单轮请求最多探测的站点数：独有站有 140 个，全探测最坏
+	// 140/12×8s≈93s，监护室首屏等不到（前端会直接超时报错），剩下的留给下一轮补。
+	probeBatch = 60
 )
 
 var (
@@ -240,6 +253,11 @@ func (s *Service) probeExtra(ctx context.Context, cards []SaveptSiteCard) {
 	if len(jobs) == 0 {
 		return
 	}
+	// 单轮只探 probeBatch 站，剩下的下一轮补：日志报的是真正会发出去的探测数。
+	if len(jobs) > probeBatch {
+		jobs = jobs[:probeBatch]
+	}
+	// 单轮只探 probeBatch 站，剩下的下一轮补：日志报的是真正会发出去的探测数。
 	slog.Info("savept probing extra sites", "count", len(jobs))
 
 	// 并发只做探测，结果收进切片由本 goroutine 统一回写 cards：

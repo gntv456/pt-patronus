@@ -40,45 +40,81 @@ class Notice {
   });
 
   factory Notice.fromJson(Map<String, dynamic> j) => Notice(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        source: j['source'] as String? ?? '',
-        title: j['title'] as String? ?? '',
-        body: j['body'] as String? ?? '',
-        level: _parseLevel(j['level'] as String? ?? 'info'),
-        read: j['read'] as bool? ?? false,
-        createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    source: j['source'] as String? ?? '',
+    title: j['title'] as String? ?? '',
+    body: j['body'] as String? ?? '',
+    level: _parseLevel(j['level'] as String? ?? 'info'),
+    read: j['read'] as bool? ?? false,
+    createdAt:
+        DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
+  );
 }
 
 NoticeLevel _parseLevel(String s) => switch (s) {
-      'success' => NoticeLevel.success,
-      'warning' => NoticeLevel.warning,
-      'danger' => NoticeLevel.danger,
-      _ => NoticeLevel.info,
-    };
+  'success' => NoticeLevel.success,
+  'warning' => NoticeLevel.warning,
+  'danger' => NoticeLevel.danger,
+  _ => NoticeLevel.info,
+};
 
 /// 全局未读数（铃铛角标监听，单例 ValueNotifier）。
 final noticeUnread = ValueNotifier<int>(0);
 
 class NoticeApi {
   final _api = ApiClient();
-  Future<List<Notice>> list({bool unread = false}) async {
+
+  /// 收件箱一页通知 + 取数账面：列表有单页上限，total/truncated 不接住就会被当成全部。
+  Future<({List<Notice> items, int? total, bool truncated})> listPage({
+    bool unread = false,
+  }) async {
     final r = await _api.get('/notices${unread ? '?unread=true' : ''}');
     final list = (r['notices'] as List?) ?? const [];
-    return list.map((e) => Notice.fromJson(e as Map<String, dynamic>)).toList();
+    final window = noticeWindowFrom(r);
+    return (
+      items: list
+          .map((e) => Notice.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: window.total,
+      truncated: window.truncated,
+    );
   }
 
-  Future<void> read(int id) => _api.post('/notices/$id/read', <String, dynamic>{});
+  Future<List<Notice>> list({bool unread = false}) async =>
+      (await listPage(unread: unread)).items;
+
+  Future<int> unreadCount() async {
+    final r = await _api.get('/notices?unread=true&limit=1');
+    return noticeUnreadFrom(r);
+  }
+
+  Future<void> read(int id) =>
+      _api.post('/notices/$id/read', <String, dynamic>{});
   Future<void> readAll() => _api.post('/notices/read-all', <String, dynamic>{});
   Future<void> clear() => _api.post('/notices/clear', <String, dynamic>{});
   Future<void> delete(int id) => _api.delete('/notices/$id');
 }
 
+/// 收件箱一页的取数账面。后端截断时必带 truncated；字段缺失（旧版后端/读库失败）
+/// 一律按「可能还有更多」处理，不给「这就是全部」的假安心。
+({int? total, bool truncated}) noticeWindowFrom(Map<String, dynamic> r) => (
+  total: (r['total'] as num?)?.toInt(),
+  truncated: r['truncated'] as bool? ?? true,
+);
+
+/// 未读数：优先取服务端同批回来的 total（?unread=true 时它就是未读总数）。
+/// 只数这一页的话，未读超过单页上限（默认 200）角标就少报——
+/// 用户以为「只剩这几条」，实际还有更多。total 读不出才退回数本页。
+int noticeUnreadFrom(Map<String, dynamic> r) {
+  final total = (r['total'] as num?)?.toInt();
+  if (total != null) return total;
+  return ((r['notices'] as List?) ?? const []).length;
+}
+
 /// 刷新全局未读计数（铃铛角标）。WS 推送新通知后调用。
 Future<void> refreshNoticeUnread() async {
   try {
-    final n = await NoticeApi().list(unread: true);
-    noticeUnread.value = n.length;
+    noticeUnread.value = await NoticeApi().unreadCount();
   } catch (_) {
     /* 静默 */
   }

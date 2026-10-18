@@ -122,7 +122,7 @@ func (c *MediaChain) Search(ctx context.Context, keyword string, year int, filte
 		if cached, ok := c.cachedSearch(key); ok {
 			return cached, nil
 		}
-		return c.searchSources(ctx, keyword, year, filter, key), nil
+		return c.searchSources(ctx, keyword, year, filter, key)
 	})
 }
 
@@ -144,8 +144,9 @@ func (c *MediaChain) cachedSearch(key string) ([]media.MediaInfo, bool) {
 }
 
 // searchSources 并发跨源搜索（总预算 mediaSearchBudget）、按源优先级合并 + 类型过滤，
-// 有结果时写 DB 缓存。
-func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int, filter, key string) []media.MediaInfo {
+// 有结果时写 DB 缓存。全部参与源都没答话时交回错误——「一个源都没读回来」不能和
+// 「库里没这部片」同形（对齐 media_rating「全部 N 个评分源查询失败」的口径）。
+func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int, filter, key string) ([]media.MediaInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, mediaSearchBudget)
 	defer cancel()
 
@@ -166,6 +167,14 @@ func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int
 		wg.Add(1)
 		safego.Go("media:163", func() {
 			defer wg.Done()
+			// per-source 隔离：崩掉的源记成它自己的失败——零值槽 err=nil 会被下面当成
+			// 「这个源没搜到」，全崩时页面就是「库里没这部片」的假绿。
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("media source panicked", "source", s.Name(), "err", r)
+					outs[i] = srcOut{err: fmt.Errorf("媒体源异常: %v", r)}
+				}
+			}()
 			items, err := s.Search(ctx, keyword, year)
 			outs[i] = srcOut{items: items, err: err} // 各写各的索引，无竞争
 		})
@@ -174,32 +183,42 @@ func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int
 
 	// 按源优先级（slice 顺序）合并 + 类型过滤。
 	var all []media.MediaInfo
+	attempted, responded := 0, 0
 	for i, s := range sources {
 		o := outs[i]
 		if o.err != nil {
 			if errors.Is(o.err, media.ErrNotConfigured) {
-				continue
+				continue // 未配置：既不算参与也不算失败
 			}
+			attempted++
 			slog.Warn("media source search failed", "source", s.Name(), "err", o.err)
 			continue
 		}
+		attempted++
+		responded++
 		for _, m := range o.items {
 			if media.TypeMatches(m.Type, filter) {
 				all = append(all, m)
 			}
 		}
 	}
+	if attempted > 0 && responded == 0 {
+		return nil, fmt.Errorf("全部 %d 个媒体源查询失败", attempted)
+	}
 
 	if c.cache != nil && len(all) > 0 {
 		raw, _ := json.Marshal(all)
 		_ = c.cache.Put(&models.PosterCache{CacheKey: key, RawJSON: string(raw)})
 	}
-	return all
+	return all, nil
 }
 
 // MatchPoster 返回第一个带海报的结果海报 URL（用于下载器任务海报匹配）。
 // filter 传 ""（全部类型），保留音乐海报匹配——影视搜索才排除音乐。
 func (c *MediaChain) MatchPoster(ctx context.Context, keyword string, year int) (string, error) {
+	if keyword == "" {
+		return "", nil // 空关键词扇出去等于「拿任意热门海报」，直接判定无海报
+	}
 	res, err := c.Search(ctx, keyword, year, "")
 	if err != nil {
 		return "", err

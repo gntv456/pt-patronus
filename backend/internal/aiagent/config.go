@@ -5,10 +5,17 @@ package aiagent
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/llm"
 )
+
+// ErrConfigUnreadable 是「配置读不出来 / 记录被写坏」的哨兵。
+// 它与「没配过」必须分开：退化成默认值会让 Ready() 说「未启用」、面板说「还没配 key」，
+// 而 SetConfig 拿到的 existing 是空的——此时保存会把真正还在的 API Key 抹掉。
+var ErrConfigUnreadable = errors.New("agent 配置读不出来")
 
 // Config 是 agent 配置（存 SystemConfig `agent.config`，APIKey AES-GCM 加密）。
 type Config struct {
@@ -68,13 +75,25 @@ type Crypto interface {
 
 // Load 从 KVStore 读配置并解密 API key；返回 agent 配置 + 用于 provider 的 llm.Config。
 // 缺失/损坏回退默认（绝不 panic）。
-func Load(kv KVStore, cr Crypto) (Config, llm.Config) {
+// Load 读出 agent 配置并解出 API Key。第三个返回值专门区分「填过但解不开」
+// （主密钥换过 / 密文损坏）：把它当「没填」会让用户被提示去重新填写一个其实还在的 key。
+//
+// 同一个位置还会带回 ErrConfigUnreadable：**读不出与没配过不是一件事**。
+// 底层 SystemConfigOper.Get 把「记录不存在」归一成 ("", nil)，所以这里 err != nil 一定是真失败；
+// 从前它和解析失败都被咽掉、退回默认值，后果见 ready.go / api/v1 里的四处处理。
+func Load(kv KVStore, cr Crypto) (Config, llm.Config, error) {
 	def := DefaultConfig()
 	ac := def
+	var readErr error
 	if kv != nil {
-		if raw, err := kv.Get(configKey); err == nil && strings.TrimSpace(raw) != "" {
+		raw, err := kv.Get(configKey)
+		switch {
+		case err != nil:
+			readErr = fmt.Errorf("%w: %v", ErrConfigUnreadable, err)
+		case strings.TrimSpace(raw) != "":
 			if json.Unmarshal([]byte(raw), &ac) != nil {
 				ac = def
+				readErr = fmt.Errorf("%w: 记录内容不是合法的 agent 配置（已被写坏？）", ErrConfigUnreadable)
 			}
 		}
 	}
@@ -85,8 +104,11 @@ func Load(kv KVStore, cr Crypto) (Config, llm.Config) {
 		ac.SystemPrompt = def.SystemPrompt
 	}
 	apiKey := ""
+	var keyErr error
 	if cr != nil && ac.APIKeyEnc != "" {
-		if k, err := cr.Decrypt(ac.APIKeyEnc); err == nil {
+		if k, err := cr.Decrypt(ac.APIKeyEnc); err != nil {
+			keyErr = fmt.Errorf("%w: %v", ErrKeyUnreadable, err)
+		} else {
 			apiKey = k
 		}
 	}
@@ -95,7 +117,7 @@ func Load(kv KVStore, cr Crypto) (Config, llm.Config) {
 		Model: ac.Model, Temperature: ac.Temperature, MaxTokens: ac.MaxTokens,
 		EnableThinking: ac.EnableThinking,
 	}
-	return ac, lc
+	return ac, lc, errors.Join(readErr, keyErr)
 }
 
 // SaveConfig 写配置到 KVStore。

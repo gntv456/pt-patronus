@@ -245,12 +245,24 @@ extension on _FileManagePageState {
             ),
           ),
           if (hasStorage) _pathBar(),
+          if (hasStorage && _backendsNote.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+              child: Text(
+                _backendsNote,
+                style: TextStyle(color: context.dimText, fontSize: 12),
+              ),
+            ),
           if (_loading) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _backends.isEmpty && !_loading
                 ? Center(
                     child: Text(
-                      '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent（云盘在「云盘」页管理）',
+                      // 读不到的原因要先说：否则非管理员看到的是一句「去添加存储」——他添加不了。
+                      _backendsNote.isNotEmpty
+                          ? _backendsNote
+                          : '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent（云盘在「云盘」页管理）',
+                      textAlign: TextAlign.center,
                       style: TextStyle(color: context.dimText),
                     ),
                   )

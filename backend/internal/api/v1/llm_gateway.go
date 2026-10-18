@@ -2,6 +2,8 @@ package v1
 
 import (
 	"crypto/subtle"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -96,7 +98,17 @@ func (h *LLMGatewayHandler) semFor(n int) chan struct{} {
 
 // agentReady 预检底层 AI Agent 是否已配 provider 与 key，避免「200 已流式再报错」。
 func (h *LLMGatewayHandler) agentReady(c *gin.Context) bool {
-	ac, _ := aiagent.Load(h.kv, h.crypto)
+	ac, _, err := aiagent.Load(h.kv, h.crypto)
+	if errors.Is(err, aiagent.ErrConfigUnreadable) {
+		// 读失败时 ac 是默认值（Enabled=false、没有 key），照下面的判定走就会对外宣告
+		// 「AI agent not enabled」——第三方客户端以为是自己的接入没配好，真实故障却在服务端。
+		slog.Warn("llm gateway: agent config unreadable", "err", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": gin.H{
+			"message": aiagent.ErrConfigUnreadable.Error() + "（服务端读不出 AI 助手配置，稍后重试或检查系统设置库）",
+			"type":    "server_error",
+		}})
+		return false
+	}
 	if !ac.Enabled {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": gin.H{"message": "AI agent not enabled", "type": "server_error"}})
 		return false
@@ -148,7 +160,7 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 		model = "ptpatronus-agent"
 	}
 	h.streamSSE(c)
-	_ = llmgateway.StreamOpenAI(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText))
+	logStreamFailure("openai", convID, llmgateway.StreamOpenAI(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText)))
 }
 
 // AnthropicMessages POST /anthropic/v1/messages —— Anthropic 兼容流式。
@@ -190,7 +202,7 @@ func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
 		model = "ptpatronus-agent"
 	}
 	h.streamSSE(c)
-	_ = llmgateway.StreamAnthropic(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText))
+	logStreamFailure("anthropic", convID, llmgateway.StreamAnthropic(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText)))
 }
 
 // newConversation 建空会话。多轮复用见 convForSession（按 x-session-id 复用同一会话，
@@ -251,6 +263,15 @@ func (h *LLMGatewayHandler) streamSSE(c *gin.Context) {
 	w.WriteHeader(http.StatusOK)
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
+	}
+}
+
+// logStreamFailure 留一条网关失败痕迹。响应已经流式发出，状态码改不了，
+// 日志是这条出口唯一还能说话的地方（从前两处 `_ = Stream…` 把它整个丢掉 ⇒
+// 运维侧看不到「谁的哪一次请求失败了」，只能听用户说「模型不回话」）。
+func logStreamFailure(api string, convID uint, err error) {
+	if err != nil {
+		slog.Warn("llm gateway stream failed", "api", api, "conversation_id", convID, "err", err)
 	}
 }
 

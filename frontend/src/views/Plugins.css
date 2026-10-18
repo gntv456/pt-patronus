@@ -221,6 +221,18 @@
   margin-left: 6px;
   opacity: 0.85;
 }
+.market-src-warn {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+}
+.market-src-warn ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
 .cat-bar {
   display: flex;
   align-items: center;

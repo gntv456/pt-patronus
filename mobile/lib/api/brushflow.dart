@@ -209,12 +209,26 @@ class BrushFlowApi {
   Future<Map<String, dynamic>> sweep(int id) async =>
       _api.post('/brushflow/$id/sweep', <String, dynamic>{});
 
-  /// 任务历史种子（GET /brushflow/:id/seeds → {seeds:[...]}）。
-  Future<List<BrushFlowSeed>> seeds(int id) async {
+  /// 任务历史种子（GET /brushflow/:id/seeds → {seeds:[...], total, limit, truncated}）。
+  /// 后端单页 500 条封顶：长期任务种得多了，老种子会被窗口挤出去，
+  /// 只取数组就等于「这个任务只加过这些种」——更早的种子在界面上无处可查也删不掉。
+  Future<({List<BrushFlowSeed> items, int? total, bool truncated})> seedsPage(
+    int id,
+  ) async {
     final r = await _api.get('/brushflow/$id/seeds');
     final list = (r['seeds'] as List?) ?? const [];
-    return list
-        .map((e) => BrushFlowSeed.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return (
+      items: list
+          .map((e) => BrushFlowSeed.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (r['total'] as num?)?.toInt(),
+      // 缺 truncated 按「可能被截断」处理：不给「这就是全部」的假安心。
+      truncated: r['truncated'] as bool? ?? true,
+    );
+  }
+
+  Future<List<BrushFlowSeed>> seeds(int id) async {
+    final p = await seedsPage(id);
+    return p.items;
   }
 }

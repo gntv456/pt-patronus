@@ -1,4 +1,4 @@
-﻿package monitor
+package monitor
 
 import (
 	"strings"
@@ -28,10 +28,10 @@ func TestP1_NormalizeBaseHTTPSDetection(t *testing.T) {
 		wantHTTPS bool
 	}{
 		{"192.168.1.100:5001", true},  // Synology HTTPS port
-		{"nas.local:443", true},        // generic HTTPS
-		{"10.0.0.1:8443", true},        // alt HTTPS
-		{"192.168.1.100:5000", false},  // Synology HTTP port
-		{"10.0.0.1:80", false},         // HTTP
+		{"nas.local:443", true},       // generic HTTPS
+		{"10.0.0.1:8443", true},       // alt HTTPS
+		{"192.168.1.100:5000", false}, // Synology HTTP port
+		{"10.0.0.1:80", false},        // HTTP
 	}
 	for _, c := range cases {
 		got := normalizeBase(c.raw)

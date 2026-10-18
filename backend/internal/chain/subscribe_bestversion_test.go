@@ -104,3 +104,30 @@ func TestIsSeasonPackTitle(t *testing.T) {
 		}
 	}
 }
+
+// interestedMovie 电影洗版门控：无画质信息（pri<=0，即未配过滤规则组）时只放行首版建立基线。
+// 旧实现是 `pri <= CurrentPriority → continue`，新订阅 CurrentPriority=0、候选 pri=0 →
+// 勾了「优先最佳版本」却没配规则组的电影订阅一条都不下（功能静默失效）。
+func TestInterestedMovie(t *testing.T) {
+	cases := []struct {
+		name     string
+		cur, pri int
+		baseline bool
+		want     bool
+	}{
+		{"无画质信息+未推过→放行首版", 0, 0, false, true},
+		{"无画质信息+已有基线→不再放行（防多站重复下）", 0, 0, true, false},
+		{"无画质信息+已推过（即便记到更高优先级）→不放行", 90, 0, true, false},
+		{"有画质信息+未记录过→放行", 0, 20, true, true},
+		{"有画质信息+同级→洗版不成立", 80, 80, true, false},
+		{"有画质信息+更低→不洗版", 80, 70, true, false},
+		{"有画质信息+更高→洗版放行", 80, 95, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := interestedMovie(tc.cur, tc.pri, tc.baseline); got != tc.want {
+				t.Errorf("interestedMovie(cur=%d, pri=%d, baseline=%v)=%v want %v", tc.cur, tc.pri, tc.baseline, got, tc.want)
+			}
+		})
+	}
+}

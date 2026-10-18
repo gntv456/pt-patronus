@@ -24,6 +24,11 @@ func (n *NexusPHP) KeepAlive(ctx context.Context, def *site.SiteMetadata, baseUR
 	if err != nil {
 		return nil, err
 	}
+	// 5xx / CF 页面上「没有登录被踢的痕迹」不等于还在登录：报错让调用方走已知错误路径，
+	// 而不是把站点故障报成「cookie 保活成功」。
+	if err := guardHTMLResp(resp, baseURL, u); err != nil {
+		return nil, err
+	}
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	loggedIn := !loggedOut(resp, doc, def.NoLogin)
 

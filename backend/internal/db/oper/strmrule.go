@@ -38,7 +38,7 @@ type StrmRuleInput struct {
 
 func (o *StrmRuleOper) Create(in StrmRuleInput) (*models.StrmRule, error) {
 	if in.Name == "" || in.DriveID == 0 || in.CloudPath == "" || in.OutputDir == "" {
-		return nil, errors.New("name/drive_id/cloud_path/output_dir 必填")
+		return nil, invalidInput("规则需要 name、drive_id、cloud_path、output_dir 四项，缺一不可")
 	}
 	// Recursive/KeepExt/Enabled 均带 gorm:"default:true"；GORM 对带 default 标签的零值 bool(false)
 	// 即使 Select 强制列名，仍会用 DB 默认 true 覆盖（RETURNING 回填）——实测 struct+Create 无法写入 false。
@@ -230,6 +230,16 @@ func (o *StrmRuleOper) LinkRecord(id, subID uint) error {
 	return o.db.Model(&models.StrmRecord{}).Where("id = ?", id).Update("subscription_id", subID).Error
 }
 
+// GetRecord 按 id 取一条 STRM 记录（删除前的存在性判定用）。
+func (o *StrmRuleOper) GetRecord(id uint) (*models.StrmRecord, error) {
+	var r models.StrmRecord
+	if err := o.db.First(&r, id).Error; err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// DeleteRecord 删一条 STRM 记录。保持「未命中也回 nil」的旧契约：级联清理会重复调用它。
 func (o *StrmRuleOper) DeleteRecord(id uint) error {
 	return o.db.Delete(&models.StrmRecord{}, id).Error
 }

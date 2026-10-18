@@ -31,6 +31,7 @@ const (
 const (
 	HRCheckDangerous = "dangerous"
 	HRCheckClean     = "clean"
+	HRCheckSkipped   = "skipped" // 本轮一个站都没被真正检测（未开启/全部读失败）
 )
 
 // LLMSourceLabel LLM 用量来源（协议端点 / 内置助手聊天）。

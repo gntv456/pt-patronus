@@ -3,7 +3,12 @@
 // Alerter 阈值状态转换去重；RTSPProxy 把 RTSP 转 WebSocket 供前端 jessibuca 解码。
 package monitor
 
-import "github.com/hxpt/ptpatronus/internal/sysinfo"
+import (
+	"log/slog"
+	"strings"
+
+	"github.com/hxpt/ptpatronus/internal/sysinfo"
+)
 
 // 指标类型复用 sysinfo 包的唯一定义（类型别名），避免 local 采集器与 agent 二进制重复维护；
 // agent 上报的 JSON 在服务端 json.Unmarshal 直接映射回这些类型。
@@ -45,7 +50,11 @@ func ParseThresholds(raw string) Thresholds {
 	}
 	// 用默认值打底，再反序列化覆盖（0 值字段保留默认）。
 	out := DefaultThresholds()
-	if decodeJSON(raw, &out) != nil {
+	if err := decodeJSON(raw, &out); err != nil {
+		// 回默认本身是设计（缺省项要能用），但「整份读不出来」必须留痕：
+		// 用户以为设了 50% 而实际按 90% 报警，除了这条 Warn 无从发现是哪台设备的 JSON 被写坏。
+		slog.Warn("monitor thresholds unreadable, using built-in defaults",
+			"raw", raw[:min(len(raw), 120)], "err", err)
 		return t
 	}
 	if out.CPUUsage == 0 {
@@ -74,6 +83,17 @@ func ParseThresholds(raw string) Thresholds {
 		out.ProcessMinCount = 1
 	}
 	return out
+}
+
+// ThresholdsReadable 判阈值 JSON 能否真被 ParseThresholds 读出来：与消费方同一张表
+// （顶层须为对象；空串=交给内置默认，属合法值）。写入侧用它做边界校验，
+// 免得在 oper 再抄一遍 Unmarshal——同一判据抄第二遍的那份会先漂移。
+func ThresholdsReadable(raw string) bool {
+	if strings.TrimSpace(raw) == "" {
+		return true
+	}
+	var probe map[string]any
+	return decodeJSON(raw, &probe) == nil
 }
 
 // MetricsJSON 序列化 Metrics 为 JSON 字符串（存 MetricSnapshot.Metrics）。

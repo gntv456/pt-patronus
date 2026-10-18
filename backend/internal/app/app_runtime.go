@@ -10,6 +10,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/aiagent"
 	"github.com/hxpt/ptpatronus/internal/api"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	v1 "github.com/hxpt/ptpatronus/internal/api/v1"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/automation"
@@ -19,7 +20,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/security"
-	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/dirwatch"
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
@@ -251,7 +251,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	// 单 Agent 实例同时服务内置助手聊天 / LLM 网关两协议端点 / TG bot；Prometheus 来源
 	// 标签统一记 assistant（细分入口留后续按 handler 各自实例化时再拆）。
 	agentSvc := aiagent.New(bizmetrics.LLMSourceAssistant, llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
-	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
+	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Count, agentConvOp.Create, agentConvOp.Delete, agentConvOp.Get, agentMsgOp.ListByConv, cfgOp, crypto)
 	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
 	doctorH := v1.NewDoctorHandler(cfg, database, buildDoctorBusinessChecks(d))
 
@@ -259,27 +259,27 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	// safe-mode 下不启；配置保存后热重载（停旧 goroutine、按新配置再起），无需重启进程。
 	var tgMu sync.Mutex
 	var tgCancel context.CancelFunc
-	chatMu := &sync.Mutex{}
-	chatConvs := map[string]uint{}
-	talk := func(ctx context.Context, chatKey, text string) <-chan llm.Event {
-		chatMu.Lock()
-		convID, ok := chatConvs[chatKey]
-		if !ok {
-			conv := &models.AgentConversation{}
-			if err := agentConvOp.Create(conv); err == nil && conv.ID != 0 {
-				convID = conv.ID
-				chatConvs[chatKey] = convID
-			}
+	sessions := newTgChatSessions()
+	talk := func(ctx context.Context, chatKey, text string) (<-chan llm.Event, error) {
+		// 与 HTTP 面同款预检：AI 未就绪时不建会话（否则未配置期间每条 TG 消息都留一条空会话）。
+		switch agentSvc.Ready() {
+		case aiagent.ReadyDisabled:
+			return nil, errcode.AgentDisabled
+		case aiagent.ReadyNoKey:
+			return nil, errcode.AgentNoAPIKey
+		case aiagent.ReadyKeyUnreadable:
+			// 这两个原因从前落到 switch 外面：照旧建会话，「未就绪期间每条 TG 消息留一条空会话」的后果仍在。
+			return nil, errcode.AgentKeyUnreadable
+		case aiagent.ReadyConfigUnreadable:
+			return nil, errcode.AgentConfigUnreadable
 		}
-		chatMu.Unlock()
-		if convID == 0 {
-			ch := make(chan llm.Event)
-			close(ch)
-			return ch
+		convID, err := sessions.resolve(chatKey, agentConvOp.Create)
+		if err != nil {
+			return nil, err
 		}
-		return agentSvc.Run(ctx, convID, text)
+		return agentSvc.Run(ctx, convID, text), nil
 	}
-	clear := func(chatKey string) { chatMu.Lock(); delete(chatConvs, chatKey); chatMu.Unlock() }
+	clear := func(chatKey string) { sessions.clear(chatKey) }
 	var startTgBot func()
 	startTgBot = func() {
 		tgMu.Lock()

@@ -58,7 +58,7 @@ func (h *DashboardHandler) SyncOne(c *gin.Context) {
 	}
 	overview, err := h.dash.SyncOne(c.Request.Context(), uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondFetchError(c, err, errcode.Internal)
 		return
 	}
 	c.JSON(http.StatusOK, overview)

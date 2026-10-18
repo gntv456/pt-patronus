@@ -115,6 +115,9 @@ func CollectSystemMetrics(extraPaths ...string) Metrics {
 	}
 	// 温度：平台相关（Linux hwmon；Windows 多源：LHM/OHM/ACPI/nvidia-smi）。
 	m.Temps = collectTemps()
+	// 速率：与上次采样的差值（见 netrate.go）——从前只报累计字节，
+	// 运维中心的「网络 ↓/↑ B/s」因此恒为 0。
+	fillNetRates(&m, time.Now())
 	return m
 }
 

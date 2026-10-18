@@ -17,24 +17,47 @@ mixin FileManageStorageMixin on State<FileManagePage> {
   bool _loading = false;
   bool _busy = false; // 下载/上传/建目录/STRM 进行中
   String? _error; // 列目录失败（首次/空时显错误态+重试）
+  // 后端清单两侧的账面：fs 侧（/storages 整组 RequireAdmin）与 cloud 侧各自说清
+  // 「读不到 / 无权限」，谁都不能把另一侧拖没（旧写法 fs 一抛就连云盘一起没了）。
+  String? _fsNote;
+  String? _cloudNote;
   // 请求竞态守卫：每次加载自增序号，过期响应（序号不匹配）被丢弃，
   // 防止切换后端/进目录后旧响应覆盖新视图（路径=B 但列表=A 的错乱）。
   int _loadSeq = 0;
 
   bool get _readOnly => _cur?.readOnly ?? false;
 
+  /// 后端清单的补充说明：哪一侧没读到（含非管理员的必然无权限）。两侧都正常时为空。
+  String get _backendsNote => <String?>[_fsNote, _cloudNote].whereType<String>().join('；');
+
   Future<void> _loadBackends() async {
     setState(() {
       _loading = true;
       _error = null;
+      _fsNote = null;
+      _cloudNote = null;
     });
     // _select 已触发 → 其 _loadEntries 接管 _loading，finally 不再覆盖（否则进度条闪烁）。
     var selected = false;
     try {
-      // fs 与 cloud 并行加载；云盘接口失败不应阻断本地存储（对齐 Web Promise.all + catch([])）。
-      final lateCloud = _cloud.listDrives().catchError((_) => <CloudDrive>[]);
-      final fs = await _api.list();
-      final drives = await lateCloud;
+      // fs 与 cloud 并行、各自留痕：任一侧读不到都不能让另一侧消失。
+      // 旧写法 `await _api.list()` 先抛——/storages 整组是 RequireAdmin，非管理员必然 403，
+      // 于是本来能只读浏览的云盘也一起没了；云盘自身失败又被吞成空数组，什么都不说。
+      final injectedFs = widget.listStorages;
+      final List<FileStorage> fs;
+      if (!ApiClient().isAdmin) {
+        _fsNote = '存储后端仅管理员可见（云盘浏览不受影响）';
+        fs = const [];
+      } else {
+        fs = await (injectedFs ?? _api.list)().catchError((e) {
+          _fsNote = '存储后端读取失败：$e';
+          return <FileStorage>[];
+        });
+      }
+      final drives = await (widget.listDrives ?? _cloud.listDrives)().catchError((e) {
+        _cloudNote = '云盘列表读取失败：$e';
+        return <CloudDrive>[];
+      });
       final next = <_Backend>[
         ...fs.map((f) => _Backend(kind: 'fs', fs: f)),
         ...drives.map((d) => _Backend(kind: 'cloud', drive: d)),

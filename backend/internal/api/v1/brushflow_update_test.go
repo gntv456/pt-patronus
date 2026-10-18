@@ -4,11 +4,17 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/hxpt/ptpatronus/internal/db/models"
 )
 
 // TestBrush_UpdateKeepsStats 编辑任务不得重置服务端统计字段（total_added/last_error 等）。
 func TestBrush_UpdateKeepsStats(t *testing.T) {
 	r, db := setupBrushServer(t)
+	// 建任务前置校验：下载器须真实存在且支持标签。
+	if err := db.Create(&models.Downloader{Name: "qb", Type: "qb", URL: "http://qb:8080"}).Error; err != nil {
+		t.Fatal(err)
+	}
 	doBrush(t, r, http.MethodPost, "/brush/tasks", `{"name":"t1","site_id":1,"downloader_id":1,"max_seeds":3}`)
 	if err := db.Exec("UPDATE brush_flow_tasks SET total_added = 42, last_error = 'boom' WHERE id = 1").Error; err != nil {
 		t.Fatal(err)

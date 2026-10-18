@@ -166,6 +166,10 @@ func (s *OIDCService) discover(ctx context.Context, issuer string) (discovery, e
 	return d, nil
 }
 
+// ErrOIDCUnconfigured 表示「服务已装配但没启用 / issuer 或 client_id 没填全」。
+// 必须与「连不上 Provider」分开呈现：前者要管理员去补配置，后者要核对 issuer 与网络。
+var ErrOIDCUnconfigured = errors.New("OIDC 未配置或未启用")
+
 // FlowResult 是 StartFlow 的产出：浏览器要跳转的授权 URL + 写回浏览器的 cookie 键值。
 type FlowResult struct {
 	AuthorizeURL   string
@@ -177,7 +181,7 @@ type FlowResult struct {
 func (s *OIDCService) StartFlow(ctx context.Context, redirectURI string) (FlowResult, error) {
 	cfg := s.LoadSettings()
 	if !cfg.Enabled || cfg.Issuer == "" || cfg.ClientID == "" {
-		return FlowResult{}, errors.New("OIDC 未配置或未启用")
+		return FlowResult{}, ErrOIDCUnconfigured
 	}
 	d, err := s.discover(ctx, cfg.Issuer)
 	if err != nil {
@@ -201,7 +205,7 @@ func (s *OIDCService) StartFlow(ctx context.Context, redirectURI string) (FlowRe
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")
 	authorizeURL := d.AuthorizationEndpoint + "?" + q.Encode()
-		// Secure 自适应：HTTPS redirect → Secure cookie（浏览器才回传）；HTTP（本地自托管）→ 非 Secure。
+	// Secure 自适应：HTTPS redirect → Secure cookie（浏览器才回传）；HTTP（本地自托管）→ 非 Secure。
 	// 生产应走 HTTPS；本地 http:// 开发不设 Secure 否则浏览器不回传 cookie → state mismatch。
 	secureCookie := strings.HasPrefix(redirectURI, "https://")
 	common := http.Cookie{Path: "/", Secure: secureCookie, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600}

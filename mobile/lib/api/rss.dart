@@ -42,25 +42,25 @@ class RssSubscription {
     this.lastCheckedAt,
   });
   factory RssSubscription.fromJson(Map<String, dynamic> j) => RssSubscription(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        name: j['name'] as String? ?? '',
-        url: j['url'] as String? ?? '',
-        siteId: (j['site_id'] as num?)?.toInt() ?? 0,
-        enabled: j['enabled'] as bool? ?? true,
-        intervalMin: (j['interval_min'] as num?)?.toInt() ?? 30,
-        titleInclude: j['title_include'] as String? ?? '',
-        titleExclude: j['title_exclude'] as String? ?? '',
-        minSize: (j['min_size'] as num?)?.toInt() ?? 0,
-        maxSize: (j['max_size'] as num?)?.toInt() ?? 0,
-        resolution: j['resolution'] as String? ?? '',
-        autoDownload: j['auto_download'] as bool? ?? false,
-        downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
-        savePath: j['save_path'] as String? ?? '',
-        category: j['category'] as String? ?? 'rss',
-        tags: j['tags'] as String? ?? '',
-        filterGroups: j['filter_groups'] as String? ?? '',
-        lastCheckedAt: j['last_checked_at'] as String?,
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    name: j['name'] as String? ?? '',
+    url: j['url'] as String? ?? '',
+    siteId: (j['site_id'] as num?)?.toInt() ?? 0,
+    enabled: j['enabled'] as bool? ?? true,
+    intervalMin: (j['interval_min'] as num?)?.toInt() ?? 30,
+    titleInclude: j['title_include'] as String? ?? '',
+    titleExclude: j['title_exclude'] as String? ?? '',
+    minSize: (j['min_size'] as num?)?.toInt() ?? 0,
+    maxSize: (j['max_size'] as num?)?.toInt() ?? 0,
+    resolution: j['resolution'] as String? ?? '',
+    autoDownload: j['auto_download'] as bool? ?? false,
+    downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
+    savePath: j['save_path'] as String? ?? '',
+    category: j['category'] as String? ?? 'rss',
+    tags: j['tags'] as String? ?? '',
+    filterGroups: j['filter_groups'] as String? ?? '',
+    lastCheckedAt: j['last_checked_at'] as String?,
+  );
 }
 
 class RssItem {
@@ -81,14 +81,72 @@ class RssItem {
     this.createdAt,
   });
   factory RssItem.fromJson(Map<String, dynamic> j) => RssItem(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        title: j['title'] as String? ?? '',
-        link: j['link'] as String? ?? '',
-        torrentUrl: j['torrent_url'] as String? ?? '',
-        size: (j['size'] as num?)?.toInt() ?? 0,
-        downloaded: j['downloaded'] as bool? ?? false,
-        createdAt: j['created_at'] as String?,
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    title: j['title'] as String? ?? '',
+    link: j['link'] as String? ?? '',
+    torrentUrl: j['torrent_url'] as String? ?? '',
+    size: (j['size'] as num?)?.toInt() ?? 0,
+    downloaded: j['downloaded'] as bool? ?? false,
+    createdAt: j['created_at'] as String?,
+  );
+}
+
+/// 单轮检查的账面：后端把 scanned/total/truncated 与 new_count 同行给出，
+/// 只读 new_count 就把「源里 250 条只查了 200 条」说成「整个源查完了」。
+class RssCheckResult {
+  final bool ok;
+  final int newCount;
+  final int scanned;
+
+  /// 源里的条目总数；后端计数读不出时为 null（文案说「读取失败」，不写 0）。
+  final int? total;
+  final bool truncated;
+
+  /// 失败原因（后端已翻成中文）；ok=false 时不说出来就是二次撒谎。
+  final String? error;
+  const RssCheckResult({
+    required this.ok,
+    this.newCount = 0,
+    this.scanned = 0,
+    this.total,
+    this.truncated = false,
+    this.error,
+  });
+  factory RssCheckResult.fromJson(Map<String, dynamic> j) => RssCheckResult(
+    // 缺 ok 按失败处理：不能把读不到的字段当成「跑成功了」。
+    ok: j['ok'] as bool? ?? false,
+    newCount: (j['new_count'] as num?)?.toInt() ?? 0,
+    scanned: (j['scanned'] as num?)?.toInt() ?? 0,
+    total: (j['total'] as num?)?.toInt(),
+    truncated: j['truncated'] as bool? ?? false,
+    error: j['error'] as String?,
+  );
+}
+
+/// 条目一页 + 取数账面（列表默认 100、封顶 500）。
+class RssItemPage {
+  final List<RssItem> items;
+  final int? total;
+  final int limit;
+  final bool truncated;
+  const RssItemPage({
+    required this.items,
+    this.total,
+    this.limit = 0,
+    this.truncated = false,
+  });
+  factory RssItemPage.fromJson(Map<String, dynamic> j, {int requested = 0}) {
+    final list = (j['items'] as List?) ?? const [];
+    return RssItemPage(
+      items: list
+          .map((e) => RssItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      // 缺 truncated 按「可能被截断」处理：不给「这就是全部」的假安心。
+      truncated: j['truncated'] as bool? ?? true,
+      total: (j['total'] as num?)?.toInt(),
+      limit: (j['limit'] as num?)?.toInt() ?? requested,
+    );
+  }
 }
 
 class RssApi {
@@ -97,7 +155,9 @@ class RssApi {
   Future<List<RssSubscription>> list() async {
     final r = await _api.get('/rss');
     final list = (r['subscriptions'] as List?) ?? const [];
-    return list.map((e) => RssSubscription.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => RssSubscription.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<RssSubscription> create(Map<String, dynamic> body) async {
@@ -105,18 +165,18 @@ class RssApi {
     return RssSubscription.fromJson(r);
   }
 
-  Future<void> update(int id, Map<String, dynamic> body) => _api.put('/rss/$id', body);
+  Future<void> update(int id, Map<String, dynamic> body) =>
+      _api.put('/rss/$id', body);
 
   Future<void> remove(int id) => _api.delete('/rss/$id');
 
-  Future<int> check(int id) async {
+  Future<RssCheckResult> check(int id) async {
     final r = await _api.post('/rss/$id/check', {});
-    return (r['new_count'] as num?)?.toInt() ?? 0;
+    return RssCheckResult.fromJson(r);
   }
 
-  Future<List<RssItem>> items(int id, {int limit = 100}) async {
+  Future<RssItemPage> items(int id, {int limit = 100}) async {
     final r = await _api.get('/rss/$id/items?limit=$limit');
-    final list = (r['items'] as List?) ?? const [];
-    return list.map((e) => RssItem.fromJson(e as Map<String, dynamic>)).toList();
+    return RssItemPage.fromJson(r, requested: limit);
   }
 }

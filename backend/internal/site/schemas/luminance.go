@@ -37,15 +37,17 @@ func (l *Luminance) Search(ctx context.Context, def *site.SiteMetadata,
 	if err != nil {
 		return nil, err
 	}
+	// 5xx / CF 页解析出来是「零条种子」，与「这个关键词没结果」在返回值上无法区分——
+	// 跨站搜索会把故障站渲染成「该站无匹配」。
+	if err := guardHTMLResp(resp, baseURL, u); err != nil {
+		return nil, err
+	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
-	}
-	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
 	}
 	return site.ParseLuminanceSearch(doc, def, baseURL), nil
 }
@@ -79,6 +81,11 @@ func (l *Luminance) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		if err := fetchUserInfoPages(ctx, &l.BaseHTMLAdapter, def, baseURL, cookie, out); err != nil {
 			return nil, err
 		}
+	}
+	if userInfoParsesEmpty(out) {
+		// uid 没解析出来（首页改版 / 选择器落空）且资料页也没补到任何东西 → 全 0 空结构，
+		// 当成功返回会让上层写进 site_stats 并标 connected。
+		return nil, emptyUserInfoErr(baseURL, "用户页")
 	}
 	return out, nil
 }

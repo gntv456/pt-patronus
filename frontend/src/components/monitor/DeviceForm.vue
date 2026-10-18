@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import CameraBridgeHint from './CameraBridgeHint.vue'
 import DeviceProbeFields from './DeviceProbeFields.vue'
+import DeviceThresholdFields from './DeviceThresholdFields.vue'
 import { blank, defaultProtocol, inferredProtocol, normalizeNasFields } from './deviceFormHelpers'
 import { ElMessage } from 'element-plus'
 import type { MonitorTarget, OpsCredential, TargetInput } from '@/api/monitor'
@@ -17,7 +19,8 @@ const emit = defineEmits<{ submit: [TargetInput] }>()
 const form = ref<TargetInput>(blank())
 const isEdit = computed(() => !!props.target)
 // 可选配置（HTTP 方法/进程名/脚本命令等）与 thresholds 序列化抽出为 composable（useDeviceOpsConfig）。
-const { opsConfig, loadOpsConfig, buildThresholds } = useDeviceOpsConfig()
+const { opsConfig, thresholdCfg, loadOpsConfig, loadThresholds, buildThresholds } =
+  useDeviceOpsConfig()
 
 
 
@@ -44,6 +47,7 @@ watch(visible, (v) => {
       private_key: '',
     }
     loadOpsConfig(props.target.thresholds)
+    loadThresholds(props.target.thresholds)
     if (form.value.type === 'nas' && form.value.vendor === 'snmp' && form.value.protocol !== 'local') {
       form.value.protocol = 'snmp'
     }
@@ -56,6 +60,7 @@ watch(visible, (v) => {
       normalizeNasFields(form)
     }
     loadOpsConfig(form.value.thresholds)
+    loadThresholds(form.value.thresholds)
   }
 })
 
@@ -211,6 +216,7 @@ function submit() {
             <el-option :label="t('deviceform.proto.rtsp')" value="rtsp" />
           </el-select>
         </el-form-item>
+        <CameraBridgeHint :protocol="form.protocol" />
       </template>
 
       <el-form-item
@@ -278,6 +284,7 @@ function submit() {
       </el-form-item>
 
       <DeviceProbeFields :form="form" :is-edit="isEdit" :ops-config="opsConfig" />
+      <DeviceThresholdFields :form="form" :threshold-cfg="thresholdCfg" />
 
       <template v-if="form.type === 'tcp'">
         <el-form-item :label="t('deviceform.respThreshold')">

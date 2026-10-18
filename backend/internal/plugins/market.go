@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"strings"
+
+	"github.com/hxpt/ptpatronus/internal/errtext"
 )
 
 const maxPluginArchiveSize = 50 << 20
@@ -44,6 +46,9 @@ func (m *Manager) fetchRawMarket(ctx context.Context, source string) (*MarketInd
 	idx.HostCapabilities = supportedHostCapabilities()
 	for i := range idx.Plugins {
 		idx.Plugins[i].Source = source
+		// 信任等级按「这条插件所属源的公钥」判定，必须在这里就地盖章：合并后的聚合索引本身
+		// 不带任何源的公钥，留到 finalizeIndex 再算只会拿空串比较，把签名源也说成「未签名」。
+		idx.Plugins[i].TrustLevel = trustLevel(idx.PublicKey, idx.Plugins[i])
 	}
 	return &idx, nil
 }
@@ -79,7 +84,9 @@ func (m *Manager) finalizeIndex(idx *MarketIndex) {
 		idx.Plugins[i].Compatible = compatibility.Compatible
 		idx.Plugins[i].CompatibilityReason = compatibility.Reason
 		idx.Plugins[i].AvailableOptionalHostCapabilities, idx.Plugins[i].MissingOptionalHostCapabilities = evaluateOptionalHostCapabilities(idx.Plugins[i].OptionalHostCapabilities, idx.HostCapabilities)
-		idx.Plugins[i].TrustLevel = trustLevel(idx.PublicKey, idx.Plugins[i])
+		if idx.Plugins[i].TrustLevel == "" { // 聚合来的条目已在逐源阶段盖过章
+			idx.Plugins[i].TrustLevel = trustLevel(idx.PublicKey, idx.Plugins[i])
+		}
 		idx.Plugins[i].Installed = m.hasInstalled(idx.Plugins[i].ID)
 		idx.Plugins[i].InstalledVersion = m.installedVersion(idx.Plugins[i].ID)
 		idx.Plugins[i].UpdateAvailable = idx.Plugins[i].Installed && idx.Plugins[i].InstalledVersion != "" && idx.Plugins[i].InstalledVersion != idx.Plugins[i].Version
@@ -130,6 +137,8 @@ func (m *Manager) FetchMarketMulti(ctx context.Context, sources []string) (*Mark
 		HostCapabilities: supportedHostCapabilities(),
 	}
 	var groups [][]MarketPlugin
+	var failed []MarketSourceError
+	var ok int
 	var firstErr error
 	for _, src := range resolved {
 		idx, err := m.fetchRawMarket(ctx, src)
@@ -137,11 +146,15 @@ func (m *Manager) FetchMarketMulti(ctx context.Context, sources []string) (*Mark
 			if firstErr == nil {
 				firstErr = err
 			}
+			failed = append(failed, MarketSourceError{Source: src, Error: errtext.Text(err)})
 			slog.Warn("fetch market source skipped", "source", src, "err", err)
 			continue
 		}
+		ok++
 		groups = append(groups, idx.Plugins)
 	}
+	merged.SourcesOK = ok
+	merged.SourcesFailed = failed
 	merged.Plugins = mergeMarketPlugins(merged.Plugins, groups...)
 	if len(merged.Plugins) == 0 {
 		if firstErr != nil {
@@ -191,4 +204,3 @@ func trustLevel(publicKey string, item MarketPlugin) string {
 		return "unsigned"
 	}
 }
-

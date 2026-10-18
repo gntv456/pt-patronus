@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
@@ -71,6 +72,8 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 	setting := c.loadSetting(downloaderID)
 
 	created := make([]models.CrossSeedTask, 0)
+	// #384 读不出凭据的站点（站名 → 原因）。跑完统一报，不中断其余候选的建立。
+	var unreadableSites map[string]error
 	for _, m := range matches {
 		si, ok := srcByHash[m.Hash]
 		if !ok {
@@ -85,9 +88,22 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 			if local == nil {
 				continue // 本地未配置该站，跳过
 			}
-			candURL, ok := c.buildCandidateURL(local, iyuuSite, t.TorrentID)
+			candURL, ok, credErr := c.buildCandidateURL(local, iyuuSite, t.TorrentID)
+			if credErr != nil {
+				// #384 「填了但解不开」不是「没填」：前者是本地故障（主密钥换过/密文损坏），
+				// 用户该去重存凭据；后者只是没配，补上即可。两者此前都被这一行 continue
+				// 吞成同形，界面只显示「没匹配到可辅种的种子」，没有任何地方说读不出凭据。
+				// 这里不中断整轮（其余候选仍可建），但记下站点名，结束后一次性报出来。
+				if unreadableSites == nil {
+					unreadableSites = map[string]error{}
+				}
+				if _, seen := unreadableSites[local.Name]; !seen {
+					unreadableSites[local.Name] = credErr
+				}
+				continue
+			}
 			if !ok {
-				continue // 无可用凭据（MTeam 缺 api_key / 其它站缺 passkey）
+				continue // 真·没配凭据（MTeam 缺 api_key / 其它站缺 passkey）：正常跳过
 			}
 			save := setting.SavePath
 			if save == "" {
@@ -95,17 +111,19 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 			}
 			// 同 (info_hash, 候选站) 去重 / 复活：
 			//   pending|added → 进行中，跳过；
-			//   skipped|failed → 复活为 pending（用户改主意 / 自动辅种重试失败任务）；
+			//   skipped|failed → 复活为 pending（「重新发现」既定语义，见 TestReseedRediscoveryAfterSkip）；
 			//   不存在 → 新建。
 			// 不再用 OnConflict{DoNothing}：它冲突时不插入却仍被计入返回值，会返回 ID=0
 			// 幽灵候选，且 skipped/failed 行永久阻塞候选重建。
 			var existing models.CrossSeedTask
-			lookupErr := c.db.Where("info_hash = ? AND candidate_site = ?", m.Hash, iyuuSite.Site).First(&existing).Error
+			lookupErr := c.db.Where("downloader_id = ? AND info_hash = ? AND candidate_site = ?",
+				downloaderID, m.Hash, iyuuSite.Site).First(&existing).Error
 			switch {
 			case lookupErr == nil:
 				if existing.Status == "pending" || existing.Status == "added" {
 					continue // 进行中，去重
 				}
+				wasSkip := existing.Status == "skipped"
 				if e := c.db.Model(&existing).Updates(map[string]any{
 					"status": "pending", "candidate_url": candURL, "save_path": save, "resolved_at": nil,
 				}).Error; e != nil {
@@ -116,6 +134,13 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 				existing.CandidateURL = candURL
 				existing.SavePath = save
 				existing.ResolvedAt = nil
+				if wasSkip {
+					// 用户点过「跳过」的候选：重新发现只把行恢复成 pending 让他在列表里看见、
+					// 再决定一次，但不放进返回值——cron 的 AutoReseedAdd 会把返回值逐条
+					// Resolve("add")，交出去等于自动化推翻用户的显式否决。
+					// failed 仍照常返回（自动重试失败任务是设计的一部分）。
+					continue
+				}
 				created = append(created, existing)
 			case errors.Is(lookupErr, gorm.ErrRecordNotFound):
 				task := &models.CrossSeedTask{
@@ -143,6 +168,23 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 	extra := c.ingestTorznabForDownloader(ctx, downloaderID, torrents, setting)
 	created = append(created, extra...)
 	slog.Info("reseed done", "downloader", downloaderID, "hashes", len(hashes), "candidates", len(created))
+	// #384 有站点的凭据读不出来时必须说出来，不能让用户对着「没匹配到同种」猜。
+	// 逐站带名字（用户不知道该去查哪站），并说清下一步是「重存凭据」而不是「去补填」。
+	// 已建成的候选照常返回 —— 读不出的只是其中几站，不该把整轮成果一起丢掉。
+	if len(unreadableSites) > 0 {
+		names := make([]string, 0, len(unreadableSites))
+		var first error
+		for n, e := range unreadableSites {
+			names = append(names, n)
+			if first == nil {
+				first = e
+			}
+		}
+		sort.Strings(names)
+		slog.Warn("reseed: 站点凭据读不出，相关候选已跳过", "sites", strings.Join(names, ", "))
+		return created, fmt.Errorf("这些站点的凭据读不出来（可能主密钥换过或密文损坏），相关候选已跳过：%s；"+
+			"请到「站点」页重新保存这些站的凭据：%w", strings.Join(names, "、"), first)
+	}
 	return created, nil
 }
 
@@ -212,12 +254,14 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 // upsertCrossSeedTask 新建或复活 CrossSeedTask；返回 (task, true) 表示有新增/复活。
 func (c *KeepSeedChain) upsertCrossSeedTask(downloaderID, siteID uint, infoHash, sourceName, candidateSite, candURL, save string, score int) (models.CrossSeedTask, bool) {
 	var existing models.CrossSeedTask
-	lookupErr := c.db.Where("info_hash = ? AND candidate_site = ?", infoHash, candidateSite).First(&existing).Error
+	lookupErr := c.db.Where("downloader_id = ? AND info_hash = ? AND candidate_site = ?",
+		downloaderID, infoHash, candidateSite).First(&existing).Error
 	switch {
 	case lookupErr == nil:
 		if existing.Status == "pending" || existing.Status == "added" {
 			return models.CrossSeedTask{}, false
 		}
+		wasSkip := existing.Status == "skipped"
 		if e := c.db.Model(&existing).Updates(map[string]any{
 			"status": "pending", "candidate_url": candURL, "save_path": save, "resolved_at": nil, "match_score": score,
 		}).Error; e != nil {
@@ -229,6 +273,11 @@ func (c *KeepSeedChain) upsertCrossSeedTask(downloaderID, siteID uint, infoHash,
 		existing.SavePath = save
 		existing.ResolvedAt = nil
 		existing.MatchScore = score
+		// 与 Reseed 同一规则：用户「跳过」过的候选恢复成 pending 让他看得见，但不交给
+		// 调用方（本地辅种/Torznab 补候选的返回值同样会被 AutoReseedAdd 逐条添加）。
+		if wasSkip {
+			return models.CrossSeedTask{}, false
+		}
 		return existing, true
 	case errors.Is(lookupErr, gorm.ErrRecordNotFound):
 		task := &models.CrossSeedTask{

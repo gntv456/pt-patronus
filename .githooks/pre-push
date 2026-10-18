@@ -27,6 +27,7 @@ BE="$ROOT/backend"
 ZERO=0000000000000000000000000000000000000000
 have_go=0
 all_pkgs=""
+all_files=""
 while read -r _local_ref local_sha _remote_ref remote_sha; do
   [ "$local_sha" = "$ZERO" ] && continue          # 删除分支
   base="$remote_sha"
@@ -44,6 +45,8 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
     | sed -e 's|^|./|' -e 's|^\./\.$|./|' \
     | sort -u)
   all_pkgs="$all_pkgs $dirs"
+  all_files="$all_files
+$files"
 done
 
 if [ "$have_go" = "0" ]; then
@@ -53,6 +56,26 @@ fi
 
 cd "$BE"
 pkgs=$(echo $all_pkgs | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')
+
+# 行数/列宽棘轮门禁（与 CI 同款脚本，秒级）：改动使文件超 400 行或超宽行数上涨
+# 在本地就拦下，不用等 CI 全量跑完才发现。baseline 只许缩不许涨。
+if ! bash "$ROOT/scripts/check_file_length.sh" check; then
+  echo "✗ 行数/列宽门禁失败，推送中止。（修复：拆分文件；或收缩后 bash scripts/check_file_length.sh init 刷新 baseline）" >&2
+  exit 1
+fi
+
+# gofmt：只查本次改动的 *.go。原钩子与 CI 都只跑 vet+test，格式无人管——FluxTorrent 适配
+# （8f2444ac）就是带着错缩进合进来的，而 `case` 缩进错位恰好掩盖「case 挂错 switch 层级」
+# 这类真问题，review 时也最难看出来。
+gofmt_targets=$(printf '%s\n' "$all_files" | sed 's|^backend/||' | grep '\.go$' | sort -u | grep -v '^$')
+if [ -n "$gofmt_targets" ]; then
+  unformatted=$(gofmt -l $gofmt_targets 2>/dev/null || true)
+  if [ -n "$unformatted" ]; then
+    echo "✗ 改动的 Go 文件未通过 gofmt（修复：cd backend && gofmt -w 文件）：" >&2
+    printf '   %s\n' $unformatted >&2
+    exit 1
+  fi
+fi
 echo "〔pre-push〕go vet + test 改动包：$pkgs"
 if ! go vet $pkgs; then
   echo "✗ go vet 失败，推送中止。（旁路：git push --no-verify）" >&2

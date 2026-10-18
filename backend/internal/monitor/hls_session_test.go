@@ -16,12 +16,12 @@ var (
 
 // TestHLSSinkMuxAndPlaylist 验证：合法 H264 喂入 → 产出正确 m3u8 + 结构合法的 TS 段。
 func TestHLSSinkMuxAndPlaylist(t *testing.T) {
-	sink := newHLSSink(hlsTestSPS, hlsTestPPS)
-	sink.writeAU(0, [][]byte{hlsTestIDR})        // 首帧 IDR：初始化 extractor + 开 seg0
-	sink.writeAU(3600, [][]byte{hlsTestNonIDR})  // non-IDR 入 seg0
-	sink.writeAU(7200, [][]byte{hlsTestIDR})     // IDR：收尾 seg0、开 seg1
-	sink.writeAU(10800, [][]byte{hlsTestNonIDR}) // non-IDR 入 seg1
-	sink.writeAU(14400, [][]byte{hlsTestIDR})    // IDR：收尾 seg1、开 seg2
+	sink := newHLSSink(CodecH264, nil, hlsTestSPS, hlsTestPPS)
+	sink.writeAU(0, CodecH264, [][]byte{hlsTestIDR})        // 首帧 IDR：初始化 extractor + 开 seg0
+	sink.writeAU(3600, CodecH264, [][]byte{hlsTestNonIDR})  // non-IDR 入 seg0
+	sink.writeAU(7200, CodecH264, [][]byte{hlsTestIDR})     // IDR：收尾 seg0、开 seg1
+	sink.writeAU(10800, CodecH264, [][]byte{hlsTestNonIDR}) // non-IDR 入 seg1
+	sink.writeAU(14400, CodecH264, [][]byte{hlsTestIDR})    // IDR：收尾 seg1、开 seg2
 
 	pl := sink.playlist()
 	switch {
@@ -56,11 +56,11 @@ func TestHLSSinkMuxAndPlaylist(t *testing.T) {
 
 // TestHLSSinkRingEviction 验证 ring 滑窗：喂超量 IDR 只留最近 hlsMaxSegs 段、序列号前推、旧段淘汰。
 func TestHLSSinkRingEviction(t *testing.T) {
-	sink := newHLSSink(hlsTestSPS, hlsTestPPS)
+	sink := newHLSSink(CodecH264, nil, hlsTestSPS, hlsTestPPS)
 	var pts int64
 	for i := 0; i < 10; i++ { // 每个非首 IDR 收尾上一段
 		pts += 90000
-		sink.writeAU(pts, [][]byte{hlsTestIDR})
+		sink.writeAU(pts, CodecH264, [][]byte{hlsTestIDR})
 	}
 	pl := sink.playlist()
 	if c := strings.Count(pl, "#EXTINF"); c != hlsMaxSegs {

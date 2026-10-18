@@ -47,7 +47,7 @@ func (h *EntertainmentHandler) Events(c *gin.Context) {
 	}
 	res, err := h.ent.Events(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"events": res})
@@ -66,7 +66,7 @@ func (h *EntertainmentHandler) EventDetail(c *gin.Context) {
 	}
 	res, err := h.ent.EventDetail(c.Request.Context(), id, c.Param("game"), eventID)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -103,7 +103,7 @@ func (h *EntertainmentHandler) FlipState(c *gin.Context) {
 	}
 	res, err := h.ent.FlipState(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -167,7 +167,7 @@ func (h *EntertainmentHandler) BigSmallState(c *gin.Context) {
 	}
 	res, err := h.ent.BigSmallState(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -182,7 +182,7 @@ func (h *EntertainmentHandler) BigSmallChat(c *gin.Context) {
 	since, _ := strconv.Atoi(c.DefaultQuery("since", "0"))
 	res, err := h.ent.BigSmallChat(c.Request.Context(), id, c.Param("game"), since)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"chat": res})

@@ -90,10 +90,10 @@ func gobangMCTS(board [][]int, mine, theirs int, budget time.Duration, rootMoves
 	}
 
 	root := &mctsNode{move: [2]int{-1, -1}, side: theirs, untried: cloneMoves(cands)}
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(mctsSeed()))
 
 	sims := 0
-	for time.Now().Before(deadline) && sims < 200000 {
+	for time.Now().Before(deadline) && sims < mctsSimCap() {
 		node := root
 		b := cloneBoard(board)
 		rs := newRolloutState(b)
@@ -227,7 +227,7 @@ func mctsRootStats(board [][]int, mine, theirs int, budget time.Duration) []mcts
 	deadline := time.Now().Add(budget)
 	rng := rand.New(rand.NewSource(1))
 	sims := 0
-	for time.Now().Before(deadline) && sims < 200000 {
+	for time.Now().Before(deadline) && sims < mctsSimCap() {
 		node := root
 		b := cloneBoard(board)
 		rs := newRolloutState(b)

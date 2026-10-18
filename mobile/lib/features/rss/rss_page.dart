@@ -4,12 +4,14 @@ import 'package:ptpatronus/api/rss.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/filter_rules.dart';
+import 'rss_account.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 part 'rss_form.dart';
+part 'rss_items_sheet.dart';
 
 /// RSS 订阅页：对齐 Web Rss.vue。订阅卡片列表 + 检查/条目/编辑/删除；
 /// 表单走自适应浮层（宽屏对话框 / 窄屏底栏），含体积范围(min_size/max_size，修编辑丢数据)。
@@ -48,7 +50,9 @@ class _RssPageState extends State<RssPage> {
         );
       }
       if (_filterGroups.isEmpty) {
-        final gs = await _filterApi.groups().catchError((_) => <FilterRuleGroup>[]);
+        final gs = await _filterApi.groups().catchError(
+          (_) => <FilterRuleGroup>[],
+        );
         _filterGroups = gs.map((g) => g.name).toList();
       }
     } catch (e) {
@@ -66,8 +70,8 @@ class _RssPageState extends State<RssPage> {
   Future<void> _check(RssSubscription r) async {
     setState(() => _checking = r.id);
     try {
-      final n = await _api.check(r.id);
-      _toast('新增 $n 条');
+      final res = await _api.check(r.id);
+      _toast(rssCheckSummary(res));
       await _load();
     } catch (e) {
       _toast('$e');
@@ -117,115 +121,6 @@ class _RssPageState extends State<RssPage> {
       ),
     );
     if (saved == true) _load();
-  }
-
-  Future<void> _openItems(RssSubscription r) async {
-    List<RssItem> items;
-    try {
-      items = await _api.items(r.id);
-    } catch (e) {
-      _toast('$e');
-      return;
-    }
-    if (!mounted) return;
-    await showAdaptiveSheet(
-      context,
-      title: '条目：${r.name}',
-      wideWidth: 720,
-      builder: (_) => items.isEmpty
-          ? const PTEmptyState(text: '暂无条目')
-          : PTAdaptiveTable<RssItem>(
-              items: items,
-              columns: [
-                PTColumn(
-                  label: '标题',
-                  flex: 4,
-                  cell: (c, it) => it.link.isNotEmpty
-                      ? InkWell(
-                          onTap: () => _launchUrl(it.link),
-                          child: Text(
-                            it.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: PTColors.primary2,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        )
-                      : Text(
-                          it.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                ),
-                PTColumn(
-                  label: '大小',
-                  flex: 1,
-                  numeric: true,
-                  cell: (_, it) => Text(
-                    _fmtSize(it.size),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-                PTColumn(
-                  label: '已下载',
-                  flex: 1,
-                  cell: (ctx, it) => Text(
-                    it.downloaded ? '是' : '否',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: it.downloaded ? PTColors.success : ctx.dimText,
-                    ),
-                  ),
-                ),
-                PTColumn(
-                  label: '发现时间',
-                  flex: 2,
-                  cell: (ctx, it) => Text(
-                    _fmtTime(it.createdAt),
-                    style: TextStyle(fontSize: 12, color: ctx.dimText),
-                  ),
-                ),
-              ],
-              emptyText: '暂无条目',
-              narrowCard: (ctx, it) => GlassCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (it.link.isNotEmpty)
-                      InkWell(
-                        onTap: () => _launchUrl(it.link),
-                        child: Text(
-                          it.title,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: PTColors.primary2,
-                          ),
-                        ),
-                      )
-                    else
-                      Text(
-                        it.title,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_fmtSize(it.size)} · ${it.downloaded ? "已下载" : "未下载"} · ${_fmtTime(it.createdAt)}',
-                      style: TextStyle(fontSize: 12, color: ctx.dimText),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-    );
   }
 
   void _launchUrl(String url) {

@@ -28,9 +28,26 @@ async function load() {
 }
 onMounted(async () => {
   await load()
-  sites.value = await siteApi.list().catch(() => [])
-  downloaders.value = await downloaderApi.list().catch(() => [])
-  filterGroups.value = (await filterApi.groups().catch(() => [])).map((g) => g.name)
+  // 表单下拉的数据源逐项降级，但失败要点名——空下拉不能让用户以为「没得选是正常的」。
+  const failed: string[] = []
+  const [ss, ds, gs] = await Promise.all([
+    siteApi.list().catch(() => {
+      failed.push(t('rss.f.site'))
+      return []
+    }),
+    downloaderApi.list().catch(() => {
+      failed.push(t('downloaders.title'))
+      return []
+    }),
+    filterApi.groups().catch(() => {
+      failed.push(t('rss.f.filterGroups'))
+      return [] as { name: string }[]
+    }),
+  ])
+  sites.value = ss
+  downloaders.value = ds
+  filterGroups.value = gs.map((g) => g.name)
+  if (failed.length) ElMessage.warning(`${t('common.loadFailed')}：${failed.join('、')}`)
 })
 
 // 新增/编辑
@@ -138,8 +155,16 @@ async function check(r: RssSubscription) {
   checking.value = r.id
   try {
     const res = await rssApi.check(r.id)
-    if (res.ok) ElMessage.success(t('rss.newItems', { n: res.new_count }))
-    else ElMessage.warning(res.error || t('rss.checkFailed'))
+    if (res.ok) {
+      // 截断要说出来：本轮只查了窗口内的条目，只报「新增 N 条」会把「没扫全」说成「扫完了」
+      if (res.truncated) {
+        ElMessage.warning(t('rss.newItemsTruncated', { n: res.new_count, scanned: res.scanned, total: res.total }))
+      } else {
+        ElMessage.success(t('rss.newItems', { n: res.new_count }))
+      }
+    } else {
+      ElMessage.warning(res.error || t('rss.checkFailed'))
+    }
     await load()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('rss.checkFailed'))
@@ -152,10 +177,19 @@ async function check(r: RssSubscription) {
 const showItems = ref(false)
 const items = ref<RssItem[]>([])
 const itemsTitle = ref('')
+// 列表有上限（默认 100 / 封顶 500）：账面要跟清单一起留着，否则抽屉里的这张表
+// 把「最近 100 条」画成「这个订阅就这些条目」。
+const itemsMeta = ref<{ total?: number; limit: number; truncated: boolean }>({
+  total: undefined,
+  limit: 100,
+  truncated: false,
+})
 async function openItems(r: RssSubscription) {
   itemsTitle.value = r.name
   try {
-    items.value = await rssApi.items(r.id)
+    const res = await rssApi.items(r.id)
+    items.value = res.items ?? []
+    itemsMeta.value = { total: res.total, limit: res.limit, truncated: res.truncated }
     showItems.value = true
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('rss.loadItemsFailed'))
@@ -294,6 +328,17 @@ function fmtTime(t?: string) {
 
     <!-- 条目 -->
     <el-drawer v-model="showItems" :title="t('rss.itemsTitle', { name: itemsTitle })" size="50%" append-to-body>
+      <div v-if="itemsMeta.truncated" class="items-note">
+        {{
+          itemsMeta.total == null
+            ? t('rss.itemsTruncatedUnknown', { shown: items.length })
+            : t('rss.itemsTruncated', {
+                shown: items.length,
+                total: itemsMeta.total,
+                rest: itemsMeta.total - items.length,
+              })
+        }}
+      </div>
       <el-table :data="items" size="small">
         <el-table-column :label="t('rss.col.title')" min-width="240">
           <template #default="{ row }">

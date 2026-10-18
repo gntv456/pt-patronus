@@ -48,8 +48,12 @@ type Subscription struct {
 	CurrentPriority int        `gorm:"default:0" json:"current_priority"`
 	EpisodePriority string     `gorm:"type:text" json:"episode_priority"`
 	LastCheckedAt   *time.Time `json:"last_checked_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	// LastCheckError 上一轮检查里「读不出来的站」留下的原因（空=整轮干净）。
+	// 只有 last_checked_at 时，「3/10 个站 cookie 失效所以什么都没搜到」和「搜了确实没新命中」
+	// 在界面上长得一模一样（订阅逐站失败此前是 `if sr.Error != "" { continue }` 静默丢）。
+	LastCheckError string    `gorm:"type:text" json:"last_check_error,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // IntSlice — uint 切片自定义类型：DB 存 JSON 文本（"[]" / "[1,2]"），JSON/API 暴露为 number 数组。

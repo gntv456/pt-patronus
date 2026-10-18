@@ -13,18 +13,22 @@ export function usePluginTrust() {
   const trustAllowUnsigned = ref(false)
 
   async function openTrust() {
-    trustVisible.value = true
     trustLoading.value = true
+    let cfg: Awaited<ReturnType<typeof pluginApi.getTrustConfig>>
     try {
-      const cfg = await pluginApi.getTrustConfig()
-      trustOfficialKey.value = cfg.official_key || ''
-      trustKeysText.value = (cfg.trusted_public_keys || []).join('\n')
-      trustAllowUnsigned.value = !!cfg.allow_unsigned
+      cfg = await pluginApi.getTrustConfig()
     } catch (e: any) {
-      ElMessage.error(e?.message || '加载信任配置失败')
+      // 读不出来时绝不打开面板：面板里的草稿会是「一条公钥都没有 + 没勾允许未签名」的假空态，
+      // 而保存是整份替换——用户点一次保存就把还存在的受信公钥清空。
+      ElMessage.error('信任配置读不出来，未打开编辑：' + (e?.message || '未知原因'))
+      return
     } finally {
       trustLoading.value = false
     }
+    trustOfficialKey.value = cfg.official_key || ''
+    trustKeysText.value = (cfg.trusted_public_keys || []).join('\n')
+    trustAllowUnsigned.value = !!cfg.allow_unsigned
+    trustVisible.value = true
   }
 
   async function saveTrust() {

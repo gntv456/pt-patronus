@@ -18,8 +18,9 @@ async function load() {
   try {
     const r = await downloaderApi.files(props.downloaderId, props.hash)
     files.value = r.files ?? []
-  } catch {
-    ElMessage.warning(t('common.loadFailed'))
+  } catch (e: unknown) {
+    // 后端这句（下载器离线 / 哈希不存在 / 权限）是用户唯一线索；只报「加载失败」会让人以为这个种子没有文件
+    ElMessage.warning((e as Error).message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }

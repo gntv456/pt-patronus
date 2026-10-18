@@ -33,7 +33,7 @@ func parseLimit(v string) (int64, error) {
 // ErrNotImplemented 映射 code=not_implemented，前端据此隐藏对应 UI。
 func opResult(c *gin.Context, err error) {
 	if err != nil {
-		resp := gin.H{"ok": false, "error": err.Error()}
+		resp := gin.H{"ok": false, "error": userErrText(err)}
 		if errors.Is(err, downloader.ErrNotImplemented) {
 			resp["code"] = "not_implemented"
 		}

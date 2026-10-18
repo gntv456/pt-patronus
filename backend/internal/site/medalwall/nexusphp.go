@@ -9,13 +9,14 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 )
+
 // NexusPHPAdapter NexusPHP 系勋章墙：GET medal.php?page={N} 分页解析（卡片/表格双布局）+
 // GET userdetails.php?id=<uid> 抓已拥有；购买/佩戴/摘下走 AJAX POST（多端点回退）。
 type NexusPHPAdapter struct{}
 
 func (NexusPHPAdapter) Platform() string { return "nexusphp" }
 
-func (NexusPHPAdapter) Supported() bool  { return true }
+func (NexusPHPAdapter) Supported() bool { return true }
 
 // 分页上限 + 关键词门槛（整页须含勋章关键词，防误识非勋章页）。
 const (
@@ -42,7 +43,8 @@ func (NexusPHPAdapter) FetchShop(ctx context.Context, hc HTTPDoer, def Def, base
 	return nil, err
 }
 
-// FetchOwned 抓已拥有勋章；uid 为空返回 nil（chain 层负责发现 uid）。
+// FetchOwned 抓已拥有勋章；失败（uid 缺失/请求失败/非 2xx）返回错误而非静默空——
+// chain 借此保留旧 OWNED 快照，避免一次瞬时故障把已拥有勋章洗成可购买。
 func (NexusPHPAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, baseURL, cookie, uid string) ([]Owned, error) {
 	// 思齐的 userdetails.php 是一个全站聚合页：其中的
 	// img.nexus-username-medal 属于排行榜里的其他用户和玩偶，不能用来判断当前账号。
@@ -50,17 +52,17 @@ func (NexusPHPAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, bas
 	if isSiQiSite(baseURL) {
 		resp, err := hc.Get(ctx, shopPath(def, baseURL), cookie, true)
 		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, nil
+			return nil, ownedFetchErr(err, resp)
 		}
 		return parseSiQiOwnedHTML(string(resp.Body), baseURL), nil
 	}
 	if uid == "" {
-		return nil, nil
+		return nil, ErrOwnedUnavailable
 	}
 	u := fmt.Sprintf("%s?id=%s", ownPath(def, baseURL), uid)
 	resp, err := hc.Get(ctx, u, cookie, true)
 	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, nil
+		return nil, ownedFetchErr(err, resp)
 	}
 	return parseOwnedHTML(string(resp.Body), baseURL, uid), nil
 }

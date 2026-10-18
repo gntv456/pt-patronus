@@ -1,6 +1,7 @@
 package transfer
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,10 @@ func TestRunDueDirSyncs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runs := RunDueDirSyncs(kv, now)
+	runs, err := RunDueDirSyncs(kv, now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(runs) != 1 || runs[0].Name != "due" {
 		t.Fatalf("runs = %+v, want only [due]", runs)
 	}
@@ -36,19 +40,55 @@ func TestRunDueDirSyncs(t *testing.T) {
 	}
 
 	// last_run_at 已回写：紧接的第二次 tick 不应重复执行
-	got := LoadDirSyncTasks(kv)
+	got, err := LoadDirSyncTasks(kv)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, task := range got {
 		if task.Name == "due" && task.LastRunAt == 0 {
 			t.Error("due 的 last_run_at 未回写")
 		}
 	}
-	if again := RunDueDirSyncs(kv, now); len(again) != 0 {
-		t.Fatalf("到期判定失败，重复执行: %+v", again)
+	if again, err := RunDueDirSyncs(kv, now); err != nil || len(again) != 0 {
+		t.Fatalf("到期判定失败，重复执行: %+v err=%v", again, err)
 	}
 
 	// 到期后再次执行
-	if r := RunDueDirSyncs(kv, now.Add(6*time.Minute)); len(r) != 1 {
-		t.Fatalf("到期后应再次执行: %+v", r)
+	if r, err := RunDueDirSyncs(kv, now.Add(6*time.Minute)); err != nil || len(r) != 1 {
+		t.Fatalf("到期后应再次执行: %+v err=%v", r, err)
+	}
+}
+
+// errKV 模拟 kv 读失败（真实场景：DB 关闭/存储故障）。
+type errKV struct{ err error }
+
+func (e errKV) Get(string) (string, error) { return "", e.err }
+func (e errKV) Set(string, string) error   { return e.err }
+
+// TestLoadDirSyncTasksSurfacesReadErrors：读失败/配置损坏必须与「空清单」区分——
+// 此前两者都静默变 nil：cron 整轮不跑、界面空列表，与「真的没配置」同形。
+func TestLoadDirSyncTasksSurfacesReadErrors(t *testing.T) {
+	if ts, err := LoadDirSyncTasks(nil); err != nil || len(ts) != 0 {
+		t.Fatalf("无 KV 应视为空清单（特性未配置），got %v, %v", ts, err)
+	}
+	if ts, err := LoadDirSyncTasks(&memKV{m: map[string]string{}}); err != nil || len(ts) != 0 {
+		t.Fatalf("从未保存过应视为空清单，got %v, %v", ts, err)
+	}
+	if _, err := LoadDirSyncTasks(errKV{err: errors.New("db closed")}); err == nil {
+		t.Error("kv 读失败必须返回错误（否则被渲染成「没有任务」）")
+	}
+	bad := &memKV{m: map[string]string{dirSyncKey: "{not json"}}
+	if _, err := LoadDirSyncTasks(bad); err == nil {
+		t.Error("配置损坏必须返回错误（否则被渲染成「没有任务」）")
+	}
+
+	// cron tick 面同口径：整轮跳过必须能报出来，不能静默当「没有到期任务」。
+	runs, err := RunDueDirSyncs(errKV{err: errors.New("db closed")}, time.Now())
+	if err == nil {
+		t.Error("RunDueDirSyncs：清单读失败必须返回 err 供调用方自曝")
+	}
+	if len(runs) != 0 {
+		t.Errorf("读失败时不应有执行记录，got %+v", runs)
 	}
 }
 
@@ -114,7 +154,10 @@ func TestDirSyncValidation(t *testing.T) {
 	if err := SaveDirSyncTasks(kv, ok); err != nil {
 		t.Fatal(err)
 	}
-	got := LoadDirSyncTasks(kv)
+	got, err := LoadDirSyncTasks(kv)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(got) != 1 || got[0].Mode != "link" {
 		t.Errorf("roundtrip: %+v", got)
 	}

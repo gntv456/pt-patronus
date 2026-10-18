@@ -96,7 +96,13 @@ func mediaTitle(res *transfer.Result) string {
 // 故与 DoneHook 处理同一物理文件时不重复硬链）。Hash 空走 engine Path B 文件名识别。
 func (c *TransferChain) ProcessDiscoveredFiles(ctx context.Context, srcDir string, files []transfer.FileInput) (*transfer.Result, error) {
 	if first := transfer.FirstVideoPath(files); first != "" {
-		if ok, _ := c.hist.SuccessExistsBySrcPath(first); ok {
+		ok, err := c.hist.SuccessExistsBySrcPath(first)
+		if err != nil {
+			// 去重状态读不出时不整理（同 processTorrent）：防重跑已入库文件写假失败。
+			slog.Warn("dirwatch dedup lookup failed, skip this round", "src", first, "err", err)
+			return nil, nil
+		}
+		if ok {
 			return nil, nil // 已成功整理，跳过
 		}
 	}
@@ -253,11 +259,20 @@ func (c *TransferChain) Summary(ctx context.Context, withItems bool, itemLimit i
 }
 
 // History 列整理历史（API 用）。
+// CountHistory is the total for the same filter as History, so the caller can tell
+// a capped page apart from the whole list.
+func (c *TransferChain) CountHistory(status string) (int64, error) {
+	return c.hist.CountByStatus(status)
+}
+
 func (c *TransferChain) History(status string, limit int) ([]models.TransferHistory, error) {
 	return c.hist.List(status, limit)
 }
 
 // DeleteHistory 删单条历史。
+// GetHistory 按 id 取一条整理历史（删除前的存在性闸门用，与其余透传同型）。
+func (c *TransferChain) GetHistory(id uint) (*models.TransferHistory, error) { return c.hist.Get(id) }
+
 func (c *TransferChain) DeleteHistory(id uint) error { return c.hist.Delete(id) }
 
 // DeleteHistories 批量删除历史，返回不存在的 id 列表（对标站点批量删除）。

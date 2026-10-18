@@ -2,9 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -13,8 +10,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notification"
-	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/version"
 )
 
 // registerAgentTools 构建 AI Agent 的全功能工具集（读+写），绑定各业务 chain。
@@ -40,48 +35,57 @@ func registerAgentTools(
 
 	// —— 系统 ——
 	reg(mcp.Tool{Name: "system.info", Description: "Return PTPatronus version and counts of sites/subscriptions/downloaders.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
-		sites, _ := siteOp.List()
-		subs, _ := subCh.List()
-		dls, _ := dlOp.List()
-		return mcpJSON(map[string]any{"app": "PTPatronus", "version": version.Version, "sites": len(sites), "subscriptions": len(subs), "downloaders": len(dls)}), nil
+		return mcpJSON(systemInfoPayload(siteOp, subCh, dlOp)), nil
 	}})
 
 	// —— 站点 ——
 	reg(mcp.Tool{Name: "sites.list", Description: "List configured PT sites (id, name, platform, base_url). Includes 'total' and a 'duplicates' map of sites sharing the same registered domain (same site added twice).", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
 		payload, err := sitesListPayload(siteOp)
-		return mcpJSON(payload), err
+		return mcpJSON(payload), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "site_messages", Description: "Read recent PT site inbox messages across all sites.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"mailbox": map[string]any{"type": "string", "description": "inbox | sent | system (default inbox)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		mb := argString(a, "mailbox", "inbox")
 		return mcpJSON(siteCh.MessagesAll(ctx, mailboxType(mb), false)), nil
 	}})
 	reg(mcp.Tool{Name: "site_freeleech", Description: "List current site-wide freeleech/promotions across all sites.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
-		return mcpJSON(siteCh.FreeleechAll(ctx, false)), nil
+		results, err := siteCh.FreeleechAll(ctx, false)
+		if err != nil {
+			return "", err
+		}
+		return mcpJSON(results), nil
 	}})
 	reg(mcp.Tool{Name: "site_checkin_all", Description: "Sign in (check-in) on all sites that support it, for daily bonus.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
-		return mcpJSON(siteCh.CheckinAll(ctx)), nil
+		results, err := siteCh.CheckinAll(ctx)
+		if err != nil {
+			return mcpJSON(map[string]any{"results": []any{}, "list_error": err.Error()}), nil
+		}
+		return mcpJSON(results), nil
 	}})
 
 	// —— 媒体 ——
 	reg(mcp.Tool{Name: "media_search", Description: "Search movies/TV across metadata sources (Douban/TMDB/Bangumi). Returns title/year/source/source_id/poster/rating.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"keyword": map[string]any{"type": "string"}, "year": map[string]any{"type": "integer"}, "filter": map[string]any{"type": "string", "description": "video | movie | tv (default video)"}}, "required": []string{"keyword"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		r, err := mediaCh.Search(ctx, argString(a, "keyword", ""), argInt(a, "year"), argString(a, "filter", "video"))
-		return mcpJSON(r), err
+		return mcpJSON(r), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "media_detail", Description: "Get full detail (cast/synopsis/runtime) of a media item by source+source_id (from media_search).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"source": map[string]any{"type": "string"}, "source_id": map[string]any{"type": "string"}}, "required": []string{"source", "source_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		mi, err := mediaCh.Detail(ctx, argString(a, "source", ""), argString(a, "source_id", ""))
-		return mcpJSON(mi), err
+		return mcpJSON(mi), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "recommend_feeds", Description: "Trending/hot media feeds (Douban now-playing / TMDB trending / Bangumi hot / Douban charts topMovie|topTv|weekly).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"source": map[string]any{"type": "string", "description": "douban | tmdb | bangumi (optional, empty=all)"}, "category": map[string]any{"type": "string", "description": "movie | tv | anime | coming | topMovie | topTv | weekly (optional)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(recommend.RecommendFeeds(ctx, argString(a, "source", ""), argString(a, "category", ""), 1, false)), nil
 	}})
 	reg(mcp.Tool{Name: "torrent_search", Description: "Search torrents across PT sites by keyword (read-only, does not download). Returns title/size/seeders/download_url.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"keyword": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"keyword"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
-		return mcpJSON(siteCh.SearchSites(ctx, argString(a, "keyword", ""), argString(a, "category", ""), nil)), nil
+		results, err := siteCh.SearchSites(ctx, argString(a, "keyword", ""), argString(a, "category", ""), nil)
+		if err != nil {
+			return "", err
+		}
+		return mcpJSON(results), nil
 	}})
 
 	// —— 订阅 ——
 	reg(mcp.Tool{Name: "subscribe_list", Description: "List media subscriptions (title/type/year/source/status).", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
 		s, err := subCh.List()
-		return mcpJSON(s), err
+		return mcpJSON(s), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "subscribe_create", Description: "Create a media subscription (auto-search + push to downloader on schedule). Requires title/type/source/source_id from media_search.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"title": map[string]any{"type": "string"}, "type": map[string]any{"type": "string", "description": "movie | tv"}, "source": map[string]any{"type": "string", "description": "tmdb | douban | bangumi"}, "source_id": map[string]any{"type": "string"}, "year": map[string]any{"type": "integer"}, "resolution": map[string]any{"type": "string"}}, "required": []string{"title", "type", "source", "source_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		s, err := subCh.Create(ctx, &models.Subscription{
@@ -95,21 +99,25 @@ func registerAgentTools(
 		return mcpJSON(s), nil
 	}})
 	reg(mcp.Tool{Name: "subscribe_delete", Description: "Delete a subscription by id.", Risk: mcp.RiskDestructive, RiskNote: "删除媒体订阅及其搜索历史", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "integer"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
-		return mcpJSON(map[string]any{"deleted": argInt(a, "id")}), subCh.Delete(uint(argInt(a, "id")))
+		id := uint(argInt(a, "id"))
+		if err := subCh.Delete(id); err != nil {
+			return "", err
+		}
+		return mcpJSON(map[string]any{"deleted": id}), nil
 	}})
 
 	// —— 下载器 / 种子 ——
 	reg(mcp.Tool{Name: "downloaders.list", Description: "List downloaders (id, name, type, is_default).", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
 		d, err := dlOp.List()
-		return mcpJSON(d), err
+		return mcpJSON(d), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "torrents_list", Description: "List torrents in a downloader (hash/name/state/size/progress/category/tags).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}}, "required": []string{"downloader_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		t, err := dlCh.List(ctx, uint(argInt(a, "downloader_id")))
-		return mcpJSON(t), err
+		return mcpJSON(t), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "torrents_stats", Description: "Global speed/session stats of a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}}, "required": []string{"downloader_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		s, err := dlCh.Stats(ctx, uint(argInt(a, "downloader_id")))
-		return mcpJSON(s), err
+		return mcpJSON(s), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "torrents_pause", Description: "Pause torrents by hashes in a downloader.", InputSchema: hashesSchema(), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"paused": len(argStrSlice(a, "hashes"))}), dlCh.Pause(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"))
@@ -117,7 +125,7 @@ func registerAgentTools(
 	reg(mcp.Tool{Name: "torrents_resume", Description: "Resume torrents by hashes in a downloader.", InputSchema: hashesSchema(), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"resumed": len(argStrSlice(a, "hashes"))}), dlCh.Resume(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"))
 	}})
-	reg(mcp.Tool{Name: "torrents_delete", Description: "Delete torrents by hashes (irreversible). Set delete_files=true to also remove data.", Risk: mcp.RiskDestructive, RiskNote: "删除下载器种子（delete_files=true 时同时删除磁盘数据文件，不可恢复）", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "hashes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "delete_files": map[string]any{"type": "boolean"}}, "required": []string{"downloader_id", "hashes"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "torrents_delete", Description: "Delete torrents by hashes (irreversible). Set delete_files=true to also remove data.", Risk: mcp.RiskDestructive, RiskNote: "删除下载器种子（delete_files=true 时同时删除磁盘数据文件，不可恢复）", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "hashes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 1}, "delete_files": map[string]any{"type": "boolean"}}, "required": []string{"downloader_id", "hashes"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"deleted": len(argStrSlice(a, "hashes"))}), dlCh.Delete(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"), argBool(a, "delete_files"))
 	}})
 	reg(mcp.Tool{Name: "torrents_add", Description: "Add a torrent by magnet/URL to a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "url": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"downloader_id", "url"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
@@ -127,37 +135,37 @@ func registerAgentTools(
 			opts.SiteID = st.ID
 		}
 		err := dlCh.Add(ctx, uint(argInt(a, "downloader_id")), opts)
-		return mcpJSON(map[string]any{"added": err == nil}), err
+		return mcpJSON(map[string]any{"added": err == nil}), mcpErr(err)
 	}})
 
 	// —— 整理 ——
 	reg(mcp.Tool{Name: "transfer_history", Description: "List media organize/transfer history (rename/hardlink/scrape results).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string", "description": "success | failed | (empty=all)"}, "limit": map[string]any{"type": "integer"}}, "required": []string{}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		h, err := transfer.History(argString(a, "status", ""), argIntDefault(a, "limit", 50))
-		return mcpJSON(h), err
+		return mcpJSON(h), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "transfer_organize", Description: "Manually organize a completed torrent (identify→rename→hardlink→scrape NFO/poster→library).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "hash": map[string]any{"type": "string"}}, "required": []string{"downloader_id", "hash"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		r, err := transfer.ManualOrganize(ctx, uint(argInt(a, "downloader_id")), argString(a, "hash", ""))
-		return mcpJSON(r), err
+		return mcpJSON(r), mcpErr(err)
 	}})
 
 	// —— 辅种 ——
 	reg(mcp.Tool{Name: "reseed_list", Description: "List cross-seed (IYUU) candidate tasks.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string"}}, "required": []string{}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		t, err := keepseed.ListTasks(argString(a, "status", ""), uint(argIntDefault(a, "site_id", 0)))
-		return mcpJSON(t), err
+		return mcpJSON(t), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "reseed_run", Description: "Run IYUU precise cross-seed scan on a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}}, "required": []string{"downloader_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		t, err := keepseed.Reseed(ctx, uint(argInt(a, "downloader_id")))
-		return mcpJSON(t), err
+		return mcpJSON(t), mcpErr(err)
 	}})
 
 	// —— 仪表盘 ——
 	reg(mcp.Tool{Name: "dashboard_overview", Description: "Aggregated cross-site overview: per-site stats (upload/ratio/bonus/seeding/level) + grand totals.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
 		o, err := dash.Overview(ctx)
-		return mcpJSON(o), err
+		return mcpJSON(o), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "dashboard_trend", Description: "Daily upload/download/seeding trend over N days (default 7).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"days": map[string]any{"type": "integer"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		t, err := dash.Trend(ctx, argIntDefault(a, "days", 7))
-		return mcpJSON(t), err
+		return mcpJSON(t), mcpErr(err)
 	}})
 
 	// —— 通知 ——
@@ -173,7 +181,7 @@ func registerAgentTools(
 	}})
 	reg(mcp.Tool{Name: "filter_custom_rules_query", Description: "查询全部用户自定义过滤规则（自定义 id 可覆盖同名内置规则）。", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
 		rs, err := filterStore.GetCustomRules()
-		return mcpJSON(rs), err
+		return mcpJSON(rs), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "filter_custom_rule_create", Description: "新建一条自定义过滤规则。id 仅限字母数字且不可与已有自定义重复；include/exclude 为单个正则字符串（IGNORECASE）；size_range 形如 1000-5000/>1000/<5000（MB）；publish_time 形如 60 或 60-1440（分钟）。", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}, "name": map[string]any{"type": "string"}, "include": map[string]any{"type": "string", "description": "命中即保留的正则（IGNORECASE）"}, "exclude": map[string]any{"type": "string", "description": "命中即拒绝的正则（IGNORECASE）"}, "size_range": map[string]any{"type": "string", "description": "MB，如 1000-5000 / >1000 / <5000"}, "seeders": map[string]any{"type": "integer", "description": "最少做种人数"}, "publish_time": map[string]any{"type": "string", "description": "分钟，如 60 或 60-1440"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		r, err := filterStore.AddCustomRule(filter.CustomRuleInput{
@@ -213,7 +221,7 @@ func registerAgentTools(
 	}})
 	reg(mcp.Tool{Name: "filter_rule_groups_query", Description: "查询全部用户规则组（每个组含 name/rule_string/media_type/category）。", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
 		gs, err := filterStore.GetGroups()
-		return mcpJSON(gs), err
+		return mcpJSON(gs), mcpErr(err)
 	}})
 	reg(mcp.Tool{Name: "filter_rule_group_create", Description: "新建一个规则组。rule_string 为规则 id 的布尔表达式（! & | ()），'>' 分优先级层（如 4K&H265>1080P&H265>H264）；media_type 取 电影/电视剧/空（全局）；引用的规则 id 必须已存在（内置或自定义）。", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}, "rule_string": map[string]any{"type": "string", "description": "如 4K&H265>1080P&H265>H264"}, "media_type": map[string]any{"type": "string", "description": "电影 | 电视剧 | 空（全局）"}, "category": map[string]any{"type": "string"}}, "required": []string{"name", "rule_string"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		g, err := filterStore.AddGroup(filter.RuleGroupInput{
@@ -291,94 +299,5 @@ func classifyToolRisks(tools []mcp.Tool) {
 		} else {
 			tools[i].Risk = mcp.RiskWrite
 		}
-	}
-}
-
-// ===== 参数解析小工具（LLM 传 float64/any，需安全转换） =====
-
-func argString(a map[string]any, key, def string) string {
-	v, ok := a[key]
-	if !ok || v == nil {
-		return def
-	}
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return fmt.Sprint(v)
-}
-func argInt(a map[string]any, key string) int {
-	v, ok := a[key]
-	if !ok || v == nil {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return int(n)
-	case int:
-		return n
-	case string:
-		i, _ := strconv.Atoi(strings.TrimSpace(n))
-		return i
-	}
-	return 0
-}
-func argIntDefault(a map[string]any, key string, def int) int {
-	v, ok := a[key]
-	if !ok || v == nil {
-		return def
-	}
-	if n, ok := v.(float64); ok && n > 0 {
-		return int(n)
-	}
-	return def
-}
-func argBool(a map[string]any, key string) bool {
-	v, ok := a[key]
-	if !ok {
-		return false
-	}
-	if b, ok := v.(bool); ok {
-		return b
-	}
-	return false
-}
-func argStrSlice(a map[string]any, key string) []string {
-	v, ok := a[key]
-	if !ok {
-		return nil
-	}
-	arr, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(arr))
-	for _, e := range arr {
-		if s, ok := e.(string); ok && s != "" {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
-func hashesSchema() map[string]any {
-	return map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"downloader_id": map[string]any{"type": "integer"},
-			"hashes":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		},
-		"required": []string{"downloader_id", "hashes"},
-	}
-}
-
-// mailboxType 把字符串映射到 site.MailboxType（未知回 inbox）。
-func mailboxType(s string) site.MailboxType {
-	switch strings.ToLower(s) {
-	case "sent":
-		return site.MailboxSent
-	case "system":
-		return site.MailboxSystem
-	default:
-		return site.MailboxInbox
 	}
 }

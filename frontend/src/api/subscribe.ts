@@ -23,6 +23,9 @@ export interface Subscription {
   episode_priority: string // 剧集按集 PriOrder JSON
   status: string // subscribed | completed | paused
   last_checked_at?: string
+  // 上一轮检查里「读不出来的站」留下的原因（空=整轮干净）。订阅卡片靠它区分
+  // 「确实没新命中」与「三分之一的站装死所以什么都没搜到」。
+  last_check_error?: string
   created_at: string
 }
 

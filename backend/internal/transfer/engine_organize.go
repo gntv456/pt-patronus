@@ -4,8 +4,9 @@ package transfer
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -45,7 +46,11 @@ func (e *Engine) organizeMovie(ctx context.Context, cfg Config, in ProcessInput,
 			res.SkipReason = "best_version: new not better than existing"
 			return
 		default:
-			res.ErrMsg = "target exists: " + existing
+			// 库里已有该媒体：换源/换下载器重下同一部片时 hash 变了，成功记录不命中会重跑到这里。
+			// 「无事可做」不是失败——记 failed 会每轮按冷却重试，并反复发「整理失败」通知，
+			// 而库里的内容其实完好。
+			res.Skipped = true
+			res.SkipReason = "target exists: " + existing
 			return
 		}
 	}
@@ -76,6 +81,7 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 
 	var eps []string
 	var missingEps []string // 单集 link 失败时累计集号，ErrMsg 反映缺集
+	existingEps := 0        // 库里已有、本轮跳过的集数（判「无事可做」与「全失败」用）
 	showMetaWritten := false
 	for _, f := range sorted {
 		meta := ParseMeta(filepath.Base(f.Path))
@@ -102,9 +108,11 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 				}
 			case cfg.BestVersion:
 				slog.Info("transfer: best_version episode not better, skip", "dst", destFile)
+				existingEps++
 				continue
 			default:
 				slog.Warn("transfer: target episode exists, skip", "dst", destFile)
+				existingEps++
 				continue
 			}
 		}
@@ -141,6 +149,13 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 		}
 	}
 	if len(res.Files) == 0 {
+		if existingEps > 0 && len(missingEps) == 0 {
+			// 全部集库里已有（换源重下整季 / 换下载器重下，hash 变了成功记录不命中）：
+			// 无事可做不是失败，记 failed 会每轮重试并反复发「整理失败」通知。
+			res.Skipped = true
+			res.SkipReason = fmt.Sprintf("已存在 %d 集，无需整理", existingEps)
+			return
+		}
 		res.ErrMsg = "no episode organized (all targets exist or link failed)"
 		return
 	}

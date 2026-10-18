@@ -23,8 +23,8 @@ func (n *NexusPHP) FetchTorrentDetail(ctx context.Context, def *site.SiteMetadat
 	if err != nil {
 		return nil, err
 	}
-	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+	if err := guardHTMLResp(resp, baseURL, detailURL); err != nil {
+		return nil, err
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {

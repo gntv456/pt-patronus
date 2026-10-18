@@ -57,22 +57,22 @@ type TorrentDetail struct {
 
 // Torrent 是一条种子。
 type Torrent struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	SubTitle    string   `json:"subtitle,omitempty"`
-	DetailURL   string   `json:"detail_url"`
-	DownloadURL string   `json:"download_url"`
-	Size        string   `json:"size"`
-	Seeders     int      `json:"seeders"`
-	Leechers    int      `json:"leechers"`
-	Completed   int      `json:"completed"`
-	Time        string   `json:"time,omitempty"`
-	Category    string   `json:"category,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Free        bool     `json:"free,omitempty"`
-	SiteName    string   `json:"site_name,omitempty"` // 来源站（工作流/RSS 保留；SearchSites 已按站聚合但 Torrent 单条无站名）
-	SiteID      uint     `json:"site_id,omitempty"`   // 来源站 ID（推种时按站取 cookie 下载 .torrent 用；SearchSites/订阅/工作流聚合时填充）
-	SitePriority int     `json:"site_priority,omitempty"` // 来源站优先级（Site.Priority；跨站择优同分时高优先级站在前。聚合层填充，适配器不填）
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	SubTitle     string   `json:"subtitle,omitempty"`
+	DetailURL    string   `json:"detail_url"`
+	DownloadURL  string   `json:"download_url"`
+	Size         string   `json:"size"`
+	Seeders      int      `json:"seeders"`
+	Leechers     int      `json:"leechers"`
+	Completed    int      `json:"completed"`
+	Time         string   `json:"time,omitempty"`
+	Category     string   `json:"category,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	Free         bool     `json:"free,omitempty"`
+	SiteName     string   `json:"site_name,omitempty"`     // 来源站（工作流/RSS 保留；SearchSites 已按站聚合但 Torrent 单条无站名）
+	SiteID       uint     `json:"site_id,omitempty"`       // 来源站 ID（推种时按站取 cookie 下载 .torrent 用；SearchSites/订阅/工作流聚合时填充）
+	SitePriority int      `json:"site_priority,omitempty"` // 来源站优先级（Site.Priority；跨站择优同分时高优先级站在前。聚合层填充，适配器不填）
 	// 规则引擎结构化字段（publish_time / downloadvolumefactor 规则用）。
 	// 未填充时引擎降级：Free 近似 factor、PubDate 零值时 publish_time 规则放行。
 	PubDate              time.Time `json:"pub_date,omitempty"`
@@ -154,6 +154,10 @@ type UserInfo struct {
 	MaxClaim                  int     `json:"max_claim,omitempty"`
 	JoinDate                  string  `json:"join_date,omitempty"`
 	LastAccessAt              string  `json:"last_access_at,omitempty"`
+	// DiscoveredPasskey 是适配器本次抓取时从站点顺带发现的 passkey（FluxTorrent ptppUserInfo）。
+	// 仅供 chain 回写站点凭据：随本次调用返回值传递，绝不用适配器实例字段中转——多个站点
+	// 共用同一适配器实例并发抓取时会串站。json:"-" 确保它不进 API 响应与快照。
+	DiscoveredPasskey string `json:"-"`
 }
 
 // SiteMetadata 是一个站点的定义（definitions/*.yaml 反序列化目标）。

@@ -114,7 +114,14 @@ export const downloaderApi = {
   remove: (id: number) => http.delete(`/downloaders/${id}`).then((r) => r.data),
   test: (id: number) => http.post<DownloaderResult>(`/downloaders/${id}/test`).then((r) => r.data),
   torrents: (id: number) =>
-    http.get<{ torrents: Torrent[] }>(`/downloaders/${id}/torrents`).then((r) => r.data.torrents ?? []),
+    http
+      .get<{ torrents: Torrent[]; error?: string }>(`/downloaders/${id}/torrents`)
+      // 后端把「读不到下载器」压成 200 + {torrents:[], error:'…'}（qB 挂了/Cookie 失效/超时），
+      // 状态码与数组都看不出异常：以前只取 torrents ⇒ 界面画「0 个任务」，与真的没种子同形。
+      .then((r) => {
+        if (r.data.error) throw new Error(r.data.error)
+        return r.data.torrents ?? []
+      }),
   add: (id: number, url: string, opts: AddOptions = {}) =>
     http.post<DownloaderResult>(`/downloaders/${id}/torrents`, { url, ...opts }).then((r) => r.data),
   /** 上传 .torrent 文件（FormData；axios 自动设 multipart boundary，勿手动设 Content-Type） */

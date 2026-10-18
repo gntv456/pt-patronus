@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -260,7 +261,7 @@ func TestFetchMarketCompatibilityAndInstallGuard(t *testing.T) {
 			if !strings.Contains(item.CompatibilityReason, tc.wantReason) {
 				t.Fatalf("expected reason %q, got %q", tc.wantReason, item.CompatibilityReason)
 			}
-			if _, err := m.InstallFromMarket(context.Background(), indexPath, item.ID, item.Permissions); err == nil || !strings.Contains(err.Error(), "cannot be installed") {
+			if _, err := m.InstallFromMarket(context.Background(), indexPath, item.ID, item.Permissions); err == nil || !errors.Is(err, ErrPluginNotInstallable) {
 				t.Fatalf("expected incompatible install error, got %v", err)
 			}
 		})

@@ -59,14 +59,17 @@ async function refresh() {
       const assess = assessR.value
       const danger = assess.filter((c) => c.status === 'DANGER').length
       const progress = assess.filter((c) => c.status === 'PROGRESS').length
+      // UNKNOWN（抓取失败/超时/未登录）同样需要用户处理，不能当平稳
+      const unknown = assess.filter((c) => c.status === 'UNKNOWN').length
+      const hints: string[] = []
+      if (danger) hints.push(t('dt2.assessDanger', { danger, progress }))
+      else if (progress) hints.push(t('dt2.assessProgress', { progress }))
+      if (unknown) hints.push(t('dt2.assessUnknown', { n: unknown }))
+      if (!hints.length) hints.push(t('dt2.assessStable'))
       setCard('assess', {
-        value: String(danger + progress),
-        hint: danger
-          ? t('dt2.assessDanger', { danger, progress })
-          : progress
-            ? t('dt2.assessProgress', { progress })
-            : t('dt2.assessStable'),
-        tone: danger ? 'danger' : progress ? 'warn' : 'ok',
+        value: String(danger + progress + unknown),
+        hint: hints.join(' · '),
+        tone: danger ? 'danger' : progress || unknown ? 'warn' : 'ok',
       })
     } else {
       setCard('assess', { value: '—', hint: t('dt2.assessLoadFailed'), tone: 'info' })
@@ -95,7 +98,9 @@ async function refresh() {
     }
 
     if (reseedR.status === 'fulfilled') {
-      const n = reseedR.value.length
+      // 候选列表后端单次最多返回 500 条：卡片要报的是真实条数，用 total，缺 total 时退回已加载数。
+      const r = reseedR.value
+      const n = r.total ?? r.tasks.length
       setCard('reseed', {
         value: String(n),
         hint: n ? t('dt2.reseedN', { n }) : t('dt2.reseedNone'),

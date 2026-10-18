@@ -45,6 +45,10 @@ func (c *FileManagerChain) Archive(ctx context.Context, id uint, src, dst string
 	if !ok {
 		return filemanager.ErrUnsupported
 	}
+	// 压缩产物是截断写入：同名 dst 会被就地毁掉（可能是另一份归档），先确认目标位空着。
+	if err := ensureTargetFree(ctx, b, src, vdir(dst), vbase(dst)); err != nil {
+		return err
+	}
 	return a.Archive(ctx, src, dst)
 }
 

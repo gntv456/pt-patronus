@@ -25,7 +25,12 @@ func (h *MedalHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	// The shared 15s aggregate timeout truncates queued medal sites. Each site is
 	// already bounded by MedalChain, so let the caller control the overall wait.
-	cards := h.ch.MedalAll(c.Request.Context(), force)
+	cards, err := h.ch.MedalAll(c.Request.Context(), force)
+	if err != nil {
+		// 站点清单读不出要报错：以前回 200 空数组，与「没配站点」在界面上同形。
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
 	if cards == nil {
 		cards = []chain.MedalCard{}
 	}
@@ -33,14 +38,18 @@ func (h *MedalHandler) All(c *gin.Context) {
 }
 
 // AllStream SSE 流式推送全站勋章（?refresh=1）。每站完成即推一帧 event:batch
-// （results 为该站多张卡，失败站为单张错误卡）；结束推 event:done。供勋章墙「加载一个显示一个」。
+// （results 为该站多张卡，失败站为单张错误卡）；结束推 event:done（清单读失败附 list_error）。
 func (h *MedalHandler) AllStream(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	emit := beginSSE(c.Writer)
-	h.ch.MedalAllStream(c.Request.Context(), force, func(cards []chain.MedalCard) {
+	listErr := h.ch.MedalAllStream(c.Request.Context(), force, func(cards []chain.MedalCard) {
 		emit("batch", gin.H{"results": cards})
 	})
-	emit("done", gin.H{})
+	done := gin.H{}
+	if listErr != "" {
+		done["list_error"] = listErr
+	}
+	emit("done", done)
 }
 
 // medalActionBody 写操作请求体。
@@ -66,7 +75,7 @@ func (h *MedalHandler) doAction(c *gin.Context, action string) {
 	}
 	s, err := h.siteOp.Get(body.SiteID)
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	ctx := c.Request.Context()

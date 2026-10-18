@@ -21,8 +21,10 @@ func NewTransferHistoryOper(db *gorm.DB) *TransferHistoryOper {
 
 // List 按创建时间倒序；可选 status 过滤（""=全部）。始终返回非 nil 切片（防 JSON null）。
 func (o *TransferHistoryOper) List(status string, limit int) ([]models.TransferHistory, error) {
-	if limit <= 0 || limit > 500 {
+	if limit <= 0 {
 		limit = 200
+	} else if limit > 500 {
+		limit = 500
 	}
 	q := o.db.Order("created_at DESC").Limit(limit)
 	if status != "" {

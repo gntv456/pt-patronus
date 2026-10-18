@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { entertainmentApi, type GameStats, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // HDVIDEO HiLo 专用组件（批17）：翻牌 High/Low——Play 只读带 hilo_state（牌面/彩池/倍率/连胜），
 // 开局/猜大小/兑现全部可操作。
@@ -30,7 +31,7 @@ const last = ref<PlayResult | null>(null)
 async function refresh() {
   try {
     const res = await entertainmentApi.play(props.siteId, props.game)
-    stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(() => stats.value)
+    stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(entFail('stats', stats.value))
     const raw = res.raw as { hilo_state?: HiloState } | undefined
     state.value = raw?.hilo_state ?? null
     if (!res.success) ElMessage.warning(res.message)

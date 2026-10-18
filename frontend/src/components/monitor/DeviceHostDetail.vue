@@ -25,8 +25,8 @@ defineProps<{
   latest: Metrics | null
   deviceId: string
   collectTime: string
-  cpuSeries: number[]
-  memSeries: number[]
+  cpuSeries: (number | null)[]
+  memSeries: (number | null)[]
   diskUsage: number | undefined
   diskTotal: number
   diskUsed: number
@@ -35,6 +35,7 @@ defineProps<{
   resolvedProtocol: string
   canPower: boolean
   powerLoading: PowerAction | ''
+  trendWindow?: { shown: number; total?: number; truncated: boolean }
 }>()
 
 const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
@@ -135,6 +136,13 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
     </div>
   </section>
 
+  <div v-if="trendWindow?.truncated" class="trend-note">
+    {{
+      trendWindow.total == null
+        ? t('dhd.trendWindowUnknown', { n: trendWindow.shown })
+        : t('dhd.trendWindow', { n: trendWindow.shown, total: trendWindow.total })
+    }}
+  </div>
   <div class="detail-grid">
     <section class="panel">
       <div class="panel-title">

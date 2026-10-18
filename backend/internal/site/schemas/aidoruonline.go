@@ -25,7 +25,10 @@ func fetchAidoruOnlineUserInfo(ctx context.Context, hc *httpclient.Client, def *
 	}
 	account, _, err := fetchAidoruOnlineDoc(ctx, hc, baseURL, "/account.php", cookie)
 	if err != nil {
-		return u, nil
+		if userInfoParsesEmpty(u) {
+			return nil, err
+		}
+		return u, nil // usercp 已读到东西，account 页失败按部分数据返回
 	}
 	site.ParseUserInfoFields(account, def.UserInfo.Fields, u)
 	u.Bonus = 0
@@ -36,12 +39,20 @@ func fetchAidoruOnlineUserInfo(ctx context.Context, hc *httpclient.Client, def *
 			u.SeedingSize += aidoruOnlineSeedingSize(doc)
 		}
 	}
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "usercp 与 account 页")
+	}
 	return u, nil
 }
 
 func fetchAidoruOnlineDoc(ctx context.Context, hc *httpclient.Client, baseURL, path, cookie string) (*goquery.Document, *httpclient.Response, error) {
-	resp, err := hc.Get(ctx, joinURL(baseURL, path), cookie, true)
+	full := joinURL(baseURL, path)
+	resp, err := hc.Get(ctx, full, cookie, true)
 	if err != nil {
+		return nil, resp, err
+	}
+	// 与 fetchHTMLDoc 同两道判定：CF 盾页与 5xx 错误页都会解析成「选择器全落空」的空文档。
+	if err := guardHTMLResp(resp, baseURL, full); err != nil {
 		return nil, resp, err
 	}
 	body := resp.Body

@@ -21,6 +21,9 @@ if (!validTabs.has(tab.value)) tab.value = 'overview'
 const site = ref<Site | null>(null)
 const conn = ref<SiteConnectivityStatus | null>(null)
 const stat = ref<SiteStatItem | null>(null)
+// 读失败置位：区分「站点没数据」与「接口没读到」（失败画成 0 B/'—'/无连接 pill 都是假绿）。
+const connFailed = ref(false)
+const statFailed = ref(false)
 const loading = ref(true)
 const loadError = ref('')
 
@@ -28,15 +31,20 @@ const loadError = ref('')
 const {
   assess,
   assessLoading,
+  assessFailed,
   fl,
   flLoading,
+  flFailed,
   contract,
   contractCheck,
   contractLoading,
+  contractFailed,
   bfTasks,
   bfLoading,
+  bfFailed,
   saveptCard,
   saveptLoading,
+  saveptFailed,
   reseedHint,
   reseedLoading,
   clearTabState,
@@ -60,6 +68,8 @@ async function loadSite() {
   site.value = null
   conn.value = null
   stat.value = null
+  connFailed.value = false
+  statFailed.value = false
   if (!siteId.value) {
     loadError.value = t('sitedetail.badId')
     loading.value = false
@@ -72,12 +82,27 @@ async function loadSite() {
       loadError.value = t('sitedetail.notFound')
       return
     }
-    const [statuses, overview] = await Promise.all([
-      siteApi.statuses().catch(() => [] as SiteConnectivityStatus[]),
-      dashboardApi.overview().catch(() => null),
+    let statuses: SiteConnectivityStatus[] = []
+    let ov: Awaited<ReturnType<typeof dashboardApi.overview>> | null = null
+    let cFail = false
+    let sFail = false
+    await Promise.all([
+      siteApi
+        .statuses()
+        .then((r) => (statuses = r))
+        .catch(() => (cFail = true)),
+      dashboardApi
+        .overview()
+        .then((r) => (ov = r))
+        .catch(() => (sFail = true)),
     ])
+    connFailed.value = cFail
+    statFailed.value = sFail
     conn.value = statuses.find((s) => s.site_id === siteId.value) || null
-    stat.value = overview?.sites?.find((s) => s.site_id === siteId.value) || null
+    stat.value =
+      (
+        ov as Awaited<ReturnType<typeof dashboardApi.overview>> | null
+      )?.sites?.find((s) => s.site_id === siteId.value) || null
   } catch (e: unknown) {
     loadError.value = (e as Error).message || t('common.loadFailed')
   } finally {
@@ -172,6 +197,10 @@ watch(
                 }}
               </span>
             </template>
+            <template v-else-if="connFailed">
+              <span class="dot">·</span>
+              <span class="pill off">{{ t('common.loadFailed') }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -188,6 +217,13 @@ watch(
     <template v-if="site && !loadError">
       <el-tabs v-model="tab" class="glass tabs" @tab-change="onTab">
         <el-tab-pane :label="t('sitedetail.tabOverview')" name="overview">
+          <el-alert
+            v-if="statFailed"
+            type="warning"
+            :title="t('common.loadFailed') + '：' + t('sitedetail.tabOverview')"
+            show-icon
+            :closable="false"
+          />
           <div class="grid">
             <div class="card glass metric">
               <span class="k">{{ t('sitedetail.level') }}</span
@@ -195,11 +231,11 @@ watch(
             </div>
             <div class="card glass metric">
               <span class="k">{{ t('sitedetail.uploaded') }}</span
-              ><span class="v">{{ fmtBytes(stat?.uploaded || 0) }}</span>
+              ><span class="v">{{ statFailed ? '—' : fmtBytes(stat?.uploaded || 0) }}</span>
             </div>
             <div class="card glass metric">
               <span class="k">{{ t('sitedetail.downloaded') }}</span
-              ><span class="v">{{ fmtBytes(stat?.downloaded || 0) }}</span>
+              ><span class="v">{{ statFailed ? '—' : fmtBytes(stat?.downloaded || 0) }}</span>
             </div>
             <div class="card glass metric">
               <span class="k">{{ t('sitedetail.ratio') }}</span
@@ -242,7 +278,9 @@ watch(
               </ul>
               <p v-if="assess.error" class="err">{{ assess.error }}</p>
             </div>
-            <div v-else class="card glass text-muted">{{ t('sitedetail.noAssess') }}</div>
+            <div v-else class="card glass text-muted">
+              {{ assessFailed ? t('common.loadFailed') : t('sitedetail.noAssess') }}
+            </div>
 
             <div class="card glass">
               <div class="row-between">
@@ -265,7 +303,9 @@ watch(
                   {{ t('sitedetail.lastCheck') }}：<b>{{ contractCheck.status }}</b> {{ contractCheck.detail || '' }}
                 </p>
               </template>
-              <p v-else class="text-muted">{{ t('sitedetail.noContract') }}</p>
+              <p v-else class="text-muted">
+                {{ contractFailed ? t('common.loadFailed') : t('sitedetail.noContract') }}
+              </p>
             </div>
           </div>
         </el-tab-pane>
@@ -278,7 +318,9 @@ watch(
                 t('sitedetail.globalBf')
               }}</el-button>
             </div>
-            <div v-if="!bfTasks.length" class="card glass text-muted">{{ t('sitedetail.noBf') }}</div>
+            <div v-if="!bfTasks.length" class="card glass text-muted">
+              {{ bfFailed ? t('common.loadFailed') : t('sitedetail.noBf') }}
+            </div>
             <div v-for="task in bfTasks" :key="task.id" class="card glass">
               <div class="row-between">
                 <b>{{ task.name }}</b>
@@ -312,7 +354,9 @@ watch(
               <h3>{{ t('sitedetail.flStatus') }}</h3>
               <el-button size="small" @click="goGlobal('freeleech')">{{ t('sitedetail.globalFl') }}</el-button>
             </div>
-            <div v-if="!fl?.notices?.length" class="card glass text-muted">{{ fl?.error || t('sitedetail.noFl') }}</div>
+            <div v-if="!fl?.notices?.length" class="card glass text-muted">
+              {{ flFailed ? t('common.loadFailed') : (fl?.error || t('sitedetail.noFl')) }}
+            </div>
             <div v-for="(n, i) in fl?.notices || []" :key="i" class="card glass">
               <div class="row-between">
                 <b>{{ n.title || n.status }}</b>
@@ -336,7 +380,9 @@ watch(
               </p>
               <p class="text-muted">{{ saveptCard.duration_text || saveptCard.year }}</p>
             </div>
-            <div v-else class="card glass text-muted">{{ t('sitedetail.noSavept') }}</div>
+            <div v-else class="card glass text-muted">
+              {{ saveptFailed ? t('common.loadFailed') : t('sitedetail.noSavept') }}
+            </div>
           </div>
         </el-tab-pane>
       </el-tabs>

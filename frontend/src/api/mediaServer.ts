@@ -86,9 +86,15 @@ export const mediaServerApi = {
   libraries: (id: number) =>
     http.get<{ libraries: MediaLibrary[] }>(`/mediaserver/${id}/libraries`).then((r) => r.data.libraries ?? []),
   scan: (id: number, libraryId?: string) =>
-    http.post(`/mediaserver/${id}/scan`, { library_id: libraryId ?? '' }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; scanned?: number; error?: string }>(`/mediaserver/${id}/scan`, {
+        library_id: libraryId ?? '',
+      })
+      .then((r) => r.data),
   refresh: (id: number, libraryId: string) =>
-    http.post(`/mediaserver/${id}/refresh`, { library_id: libraryId }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; error?: string }>(`/mediaserver/${id}/refresh`, { library_id: libraryId })
+      .then((r) => r.data),
   notify: (id: number, title: string, body: string) =>
     http.post(`/mediaserver/${id}/notify`, { title, body }).then((r) => r.data),
   // 封面拼图直链（<img src> 用，带 Authorization 不便 → 由同源代理透传 token；这里仅给 URL 工具）
@@ -121,9 +127,18 @@ export const mediaServerApi = {
         timeout: 0,
       })
       .then((r) => r.data),
-  // 一键补齐缺失字幕（body 传健康报告；空 body 服务端现算全库）
+  // 一键补齐缺失字幕（body 传健康报告；空 body 服务端现算全库）。
+  // 只回受理账面：queued=0 表示本轮一部都没排进队列（也不会来通知），必须当终态播报。
   fixSubtitles: (report?: HealthReport, lang = 'chs') =>
-    http.post('/mediaserver/fix-subtitles', report ?? {}, { params: { lang }, timeout: 0 }).then((r) => r.data),
+    http
+      .post<SubtitleFixAccepted>('/mediaserver/fix-subtitles', report ?? {}, { params: { lang }, timeout: 0 })
+      .then((r) => r.data),
+}
+
+// 字幕补齐的受理回执（后台执行，最终结果见通知）。
+export interface SubtitleFixAccepted {
+  queued: number
+  running: boolean
 }
 
 // 媒体健康报告（对齐后端 chain.HealthReport）。
@@ -144,4 +159,6 @@ export interface HealthReport {
   missing_subtitle: number
   upgradeable: number
   checked_at: string
+  // 未覆盖到的服务器/库（连不上、读不出）。非空时「0 问题」不代表健康。
+  errors?: string[]
 }

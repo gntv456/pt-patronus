@@ -126,6 +126,6 @@ func (twoFAHelperPlugin) ExecuteAction(ctx context.Context, rt Runtime, action s
 		u.RawQuery = q.Encode()
 		return map[string]any{"uri": u.String()}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

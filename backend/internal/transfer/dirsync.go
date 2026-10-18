@@ -23,8 +23,8 @@ type DirSyncTask struct {
 	Mode      string   `json:"mode"`           // link | softlink | copy | move | strm
 	Exts      []string `json:"exts,omitempty"` // 扩展名白名单（小写含点；空=媒体默认集）
 	Recursive bool     `json:"recursive"`
-	DeleteSrc bool   `json:"delete_src,omitempty"` // move 隐含删源；copy 后可选删
-	Enabled   bool   `json:"enabled"`
+	DeleteSrc bool     `json:"delete_src,omitempty"` // move 隐含删源；copy 后可选删
+	Enabled   bool     `json:"enabled"`
 	// IntervalMinutes 定时执行间隔（分钟）；0=仅手动触发，>=5 才参与 cron 调度。
 	IntervalMinutes int   `json:"interval_minutes,omitempty"`
 	LastRunAt       int64 `json:"last_run_at,omitempty"` // 上次定时执行的 unix 秒（手动触发不回写）
@@ -47,20 +47,24 @@ type DirSyncRun struct {
 
 const dirSyncKey = "transfer.dir_sync"
 
-// LoadDirSyncTasks 读任务列表。
-func LoadDirSyncTasks(kv KVStore) []DirSyncTask {
+// LoadDirSyncTasks 读任务列表。err 非 nil = 配置读不出来或已损坏——调用方必须
+// 与「空清单」区分渲染（此前两者都静默变成「没有任务」：cron 整轮不跑、界面空列表）。
+func LoadDirSyncTasks(kv KVStore) ([]DirSyncTask, error) {
 	if kv == nil {
-		return nil
+		return nil, nil
 	}
 	raw, err := kv.Get(dirSyncKey)
-	if err != nil || strings.TrimSpace(raw) == "" {
-		return nil
+	if err != nil {
+		return nil, fmt.Errorf("读取目录同步任务失败: %w", err)
+	}
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
 	}
 	var ts []DirSyncTask
-	if json.Unmarshal([]byte(raw), &ts) != nil {
-		return nil
+	if err := json.Unmarshal([]byte(raw), &ts); err != nil {
+		return nil, fmt.Errorf("目录同步任务配置损坏: %w", err)
 	}
-	return ts
+	return ts, nil
 }
 
 // SaveDirSyncTasks 写任务列表（name 查重 + 模式校验）。
@@ -91,7 +95,10 @@ func SaveDirSyncTasks(kv KVStore, ts []DirSyncTask) error {
 // 读-改-写回 Save，tick 执行期间（任务可跑数分钟）用户经 API 增删/编辑任务会被
 // 收尾的整表 Save 用读时快照覆盖，静默丢编辑）。按 name 定位，任务被用户删除则跳过。
 func UpdateDirSyncLastRun(kv KVStore, name string, lastRunAt int64) error {
-	tasks := LoadDirSyncTasks(kv)
+	tasks, err := LoadDirSyncTasks(kv)
+	if err != nil {
+		return err
+	}
 	for i := range tasks {
 		if tasks[i].Name == name {
 			tasks[i].LastRunAt = lastRunAt
@@ -106,11 +113,15 @@ const minDirSyncInterval = 5
 
 // RunDueDirSyncs 定时 tick：执行所有「启用 + interval≥5 + 已到期」的任务并回写 LastRunAt。
 // 由 scheduler 的 SkipIfStillRunning 防重叠；单个任务失败不阻断其它任务。
-// 返回每个任务的执行记录（跳过的不在返回值里）。
-func RunDueDirSyncs(kv KVStore, now time.Time) []DirSyncRun {
-	tasks := LoadDirSyncTasks(kv)
+// 返回每个任务的执行记录（跳过的不在返回值里）；err 非 nil = 清单读不出来，
+// 本轮整轮跳过——调用方必须与「没有到期任务」区分（跑没跑与没事可做不能同形）。
+func RunDueDirSyncs(kv KVStore, now time.Time) ([]DirSyncRun, error) {
+	tasks, err := LoadDirSyncTasks(kv)
+	if err != nil {
+		return nil, err
+	}
 	if len(tasks) == 0 {
-		return nil
+		return nil, nil
 	}
 	nowUnix := now.Unix()
 	var runs []DirSyncRun
@@ -137,7 +148,7 @@ func RunDueDirSyncs(kv KVStore, now time.Time) []DirSyncRun {
 		}
 		runs = append(runs, run)
 	}
-	return runs
+	return runs, nil
 }
 
 // mediaExtDefaults 同步默认媒体扩展集（未配 Exts 时）。

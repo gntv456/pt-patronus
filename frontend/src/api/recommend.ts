@@ -59,6 +59,7 @@ export const recommendApi = {
       })
       .then((r) => r.data.results || []),
   // 流式首屏：GET /media/recommend/stream（SSE），每源完成推一帧 batch。onBatch 收该源条目，逐批 push。
+  // onDone 收 done 帧的账面（几个源、失败的是谁）——少一源时界面要能说出来。
   feedStream: (
     source = '',
     category = 'movie',
@@ -66,6 +67,7 @@ export const recommendApi = {
     refresh = false,
     onBatch: (items: MediaInfo[]) => void,
     signal?: AbortSignal,
+    onDone?: (sum: { sources?: number; batches?: number; failed?: string[]; cached?: boolean }) => void,
   ) => {
     const params = new URLSearchParams({ source, category, page: String(page) })
     if (refresh) params.set('refresh', '1')
@@ -73,6 +75,7 @@ export const recommendApi = {
       `/api/v1/media/recommend/stream?${params}`,
       (event, data) => {
         if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
+        if (event === 'done') onDone?.(data ?? {})
       },
       signal,
     )

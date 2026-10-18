@@ -3,6 +3,7 @@ package filter
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"sync"
@@ -112,7 +113,7 @@ func (s *Store) AddCustomRule(in CustomRuleInput) (Rule, error) {
 	}
 	for _, e := range rs {
 		if e.ID == r.ID {
-			return Rule{}, fmt.Errorf("规则 id %q 已存在", r.ID)
+			return Rule{}, oper.InputReasonf("规则 id %q 已存在，请换一个 id 或先删除旧规则", r.ID)
 		}
 	}
 	rs = append(rs, r)
@@ -141,14 +142,14 @@ func (s *Store) UpdateCustomRule(oldID string, in CustomRuleInput) (Rule, error)
 		}
 	}
 	if idx < 0 {
-		return Rule{}, fmt.Errorf("规则 id %q 不存在", oldID)
+		return Rule{}, ruleMissing(oldID)
 	}
 	for i, e := range rs {
 		if i == idx {
 			continue
 		}
 		if e.ID == r.ID {
-			return Rule{}, fmt.Errorf("规则 id %q 已存在", r.ID)
+			return Rule{}, oper.InputReasonf("规则 id %q 已存在，请换一个 id", r.ID)
 		}
 	}
 	rs[idx] = r
@@ -168,7 +169,7 @@ func (s *Store) DeleteCustomRule(id string) error {
 	for _, g := range groups {
 		for _, tok := range extractTokens(g.RuleString) {
 			if tok == id {
-				return fmt.Errorf("规则 %q 被规则组 %q 引用，禁止删除", id, g.Name)
+				return oper.InputReasonf("规则 %q 正被规则组 %q 引用，请先从该规则组里去掉它再删除", id, g.Name)
 			}
 		}
 	}
@@ -186,7 +187,7 @@ func (s *Store) DeleteCustomRule(id string) error {
 		out = append(out, e)
 	}
 	if !removed {
-		return fmt.Errorf("规则 id %q 不存在", id)
+		return ruleMissing(id)
 	}
 	return s.saveCustomRules(out)
 }
@@ -253,7 +254,7 @@ func (s *Store) AddGroup(in RuleGroupInput) (RuleGroup, error) {
 	}
 	for _, e := range gs {
 		if e.Name == g.Name {
-			return RuleGroup{}, fmt.Errorf("规则组 %q 已存在", g.Name)
+			return RuleGroup{}, oper.InputReasonf("规则组 %q 已存在，请换一个名字", g.Name)
 		}
 	}
 	gs = append(gs, g)
@@ -289,14 +290,14 @@ func (s *Store) UpdateGroup(oldName string, in RuleGroupInput) (RuleGroup, error
 		}
 	}
 	if idx < 0 {
-		return RuleGroup{}, fmt.Errorf("规则组 %q 不存在", oldName)
+		return RuleGroup{}, groupMissing(oldName)
 	}
 	for i, e := range gs {
 		if i == idx {
 			continue
 		}
 		if e.Name == g.Name {
-			return RuleGroup{}, fmt.Errorf("规则组 %q 已存在", g.Name)
+			return RuleGroup{}, oper.InputReasonf("规则组 %q 已存在，请换一个名字", g.Name)
 		}
 	}
 	gs[idx] = g
@@ -327,7 +328,7 @@ func (s *Store) DeleteGroup(name string) error {
 		out = append(out, e)
 	}
 	if !removed {
-		return fmt.Errorf("规则组 %q 不存在", name)
+		return groupMissing(name)
 	}
 	if err := s.saveGroups(out); err != nil {
 		return err
@@ -337,10 +338,15 @@ func (s *Store) DeleteGroup(name string) error {
 }
 
 // cleanupGroupFromBindings 从三个全局绑定 key 中移除指定组名。
+//
+// 这里刻意不把失败上抛成「删除失败」：组已经删掉了，用户重试删除会先撞上
+// 「规则组不存在」，绑定里的悬空引用反而永远清不掉。所以按「不改结果、但必须出声」处理——
+// 悬空绑定会让那条全局筛选再也找不到规则组（表现为筛选静默不生效），没有这行日志就查不到头绪。
 func (s *Store) cleanupGroupFromBindings(name string) {
 	for _, key := range []string{KeySearchFilterRuleGroups, KeySubscribeFilterRuleGroups, KeyBestVersionFilterRuleGroups} {
 		names, err := s.GetBindings(key)
 		if err != nil {
+			slog.Warn("规则组绑定读取失败：该绑定可能仍引用已删除的规则组", "key", key, "group", name, "err", err)
 			continue
 		}
 		changed := false
@@ -353,7 +359,10 @@ func (s *Store) cleanupGroupFromBindings(name string) {
 			out = append(out, n)
 		}
 		if changed {
-			_ = s.SetBindings(key, out)
+			if err := s.SetBindings(key, out); err != nil {
+				slog.Warn("规则组绑定清理失败：这里仍引用已删除的规则组，对应筛选会静默不生效",
+					"key", key, "group", name, "err", err)
+			}
 		}
 	}
 }

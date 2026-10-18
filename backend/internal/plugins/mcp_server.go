@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/mcp"
@@ -98,6 +97,6 @@ func (p *mcpServerPlugin) ExecuteAction(ctx context.Context, rt Runtime, action 
 			"tools":     len(p.server.ToolList()),
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

@@ -96,6 +96,11 @@ func summarize(cards []SaveptSiteCard) SaveptSummary {
 			s.Critical++
 		case HealthClosed:
 			s.Closed++
+		default:
+			// 探测不明（probeOne 失败/上游没给状态）也必须进汇总：
+			// 只数三类会让 healthy+critical+closed < total，用户看到对不上的数字
+			// 却不知道为什么少——「判不出来」的量同样是要显式呈现的信息。
+			s.Unknown++
 		}
 		switch c.MatchType {
 		case MatchURLExact, MatchDomainExact:

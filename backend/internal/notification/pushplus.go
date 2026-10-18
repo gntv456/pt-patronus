@@ -66,7 +66,10 @@ func (p *PushPlus) Send(ctx context.Context, msg Message) error {
 		Code int    `json:"code"`
 		Msg  string `json:"msg"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.Code != 200 {
+	if err := decodeEnvelope("pushplus", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 200 {
 		return fmt.Errorf("pushplus: code %d: %s", be.Code, be.Msg)
 	}
 	return nil

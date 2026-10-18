@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
@@ -101,6 +102,12 @@ func (c SSHCollector) Power(ctx context.Context, t *models.MonitorTarget, creds 
 	}
 	defer ex.Close()
 	_, err = ex.Run(ctx, cmd)
+	if err != nil && powerDispatchConfirmed(err) {
+		// 设备真的开始重启/关机时，SSH 会话会在交出退出状态之前断掉——这正是**动作已生效**的
+		// 信号，不是失败。命令跑完但返回非零（*ssh.ExitError，例如 sudo 要求密码）仍如实报错。
+		slog.Info("ssh power action dropped session (expected)", "target", t.Name, "action", action, "err", err)
+		return nil
+	}
 	return err
 }
 
@@ -333,7 +340,6 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 
 }
 func (e *sshExec) Close() error { return e.client.Close() }
-
 
 // cappedBuffer 有上限的输出缓冲（四轮 P1：SSH 命令输出防 `yes`/`cat bigfile` 撑爆内存）。
 type cappedBuffer struct {

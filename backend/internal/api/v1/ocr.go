@@ -1,7 +1,11 @@
 package v1
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -61,16 +65,26 @@ func (h *OCRHandler) SetConfig(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	setIf := func(key, val string) {
-		if val == "" {
+	// 两种语义必须分开：endpoint 就是这条链的开关（GetConfig 用 Endpoint!="" 报 enabled），
+	// 界面是预填后整份回传的 ⇒ 框里删空 = 用户要停用 OCR，得真写空；
+	// 从前一律「空串=不改」，删空保存后配置照旧、enabled 标签赖着不走，想停用只能改成填个别的地址。
+	// api_key 是脱敏字段（用户没法回填原值），留空仍是「不改」。
+	// 写库失败绝不能回 200：OcrPanel.save() 拿到 200 就弹「已保存」，回显又还是旧值 ⇒ 没落库也被说成生效。
+	if err := h.cfgOp.Set("ocr.endpoint", strings.TrimSpace(req.Endpoint)); err != nil {
+		errcode.Respond(c, errcode.SaveFailed.WithErr(err))
+		return
+	}
+	if req.APIKey != "" {
+		if err := h.cfgOp.Set("ocr.api_key", req.APIKey); err != nil {
+			errcode.Respond(c, errcode.SaveFailed.WithErr(err))
 			return
 		}
-		_ = h.cfgOp.Set(key, val)
 	}
-	setIf("ocr.endpoint", req.Endpoint)
-	setIf("ocr.api_key", req.APIKey)
-	if req.Mode != "" {
-		_ = h.cfgOp.Set("ocr.mode", req.Mode)
+	if mode := strings.TrimSpace(req.Mode); mode != "" {
+		if err := h.cfgOp.Set("ocr.mode", mode); err != nil {
+			errcode.Respond(c, errcode.SaveFailed.WithErr(err))
+			return
+		}
 	}
 	h.GetConfig(c)
 }
@@ -84,8 +98,20 @@ func (h *OCRHandler) Test(c *gin.Context) {
 	}
 	// 1x1 红色 PNG：无论识别结果如何，能返回 200 且可解析即视为服务可用。
 	_, err := cli.Recognize(c.Request.Context(), png1x1Base64)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"ok": false, "error": err.Error()})
+	// 空结果是这张图的正常结局（本来就没字）：连通、鉴权、解析三关都过了，仍算可用。
+	// 识别真文本时同一条 ErrEmptyResult 必须算失败，两种语义靠哨兵分开，不靠猜。
+	if err != nil && !errors.Is(err, ocr.ErrEmptyResult) {
+		// 从前这里把 userErrText(err) 原样贴到界面：连不上时用户看到的是
+		// `Post "http://…": dial tcp …: connectex: No connection could be made…`
+		// （真路由实测），而 OcrPanel.test() 就是 ElMessage.error(r.error)。
+		// 现在两种处境各给人话文案，Go/os 原文只进日志。
+		slog.Warn("ocr test failed", "err", err, "endpoint", h.config().Endpoint)
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			errcode.Respond(c, errcode.OCRServiceUnreachable)
+			return
+		}
+		errcode.Respond(c, errcode.OCRServiceBadAnswer)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

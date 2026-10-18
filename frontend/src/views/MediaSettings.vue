@@ -20,6 +20,7 @@ const tmdbDomain = ref('')
 const doubanSecret = ref('')
 const doubanAppKey = ref('')
 const bangumiToken = ref('')
+const omdbKey = ref('')
 
 async function load() {
   loading.value = true
@@ -42,12 +43,14 @@ async function save() {
       douban_secret: doubanSecret.value.trim(),
       douban_app_key: doubanAppKey.value.trim(),
       bangumi_token: bangumiToken.value.trim(),
+      omdb_api_key: omdbKey.value.trim(),
     })
     ElMessage.success(t('mediasettings.savedNow'))
     tmdbKey.value = ''
     doubanSecret.value = ''
     doubanAppKey.value = ''
     bangumiToken.value = ''
+    omdbKey.value = ''
     await load()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('common.saveFailed'))
@@ -159,6 +162,27 @@ onMounted(load)
             statusText(config.bangumi_token, true)
           }}</span>
           <span class="pt-chip pt-chip--warn" v-else>{{ t('mediasettings.notConfiguredAnonymous') }}</span>
+        </div>
+      </div>
+
+      <!-- IMDb（OMDb）：评分聚合的第四个源，此前界面上没有任何入口 -->
+      <div class="group">
+        <div class="group-title">
+          IMDb <span class="muted">{{ t('mediasettings.omdbDesc') }}</span>
+        </div>
+        <div class="field">
+          <label>{{ t('mediasettings.f.omdbKey') }}</label>
+          <el-input
+            v-model="omdbKey"
+            type="password"
+            show-password
+            clearable
+            :placeholder="t('mediasettings.f.emptyKeep')"
+          />
+          <span class="pt-chip pt-chip--success" v-if="config?.omdb_api_key_configured">{{
+            statusText(config.omdb_api_key, true)
+          }}</span>
+          <span class="pt-chip pt-chip--warn" v-else>{{ t('mediasettings.omdbSkipped') }}</span>
         </div>
       </div>
 

@@ -88,7 +88,11 @@ func NewCheckinAllNode(siteCh *chain.SiteChain, siteOp *oper.SiteOper) *siteNode
 			if siteCh == nil {
 				return fmt.Errorf("站点服务未初始化")
 			}
-			results := siteCh.CheckinAll(ctx)
+			results, err := siteCh.CheckinAll(ctx)
+			if err != nil {
+				// 自动化步骤更要报错而不是播报「0/0 成功」：那会让工作流把这一步当成正常完成。
+				return fmt.Errorf("全站签到失败：%w", err)
+			}
 			ok := 0
 			for _, r := range results {
 				if r.Success {
@@ -177,6 +181,11 @@ func NewCheckHRNode(siteCh *chain.SiteChain, siteOp *oper.SiteOper) *siteNode {
 		schema:   []workflow.ParamField{{Name: "site_id", Label: "站点", Type: "site_select", Required: true}},
 		defaults: map[string]any{"site_id": float64(0)},
 		run: func(ctx context.Context, siteCh *chain.SiteChain, s *models.Site, _ map[string]any, ecx *workflow.Context) error {
+			// 没接线时 HR 返回空列表——写进载荷会让下游把「从没查过」当成「查过且 0 条」，
+			// 所以这里必须报错而不是产出 hr_count=0。
+			if !siteCh.HRWired(s) {
+				return fmt.Errorf("站点 %s 未开启 H&R 检测（需在站点定义里加 hr.enabled: true）", s.Name)
+			}
 			list, err := siteCh.HR(ctx, s)
 			if err != nil {
 				return fmt.Errorf("检查 H&R 失败: %w", err)

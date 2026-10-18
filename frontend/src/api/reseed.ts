@@ -61,16 +61,21 @@ export const reseedApi = {
     http
       .post<{ tasks: ReseedTask[]; count: number }>('/keepseed/reseed', { downloader_id: downloaderId })
       .then((r) => r.data),
-  // 列候选任务（status 空则全部）。
+  // 列候选任务（status 空则全部）。后端单次最多返回 500 条，total/truncated 一起给出：
+  // 只回 tasks 会让界面把「最近 500 条」当成「全部候选」，清完后还谎报「没有待处理候选」。
   tasks: (status = '', siteId = 0) =>
     http
-      .get<{ tasks: ReseedTask[] }>('/keepseed/tasks', {
+      .get<{ tasks: ReseedTask[]; total?: number; truncated?: boolean }>('/keepseed/tasks', {
         params: {
           ...(status ? { status } : {}),
           ...(siteId > 0 ? { site_id: siteId } : {}),
         },
       })
-      .then((r) => r.data.tasks ?? []),
+      .then((r) => ({
+        tasks: r.data.tasks ?? [],
+        total: typeof r.data.total === 'number' ? r.data.total : null,
+        truncated: !!r.data.truncated,
+      })),
   // 处理一个候选：add（添加辅种）/ skip。
   resolve: (id: number, action: 'add' | 'skip') =>
     http.post(`/keepseed/tasks/${id}/resolve`, { action }).then((r) => r.data),

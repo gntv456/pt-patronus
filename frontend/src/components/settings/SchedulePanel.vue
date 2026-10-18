@@ -31,6 +31,11 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
       <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
         <template #prepend>{{ t('schp.cronLabel') }}</template>
       </el-input>
+      <p v-if="schedCfg?.cron_timezone" class="text-muted mt8 zone-line">
+        {{ t('schp.zoneLine', { tz: schedCfg.cron_timezone, time: schedCfg.server_time || '' }) }}
+        <template v-if="schedCfg.snapshot_next"> · {{ t('schp.nextRun', { t: schedCfg.snapshot_next }) }}</template>
+      </p>
+      <p v-if="schedCfg?.tz_is_utc" class="tz-warn mt8">{{ t('schp.utcWarn') }}</p>
       <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: var(--fs-xs); line-height: 1.6">
         {{ schedCfg.hint }}
       </p>
@@ -67,6 +72,14 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
 }
 .mt8 {
   margin-top: 8px;
+}
+.zone-line,
+.tz-warn {
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+.tz-warn {
+  color: var(--pt-warning, #e6a23c);
 }
 .card {
   padding: 16px 18px;

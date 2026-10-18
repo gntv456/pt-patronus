@@ -90,12 +90,15 @@ func TestImportPTD(t *testing.T) {
 		"metadata.json": ptdMetadata,
 		"cookies.json":  ptdCookies,
 	})
-	n, err := svc.ImportPTD(context.Background(), data)
+	res, err := svc.ImportPTD(context.Background(), data)
 	if err != nil {
 		t.Fatalf("ImportPTD: %v", err)
 	}
-	if n != 2 {
-		t.Fatalf("imported %d sites, want 2", n)
+	if res.SitesSkipped != 0 {
+		t.Errorf("两条都该进来，跳过账却记了 %d 条", res.SitesSkipped)
+	}
+	if res.Sites != 2 {
+		t.Fatalf("imported %d sites, want 2", res.Sites)
 	}
 
 	sites, err := svc.siteOp.List()
@@ -184,12 +187,16 @@ func TestImportPTDSkipsSiteWithoutURL(t *testing.T) {
 	svc := newPTDSvc(t)
 	meta := `{"sites":{"bad":{"merge":{"name":"无URL站"}},"good":{"url":"https://good.org"}}}`
 	data := makePTDZip(t, map[string]string{"manifest.json": ptdManifest, "metadata.json": meta})
-	n, err := svc.ImportPTD(context.Background(), data)
+	res, err := svc.ImportPTD(context.Background(), data)
 	if err != nil {
 		t.Fatalf("ImportPTD: %v", err)
 	}
-	if n != 1 {
-		t.Fatalf("imported %d, want 1 (bad site without URL skipped)", n)
+	if res.Sites != 1 {
+		t.Fatalf("imported %d, want 1 (bad site without URL skipped)", res.Sites)
+	}
+	// 那条没 URL 的站点从前蒸发得无声无息：现在必须落在跳过账上。
+	if res.SitesSkipped != 1 {
+		t.Errorf("SitesSkipped = %d, want 1（无可用 URL 的那条）", res.SitesSkipped)
 	}
 }
 

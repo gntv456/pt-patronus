@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // 通用抽奖组件（批1）：覆盖多站幸运转盘/老虎机/抽奖。按 game 调 play/playMulti/stats/prizes/history。
 // 关键：永远画出可见转盘——有 prizes 画真扇区，没有画 8 格装饰扇区，保证所有站点都看得到转盘。
@@ -61,10 +62,10 @@ const heroBalance = computed(() => {
 })
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, props.game).catch(entFail('stats', stats.value))
 }
 async function refreshHistory() {
-  records.value = await entertainmentApi.history(props.siteId, props.game).catch(() => [])
+  records.value = await entertainmentApi.history(props.siteId, props.game).catch(entFail('history', []))
 }
 
 async function draw(count: number) {
@@ -174,7 +175,7 @@ function drawWheel() {
 watch(segments, () => nextTick(drawWheel))
 
 onMounted(async () => {
-  prizes.value = await entertainmentApi.prizes(props.siteId, props.game).catch(() => [] as PrizeDef[])
+  prizes.value = await entertainmentApi.prizes(props.siteId, props.game).catch(entFail('prizes', [] as PrizeDef[]))
   await Promise.all([refreshStats(), refreshHistory()])
   await nextTick(drawWheel)
 })

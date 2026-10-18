@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const props = defineProps<{ siteId: number }>()
 
@@ -26,10 +27,10 @@ function emoji(name: string) {
 }
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, GAME).catch(entFail('stats', stats.value))
 }
 async function refreshHistory() {
-  records.value = await entertainmentApi.history(props.siteId, GAME).catch(() => [])
+  records.value = await entertainmentApi.history(props.siteId, GAME).catch(entFail('history', []))
 }
 
 async function join() {
@@ -50,7 +51,7 @@ async function join() {
 }
 
 onMounted(async () => {
-  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(() => [] as PrizeDef[])
+  prizes.value = await entertainmentApi.prizes(props.siteId, GAME).catch(entFail('prizes', [] as PrizeDef[]))
   await Promise.all([refreshStats(), refreshHistory()])
 })
 </script>

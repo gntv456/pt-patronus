@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fmtBytes, fmtSpeed } from './format'
+import { fmtBytes, fmtNumOr, fmtSpeed } from './format'
 
 // 字节/速率格式化是下载器表格与速率面板的核心纯函数，覆盖单位进位与边界。
 describe('fmtBytes', () => {
@@ -34,5 +34,22 @@ describe('fmtSpeed', () => {
   it('复用 fmtBytes 并补 /s', () => {
     expect(fmtSpeed(1048576)).toBe('1.0 MB/s')
     expect(fmtSpeed(2048)).toBe('2.0 KB/s')
+  })
+})
+
+// 缺席 ≠ 0：Windows 没有 load average，接口 omitempty 直接不给字段，
+// 从前渲染成 0.00 就像「负载极低」，把「这台机器没这个指标」说成了一个可信读数。
+describe('fmtNumOr', () => {
+  it('有值照常定点', () => {
+    expect(fmtNumOr(1.239)).toBe('1.24')
+    expect(fmtNumOr(0)).toBe('0.00')
+    expect(fmtNumOr(7.5, 1)).toBe('7.5')
+  })
+
+  it('缺席/NaN 走占位而不是 0', () => {
+    expect(fmtNumOr(undefined)).toBe('—')
+    expect(fmtNumOr(null)).toBe('—')
+    expect(fmtNumOr(NaN)).toBe('—')
+    expect(fmtNumOr(undefined, 2, '不支持')).toBe('不支持')
   })
 })

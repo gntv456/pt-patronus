@@ -84,7 +84,7 @@ type agentConn struct {
 	agentID  uint
 	targetID uint
 
-	authed        bool  // hello 鉴权已通过（query 或消息体 secret）
+	authed        bool   // hello 鉴权已通过（query 或消息体 secret）
 	pendingSecret string // query 侧 secret（升版过渡：消息体 secret 与其比对同源 agent）
 
 	writeMu sync.Mutex // 串行化写（gorilla Conn 非并发写安全）
@@ -169,15 +169,15 @@ func (h *AgentWSHub) HandleWS(c *gin.Context) {
 		return
 	}
 	ac := &agentConn{
-		conn:     conn,
-		agentID:  uint(agentID),
-		targetID: 0, // hello 鉴权通过后回填
-		authed:   agent != nil,
+		conn:          conn,
+		agentID:       uint(agentID),
+		targetID:      0, // hello 鉴权通过后回填
+		authed:        agent != nil,
 		pendingSecret: secret,
-		caps:     map[string]bool{},
-		pending:  map[string]chan AgentEnvelope{},
-		streams:  map[string]*streamState{},
-		closeCh:  make(chan struct{}),
+		caps:          map[string]bool{},
+		pending:       map[string]chan AgentEnvelope{},
+		streams:       map[string]*streamState{},
+		closeCh:       make(chan struct{}),
 	}
 	if agent != nil {
 		ac.targetID = agent.TargetID

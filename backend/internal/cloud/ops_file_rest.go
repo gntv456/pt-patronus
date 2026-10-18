@@ -47,10 +47,7 @@ func (c *clientQuark) fileAction(ctx context.Context, action string, body map[st
 		Code   int    `json:"code"`
 		Msg    string `json:"message"`
 	}
-	if json.Unmarshal(resp.Body, &wrap) == nil && (wrap.Status >= 400 || wrap.Code != 0) {
-		return fmt.Errorf("quark %s 失败: %s", action, wrap.Msg)
-	}
-	return nil
+	return judgeQuarkActionBody(action, resp.Body, wrap.Status, wrap.Code, wrap.Msg)
 }
 
 func (c *clientQuark) Move(ctx context.Context, src, dstDir string) error {
@@ -231,10 +228,7 @@ func (c *client123) call123Query(ctx context.Context, path string, q url.Values,
 		Code int    `json:"code"`
 		Msg  string `json:"message"`
 	}
-	if json.Unmarshal(resp.Body, &wrap) == nil && wrap.Code != 0 {
-		return fmt.Errorf("123 %s 失败: %s", op, wrap.Msg)
-	}
-	return nil
+	return judge123Body(op, resp.Body, wrap.Code, wrap.Msg)
 }
 
 // ---- 115 开放平台 ----
@@ -311,14 +305,10 @@ func (c *client115Open) openAction(ctx context.Context, path string, form url.Va
 	if sc >= 300 {
 		return fmt.Errorf("115_open %s: HTTP %d", op, sc)
 	}
-	var body struct {
-		State bool   `json:"state"`
-		Err   string `json:"error"`
-	}
-	if json.Unmarshal(rb, &body) == nil && !body.State {
-		return fmt.Errorf("115_open %s 失败: %s", op, body.Err)
-	}
-	return nil
+	// 与 web 版共用同一条判据：从前这里是
+	// `if json.Unmarshal(rb, &body) == nil && !body.State { 报错 }`——解析失败被短路成
+	// 「成功」，HTML 登录页/空 body 都会让移动·复制·改名·删除报成已完成。
+	return judge115StateBody("115_open", op, rb)
 }
 
 // ---- 阿里云盘 ----

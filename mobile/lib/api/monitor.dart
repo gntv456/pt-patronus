@@ -4,121 +4,7 @@ import '../core/api_client.dart';
 import '../core/config.dart';
 
 part 'monitor_agent_api.dart';
-
-/// 监控设备（host/nas/camera）。对齐后端 MonitorTarget（snake_case；凭据不回传）。
-class MonitorTarget {
-  final int id;
-  final String name;
-  final String type; // host | nas | camera
-  final String host;
-  final int port;
-  final String vendor;
-  final String protocol;
-  final String rtspUrl;
-  final int intervalSec;
-  final int timeoutSec;
-  final bool enabled;
-  final String thresholds;
-  final String diskPaths;
-  final bool hasPrivateKey; // 私钥已配置（明文不回传）
-  final bool? lastOnline;
-  final String lastError;
-  final String lastCheckedAt;
-
-  MonitorTarget({
-    required this.id,
-    required this.name,
-    required this.type,
-    required this.host,
-    required this.port,
-    required this.vendor,
-    required this.protocol,
-    required this.rtspUrl,
-    required this.intervalSec,
-    required this.timeoutSec,
-    required this.enabled,
-    required this.thresholds,
-    required this.diskPaths,
-    required this.hasPrivateKey,
-    required this.lastOnline,
-    required this.lastError,
-    required this.lastCheckedAt,
-  });
-
-  factory MonitorTarget.fromJson(Map<String, dynamic> j) => MonitorTarget(
-    id: (j['id'] as num?)?.toInt() ?? 0,
-    name: j['name'] as String? ?? '',
-    type: j['type'] as String? ?? '',
-    host: j['host'] as String? ?? '',
-    port: j['port'] as int? ?? 0,
-    vendor: j['vendor'] as String? ?? '',
-    protocol: j['protocol'] as String? ?? '',
-    rtspUrl: j['rtsp_url'] as String? ?? '',
-    intervalSec: j['interval_sec'] as int? ?? 60,
-    timeoutSec: j['timeout_sec'] as int? ?? 15,
-    enabled: j['enabled'] as bool? ?? true,
-    thresholds: j['thresholds'] as String? ?? '',
-    diskPaths: j['disk_paths'] as String? ?? '',
-    hasPrivateKey: j['has_private_key'] as bool? ?? false,
-    lastOnline: j['last_online'] as bool?,
-    lastError: j['last_error'] as String? ?? '',
-    lastCheckedAt: j['last_checked_at'] as String? ?? '',
-  );
-}
-
-/// 创建/更新入参（凭据为明文，编辑留空=不改）。
-class TargetInput {
-  final String name;
-  final String type;
-  final String host;
-  final int port;
-  final String vendor;
-  final String protocol;
-  final String rtspUrl;
-  final int intervalSec;
-  final int timeoutSec;
-  final String username;
-  final String password;
-  final String privateKey;
-  final String thresholds;
-  final String diskPaths;
-  final bool enabled;
-  TargetInput({
-    required this.name,
-    required this.type,
-    this.host = '',
-    this.port = 0,
-    this.vendor = '',
-    this.protocol = '',
-    this.rtspUrl = '',
-    this.intervalSec = 60,
-    this.timeoutSec = 15,
-    this.username = '',
-    this.password = '',
-    this.privateKey = '',
-    this.thresholds = '',
-    this.diskPaths = '',
-    this.enabled = true,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'type': type,
-    'host': host,
-    'port': port,
-    'vendor': vendor,
-    'protocol': protocol,
-    'rtsp_url': rtspUrl,
-    'interval_sec': intervalSec,
-    'timeout_sec': timeoutSec,
-    'username': username,
-    'password': password,
-    'private_key': privateKey,
-    'thresholds': thresholds,
-    'disk_paths': diskPaths,
-    'enabled': enabled,
-  };
-}
+part 'monitor_models.dart';
 
 class DiskMetric {
   final String device;
@@ -251,6 +137,24 @@ class MetricSnapshot {
   }
 }
 
+/// 一页历史快照 + 取数账面：列表有单页上限，total/truncated 不同行给出就会被当成全部历史。
+class MetricsPage {
+  final List<MetricSnapshot> snapshots;
+
+  /// 该设备的采集总数；后端计数读不出时为 null（界面说「可能还有更多」，不写 0）。
+  final int? total;
+
+  /// 服务端生效的 limit（请求值被归一后的真值）。
+  final int limit;
+  final bool truncated;
+  const MetricsPage({
+    required this.snapshots,
+    this.total,
+    this.limit = 0,
+    this.truncated = false,
+  });
+}
+
 class CollectResult {
   final bool ok;
   final Metrics? metrics;
@@ -358,12 +262,18 @@ class MonitorApi {
     return PowerResult.fromJson(r);
   }
 
-  Future<List<MetricSnapshot>> metrics(int id, {int limit = 120}) async {
+  Future<MetricsPage> metrics(int id, {int limit = 120}) async {
     final r = await _api.get('/monitors/$id/metrics?limit=$limit');
     final arr = (r['snapshots'] as List?) ?? const [];
-    return arr
-        .map((e) => MetricSnapshot.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return MetricsPage(
+      snapshots: arr
+          .map((e) => MetricSnapshot.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      // 后端没给 truncated 时按「可能被截断」处理：宁可多说一句，也不把窗口当全量。
+      truncated: r['truncated'] as bool? ?? true,
+      total: (r['total'] as num?)?.toInt(),
+      limit: (r['limit'] as num?)?.toInt() ?? limit,
+    );
   }
 
   Future<List<MonitorAlert>> alerts({

@@ -228,8 +228,19 @@ extension on _DashboardPageState {
     final status = _connectivity[site.siteId];
     final pending = _connectivityLoading;
     final state = status?.state;
+    // #403 「读不到」与「真没检测过」必须分开。
+    //
+    // 从前 status == null 一律显示「未检测」，于是 _loadConnectivity 读失败时
+    // （静默回 {}）整页显示一片「未检测」—— 与「这些站真没检测过」完全同形。
+    // 而这一页正是用户判断站点是否掉线的依据；显示成「未检测」时用户会以为是
+    // 站点从没测过、于是去站点页逐个重测，而真相是「这次没读到连通状态」。
+    //
+    // 读失败时文案说「没读到」并挂上原因，且颜色不用 dimText（那是正常态的配色）。
+    final readFailed = !pending && status == null && _connectivityError != null;
     final label = pending
         ? '检测中'
+        : readFailed
+        ? '未读到'
         : status == null
         ? '未检测'
         : state == SiteConnectivityState.connected
@@ -238,7 +249,7 @@ extension on _DashboardPageState {
         ? '已停用'
         : '未联通';
     final color = pending || status == null
-        ? context.dimText
+        ? (readFailed ? PTColors.warn : context.dimText)
         : state == SiteConnectivityState.connected
         ? PTColors.success
         : state == SiteConnectivityState.disabled
@@ -270,6 +281,15 @@ extension on _DashboardPageState {
         ],
       ),
     );
+    // #403 读失败时也要能点开看原因：`status == null` 从前直接 return child（不可点），
+    // 于是「这次没读到连通状态」这一档既显示成「未检测」、又点不出原因 ——
+    // 两个症状叠在一起，用户彻底无从判断发生了什么。
+    if (readFailed) {
+      return GestureDetector(
+        onTap: () => _showConnectivityReadError(site),
+        child: child,
+      );
+    }
     if (pending || status == null || state == SiteConnectivityState.connected) {
       return child;
     }

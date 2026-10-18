@@ -1,7 +1,6 @@
 package schemas
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,16 +8,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 func fetchPussyTorrentsUserInfo(ctx context.Context, hc *httpclient.Client, def *site.SiteMetadata, baseURL, cookie string) (*site.UserInfo, error) {
 	u := &site.UserInfo{}
-	root, resp, err := fetchPussyTorrentsDoc(ctx, hc, baseURL, "/", cookie)
+	root, resp, err := fetchHTMLDoc(ctx, hc, baseURL, "/", cookie)
 	if err != nil {
-		return u, nil
+		// 首页都没读到就返空结构当成功，等于把站点故障报成「该号 0 上传 0 做种」。
+		return nil, err
 	}
 	if loggedOut(resp, root, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -29,9 +28,12 @@ func fetchPussyTorrentsUserInfo(ctx context.Context, hc *httpclient.Client, def 
 		profileKey = u.Name
 	}
 	if profileKey == "" {
+		if userInfoParsesEmpty(u) {
+			return nil, emptyUserInfoErr(baseURL, "首页")
+		}
 		return u, nil
 	}
-	profile, _, err := fetchPussyTorrentsDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(profileKey), cookie)
+	profile, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/profile/"+url.PathEscape(profileKey), cookie)
 	if err == nil {
 		site.ParseUserInfoFields(profile, def.UserInfo.Fields, u)
 		userID := strings.TrimSpace(profile.Find(`a[href="#snatchlist"][data-ajax="/user/account/snatchlist"]`).First().AttrOr("data-userid", ""))
@@ -45,16 +47,10 @@ func fetchPussyTorrentsUserInfo(ctx context.Context, hc *httpclient.Client, def 
 			}
 		}
 	}
-	return u, nil
-}
-
-func fetchPussyTorrentsDoc(ctx context.Context, hc *httpclient.Client, baseURL, path, cookie string) (*goquery.Document, *httpclient.Response, error) {
-	resp, err := hc.Get(ctx, joinURL(baseURL, path), cookie, true)
-	if err != nil {
-		return nil, resp, err
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "首页与资料页")
 	}
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
-	return doc, resp, err
+	return u, nil
 }
 
 func fetchPussyTorrentsSeeding(ctx context.Context, hc *httpclient.Client, baseURL, cookie, userID string) (int, int64) {

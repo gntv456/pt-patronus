@@ -49,6 +49,7 @@ mixin HaremOpsMixin on State<HaremPage> {
           ? PTEmptyState(text: '无数据')
           : Column(
               children: [
+                StreamNoticeBanner(text: _streamBanner),
                 if (ov != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -146,11 +147,12 @@ mixin HaremOpsMixin on State<HaremPage> {
             ),
     );
   }
-  final _api = HaremApi();
+  late final _api = HaremApi(frames: widget.frames);
   StreamSubscription<HaremStreamEvent>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   HaremResult? _data;
   bool _loading = true;
   String? _error;
+  String? _streamBanner; // done 帧账面：已有数据时的顶部常驻说明
   List<int> _selectedSiteIds = []; // 站点多选筛选，空=全部
   // 按 selectedSiteIds 过滤处方（数据已全量在 _data，纯前端筛选）。
   List<PrescriptionItem> get _filteredPrescriptions {
@@ -174,16 +176,25 @@ mixin HaremOpsMixin on State<HaremPage> {
       _data = HaremResult(overview: _emptyOverview, prescriptions: []);
       _loading = true;
       _error = null;
+      _streamBanner = null;
     });
     _sub = _api.allStream(refresh: refresh).listen(
       (ev) {
         if (!mounted) return;
         setState(() {
           final cur = _data!;
+          final merged = [...cur.prescriptions, ...ev.items];
           _data = HaremResult(
             overview: ev.overview ?? cur.overview,
-            prescriptions: [...cur.prescriptions, ...ev.items],
+            prescriptions: merged,
           );
+          // 清单读失败且一条药单都没到：说「读不到」，别让空态冒充「没有药单」。
+          final notice = streamNoticeOf(
+            arrived: merged.length,
+            listError: ev.listError,
+          );
+          _error = notice.error ?? _error;
+          _streamBanner = notice.banner ?? _streamBanner;
         });
       },
       onDone: () {

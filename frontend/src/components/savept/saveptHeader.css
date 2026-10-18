@@ -99,6 +99,9 @@
 .spt-vital--closed .spt-vital__value {
   color: var(--spt-color-closed);
 }
+.spt-vital--unknown .spt-vital__value {
+  color: var(--spt-color-unknown, var(--text-muted));
+}
 .spt-vital--anniv .spt-vital__value {
   color: var(--spt-color-anniv);
 }

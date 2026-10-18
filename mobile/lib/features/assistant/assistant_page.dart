@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/agent.dart';
+import 'package:ptpatronus/core/api_client.dart';
+import 'package:ptpatronus/features/common/capped_list_notice.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
@@ -61,7 +63,8 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
   @override
   void initState() {
     super.initState();
-    _loadConversations();
+    // /agent/* 除 GET /config 外全是 RequireAdmin：非管理员不发必然 403 的请求。
+    if (ApiClient().isAdmin) _loadConversations();
   }
 
   @override
@@ -85,13 +88,32 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
       ),
     );
     if (ok != true) return;
-    await _api.deleteConversation(id);
+    try {
+      await _api.deleteConversation(id);
+    } catch (e) {
+      // 没有这层兜底，异常会逃出 async 的 onPressed 进未处理 Future：
+      // 弹窗已关、列表没变、也不吭声——看起来就像「删除点了没反应」。
+      // （同仓 filter_rules 的 _deleteCustom 就是这个写法。）
+      _toast('删除会话失败：$e');
+      return;
+    }
     if (_activeId == id) _newChat();
     await _loadConversations();
   }
 
   @override
   Widget build(BuildContext context) {
+    // 整页拦截（后端仍是权威鉴权，这里只挡 UI 入口；对齐系统设置页的既有惯例）：
+    // 顶栏常驻的助手按钮与命令面板都到得了这一页，普通账号点开不该是一屏 403。
+    if (!ApiClient().isAdmin) {
+      return const PTPageScaffold(
+        title: 'AI 助手',
+        body: PTEmptyState(
+          icon: Icons.admin_panel_settings_outlined,
+          text: '仅管理员可访问',
+        ),
+      );
+    }
     return PTPageScaffold(
       title: const Text('AI 助手', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       actions: [
@@ -115,6 +137,11 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
               ),
               IconButton(icon: const Icon(Icons.delete_outline, size: 20), onPressed: _activeId == null ? null : () => _delete(_activeId!), tooltip: '删除会话'),
             ]),
+          ),
+        if (_convsNotice.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 4),
+            child: Text(_convsNotice, style: TextStyle(fontSize: 12, color: context.dimText)),
           ),
         Expanded(child: _msgList()),
         _composer(),

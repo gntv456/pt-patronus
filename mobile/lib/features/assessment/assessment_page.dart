@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/assessment.dart';
+import 'package:ptpatronus/features/common/stream_account.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
@@ -8,17 +9,20 @@ import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 class AssessmentPage extends StatefulWidget {
-  const AssessmentPage({super.key});
+  const AssessmentPage({super.key, this.frames});
+  /// 帧源注入缝（同勋章墙）：done 帧账面要吸收成 _error / _streamBanner 才在界面上证得了。
+  final StreamFrames? frames;
   @override
   State<AssessmentPage> createState() => _AssessmentPageState();
 }
 
 class _AssessmentPageState extends State<AssessmentPage> {
-  final _api = AssessmentApi();
-  StreamSubscription<AssessmentCard>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
+  late final _api = AssessmentApi(frames: widget.frames);
+  StreamSubscription<StreamBatch<AssessmentCard>>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   List<AssessmentCard> _cards = [];
   bool _loading = true;
   String? _error;
+  String? _streamBanner; // done 帧账面：已有数据时的顶部常驻说明
   String _filter = 'all';
   List<int> _selectedSiteIds = []; // 站点多选筛选，空=全部
 
@@ -40,11 +44,21 @@ class _AssessmentPageState extends State<AssessmentPage> {
       _cards = [];
       _loading = true;
       _error = null;
+      _streamBanner = null;
     });
     _sub = _api.allStream(refresh: refresh).listen(
-      (card) {
+      (batch) {
         if (!mounted) return;
-        setState(() => _cards = [..._cards, card]);
+        setState(() {
+          _cards = [..._cards, ...batch.items];
+          // 一张卡都没到却说清单读失败：别说成「没有考核」。
+          final notice = streamNoticeOf(
+            arrived: _cards.length,
+            listError: batch.listError,
+          );
+          _error = notice.error ?? _error;
+          _streamBanner = notice.banner ?? _streamBanner;
+        });
       },
       onDone: () {
         if (mounted) setState(() => _loading = false);
@@ -124,10 +138,17 @@ class _AssessmentPageState extends State<AssessmentPage> {
           ? PTEmptyState(text: '该筛选下无站点')
           : RefreshIndicator(
               onRefresh: () => _load(refresh: true),
-              child: PTMasonry<AssessmentCard>(
-                items: _filtered,
-                minItemWidth: 320,
-                itemBuilder: (_, c) => _card(c),
+              child: Column(
+                children: [
+                  StreamNoticeBanner(text: _streamBanner),
+                  Expanded(
+                    child: PTMasonry<AssessmentCard>(
+                      items: _filtered,
+                      minItemWidth: 320,
+                      itemBuilder: (_, c) => _card(c),
+                    ),
+                  ),
+                ],
               ),
             ),
     );

@@ -2,7 +2,6 @@ package agent
 
 import (
 	"crypto/sha256"
-	"strings"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -38,9 +38,16 @@ func (a *agentConn) cmdUpgrade(env Envelope) {
 		exe, _ = os.Executable()
 	}
 
+	// 校验值可能按架构分别配置（下载地址里的 {arch} 由本机展开，不同架构的二进制哈希不同）。
+	want, err := resolveChecksum(env.Cmd.Checksum, runtime.GOARCH)
+	if err != nil {
+		_ = a.writeResp(env.ID, false, err.Error(), nil)
+		return
+	}
+
 	// 下载到临时文件
 	tmp := exe + ".new"
-	if err := downloadToFile(url, tmp, env.Cmd.Checksum); err != nil {
+	if err := downloadToFile(url, tmp, want); err != nil {
 		os.Remove(tmp)
 		_ = a.writeResp(env.ID, false, "下载/校验失败: "+err.Error(), nil)
 		return
@@ -104,4 +111,36 @@ func downloadToFile(url, path, checksum string) error {
 		return fmt.Errorf("sha256 校验失败: 期望 %s，实际 %s", checksum, got)
 	}
 	return nil
+}
+
+// resolveChecksum 解析服务端下发的 sha256 配置：
+//   - 单个哈希（旧写法）：直接用它——只有当所有 agent 都是同一架构时才正确；
+//   - "amd64=abc... arm64=def..."（可按空格/逗号/分号/换行分隔）：取本机架构那一条。
+//
+// 下载地址带 {arch} 占位，各架构的二进制哈希本来就不同：若把「A 架构的哈希」发给 B 架构的
+// agent，它必然报「sha256 校验失败」，看着像被篡改，实际是配置只覆盖了一个架构。
+// 这里把这种情况在本地讲清楚，别让人去查供应链。
+func resolveChecksum(configured, arch string) (string, error) {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
+		return "", fmt.Errorf("拒绝下载：缺少 sha256 校验值（更新清单损坏或配置错误）")
+	}
+	if !strings.Contains(configured, "=") {
+		return configured, nil
+	}
+	var seen []string
+	for _, item := range strings.FieldsFunc(configured, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == ' ' || r == '\t'
+	}) {
+		k, v, ok := strings.Cut(item, "=")
+		if !ok {
+			continue
+		}
+		k, v = strings.ToLower(strings.TrimSpace(k)), strings.TrimSpace(v)
+		seen = append(seen, k)
+		if k == strings.ToLower(strings.TrimSpace(arch)) && v != "" {
+			return v, nil
+		}
+	}
+	return "", fmt.Errorf("拒绝下载：校验值配置里没有本机架构 %s 的 sha256（已配置：%s）", arch, strings.Join(seen, ", "))
 }

@@ -15,7 +15,17 @@ func (s *Service) runRegistration() {
 	ctx, cancel := context.WithTimeout(s.rootCtx, 5*time.Minute)
 	defer cancel()
 
-	opened := s.regCh.CheckAllAndUpdate(ctx)
+	opened, err := s.regCh.CheckAllAndUpdate(ctx)
+	if err != nil {
+		// 静默 = 开放提醒永远不再响，用户只会以为没有站开放。读失败必须自己出声。
+		slog.Warn("registration check failed", "err", err)
+		if s.notif != nil {
+			s.notif.Notify(ctx, notification.Message{
+				Title: "注册开放检测", Body: "本轮检测未能开始：读取监控目标失败 — " + err.Error(), Level: "warning",
+			})
+		}
+		return
+	}
 	if len(opened) == 0 {
 		slog.Debug("registration check done, no newly opened sites")
 		return

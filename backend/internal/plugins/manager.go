@@ -71,13 +71,32 @@ type TrustConfig struct {
 }
 
 // GetTrustConfig 返回信任配置（官方只读 + 用户公钥 + allow_unsigned）。
-func (m *Manager) GetTrustConfig() TrustConfig {
+// ErrTrustConfigUnreadable：受信公钥记录读不出来（系统配置读失败或被写坏）。
+// 从前解析失败是 `_ = json.Unmarshal(...)`——连日志都不留，界面于是把「读不出」画成
+// 「一条公钥都没配」，而信任配置的保存是整份替换：用户点一次保存就把真公钥清空，
+// 接下来要么装不上任何包，要么为了装上而勾上「允许未签名」——安全闸门被一次读故障劝退。
+var ErrTrustConfigUnreadable = errors.New("插件签名信任配置读不出来")
+
+// TrustConfigSnapshot 读出信任配置并带回「读不出来」这个事实；GetTrustConfig 是它的薄壳。
+func (m *Manager) TrustConfigSnapshot() (TrustConfig, error) {
 	cfg := TrustConfig{OfficialKey: OfficialMarketPublicKey, AllowUnsigned: m.AllowUnsigned(), TrustedPublicKeys: []string{}}
-	if m.cfgOp != nil {
-		if raw, err := m.cfgOp.Get(cfgKeyTrustedPublicKeys); err == nil && strings.TrimSpace(raw) != "" {
-			_ = json.Unmarshal([]byte(raw), &cfg.TrustedPublicKeys)
+	if m.cfgOp == nil {
+		return cfg, nil
+	}
+	raw, err := m.cfgOp.Get(cfgKeyTrustedPublicKeys)
+	if err != nil {
+		return cfg, fmt.Errorf("%w: %v", ErrTrustConfigUnreadable, err)
+	}
+	if strings.TrimSpace(raw) != "" {
+		if err := json.Unmarshal([]byte(raw), &cfg.TrustedPublicKeys); err != nil {
+			return cfg, fmt.Errorf("%w: 受信公钥记录不是合法 JSON: %v", ErrTrustConfigUnreadable, err)
 		}
 	}
+	return cfg, nil
+}
+
+func (m *Manager) GetTrustConfig() TrustConfig {
+	cfg, _ := m.TrustConfigSnapshot()
 	return cfg
 }
 
@@ -183,7 +202,7 @@ func (m *Manager) plugin(id string) (Plugin, error) {
 	defer m.mu.RUnlock()
 	p, ok := m.plugins[id]
 	if !ok {
-		return nil, fmt.Errorf("plugin %s not found", id)
+		return nil, fmt.Errorf("%w: plugin %s not found", ErrPluginNotRegistered, id)
 	}
 	return p, nil
 }

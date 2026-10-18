@@ -11,11 +11,15 @@ import PluginMarketSection from './PluginMarketSection.vue'
 import { usePlugins } from './usePlugins'
 import { usePluginTrust } from './usePluginTrust'
 import { runtimeState, runtimeType, runtimeLabel } from './pluginsHelpers'
+import { useAdminTabs } from '@/composables/useAdminTabs'
 
 type PluginViewContribution = NonNullable<NonNullable<PluginInfo['contributes']>['views']>[number]
 
 const router = useRouter()
 const { t } = useI18n()
+// 插件市场的读侧是 GET /plugins/market（RequireAdmin）：非管理员不给这个 Tab，
+// 也就不会一点就吃 403、把市场区画成空白。
+const { canSeeTab } = useAdminTabs(['market'])
 
 const {
   plugins,
@@ -47,6 +51,7 @@ const {
   auditVisible,
   auditTarget,
   auditLogs,
+  auditLogsNotice,
   auditReleases,
   auditLoading,
   rollbacking,
@@ -130,7 +135,12 @@ function pluginInitial(name: string): string {
         <button class="nav-tab" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'">
           {{ t('plugins.tabInstalled') }} <span class="nav-count">{{ plugins.length }}</span>
         </button>
-        <button class="nav-tab" :class="{ active: activeTab === 'market' }" @click="activeTab = 'market'">
+        <button
+          v-if="canSeeTab('market')"
+          class="nav-tab"
+          :class="{ active: activeTab === 'market' }"
+          @click="activeTab = 'market'"
+        >
           {{ t('plugins.tabMarket') }}
         </button>
       </nav>
@@ -207,7 +217,9 @@ function pluginInitial(name: string): string {
             ></el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item :icon="Refresh" @click="reloadPlugin(p)">{{ t('plugins.reload') }}</el-dropdown-item>
+                <el-dropdown-item v-if="!p.built_in" :icon="Refresh" @click="reloadPlugin(p)">{{
+                  t('plugins.reload')
+                }}</el-dropdown-item>
                 <el-dropdown-item :icon="Document" @click="openAudit(p)">{{ t('plugins.audit') }}</el-dropdown-item>
                 <el-dropdown-item
                   v-for="v in p.contributes?.views || []"
@@ -323,6 +335,7 @@ function pluginInitial(name: string): string {
       :releases="auditReleases"
       :loading="auditLoading"
       :rollbacking="rollbacking"
+      :notice="auditLogsNotice"
       @update:visible="auditVisible = $event"
       @refresh="auditTarget && openAudit(auditTarget)"
       @rollback="triggerRollback"

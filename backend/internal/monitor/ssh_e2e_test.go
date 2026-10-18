@@ -266,5 +266,3 @@ func TestSSHRunOutputCtxCancel(t *testing.T) {
 	cancel()
 	_, _, _ = oe.RunOutput(ctx, "echo ok")
 }
-
-

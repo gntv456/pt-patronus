@@ -104,20 +104,27 @@ extension on _MonitorDetailPageState {
 
   Widget _trend(
     String label,
-    List<double> data, {
+    List<double?> data, {
     Color color = PTColors.primary,
   }) {
-    if (data.length < 2) {
+    final runs = trendRuns(data);
+    final avail = runs.fold<int>(0, (a, r) => a + r.values.length);
+    if (data.length < 2 || avail == 0) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          '$label 趋势：数据不足',
+          avail == 0 ? '$label 趋势：这段时间没有可用读数（设备离线或采集失败）' : '$label 趋势：数据不足',
           style: TextStyle(color: context.dimText, fontSize: 13),
         ),
       );
     }
-    final maxY =
-        data.fold<double>(1, (a, b) => a > b ? a : b).clamp(1, 100) * 1.2;
+    var top = 1.0;
+    for (final r in runs) {
+      for (final v in r.values) {
+        if (v > top) top = v;
+      }
+    }
+    final maxY = top.clamp(1, 100) * 1.2;
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: Column(
@@ -135,23 +142,28 @@ extension on _MonitorDetailPageState {
                 gridData: FlGridData(show: true, drawVerticalLine: false),
                 borderData: FlBorderData(show: false),
                 titlesData: const FlTitlesData(show: false),
+                minX: 0,
+                maxX: (data.length - 1).toDouble(),
                 minY: 0,
                 maxY: maxY,
+                // 按断口分段画：无读数的采样在图上留白，不补 0，
+                // 否则掉线时段会被画成「跌到 0%」的假谷。
                 lineBarsData: [
-                  LineChartBarData(
-                    isCurved: true,
-                    spots: [
-                      for (var i = 0; i < data.length; i++)
-                        FlSpot(i.toDouble(), data[i]),
-                    ],
-                    color: color,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: color.withValues(alpha: 0.12),
+                  for (final r in runs)
+                    LineChartBarData(
+                      isCurved: true,
+                      spots: [
+                        for (var j = 0; j < r.values.length; j++)
+                          FlSpot((r.start + j).toDouble(), r.values[j]),
+                      ],
+                      color: color,
+                      barWidth: r.values.length < 2 ? 0 : 2,
+                      dotData: FlDotData(show: r.values.length < 2),
+                      belowBarData: BarAreaData(
+                        show: r.values.length >= 2,
+                        color: color.withValues(alpha: 0.12),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -161,6 +173,18 @@ extension on _MonitorDetailPageState {
     );
   }
 
+  /// 取数窗口被上限截断时的一句说明；一次拿全则不出声。
+  Widget _trendWindowNote() {
+    final label = trendWindowLabel(_trendWindow);
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        label,
+        style: TextStyle(color: context.dimText, fontSize: 12),
+      ),
+    );
+  }
 
   Future<void> _edit() async {
     final ok = await DeviceFormSheet.show(context, target: widget.target);

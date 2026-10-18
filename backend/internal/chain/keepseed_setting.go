@@ -33,7 +33,15 @@ func (c *KeepSeedChain) Setting(downloaderID uint) (models.CrossSeedSetting, err
 // SaveSetting 按 downloader_id upsert 辅种设置（AutoReseed/AutoReseedAdd/SavePath/PauseAfterAdd）。
 func (c *KeepSeedChain) SaveSetting(s models.CrossSeedSetting) error {
 	var row models.CrossSeedSetting
-	c.db.Where("downloader_id = ?", s.DownloaderID).First(&row)
+	// #386 从前这一行是裸调（错误连 _ 都没写）：查不到与查不动都让 row 保持零值，
+	// 于是 row.ID==0 一律走 Create。DB 只是**读**故障时（连接池打满 / database is locked
+	// 落在读路径 / 只读副本滞后）Create 可能仍成功 ⇒ 同一个 downloader_id 插出第二行，
+	// 此后 Setting 取哪行不确定、ListAutoReseedSettings 会把同一台列两遍、cron 重复触发。
+	// 同文件的 Setting() 分得清清楚楚，这里必须同一口径：不存在才创建，其余一律报出去。
+	findErr := c.db.Where("downloader_id = ?", s.DownloaderID).First(&row).Error
+	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+		return findErr
+	}
 	// map-based Updates 强制写入零值 bool(false)：GORM Create 对「带 default 标签的零值字段」会
 	// 省略插入、由 DB 填默认（PauseAfterAdd default:true 会把 false 落库为 true，实测如此）；用 map 绕开。
 	updates := map[string]any{

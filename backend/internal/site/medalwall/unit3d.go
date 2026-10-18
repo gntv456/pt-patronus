@@ -74,15 +74,15 @@ func (Unit3DAdapter) FetchShop(ctx context.Context, hc HTTPDoer, def Def, baseUR
 	return nil, ErrNoMedals
 }
 
-// FetchOwned Unit3D 已拥有勋章：从用户资料页 /users/{name} 的勋章区解析（best-effort）。
-// uid 这里通常是用户名（Unit3D 走 /users/{name}，非数字 id）。
+// FetchOwned Unit3D 已拥有勋章：从用户资料页 /users/{name} 的勋章区解析。
+// uid（用户名）缺失或请求失败返回错误（chain 借此保留旧 OWNED 快照）；2xx 解析为空为正常空结果。
 func (Unit3DAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, baseURL, cookie, uid string) ([]Owned, error) {
 	if uid == "" {
-		return nil, nil
+		return nil, ErrOwnedUnavailable
 	}
 	resp, err := hc.Get(ctx, joinBase(baseURL, fmt.Sprintf("users/%s", uid)), cookie, true)
 	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, nil
+		return nil, ownedFetchErr(err, resp)
 	}
 	return parseUnit3DOwned(string(resp.Body), baseURL), nil
 }

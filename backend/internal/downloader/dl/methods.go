@@ -8,7 +8,8 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/downloader"
 
-	"log/slog")
+	"log/slog"
+)
 
 // listFields 是 get_torrents_status 请求的字段集。
 var listFields = []string{
@@ -60,35 +61,46 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	if err != nil {
 		return err
 	}
-	if opts.Category != "" {
-		if hash := extractAddHash(raw); hash != "" {
-			// 二轮 P2-3：Label 插件缺失时 label.set_torrent 报 "Unknown method"——
-			// 此前吞错导致 Category 静默丢失 → 整理白名单失配。日志可见（不 fail：
-			// 种子已加上，中断反而更糟），给用户明确的修复指引。
-			if _, lerr := c.request(ctx, "label.set_torrent", []any{hash, opts.Category}); lerr != nil {
-				slog.Warn("deluge: set label failed (Label plugin installed?) — organize whitelist may miss",
-					"hash", hash, "label", opts.Category, "err", lerr)
-			}
+	// add 失败时 Deluge 返回 [false,"错误原因"]（如 "Duplicate torrent"）——此前只取
+	// hash 不校验 ok → 失败被当成功（RSS 标记已下载、辅种记 added，静默丢种不再重试）。
+	hash, addErr := parseAddResult(raw)
+	if addErr != nil {
+		return addErr
+	}
+	if opts.Category != "" && hash != "" {
+		// 二轮 P2-3：Label 插件缺失时 label.set_torrent 报 "Unknown method"——
+		// 此前吞错导致 Category 静默丢失 → 整理白名单失配。日志可见（不 fail：
+		// 种子已加上，中断反而更糟），给用户明确的修复指引。
+		if _, lerr := c.request(ctx, "label.set_torrent", []any{hash, opts.Category}); lerr != nil {
+			slog.Warn("deluge: set label failed (Label plugin installed?) — organize whitelist may miss",
+				"hash", hash, "label", opts.Category, "err", lerr)
 		}
 	}
 	return nil
 }
 
-// extractAddHash 解析 add_torrent_file/url 的返回 [ok, hashOrError]，成功返回 hash。
-func extractAddHash(raw json.RawMessage) string {
+// parseAddResult 解析 add_torrent_file/url 的返回 [ok, hashOrError]：
+// ok=true 时第二元素为 hash；ok=false 时第二元素为错误原因。
+func parseAddResult(raw json.RawMessage) (hash string, err error) {
 	var r []json.RawMessage
-	if err := json.Unmarshal(raw, &r); err != nil || len(r) < 2 {
-		return ""
+	if e := json.Unmarshal(raw, &r); e != nil || len(r) < 2 {
+		return "", fmt.Errorf("deluge add: 响应格式异常: %s", string(raw))
 	}
 	var ok bool
-	if err := json.Unmarshal(r[0], &ok); err != nil || !ok {
-		return ""
+	if e := json.Unmarshal(r[0], &ok); e != nil {
+		return "", fmt.Errorf("deluge add: 响应格式异常: %s", string(raw))
+	}
+	if !ok {
+		var reason string
+		_ = json.Unmarshal(r[1], &reason)
+		if reason == "" {
+			reason = "unknown"
+		}
+		return "", fmt.Errorf("deluge add failed: %s", reason)
 	}
 	var s string
-	if err := json.Unmarshal(r[1], &s); err != nil {
-		return ""
-	}
-	return s
+	_ = json.Unmarshal(r[1], &s)
+	return s, nil
 }
 
 // Pause → core.pause_torrent（接受 hash 列表）。

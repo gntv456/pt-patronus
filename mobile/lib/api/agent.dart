@@ -189,11 +189,24 @@ class AgentApi {
        _clientFactory = clientFactory ?? http.Client.new,
        _baseUrl = baseUrl;
 
-  Future<List<AgentConversation>> conversations() async {
+  /// 会话清单 + 取数账面（后端单页 200 个封顶）。
+  /// 只取数组的话，更早的会话在下拉里既看不到也删不掉——它并非不存在。
+  Future<({List<AgentConversation> items, int? total, bool truncated})> conversationsPage() async {
     final r = await _api.get('/agent/conversations');
-    return ((r['conversations'] as List?) ?? const [])
-        .map((e) => AgentConversation.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final list = (r['conversations'] as List?) ?? const [];
+    return (
+      items: list
+          .map((e) => AgentConversation.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (r['total'] as num?)?.toInt(),
+      // 缺 truncated 按「可能被截断」处理，不给「这就是全部」的假安心。
+      truncated: r['truncated'] as bool? ?? true,
+    );
+  }
+
+  Future<List<AgentConversation>> conversations() async {
+    final p = await conversationsPage();
+    return p.items;
   }
 
   Future<List<AgentMessage>> messages(int id) async {

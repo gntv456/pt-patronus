@@ -33,8 +33,17 @@ export function useMediaServerOps() {
   async function scanLib(lib: MediaLibrary | null) {
     if (!libsServer.value) return
     try {
-      await mediaServerApi.scan(libsServer.value.id, lib?.id)
-      ElMessage.success(lib ? `已触发扫描：${lib.name}` : '已触发全库扫描')
+      const res = await mediaServerApi.scan(libsServer.value.id, lib?.id)
+      // opResult 风格：失败也是 HTTP 200 + ok:false，不读回执就会把「一个库都没扫动」toast 成成功。
+      if (res && res.ok === false) {
+        ElMessage.error(res.error || '扫描触发失败')
+        return
+      }
+      if (lib) {
+        ElMessage.success(`已触发扫描：${lib.name}`)
+      } else {
+        ElMessage.success(`已触发全库扫描（${res?.scanned ?? 0} 个库）`)
+      }
     } catch (e: any) {
       ElMessage.error(e?.message || '扫描失败')
     }
@@ -43,7 +52,11 @@ export function useMediaServerOps() {
   async function refreshLib(lib: MediaLibrary) {
     if (!libsServer.value) return
     try {
-      await mediaServerApi.refresh(libsServer.value.id, lib.id)
+      const res = await mediaServerApi.refresh(libsServer.value.id, lib.id)
+      if (res && res.ok === false) {
+        ElMessage.error(res.error || '刷新触发失败')
+        return
+      }
       ElMessage.success(`已刷新：${lib.name}`)
     } catch (e: any) {
       ElMessage.error(e?.message || '刷新失败')

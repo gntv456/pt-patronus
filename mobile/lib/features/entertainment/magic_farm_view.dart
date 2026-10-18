@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // NovaHD 魔力农场：余额 + 一键收获 + 农作物/动物网格 + 仓库 + 菜市场。
 // 后端 magic_fram.php（GET + 整页 HTML），配置写死。
@@ -27,7 +28,9 @@ class _MagicFarmViewState extends State<MagicFarmView> {
   Future<void> _refresh() async {
     try {
       _farm = await _api.farm(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'farm', e);
+    }
     if (mounted) setState(() {});
   }
 

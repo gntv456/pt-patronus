@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { entertainmentApi, type BetEvent, type BetEventDetail, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 // OurBits 赛事押注（菠菜）：列表 → 盘口（选项+赔率）→ 下单 → 结果。
 const props = defineProps<{ siteId: number; game?: string }>()
@@ -27,8 +28,8 @@ async function refresh() {
   loading.value = true
   try {
     const [evs, st] = await Promise.all([
-      entertainmentApi.events(props.siteId, game).catch(() => [] as BetEvent[]),
-      entertainmentApi.stats(props.siteId, game).catch(() => null),
+      entertainmentApi.events(props.siteId, game).catch(entFail('events', [] as BetEvent[])),
+      entertainmentApi.stats(props.siteId, game).catch(entFail('stats', null)),
     ])
     events.value = evs
     if (st) balance.value = st.balance
@@ -45,8 +46,10 @@ async function openEvent(ev: BetEvent) {
   try {
     detail.value = await entertainmentApi.eventDetail(props.siteId, game, ev.id)
     if (detail.value.my_option) selectedOpt.value = ''
-  } catch {
-    ElMessage.error(t('eb.loadFailed'))
+  } catch (e: unknown) {
+    // 后端已把「这场赛事读不出来」的原因写在信封里（如赛事已下线 / 站点没读到）：
+    // 只报本地固定文案等于把线索丢掉。
+    ElMessage.error((e as Error).message || t('eb.loadFailed'))
   } finally {
     detailLoading.value = false
   }
@@ -76,7 +79,7 @@ async function doBet() {
     }
     await refresh()
     if (detail.value) {
-      const d = await entertainmentApi.eventDetail(props.siteId, game, detail.value.event.id).catch(() => null)
+      const d = await entertainmentApi.eventDetail(props.siteId, game, detail.value.event.id).catch(entFail('eventDetail', null))
       if (d) detail.value = d
     }
   } catch (e: unknown) {

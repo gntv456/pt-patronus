@@ -70,10 +70,36 @@ func (o *PluginOper) CreateLog(l *models.PluginLog) error {
 	return o.db.Create(l).Error
 }
 
-func (o *PluginOper) ListLogs(pluginID string, limit int) ([]models.PluginLog, error) {
-	if limit <= 0 || limit > 500 {
-		limit = 100
+// CountLogs 插件日志总数（筛选与 ListLogs 一致）。单页封顶 500：只回被切过的一页时，
+// 「这插件到底跑了多少行日志」在界面上无法回答，排障时被挤掉的老日志等于不存在。
+func (o *PluginOper) CountLogs(pluginID string) (int64, error) {
+	q := o.db.Model(&models.PluginLog{})
+	if pluginID != "" {
+		q = q.Where("plugin_id = ?", pluginID)
 	}
+	var n int64
+	err := q.Count(&n).Error
+	return n, err
+}
+
+const (
+	PluginLogListDefault = 100
+	PluginLogListLimit   = 500
+)
+
+// NormalizePluginLogLimit 留空/非法取默认，超上限取上限（旧写法把超限折回默认值）。
+func NormalizePluginLogLimit(n int) int {
+	if n <= 0 {
+		return PluginLogListDefault
+	}
+	if n > PluginLogListLimit {
+		return PluginLogListLimit
+	}
+	return n
+}
+
+func (o *PluginOper) ListLogs(pluginID string, limit int) ([]models.PluginLog, error) {
+	limit = NormalizePluginLogLimit(limit)
 	var logs []models.PluginLog
 	q := o.db.Order("created_at DESC").Limit(limit)
 	if pluginID != "" {
@@ -109,8 +135,10 @@ func (o *PluginOper) CreateRelease(rel *models.PluginRelease) error {
 }
 
 func (o *PluginOper) ListReleases(pluginID string, limit int) ([]models.PluginRelease, error) {
-	if limit <= 0 || limit > 100 {
+	if limit <= 0 {
 		limit = 20
+	} else if limit > 100 {
+		limit = 100
 	}
 	var releases []models.PluginRelease
 	err := o.db.Where("plugin_id = ?", pluginID).Order("created_at DESC").Limit(limit).Find(&releases).Error

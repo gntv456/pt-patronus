@@ -56,7 +56,7 @@ func (m *Manager) SetEnabled(id string, enabled bool) error {
 			if strings.TrimSpace(reason) == "" {
 				reason = "plugin dependencies are not satisfied"
 			}
-			return errors.New(reason)
+			return fmt.Errorf("%w：需要先满足该插件声明的依赖（%s）", ErrPluginStateRejected, reason)
 		}
 	} else {
 		if dependents := m.requiredDependents(id, true); len(dependents) > 0 {
@@ -64,7 +64,7 @@ func (m *Manager) SetEnabled(id string, enabled bool) error {
 			for _, dependent := range dependents {
 				names = append(names, dependent.ID)
 			}
-			return fmt.Errorf("plugin %s is required by enabled plugins %s", id, strings.Join(names, ", "))
+			return fmt.Errorf("%w：%s 正被已启用的插件依赖（%s），请先停用这些插件", ErrPluginStateRejected, id, strings.Join(names, ", "))
 		}
 	}
 	if _, err := m.op.EnsureState(id, p.DefaultConfig()); err != nil {
@@ -120,7 +120,7 @@ func (m *Manager) ExecuteAction(ctx context.Context, id, action string, input ma
 		return nil, err
 	}
 	if !st.Enabled {
-		return nil, errors.New("plugin is disabled")
+		return nil, ErrPluginDisabled
 	}
 	rt := m.runtime(id, cfg)
 	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -140,6 +140,11 @@ func (m *Manager) PublishEvent(ctx context.Context, eventType string, data map[s
 		return
 	}
 	m.bus.Publish(ctx, eventType, data)
+}
+
+// CountLogs 日志总数（与 Logs 同筛选），供 handler 给账面。
+func (m *Manager) CountLogs(pluginID string) (int64, error) {
+	return m.op.CountLogs(pluginID)
 }
 
 func (m *Manager) Logs(pluginID string, limit int) ([]LogView, error) {

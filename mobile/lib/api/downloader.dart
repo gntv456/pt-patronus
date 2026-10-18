@@ -250,6 +250,10 @@ class DownloaderApi {
 
   Future<List<Torrent>> torrents(int id) async {
     final r = await _api.get('/downloaders/$id/torrents');
+    // 后端把「读不到下载器」压成 200 + {torrents: [], error: '…'}（与 Web downloader.go 同一条信封）：
+    // 状态码 200、数组是空，只有 error 说话 ⇒ 不抛出去界面就画「没有种子」。
+    final err = r['error'];
+    if (err is String && err.isNotEmpty) throw Exception(err);
     final list = (r['torrents'] as List?) ?? const [];
     return list.map((e) => Torrent.fromJson(e as Map<String, dynamic>)).toList();
   }

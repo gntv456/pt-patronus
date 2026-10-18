@@ -2,7 +2,6 @@ package notification
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,7 +62,10 @@ func (s *ServerChan) Send(ctx context.Context, msg Message) error {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+	if err := decodeEnvelope("serverchan", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 0 {
 		return fmt.Errorf("serverchan: code %d: %s", be.Code, be.Message)
 	}
 	return nil

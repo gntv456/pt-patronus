@@ -32,9 +32,37 @@
     return HINT_RE.test(ctx)
   }
 
+  // #400 失败提示气泡。与 content_creds.js 的 showFillHint 同形（不跨脚本抽公共模块：
+  // 两者由 manifest 分别注入，抽共享反而多一层加载时序；形状一致即可）。
+  // 只在后台给出 message 时弹 —— no-match 的 message 是空串（正常状态，不打扰）。
+  let hintShown = false
+  function showHint(msg) {
+    if (!msg || hintShown) return
+    hintShown = true
+    const box = document.createElement('div')
+    Object.assign(box.style, {
+      position: 'fixed', right: '18px', bottom: '196px', zIndex: 2147483647,
+      maxWidth: '280px', padding: '10px 14px', borderRadius: '12px',
+      background: 'rgba(27,30,40,.97)', color: '#e8eaf0',
+      font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
+      border: '1px solid #3a3f4f',
+    })
+    box.textContent = '⚠ ' + msg
+    document.documentElement.appendChild(box)
+    // 一句人话 4.5s 读不完（与凭据侧一致，见 #335）。
+    setTimeout(() => box.remove(), 4500)
+  }
+
   function fill(input) {
     chrome.runtime.sendMessage({ type: 'ptp-totp-autofill', host: location.hostname }, (res) => {
-      if (!res || !res.ok || !res.code) return
+      if (!res || !res.ok || !res.code) {
+        // #400 之前这里是纯静默 return：库没建、库锁着、压根没这站的码——
+        // 三种都同形，用户停在空白 2FA 框前，反复刷新也找不出原因，以为扩展坏了。
+        // 现在显示后台给的真原因（background.js#totpAutofillFail）；
+        // no-match 的 message 为空 ⇒ 仍然不打扰（首次登录本站属正常）。
+        showHint(res && res.message)
+        return
+      }
       input.value = res.code
       input.dispatchEvent(new Event('input', { bubbles: true }))
       input.dispatchEvent(new Event('change', { bubbles: true }))

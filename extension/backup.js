@@ -24,12 +24,29 @@ export async function unpackBackup(blob, pass) {
   return JSON.parse(new TextDecoder().decode(pt))
 }
 
-// collectLocal 聚合本机可备份数据（服务器地址在 sync；登录凭据/令牌与 TOTP/收藏在 local）。
+// collectLocal 聚合本机可备份数据（服务器地址在 sync；其余本机数据在 local）。
 // 密封形态的凭据（hxptCreds={salt,iv,data}）不进备份——备份已有独立的口令加密
 // （packBackup），而密封密钥绑定本机设备密钥/PIN，导出到别的机器也解不开。
+//
+// #339 清单漏了两项，两项都是「用户攒下来的东西」：
+//   - ptp_history（下载历史）：同属本机列表，收藏进了它没进 ⇒ 恢复后收藏回来了、
+//     历史没了，而回执只说「已恢复」，用户无从察觉。
+//   - ptp_credentials（凭据库）：设置页里它只有 Bitwarden 导入、没有导出，
+//     所以备份本该是唯一的迁移路径；漏了 = 攒的站��账号密码出了这台机器就搬不走
+//     （TOTP 的 ptp_vault 反倒在清单里，形状不一致本身就说明是漏写而非有意取舍）。
+// 恢复侧是 chrome.storage.local.set(data.local) 整包写回，键名一致即可自动覆盖，无需另改。
 export async function collectLocal() {
   const cfg = await chrome.storage.sync.get({ server: '', downloaderId: 0 })
-  const loc = await chrome.storage.local.get({ ptp_vault: null, ptp_favorites: [], hxptCookie: '', token: '', user: null, hxptCreds: null })
+  const loc = await chrome.storage.local.get({
+    ptp_vault: null,
+    ptp_credentials: null,
+    ptp_favorites: [],
+    ptp_history: [],
+    hxptCookie: '',
+    token: '',
+    user: null,
+    hxptCreds: null,
+  })
   const out = { at: Date.now(), sync: cfg, local: loc }
   if (loc.hxptCreds && loc.hxptCreds.salt && loc.hxptCreds.iv) delete out.local.hxptCreds
   return out
@@ -165,13 +182,14 @@ function hexToBytes(hex) {
 
 // AES-256-CBC（WebCrypto 原生支持）+ PKCS7 去填充：CookieCloud 0.3.x 格式。
 export async function cookieCloudEncrypt(obj, uuid, password) {
-  const key16 = cookieCloudKey(uuid, password) // 32 hex chars = 16 bytes（协议用 16 字节 key…实为 AES-128）
+  const theKey = cookieCloudKey(uuid, password) // md5(uuid-password) hex 前 16 字符，是 KDF 的口令而非 AES 密钥
   const salt = crypto.getRandomValues(new Uint8Array(8))
-  // CookieCloud 服务端 NodeJS createCipheriv('aes-128-cbc', key(16B), iv(16B))；
-  // 派生：EVP_BytesToKey(MD5) 产 key(16)+iv(16)。
-  const keyIv = evpBytesToKey(key16, salt, 32)
-  const key = keyIv.slice(0, 16)
-  const iv = keyIv.slice(16, 32)
+  // 协议（CryptoJS.AES.encrypt(text, the_key) 的默认档）：EVP_BytesToKey(MD5, 1 轮) 派生
+  // keySize 256 + ivSize 128 = 48 字节 → AES-256-CBC。只取前 32 字节（key16+iv16）会退化成
+  // AES-128，CookieCloud 官方服务端/扩展与本仓内置服务端都解不开那样推出去的密文。
+  const keyIv = evpBytesToKey(theKey, salt, 48)
+  const key = keyIv.slice(0, 32)
+  const iv = keyIv.slice(32, 48)
   const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'AES-CBC' }, false, ['encrypt'])
   const data = new TextEncoder().encode(JSON.stringify(obj))
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, cryptoKey, data))
@@ -188,11 +206,34 @@ export async function cookieCloudDecrypt(encryptedB64, uuid, password) {
   if (String.fromCharCode(...raw.slice(0, 8)) !== 'Salted__') throw new Error('非 CookieCloud 加密格式')
   const salt = raw.slice(8, 16)
   const ct = raw.slice(16)
-  const key16 = cookieCloudKey(uuid, password)
-  const keyIv = evpBytesToKey(key16, salt, 32)
-  const cryptoKey = await crypto.subtle.importKey('raw', keyIv.slice(0, 16), { name: 'AES-CBC' }, false, ['decrypt'])
-  const pt = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: keyIv.slice(16, 32) }, cryptoKey, ct)
+  const theKey = cookieCloudKey(uuid, password)
+  const keyIv = evpBytesToKey(theKey, salt, 48)
+  const cryptoKey = await crypto.subtle.importKey('raw', keyIv.slice(0, 32), { name: 'AES-CBC' }, false, ['decrypt'])
+  const pt = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: keyIv.slice(32, 48) }, cryptoKey, ct)
   return JSON.parse(new TextDecoder().decode(pt))
+}
+
+// cookieHeaderToEntries：站点 cookie header 串 → CookieCloud 协议条目数组。
+// 协议规定 cookie_data 的值是 [{name,value,domain,path}]；写成 {name:value} 映射时
+// 官方 CookieCloud 扩展和本仓后端都读不出 cookie（后端只解数组形状）。
+export function cookieHeaderToEntries(cookieStr, host) {
+  return (cookieStr || '')
+    .split(';')
+    .map((p) => {
+      const i = p.indexOf('=')
+      if (i <= 0) return null
+      const name = p.slice(0, i).trim()
+      // 名字为空的条目是垃圾（" =x" 这种带前导空格的分段），推上云端后官方扩展会显示一条无名 cookie。
+      return name ? { name, value: p.slice(i + 1).trim(), domain: host, path: '/' } : null
+    })
+    .filter(Boolean)
+}
+
+// entriesToHeader：云端 cookie_data 里某个 host 的值 → cookie header 串。
+// 认协议数组，也兼容映射写法（部分自建服务端直接存 {name: value}）。
+export function entriesToHeader(cookies) {
+  const pairs = Array.isArray(cookies) ? cookies.map((c) => [c.name, c.value]) : Object.entries(cookies || {})
+  return pairs.filter(([k]) => k).map(([k, v]) => `${k}=${v}`).join('; ')
 }
 
 // pushCookieCloud：POST {server}/update（uuid + encrypted）。

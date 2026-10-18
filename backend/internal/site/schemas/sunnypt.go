@@ -105,7 +105,29 @@ func (g *GenericJSON) sunnyGet(ctx context.Context, apiBase, cookie, path string
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		return nil, resp.StatusCode, site.ErrNotLoggedIn
 	}
+	if resp.StatusCode >= 500 {
+		return nil, resp.StatusCode, fmt.Errorf("站点返回 HTTP %d（服务器错误页，未作为数据解析）: %s", resp.StatusCode, joinURL(apiBase, path))
+	}
 	return resp.Body, resp.StatusCode, nil
+}
+
+// sunnyData 解 SunnyPT 统一信封，返回 data 原始 JSON。
+// 非 JSON（错误页/登录墙/HTML）与 code!=0（鉴权失效、参数错误）都是失败：
+// 旧代码把它们一并渲染成「空结果」，跨站搜索于是把站点故障说成「这个站没有种子」，
+// 详情页说成「这种子没信息」，消息正文说成「这条消息是空的」。
+func sunnyData(body []byte, status int) (json.RawMessage, error) {
+	var w struct {
+		Code int             `json:"code"`
+		Msg  string          `json:"msg"`
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &w); err != nil {
+		return nil, fmt.Errorf("sunnypt 响应不是 JSON（HTTP %d，可能是错误页或登录墙）: %w", status, err)
+	}
+	if w.Code != 0 {
+		return nil, fmt.Errorf("sunnypt 接口报错（HTTP %d, code=%d msg=%s）", status, w.Code, strings.TrimSpace(w.Msg))
+	}
+	return w.Data, nil
 }
 
 func (g *GenericJSON) FetchSunnyptUserInfo(ctx context.Context, def *site.SiteMetadata,

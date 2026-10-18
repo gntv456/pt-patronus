@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/system.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 
 /// 诊断面板：跑健康检查（对标 MP doctor）。SAFE_MODE 自救时主入口。
 class DoctorPage extends StatefulWidget {
-  const DoctorPage({super.key});
+  const DoctorPage({super.key, this.run});
+
+  /// 取数注入缝（对齐 #195 流式 API 的做法）：默认走后端，
+  /// 测试可塞一个假的，用来证「跑失败必须在界面上说清楚」这条分支真的会红。
+  final Future<DoctorReport> Function(bool fix)? run;
+
   @override
   State<DoctorPage> createState() => _DoctorPageState();
 }
@@ -13,22 +19,30 @@ class _DoctorPageState extends State<DoctorPage> {
   DoctorReport? _report;
   bool _loading = false;
   bool _fixing = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _run(false);
+    // GET/POST /system/doctor 是 admin-only：非管理员不发必然 403 的请求。
+    if (ApiClient().isAdmin) _run(false);
   }
 
   Future<void> _run(bool fix) async {
     setState(() {
       _fixing = fix;
       _loading = !fix;
+      _error = null;
     });
     try {
-      _report = fix ? await SystemApi.fixDoctor() : await SystemApi.runDoctor();
-    } catch (_) {
-      // 静默：列表区显示空态
+      final injected = widget.run;
+      _report = injected != null
+          ? await injected(fix)
+          : (fix ? await SystemApi.fixDoctor() : await SystemApi.runDoctor());
+    } catch (e) {
+      // 静默吞掉会让「跑挂了」和「没有发现」长得一样，用户只能猜。
+      _report = null;
+      _error = '$e';
     } finally {
       if (mounted) {
         setState(() {
@@ -47,6 +61,14 @@ class _DoctorPageState extends State<DoctorPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 整页拦截（后端仍是权威鉴权，这里只挡 UI 入口；对齐系统设置页的既有惯例）。
+    // 拦在 build 顶部顺带拿掉了「重新诊断 / 尝试修复」两个必然 403 的动作按钮。
+    if (!ApiClient().isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('诊断')),
+        body: const Center(child: Text('仅管理员可访问')),
+      );
+    }
     final r = _report;
     return Scaffold(
       appBar: AppBar(
@@ -67,7 +89,7 @@ class _DoctorPageState extends State<DoctorPage> {
       body: _loading && r == null
           ? const PTLoadingView()
           : r == null
-              ? const Center(child: Text('无数据'))
+              ? Center(child: Text(_error == null ? '无数据' : '诊断失败：$_error'))
               : ListView(children: [
                   if (r.environment['safe_mode'] == true)
                     const ListTile(

@@ -37,10 +37,19 @@ func (o *BrushFlowOper) CreateTask(t *models.BrushFlowTask) error { return o.db.
 
 // UpdateTask 保存任务编辑。统计/时间戳/错误为服务端管控字段（cron 与 Select/Sweep 累加），
 // 不随编辑覆盖：用 Omit 排除，避免客户端伪造或字段缺失把统计清零。
+// 先验存在性：GORM 的 Save 在「主键非零但库里没这条」时会 INSERT——
+// PUT 一个不存在的任务号会凭空造出一条任务（实测 id=999999 落库后 GET 返回全零记录）。
 func (o *BrushFlowOper) UpdateTask(t *models.BrushFlowTask) error {
+	var n int64
+	if err := o.db.Model(&models.BrushFlowTask{}).Where("id = ?", t.ID).Count(&n).Error; err != nil {
+		return err
+	}
+	if n == 0 {
+		return gorm.ErrRecordNotFound
+	}
 	return o.db.Omit(
 		"TotalAdded", "TotalDeleted", "TotalUpload",
-		"CreatedAt", "LastSelectAt", "LastSweepAt", "LastError",
+		"CreatedAt", "LastSelectAt", "LastSweepAt", "LastError", "LastErrorFrom",
 	).Save(t).Error
 }
 
@@ -54,10 +63,22 @@ func (o *BrushFlowOper) DeleteTask(id uint) error {
 	})
 }
 
+// SeedListLimit 种子历史单页上限：长期任务种得多了，老记录会被这道窗口挤出去。
+const SeedListLimit = 500
+
 func (o *BrushFlowOper) ListSeeds(taskID uint) ([]models.BrushFlowSeed, error) {
 	var ss []models.BrushFlowSeed
-	err := o.db.Where("task_id = ?", taskID).Order("id DESC").Limit(500).Find(&ss).Error
+	err := o.db.Where("task_id = ?", taskID).Order("id DESC").Limit(SeedListLimit).Find(&ss).Error
 	return ss, err
+}
+
+// CountSeeds 该任务的种子历史总数（筛选与 ListSeeds 一致）。
+// 只回被截断的一页时，界面就把 500 条画成「这个任务就加过这些种」，
+// 更早加入、可能仍在做种或删除中的那些在界面上凭空消失。
+func (o *BrushFlowOper) CountSeeds(taskID uint) (int64, error) {
+	var n int64
+	err := o.db.Model(&models.BrushFlowSeed{}).Where("task_id = ?", taskID).Count(&n).Error
+	return n, err
 }
 
 func (o *BrushFlowOper) SeedExistsBySourceKey(taskID uint, key string) (bool, error) {
@@ -94,6 +115,17 @@ func (o *BrushFlowOper) TouchTask(id uint, field string) error {
 	return o.db.Model(&models.BrushFlowTask{}).Where("id = ?", id).Update(field, time.Now()).Error
 }
 
-func (o *BrushFlowOper) SetTaskError(id uint, msg string) error {
-	return o.db.Model(&models.BrushFlowTask{}).Where("id = ?", id).Update("last_error", msg).Error
+// SetTaskError 记录任务运行失败。op（"select"/"sweep"）标记写入方：成功后各自只清同源错误
+// （见 ClearTaskError），防止对方的成功运行擦掉本侧诊断。
+func (o *BrushFlowOper) SetTaskError(id uint, op, msg string) error {
+	return o.db.Model(&models.BrushFlowTask{}).Where("id = ?", id).
+		Updates(map[string]any{"last_error": msg, "last_error_from": op}).Error
+}
+
+// ClearTaskError 运行成功时清除诊断：仅当错误来源为 op 或空（升级前遗留无来源标记）才清。
+// 选种每 10 分钟、扫删每 5 分钟交错运行，无条件清空会让诊断在几分钟内被另一方擦掉。
+func (o *BrushFlowOper) ClearTaskError(id uint, op string) error {
+	return o.db.Model(&models.BrushFlowTask{}).
+		Where("id = ? AND (last_error_from = ? OR last_error_from = '')", id, op).
+		Updates(map[string]any{"last_error": "", "last_error_from": ""}).Error
 }

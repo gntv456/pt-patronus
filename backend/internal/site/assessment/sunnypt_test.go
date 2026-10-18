@@ -4,7 +4,7 @@ import "testing"
 
 func TestParseSunnyptAssessmentsEmpty(t *testing.T) {
 	body := []byte(`{"code":0,"data":{"list":[],"total":0},"msg":"ok"}`)
-	tasks := parseSunnyptAssessments(body)
+	tasks := mustParseSunnypt(t, body)
 	if len(tasks) != 0 {
 		t.Fatalf("want 0, got %d", len(tasks))
 	}
@@ -12,7 +12,7 @@ func TestParseSunnyptAssessmentsEmpty(t *testing.T) {
 
 func TestParseSunnyptAssessmentsActive(t *testing.T) {
 	body := []byte(`{"code":0,"data":{"list":[{"name":"新手考核","description":"完成指标","status":"in_progress","success_reward_bonus":100,"metrics":{"uploaded_bytes":{"value":1000,"target":5000,"completed":false},"seed_time_seconds":{"value":3600,"target":3600,"completed":true}}}]},"msg":"ok"}`)
-	tasks := parseSunnyptAssessments(body)
+	tasks := mustParseSunnypt(t, body)
 	if len(tasks) != 1 {
 		t.Fatalf("want 1, got %d", len(tasks))
 	}

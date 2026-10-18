@@ -33,9 +33,9 @@ func (c *Client) GlobalStats(ctx context.Context) (*downloader.GlobalStats, erro
 	c.stateMu.RLock()
 	defer c.stateMu.RUnlock()
 	return &downloader.GlobalStats{
-		DLRate:     num(c.state.ServerState["dl_info_speed"]),
-		UPRate:     num(c.state.ServerState["up_info_speed"]),
-		FreeSpace:  num(c.state.ServerState["free_space_on_disk"]),
+		DLRate:    num(c.state.ServerState["dl_info_speed"]),
+		UPRate:    num(c.state.ServerState["up_info_speed"]),
+		FreeSpace: num(c.state.ServerState["free_space_on_disk"]),
 	}, nil
 }
 
@@ -68,7 +68,7 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	if opts.DownloadLimit > 0 {
 		form.Set("dlLimit", strconv.FormatInt(opts.DownloadLimit, 10))
 	}
-	status, _, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/add",
+	status, b, err := c.do(ctx, http.MethodPost, "/api/v2/torrents/add",
 		form.Encode(), "application/x-www-form-urlencoded")
 	if err != nil {
 		return err
@@ -76,7 +76,17 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	if status != 200 {
 		return fmt.Errorf("add status %d", status)
 	}
+	if addFailed(b) {
+		return fmt.Errorf("add failed: 下载器拒绝添加（重复种子/无效文件/保存路径不存在？）")
+	}
 	return nil
+}
+
+// addFailed 判定 qB torrents/add 的失败响应：qB 添加失败（重复种子/无效文件/路径
+// 不存在等）返回 HTTP 200 + body "Fails."——只查状态码会把失败当成功
+// （RSS 标记已下载、辅种记 added，静默丢种且不再重试）。
+func addFailed(b []byte) bool {
+	return strings.TrimSpace(string(b)) == "Fails."
 }
 
 // Pause 暂停（qB5 用 stop）。版本未知时 ge5 默认 true，若目标实为 qB4.x 会 404——

@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+// calendarWindow 日历取片的起止日（YYYY-MM-DD）。
+// 按本地日历而不是 UTC：全站「今天」的口径都是本地时间（签到/通知按日去重、工作台的今日/昨日），
+// 日历若改用 UTC，UTC+8 的实例每天 00:00–08:00 之间窗口起点仍停在昨天，
+// 用户早上打开「新片日历」看到的是一整天前的片单，且与工作台对不上。
+func calendarWindow(now time.Time, days int) (string, string) {
+	return now.Format("2006-01-02"), now.AddDate(0, 0, days).Format("2006-01-02")
+}
+
 // 首播/上映」；对已开播剧集的后续单集更新，订阅追更链路（SubscribeChain）已覆盖。
 func (t *TMDB) Calendar(ctx context.Context, kind string, days int) (map[string][]CalendarEpisode, error) {
 	if t.apiKey == "" {
@@ -17,8 +25,7 @@ func (t *TMDB) Calendar(ctx context.Context, kind string, days int) (map[string]
 	if days <= 0 || days > 30 {
 		days = 14
 	}
-	today := time.Now().UTC().Format("2006-01-02")
-	end := time.Now().UTC().AddDate(0, 0, days).Format("2006-01-02")
+	today, end := calendarWindow(time.Now(), days)
 	params := map[string]string{
 		"sort_by": "popularity.desc",
 	}
@@ -71,7 +78,7 @@ func (t *TMDB) CalendarForSubscriptions(ctx context.Context, tvIDs []string, day
 	if days <= 0 || days > 60 {
 		days = 30
 	}
-	limit := time.Now().UTC().AddDate(0, 0, days).Format("2006-01-02")
+	_, limit := calendarWindow(time.Now(), days)
 	out := map[string][]CalendarEpisode{}
 	type detailRes struct {
 		Name       string `json:"name"`

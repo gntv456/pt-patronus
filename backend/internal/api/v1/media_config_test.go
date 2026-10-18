@@ -206,8 +206,12 @@ func TestMedia_PosterMissingKeyword(t *testing.T) {
 	}()
 	select {
 	case rec := <-done:
-		if rec.Code == 0 {
-			t.Fatal("不应无响应")
+		// 只断言「有响应」的话，8 秒的真实跨源扇出也算过——必须钉住快速失败的形状。
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("空 keyword 应 400 快速失败，got %d body=%s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), "media_keyword_required") {
+			t.Fatalf("应回 media_keyword_required，got %s", rec.Body.String())
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("poster 空关键词应在 10s 内返回")

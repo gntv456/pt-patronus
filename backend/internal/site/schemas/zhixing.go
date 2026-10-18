@@ -19,9 +19,10 @@ var (
 
 func fetchZhixingUserInfo(ctx context.Context, hc *httpclient.Client, def *site.SiteMetadata, baseURL, cookie string) (*site.UserInfo, error) {
 	u := &site.UserInfo{}
-	root, resp, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/", cookie)
+	root, resp, err := fetchHTMLDoc(ctx, hc, baseURL, "/", cookie)
 	if err != nil {
-		return u, nil
+		// 首页都没读到就返空结构当成功，等于把站点故障报成「该号 0 上传 0 做种」。
+		return nil, err
 	}
 	if loggedOut(resp, root, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -34,9 +35,12 @@ func fetchZhixingUserInfo(ctx context.Context, hc *httpclient.Client, def *site.
 		}
 	}
 	if u.ID == "" {
+		if userInfoParsesEmpty(u) {
+			return nil, emptyUserInfoErr(baseURL, "首页")
+		}
 		return u, nil
 	}
-	if doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, "/user/"+url.PathEscape(u.ID), cookie); err == nil {
+	if doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, "/user/"+url.PathEscape(u.ID), cookie); err == nil {
 		parseZhixingProfile(doc, u)
 	}
 	if c, sz := fetchZhixingTorrentTotals(ctx, hc, def, baseURL, cookie, u.ID, "seeding"); c > 0 || sz > 0 {
@@ -45,6 +49,9 @@ func fetchZhixingUserInfo(ctx context.Context, hc *httpclient.Client, def *site.
 	}
 	if c, _ := fetchZhixingTorrentTotals(ctx, hc, def, baseURL, cookie, u.ID, "uploaded"); c > 0 {
 		u.Uploads = c
+	}
+	if userInfoParsesEmpty(u) {
+		return nil, emptyUserInfoErr(baseURL, "资料页")
 	}
 	return u, nil
 }
@@ -83,7 +90,7 @@ func parseZhixingProfile(doc *goquery.Document, u *site.UserInfo) {
 func fetchZhixingTorrentTotals(ctx context.Context, hc *httpclient.Client, def *site.SiteMetadata, baseURL, cookie, uid, typ string) (count int, size int64) {
 	for page := 1; page <= maxSeedingPages; page++ {
 		path := "/user/" + url.PathEscape(uid) + "/" + typ + "/p" + strconv.Itoa(page)
-		doc, _, err := fetchTorrentLeechDoc(ctx, hc, baseURL, path, cookie)
+		doc, _, err := fetchHTMLDoc(ctx, hc, baseURL, path, cookie)
 		if err != nil {
 			break
 		}

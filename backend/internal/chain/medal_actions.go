@@ -60,7 +60,10 @@ func (c *MedalChain) Buy(ctx context.Context, s *models.Site, medalID string) (m
 			break
 		}
 	}
-	cookie := c.siteCh.credential(s, def)
+	cookie, cerr := c.siteCh.credentialWithErr(s, def)
+	if cerr != nil {
+		return medalwall.ActionResult{}, cerr
+	}
 	res, err := adapter.Buy(ctx, c.hc, medalDef(def), s.BaseURL, cookie, medalID)
 	if err != nil {
 		return medalwall.ActionResult{Success: false, Message: "请求失败：" + err.Error()}, nil
@@ -91,7 +94,10 @@ func (c *MedalChain) formAction(ctx context.Context, s *models.Site, medalID, ac
 	if !adapter.Supported() {
 		return medalwall.ActionResult{Success: false, Message: "该平台不支持勋章操作"}, nil
 	}
-	cookie := c.siteCh.credential(s, def)
+	cookie, cerr := c.siteCh.credentialWithErr(s, def)
+	if cerr != nil {
+		return medalwall.ActionResult{}, cerr
+	}
 	var res medalwall.ActionResult
 	var err error
 	switch action {

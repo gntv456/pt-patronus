@@ -176,6 +176,39 @@ func argFloat(a map[string]any, key string) float64 {
 	return 0
 }
 
+// hasArg 调用方是否显式给了这个参数（显式 null 视为没给）。
+func hasArg(a map[string]any, key string) bool {
+	v, ok := a[key]
+	return ok && v != nil
+}
+
+// missingArgs 返回 keys 中未被显式给出的那些参数名。
+//
+// 只用于「缺省值本身就是破坏性动作」的参数：参数不经 schema 校验直接进 handler
+// （aiagent.ToolRegistry.Exec 只查白名单与超时），argInt/argFloat/argString 取不到就给 0/""，
+// 而在下载器语义里 0 与 "" 是有实际后果的取值——limit=0 是取消限速、ratio_limit=0 会让每个
+// 种子立刻触顶分享率（配自动删种即批量删种）、category="" 会把种子移出分类（分类是刷流分流
+// 与删种判定的依据）。静默补默认等于替用户做一个他没说的决定，回执还写着 updated:N。
+func missingArgs(a map[string]any, keys ...string) []string {
+	var out []string
+	for _, k := range keys {
+		if !hasArg(a, k) {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// requireArgs 缺参数就直接失败，错误里点名缺了哪个。
+// 必须在解引用任何依赖（chain / 下载器）之前调用，保证「没参数就不会有副作用」。
+func requireArgs(a map[string]any, keys ...string) error {
+	miss := missingArgs(a, keys...)
+	if len(miss) == 0 {
+		return nil
+	}
+	return fmt.Errorf("缺少参数 %s：这些参数的缺省值（0/空）在下载器里是真实动作，不会被当成「不修改」", strings.Join(miss, ", "))
+}
+
 // intProp 构造一个 integer 属性 schema。
 func intProp(desc string) map[string]any {
 	m := map[string]any{"type": "integer"}
@@ -216,7 +249,7 @@ func decodeToolInput[T any](input map[string]any, out *T) error {
 		return err
 	}
 	if err := json.Unmarshal(b, out); err != nil {
-		return fmt.Errorf("invalid tool input: %w", err)
+		return fmt.Errorf("工具入参不合法：%w", err)
 	}
 	return nil
 }

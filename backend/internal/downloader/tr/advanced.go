@@ -8,7 +8,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
-
 // bytesToKB 把 bytes/s 转 KiB/s（向上取整，避免 <1024 截断为 0）。0 或负数返回 0（=不限）。
 func bytesToKB(b int64) int64 {
 	if b <= 0 {

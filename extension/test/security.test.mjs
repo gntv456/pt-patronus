@@ -169,19 +169,40 @@ test('normalizeHost/hostMatches 匹配口径（含子域，无过匹配）', asy
   await setSiteHosts([]) // 清理，避免影响其他用例
 })
 
-test('敏感消息必须经 trustedSender 校验（静态门禁）', () => {
+test('敏感消息必须经 trustedSender + 同站约束（静态门禁）', () => {
   const src = readFileSync(ext('background.js'), 'utf8')
-  // 三个敏感 case 前必须紧邻 trustedSender 门禁（同一 case 块内出现）。
-  for (const t of ['ptp-totp-autofill', 'ptp-cred-autofill', 'ptp-ocr-captcha']) {
+  // 会回传凭据/验证码、或往库里写的 case：既要先过 trustedSender，也要把请求的 host
+  // 钉在发送页自己所在的站上——否则站点 A 的页面可以张口要站点 B 的凭据/2FA 码。
+  for (const t of ['ptp-totp-autofill', 'ptp-cred-autofill', 'ptp-cred-check', 'ptp-cred-save']) {
     const idx = src.indexOf(`case '${t}':`)
     assert.ok(idx > 0, `background.js 缺 ${t} 分支`)
-    const block = src.slice(idx, idx + 400)
+    const block = src.slice(idx, idx + 600)
     assert.ok(block.includes('trustedSender'), `${t} 分支必须先过 trustedSender 校验`)
+    assert.ok(block.includes('sameSiteAsSender(msg.host, sender)'), `${t} 分支必须把请求 host 绑到发送页自身`)
   }
-  // trustedSender 定义必须同时校验扩展 id 与站点白名单。
-  const fn = src.slice(src.indexOf('function trustedSender'), src.indexOf('function trustedSender') + 600)
+  const ocr = src.indexOf("case 'ptp-ocr-captcha':")
+  assert.ok(src.slice(ocr, ocr + 400).includes('trustedSender'), 'ptp-ocr-captcha 分支必须先过 trustedSender 校验')
+
+  const at = src.indexOf('async function trustedSender')
+  assert.ok(at > 0, 'background.js 缺 trustedSender 定义')
+  const fn = src.slice(at, at + 600)
   assert.ok(fn.includes('chrome.runtime.id'), 'trustedSender 必须校验 sender.id')
-  assert.ok(fn.includes('isSiteHost'), 'trustedSender 必须校验站点白名单')
+  // 站点范围模型（a1d9d601）：默认全站可用 + 黑名单禁用，门禁口径是 isBlocked；
+  // 旧的 isSiteHost 白名单判定已被有意替换，这里钉的是「黑名单必须生效」而不是白名单。
+  assert.ok(fn.includes('isBlocked(host)'), 'trustedSender 必须按站点范围模型过滤黑名单站点')
+
+  const bind = src.slice(src.indexOf('function sameSiteAsSender'), src.indexOf('function sameSiteAsSender') + 500)
+  assert.ok(bind.includes("want !== '' && want === self"), 'sameSiteAsSender 必须严格同站并拒绝空 host')
+
+  // TOTP 取 label：不剥 www. 会把「www」当站点名去 includes 匹配（填不出自己的码、
+  // 还可能命中任何 label/issuer 含 www 的条目）；空 host 的 label 为 '' 时 includes('')
+  // 恒真，会把库里的第一条验证码发给来路不明的页面。
+  const totp = src.slice(src.indexOf('async function totpAutofill'), src.indexOf('async function credAutofill'))
+  assert.match(totp, /replace\(\/\^www\\\./, 'TOTP label 必须剥掉 www. 前缀（与 credentials.js matchCred 同口径）')
+  // #400 把这一行换成 totpAutofillFail('no-match')（五个出口统一走分类器），
+  // 但**安全语义没变**：空 label 仍必须在匹配前被拒。断言放宽到「不钉返回值的字面形状」，
+  // 只钉「空 label 这个分支确实存在且拒绝」——钉字面形状会在每次重构分类器时假红。
+  assert.match(totp, /if \(!label\) return totpAutofillFail\('no-match'\)/, '空 label 必须拒绝，不能落到 includes("") 恒真')
 })
 
 test('保险库不再支持明文落盘（save* 空 PIN 拒绝）', () => {

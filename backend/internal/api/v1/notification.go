@@ -1,7 +1,9 @@
 package v1
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -27,6 +29,17 @@ type notifyReq struct {
 	Level string `json:"level" binding:"max=16"`
 }
 
+// notifyFanoutBudget 给「测试通知」扇出的最长耗时：单渠道 8s DNS + 15s HTTP 再加余量。
+// 前端 notificationApi.test 的超时必须不短于它，否则客户端先掐断、后端还在发（#238）。
+const notifyFanoutBudget = 30 * time.Second
+
+// notifyFanoutContext 造一个「与浏览器断开无关」的有界扇出上下文。
+// 抽成函数是为了可证伪：从前只有走查能看见这行 detach，负控得翻整段 handler；
+// 现在父 ctx 一 cancel，判据必须照样说「渠道还在发」。
+func notifyFanoutContext(req context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(req), notifyFanoutBudget)
+}
+
 // Test 发送一条测试通知到所有通道。
 func (h *NotificationHandler) Test(c *gin.Context) {
 	var req notifyReq
@@ -37,7 +50,13 @@ func (h *NotificationHandler) Test(c *gin.Context) {
 	if req.Level == "" {
 		req.Level = "info"
 	}
-	results := h.notif.Notify(c.Request.Context(), notification.Message{
+	// 扇出与「浏览器断开」解绑，并给一个有界预算（同 ops_command_run / docker_compose 的
+	// detachedAction 口径）：单渠道最坏要 8s DNS（notifyResolveTimeout）+ 15s HTTP，而前端全局
+	// axios 超时只有 15s——客户端一超时，正在跑的 Send 就地 canceled：消息其实已经发出去了，
+	// 账面却记成失败，用户点重试就是重复推送（同 #167/#212 那条轴）。
+	fctx, fcancel := notifyFanoutContext(c.Request.Context())
+	defer fcancel()
+	results := h.notif.Notify(fctx, notification.Message{
 		Title: req.Title, Body: req.Body, Level: req.Level,
 	})
 	if results == nil {

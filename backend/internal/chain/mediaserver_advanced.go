@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -160,7 +161,9 @@ func (c *MediaServerChain) DetectDuplicates(ctx context.Context, id uint, librar
 // 返回改写后的目标 URL（{base}/{path}）与服务器名（日志用）。未开启返回 errDirectLinkDisabled。
 //
 // 仅做静态改写（不泄露服务器 Token），让播放器直连高带宽 CDN。path 为 Emby 文件相对路径。
-func (c *MediaServerChain) DirectLink(_ context.Context, id uint, path string) (target, serverName string, err error) {
+// path 先经 path.Clean 归一（.. 不能越过根），防公开端点上构造 ../.. 被 CDN 归一后
+// 逃出 DirectLinkBase 的目录前缀、访问同主机其它路径。
+func (c *MediaServerChain) DirectLink(_ context.Context, id uint, relPath string) (target, serverName string, err error) {
 	m, err := c.op.Get(id)
 	if err != nil {
 		return "", "", err
@@ -169,7 +172,7 @@ func (c *MediaServerChain) DirectLink(_ context.Context, id uint, path string) (
 		return "", "", errDirectLinkDisabled
 	}
 	base := strings.TrimRight(m.DirectLinkBase, "/")
-	target = base + "/" + strings.TrimLeft(path, "/")
+	target = base + path.Clean("/"+strings.TrimLeft(relPath, "/"))
 	if !directLinkSafe(target) {
 		return "", m.Name, errDirectLinkBadBase
 	}

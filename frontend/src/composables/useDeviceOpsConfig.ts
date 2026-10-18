@@ -14,6 +14,16 @@ export function useDeviceOpsConfig() {
     script_command: '',
   })
 
+  // 告警阈值（后端 monitor.detect 逐条评估；缺省或 0 = 用内置默认，见下方 hint）。
+  // 0 不是「关闭」——只有「离线」有真开关（offline:false 后端认）。
+  const thresholdCfg = ref({
+    cpu_usage: 0,
+    mem_usage: 0,
+    disk_usage: 0,
+    temp: 0,
+    offline: true,
+  })
+
   function parseThresholds(raw?: string): Record<string, unknown> {
     if (!raw) return {}
     try {
@@ -37,6 +47,17 @@ export function useDeviceOpsConfig() {
     }
   }
 
+  function loadThresholds(raw?: string) {
+    const cfg = parseThresholds(raw)
+    thresholdCfg.value = {
+      cpu_usage: Number(cfg.cpu_usage || 0),
+      mem_usage: Number(cfg.mem_usage || 0),
+      disk_usage: Number(cfg.disk_usage || 0),
+      temp: Number(cfg.temp || 0),
+      offline: cfg.offline !== false,
+    }
+  }
+
   function buildThresholds(raw: string | undefined, type: string): string {
     const cfg = parseThresholds(raw)
     for (const key of [
@@ -47,6 +68,11 @@ export function useDeviceOpsConfig() {
       'process_name',
       'process_min_count',
       'script_command',
+      'cpu_usage',
+      'mem_usage',
+      'disk_usage',
+      'temp',
+      'offline',
     ]) {
       delete cfg[key]
     }
@@ -64,8 +90,15 @@ export function useDeviceOpsConfig() {
       cfg.script_command = opsConfig.value.script_command.trim()
       if (Number(opsConfig.value.response_ms) > 0) cfg.response_ms = Number(opsConfig.value.response_ms)
     }
+    if (type === 'host' || type === 'nas') {
+      for (const k of ['cpu_usage', 'mem_usage', 'disk_usage', 'temp'] as const) {
+        const n = Number(thresholdCfg.value[k])
+        if (n > 0) cfg[k] = n
+      }
+      if (!thresholdCfg.value.offline) cfg.offline = false
+    }
     return Object.keys(cfg).length ? JSON.stringify(cfg) : ''
   }
 
-  return { opsConfig, loadOpsConfig, buildThresholds }
+  return { opsConfig, thresholdCfg, loadOpsConfig, loadThresholds, buildThresholds }
 }

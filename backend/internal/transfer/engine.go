@@ -114,6 +114,13 @@ func (e *Engine) Process(ctx context.Context, in ProcessInput) *Result {
 	if res.ErrMsg != "" {
 		return res
 	}
+	if res.Skipped {
+		// 跳过（洗版未更优 / 库里已存在）不是成功：成功位会写成功历史、发「整理完成」
+		// 通知并触发扫库与网盘上传。record() 虽然先看 Skipped 早退，但 Result 也会直接
+		// 返回给手动整理/Redo 调用方，语义要自洽。
+		res.Type = string(mi.Type)
+		return res
+	}
 	res.Success = true
 	res.Type = string(mi.Type)
 	return res

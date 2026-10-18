@@ -18,6 +18,9 @@ import 'package:ptpatronus/api/agent.dart';
 import 'package:ptpatronus/api/brushflow.dart';
 import 'package:ptpatronus/api/contract.dart';
 import 'package:ptpatronus/api/dashboard.dart';
+// #403 任意异常 → 用户可读文案（后端每个错误码都带着可操作的中文，别在 catch 里丢掉）。
+import 'package:ptpatronus/core/err_text.dart';
+import 'package:ptpatronus/features/dashboard/dashboard_extras.dart';
 import 'package:ptpatronus/features/dashboard/dashboard_history_body.dart';
 import 'package:ptpatronus/features/dashboard/dashboard_settings_sheet.dart';
 import 'package:ptpatronus/features/dashboard/dashboard_share_models.dart';
@@ -181,6 +184,12 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
             _alertCard(AlertKind.hr),
             SizedBox(height: isWideScreen(context) ? 14 : 10),
           ],
+          _extrasFailedBanner(context),
+          if (_extrasFailed.isNotEmpty)
+            SizedBox(height: isWideScreen(context) ? 14 : 10),
+          _noticeBanner(_statReadNotice),
+          if (_statReadNotice.isNotEmpty)
+            SizedBox(height: isWideScreen(context) ? 14 : 10),
           _metricGrid(context),
           SizedBox(height: isWideScreen(context) ? 14 : 10),
           _sitesSection(context),
@@ -195,6 +204,34 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
       ),
     );
   }
+
+  // 顶部账面条：并发区取数失败、每站统计读取失败都走同一条渲染（判据/样式只写一份）。
+  Widget _noticeBanner(String notice) {
+    if (notice.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xffd97706).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        const Icon(Icons.warning_amber_rounded,
+            size: 16, color: Color(0xffd97706)),
+        const SizedBox(width: 7),
+        Expanded(
+            child: Text(notice,
+                style: const TextStyle(fontSize: 12, height: 1.35))),
+      ]),
+    );
+  }
+
+  // 并发区取数失败的顶部账面：卡片内的「加载失败」占位散在长页面下方，先在最上面点名一次。
+  Widget _extrasFailedBanner(BuildContext context) =>
+      _noticeBanner(extrasNotice(_extrasFailed));
+
+  // 每站统计读取失败也要在顶部说清（判据与文案在 dashboard_extras.statReadNotice，
+  // 与并发区同一套纯函数口径，界面只负责渲染）。
+  String get _statReadNotice => statReadNotice(_overview?.statReadError);
 
   // 区②实时运维：下载器实时速率（WS snapshots）+ 系统资源（/system/metrics）。
   Widget _opsSection(BuildContext context) {
@@ -220,7 +257,13 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
         Text('下载中 $downloading · 做种 $seeding · ${_snapshots.length} 个下载器',
             style: TextStyle(fontSize: 12, color: context.dimText)),
         const Divider(height: 24),
-        if (_metrics == null)
+        if (_extrasAdminOnly)
+          Text('系统资源$extrasAdminOnly',
+              style: TextStyle(fontSize: 12, color: context.dimText))
+        else if (!extrasAvailable(_extrasFailed, extrasSectionMetrics))
+          Text('系统资源读取失败，下拉刷新重试',
+              style: TextStyle(fontSize: 12, color: context.dimText))
+        else if (_metrics == null)
           Text('系统资源采集中…', style: TextStyle(fontSize: 12, color: context.dimText))
         else ...[
           _resBar('CPU', _metrics!.cpuUsage, '${_metrics!.cpuCores} 核'),
@@ -262,15 +305,41 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
             ),
         ]),
         const SizedBox(height: 8),
-        _statChip('工作流', '${_wfStats?.enabled ?? 0}/${_wfStats?.total ?? 0}',
+        _statChip(
+            '工作流',
+            extrasValue(
+                failed: _extrasFailed,
+                section: extrasSectionWorkflow,
+                value: '${_wfStats?.enabled ?? 0}/${_wfStats?.total ?? 0}'),
             '启用/总数 · 成功 ${_wfStats?.runsSuccess ?? 0}'),
-        _statChip('刷流', '$brushOn', '累计 ↑${_fmtBytes(brushUp)} · $brushAdded 种'),
-        _statChip('契约违约', '$breach', '共 ${contractOn.length} 条契约'),
-        if (_agentStats != null) ...[
-          const Divider(height: 20),
-          _statChip('AI 用量', '${_agentStats!.totalRequests} 次',
-              'Token ${_fmtToken(aiTokens)} · \$${_agentStats!.totalCostUsd.toStringAsFixed(4)}'),
-        ],
+        _statChip(
+            '刷流',
+            extrasValue(
+                failed: _extrasFailed,
+                section: extrasSectionBrush,
+                value: '$brushOn'),
+            '累计 ↑${_fmtBytes(brushUp)} · $brushAdded 种'),
+        _statChip(
+            '契约违约',
+            extrasValue(
+                failed: _extrasFailed,
+                section: extrasSectionContract,
+                value: '$breach'),
+            '共 ${contractOn.length} 条契约'),
+        const Divider(height: 20),
+        _statChip(
+            'AI 用量',
+            _extrasAdminOnly
+                ? extrasAdminOnly
+                : extrasValue(
+                    failed: _extrasFailed,
+                    section: extrasSectionAgent,
+                    value: _agentStats == null
+                        ? '-'
+                        : '${_agentStats!.totalRequests} 次'),
+            _agentStats == null
+                ? ''
+                : 'Token ${_fmtToken(aiTokens)} · \$${_agentStats!.totalCostUsd.toStringAsFixed(4)}'),
       ]),
     );
   }
@@ -286,7 +355,13 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
           Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
-                child: Text('暂无最近活动', style: TextStyle(fontSize: 12, color: context.dimText))),
+                child: Text(
+                    extrasValue(
+                        failed: _extrasFailed,
+                        section: extrasSectionNotice,
+                        value: '暂无最近活动',
+                        unavailable: '通知读取失败，下拉刷新重试'),
+                    style: TextStyle(fontSize: 12, color: context.dimText))),
           )
         else
           ..._recentNotices.take(12).map((n) {
@@ -322,46 +397,4 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
       ]),
     );
   }
-
-  Widget _kvCell(String label, String value, Color color) => Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: context.dimText.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
-          const SizedBox(height: 3),
-          Text(value,
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: color)),
-        ]),
-      );
-
-  Widget _resBar(String label, double pct, String detail) {
-    final p = pct.clamp(0.0, 100.0);
-    final color = p >= 90
-        ? const Color(0xffe74c3c)
-        : p >= 80
-            ? const Color(0xfff39c12)
-            : const Color(0xff16a34a);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: TextStyle(fontSize: 12, color: context.dimText)),
-        Text('${p.toStringAsFixed(0)}%',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-      ]),
-      const SizedBox(height: 4),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: LinearProgressIndicator(
-          value: p / 100,
-          minHeight: 7,
-          backgroundColor: context.dimText.withValues(alpha: 0.15),
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-        ),
-      ),
-      Text(detail, style: TextStyle(fontSize: 10, color: context.dimText)),
-    ]);
-  }
-
 }

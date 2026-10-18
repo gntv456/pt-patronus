@@ -145,7 +145,7 @@ func (p *customCommandPlugin) ExecuteAction(ctx context.Context, rt Runtime, act
 		}
 		return nil, fmt.Errorf("命令 %q 不存在", name)
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 

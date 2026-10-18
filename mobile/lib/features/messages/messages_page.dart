@@ -54,8 +54,23 @@ class _MessagesPageState extends State<MessagesPage> {
     try {
       if (msg.url.isNotEmpty) content = await _api.content(msg.siteId, msg.url);
       if (!msg.isRead && msg.adminActions?.itemId.isNotEmpty == true) {
-        _api.markRead(msg.siteId, [msg.adminActions!.itemId]).then((_) {
-          if (mounted) _load(); // 守卫：避免 dispose 后 setState（审计 P1）
+        // 标已读的成败要回到界面：站点常回 HTTP 200 却 failed:1（或明确不支持远程标记），
+        // 旧写法把这两种都吞成「什么都没发生」，红点原地不动且 rejection 无人处理。
+        _api.markRead(msg.siteId, [msg.adminActions!.itemId]).then((r) {
+          if (!mounted) return;
+          final failed = (r['failed'] as num?)?.toInt() ?? 0;
+          final success = (r['success'] as num?)?.toInt() ?? 0;
+          if (failed > 0 || success < 1) {
+            final errs = r['errors'];
+            final why = errs is List && errs.isNotEmpty ? '${errs.first}' : '标记已读失败';
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(why)));
+            return;
+          }
+          _load(); // 守卫：避免 dispose 后 setState（审计 P1）
+        }).catchError((Object e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('标记已读失败：${_friendlyError('$e')}')));
         });
       }
     } catch (e) {

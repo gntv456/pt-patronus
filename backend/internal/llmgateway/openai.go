@@ -46,9 +46,9 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 		}
 		return nil
 	}
-	finish := func() error {
-		stop := "stop"
-		if err := writeChunk(map[string]any{}, &stop); err != nil {
+	finishWith := func(reason string) error {
+		r := reason
+		if err := writeChunk(map[string]any{}, &r); err != nil {
 			return err
 		}
 		if _, err := fmt.Fprintf(w, "data: [DONE]\n\n"); err != nil {
@@ -58,6 +58,28 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 			flusher.Flush()
 		}
 		return nil
+	}
+	finish := func() error { return finishWith("stop") }
+	// errFrame 写 OpenAI 兼容的流内错误帧。只把错误当 content 写出去是不够的：
+	// 那等于告诉 SDK「模型成功回答了，内容是一句错误文字」，finish_reason 还是 stop。
+	errFrame := func(msg string) {
+		b, _ := json.Marshal(map[string]any{
+			"error": map[string]any{"message": msg, "type": "server_error"},
+		})
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+			return
+		}
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+	// finishErr 收尾一次失败：内容里给一句人话（只渲染 content 的界面也有话可显示）、
+	// 给一个 error 帧（SDK 据此抛错）、终结块写 finish_reason=error 而不是 stop。
+	finishErr := func(msg string) error {
+		_ = writeChunk(map[string]any{"content": msg}, nil)
+		errFrame(msg)
+		_ = finishWith("error")
+		return fmt.Errorf("%s", msg)
 	}
 
 	for ev := range events {
@@ -86,15 +108,13 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 		case llm.EventToolResult:
 			// 工具结果不回传客户端（属下一轮请求）。
 		case llm.EventError:
-			// 错误作为最后一段 content 写出；此时客户端多半还在，写失败也无碍（本来就要返回）。
-			_ = writeChunk(map[string]any{"content": ev.Error}, nil)
-			_ = finish()
-			return fmt.Errorf("%s", ev.Error)
+			return finishErr(streamErrMsg(ev.Error))
 		case llm.EventDone:
 			_ = finish()
 			return nil
 		}
 	}
-	_ = finish() // 流关闭但无 done：正常收尾
-	return nil
+	// 事件流关闭却没有 done：上游被掐 / provider 空响应。从前这里 finish() 一次
+	// 干净的 stop，客户端读到的是「模型答完了，只是没内容」。
+	return finishErr(defaultStreamErrMsg)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"path"
@@ -123,7 +124,12 @@ func (w *WebDAV) Delete(ctx context.Context, p string) error {
 		return err
 	}
 	resp.Body.Close()
-	if resp.StatusCode >= 300 && resp.StatusCode != http.StatusNotFound {
+	// 404 = 服务器上压根没有这个路径。原先豁免它，于是删一个已被别人删掉的行
+	// 界面报「已删除」而那行还在；与 local/rclone 统一成「不存在就是失败」。
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("webdav DELETE %s: %w", p, fs.ErrNotExist)
+	}
+	if resp.StatusCode >= 300 {
 		return fmt.Errorf("webdav DELETE: status %d", resp.StatusCode)
 	}
 	return nil

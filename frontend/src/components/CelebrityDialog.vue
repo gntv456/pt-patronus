@@ -2,6 +2,9 @@
 import { useI18n } from 'vue-i18n'
 import type { CelebrityProfile } from '@/api/media'
 import MediaPoster from '@/components/MediaPoster.vue'
+// #405 豆瓣链接与作品链接都来自第三方 API 的响应，外部可控：Vue 的 :href 不过滤协议，
+// javascript:/data: 一类能直接注入。统一走 safeUrl（单一来源，Savept/详情页等已用）。
+import { safeUrl } from '@/utils/safeUrl'
 
 const { t } = useI18n()
 
@@ -45,14 +48,27 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
         <div v-if="profile.works?.length" class="cel-section">
           <div class="cel-stitle">{{ t('cel.works') }}</div>
           <div class="cel-works">
-            <a v-for="(w, i) in profile.works" :key="i" :href="w.url" target="_blank" rel="noopener" class="cel-work">
+            <a
+              v-for="(w, i) in profile.works"
+              :key="i"
+              :href="safeUrl(w.url)"
+              target="_blank"
+              rel="noopener"
+              class="cel-work"
+            >
               <span class="cel-wtitle">{{ w.title }}</span>
               <span v-if="w.role" class="cel-wrole text-muted">{{ w.role }}</span>
             </a>
           </div>
         </div>
         <div v-if="profile.douban_url" class="cel-footer">
-          <a :href="profile.douban_url" target="_blank" rel="noopener" class="text-muted">{{ t('cel.douban') }} ↗</a>
+          <a
+            :href="safeUrl(profile.douban_url)"
+            target="_blank"
+            rel="noopener"
+            class="text-muted"
+            >{{ t('cel.douban') }} ↗</a
+          >
         </div>
       </template>
     </div>

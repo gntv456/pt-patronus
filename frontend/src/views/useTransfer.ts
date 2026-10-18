@@ -131,25 +131,41 @@ export function useTransfer() {
   }
   // 云盘上传配置：网盘下拉（打开配置抽屉时懒加载）。
   const cloudDrives = ref<CloudDrive[]>([])
+  // 下拉数据源读失败留痕：区分「没配置」与「列表没读到」（'downloader' | 'cloud'）。
+  const cfgLoadFailed = ref<string[]>([])
   async function openConfig() {
+    cfgLoadFailed.value = []
+    let dls: Awaited<ReturnType<typeof downloaderApi.list>> = []
+    let drives: CloudDrive[] = []
+    let dFail = false
+    let cFail = false
+    let kFail = false
+    let loaded: Awaited<ReturnType<typeof transferApi.getConfig>> | null = null
     try {
-      const [loaded, dls, drives] = await Promise.all([
-        transferApi.getConfig(),
-        downloaderApi.list().catch(() => []),
-        cloudApi.listDrives().catch(() => []),
-      ])
-      cfg.value = {
-        ...emptyConfig(),
-        ...loaded,
-        path_mappings: loaded.path_mappings ?? [],
-        failed_retry_minutes: loaded.failed_retry_minutes || 360,
-        cloud_upload: { ...emptyConfig().cloud_upload, ...(loaded.cloud_upload ?? {}) },
-      }
-      downloaders.value = dls
-      cloudDrives.value = drives
+      loaded = await transferApi.getConfig()
     } catch {
-      cfg.value = emptyConfig()
+      kFail = true
     }
+    await Promise.all([
+      downloaderApi
+        .list()
+        .then((r) => (dls = r))
+        .catch(() => (dFail = true)),
+      cloudApi
+        .listDrives()
+        .then((r) => (drives = r))
+        .catch(() => (cFail = true)),
+    ])
+    cfg.value = {
+      ...emptyConfig(),
+      ...(loaded ?? {}),
+      path_mappings: loaded?.path_mappings ?? [],
+      failed_retry_minutes: loaded?.failed_retry_minutes || 360,
+      cloud_upload: { ...emptyConfig().cloud_upload, ...(loaded?.cloud_upload ?? {}) },
+    }
+    downloaders.value = dls
+    cloudDrives.value = drives
+    cfgLoadFailed.value = [kFail ? 'config' : '', dFail ? 'downloader' : '', cFail ? 'cloud' : ''].filter(Boolean)
     catsStr.value = (cfg.value.categories ?? []).join(',')
     skipStr.value = (cfg.value.skip_tags ?? []).join(',')
     showConfig.value = true
@@ -262,6 +278,7 @@ export function useTransfer() {
     organizing,
     redoing,
     downloaders,
+    cfgLoadFailed,
     filtered,
     load,
     setView,

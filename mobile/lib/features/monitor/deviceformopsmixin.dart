@@ -47,6 +47,10 @@ mixin DeviceFormOpsMixin on State<DeviceFormSheet> {
             : int.tryParse(_port.text.trim()) ?? 0,
         vendor: _type == 'nas' ? _vendor : '',
         protocol: _protocol,
+        // PUT 是全量替换：这两项表单没有编辑入口，必须回读原值，
+        // 否则「在手机上改个名字」就会抹掉告警规则/脚本命令并解绑凭据（后端照单存）。
+        credentialId: widget.target?.credentialId ?? 0,
+        thresholds: widget.target?.thresholds ?? '',
         rtspUrl: _type == 'camera' ? _rtsp.text.trim() : '',
         intervalSec: int.tryParse(_interval.text.trim()) ?? 60,
         timeoutSec: int.tryParse(_timeout.text.trim()) ?? 15,

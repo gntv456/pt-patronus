@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -44,7 +45,10 @@ func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("mteam assessment: status %d", resp.StatusCode)
 	}
-	tasks := parseMTeamExamine(resp.Body)
+	tasks, err := parseMTeamExamine(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -55,16 +59,22 @@ func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, 
 // 响应 data 为数组，每项含 uploadTarget/uploaed(拼写错误)/downloadTarget/downloaed/bonusTarget/bonuses 等（字节）。
 // 时间字段（startTime/endTime，同 freeleech 端点）为 "2006-01-02 15:04:05" 字符串，须走
 // ParseInLocation（见 parseTimeMs），不能按数字拼接——否则日期串的数字会被拼成错乱的 epoch ms。
-func parseMTeamExamine(body []byte) []Task {
+func parseMTeamExamine(body []byte) ([]Task, error) {
 	var env struct {
-		Code json.Number      `json:"code"`
-		Data []map[string]any `json:"data"`
+		Code    json.Number      `json:"code"`
+		Message string           `json:"message"`
+		Data    []map[string]any `json:"data"`
 	}
+	// 非 JSON 与 code!=0 都是失败：旧写法 return nil，考核页于是显示「暂无考核」，
+	// 正处于考核期的用户看不到任何提醒（漏达标会被降级/封号）。
 	if err := json.Unmarshal(body, &env); err != nil {
-		return nil
+		return nil, fmt.Errorf("mteam 考核响应不是 JSON（可能是错误页或登录墙）: %w", err)
 	}
-	if env.Code.String() != "0" || len(env.Data) == 0 {
-		return nil
+	if code := env.Code.String(); code != "" && code != "0" {
+		return nil, fmt.Errorf("mteam 考核接口报错（code=%s msg=%s）", code, strings.TrimSpace(env.Message))
+	}
+	if len(env.Data) == 0 {
+		return nil, nil
 	}
 	var out []Task
 	for _, item := range env.Data {
@@ -108,7 +118,7 @@ func parseMTeamExamine(body []byte) []Task {
 			FetchedAt:   time.Now(),
 		})
 	}
-	return out
+	return out, nil
 }
 
 // mteamRemainDaysRe 从馒头考核描述串抽剩余天数，兼容繁简：

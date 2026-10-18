@@ -75,6 +75,19 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 		_ = writeEv("message_stop", map[string]any{})
 	}
 
+	// endErr 用 Anthropic 的 error 事件收尾。用 end() 收尾等于宣告
+	// 「这是一条正常结束的回答」（stop_reason=end_turn）：上游 401/配额用尽时，
+	// Claude Code 这类客户端读到的是「模型说完了，但没说话」，不会重试也不会报错。
+	endErr := func(msg string) {
+		closeBlock()
+		_ = writeEv("error", map[string]any{
+			"error": map[string]any{"type": "overloaded_error", "message": msg},
+		})
+		// 保留旧契约「错误路径也要收尾，别把流吊着」（TestStreamAnthropicErrorTerminates），
+		// 但不写 message_delta(end_turn)——那才是「正常答完」的假宣告。
+		_ = writeEv("message_stop", map[string]any{})
+	}
+
 	for ev := range events {
 		switch ev.Type {
 		case llm.EventText:
@@ -127,13 +140,15 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 		case llm.EventToolResult:
 			// 工具结果属下一轮；跳过。
 		case llm.EventError:
-			end()
-			return fmt.Errorf("%s", ev.Error)
+			msg := streamErrMsg(ev.Error)
+			endErr(msg)
+			return fmt.Errorf("%s", msg)
 		case llm.EventDone:
 			end()
 			return nil
 		}
 	}
-	end() // 流关闭无 done：正常收尾
-	return nil
+	// 流关闭却没有 done：以前是 end_turn 干净收尾，现在如实发 error 事件。
+	endErr(defaultStreamErrMsg)
+	return fmt.Errorf("%s", defaultStreamErrMsg)
 }

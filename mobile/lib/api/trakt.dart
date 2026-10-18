@@ -80,6 +80,38 @@ class TraktDeviceCode {
       );
 }
 
+/// 轮询设备授权的结果。
+///
+/// [terminal]=true 表示「再等也不会亮」：授权码过期 / 凭据没填 / 还没走完授权，
+/// 面板必须停下来把 [message] 说出来（后端 #280 起了 `terminal` 字段并分档写人话）。
+/// 从前这里只回一个 bool，非 2xx 一律被 `catch (_) {/* keep polling */}` 吞掉，
+/// 于是手机可以对着作废的码每 3 秒空转一整晚。
+class TraktDeviceStatus {
+  const TraktDeviceStatus({
+    required this.authorized,
+    required this.terminal,
+    required this.message,
+  });
+
+  final bool authorized;
+  final bool terminal;
+  final String message;
+}
+
+/// 哪些机器码意味着「停止轮询」。判不准就继续等——误停会让用户以为授权失败，
+/// 而他其实已经在浏览器里输完码了。
+bool traktPollIsTerminal(String code) => const {
+      'trakt_code_expired',
+      'trakt_not_configured',
+      'trakt_not_authorized',
+    }.contains(code);
+
+/// 连续读不到状态到这个次数才放弃轮询；措辞只能说「读不到」。
+const int traktPollGiveUpAfter = 5;
+
+String traktPollGiveUpText(int fails) =>
+    '读不到 Trakt 授权状态（已连续 $fails 次，可能是网络问题；若你已在浏览器完成输码，可稍后刷新本页确认）';
+
 /// Trakt API（对齐后端 /trakt/*）。
 class TraktApi {
   final _api = ApiClient();
@@ -96,10 +128,23 @@ class TraktApi {
     return TraktDeviceCode.fromJson(r);
   }
 
-  /// 轮询设备授权状态。返 authorized +（未完成时）pending。
-  Future<bool> deviceStatus() async {
-    final r = await _api.get('/trakt/device-status');
-    return r['authorized'] as bool? ?? false;
+  /// 轮询设备授权状态。失败也返回结构化结果（终端态要能停下来）。
+  Future<TraktDeviceStatus> deviceStatus() async {
+    try {
+      final r = await _api.get('/trakt/device-status');
+      return TraktDeviceStatus(
+        authorized: r['authorized'] as bool? ?? false,
+        terminal: r['terminal'] as bool? ?? false,
+        message: (r['message'] as String? ?? '').trim(),
+      );
+    } on ApiException catch (e) {
+      // 后端把 4xx/5xx 都带 code 发出来：非 2xx 不等于「继续等」，也不等于「授权失败」。
+      return TraktDeviceStatus(
+        authorized: false,
+        terminal: traktPollIsTerminal(e.code),
+        message: e.userMessage,
+      );
+    }
   }
 
   /// 立即同步，返新增订阅数。

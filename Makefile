@@ -49,6 +49,7 @@ embed-preview:
 	rm -rf backend/internal/web/dist
 	cp -r frontend/dist backend/internal/web/dist
 	@echo "前端产物已拷入 backend/internal/web/dist，可 go run 验证内嵌 Web UI"
+	@bash scripts/check-no-gpl-assets.sh
 
 clean:
 	rm -rf backend/bin backend/data data frontend/dist

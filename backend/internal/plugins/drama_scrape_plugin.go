@@ -128,7 +128,7 @@ func (p *dramaScrapePlugin) ExecuteAction(ctx context.Context, rt Runtime, actio
 	case "status":
 		return p.snapshotStatus(), nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 

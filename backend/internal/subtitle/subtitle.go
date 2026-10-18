@@ -110,14 +110,44 @@ func normalizeLang(raw string) string {
 func Extract(data []byte, fallbackName string) ([]byte, string, error) {
 	// zip 魔数 PK\x03\x04
 	if len(data) > 3 && data[0] == 'P' && data[1] == 'K' && (data[2] == 0x03 || data[2] == 0x05 || data[2] == 0x07) {
-		return extractZip(data)
+		out, name, err := extractZip(data)
+		if err != nil {
+			return nil, "", err
+		}
+		if looksLikeWebPage(out) {
+			return nil, "", errSubtitleIsWebPage(name)
+		}
+		return out, name, nil
 	}
 	// 原样（已是单文件字幕）
+	if looksLikeWebPage(data) {
+		return nil, "", errSubtitleIsWebPage(fallbackName)
+	}
 	name := fallbackName
 	if name == "" {
 		name = "subtitle.srt"
 	}
 	return data, name, nil
+}
+
+// looksLikeWebPage 判断「下载到的字幕」其实是一个网页：国内字幕站的登录墙/积分墙/反爬页
+// 普遍返回 HTTP 200 + HTML（状态码看不出问题），此前会被原样写进媒体库当 .srt——
+// 播放器没字幕，而健康中心按「字幕文件已存在」判定，从此不再提示缺失。
+// 只认「开头就是 HTML 文档」这一形态：本项目接受的字幕格式（.srt/.ass/.ssa/.vtt/.sub/.lrc）
+// 没有一个以 <!doctype html 或 <html 起始，字幕正文里出现这些词也不在开头，故不会误杀。
+func looksLikeWebPage(data []byte) bool {
+	s := strings.TrimLeft(string(data), "\ufeff \t\r\n")
+	lower := strings.ToLower(s)
+	return strings.HasPrefix(lower, "<!doctype html") || strings.HasPrefix(lower, "<html")
+}
+
+// errSubtitleIsWebPage 明确错误：让调用方（手动下载/健康中心修复/追更自动补）都拿到原因，
+// 而不是写一个垃圾 .srt 再报成功。
+func errSubtitleIsWebPage(name string) error {
+	if name == "" {
+		name = "未知文件"
+	}
+	return fmt.Errorf("下载结果其实是网页（%s）：该字幕源多半需要登录/积分，或 cookie 已失效，未写入字幕", name)
 }
 
 // maxSubBytes 单个字幕解压上限：字幕源返声明巨大的 UncompressedSize64 条目（zip 炸弹）时，

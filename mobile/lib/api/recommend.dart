@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import '../features/common/stream_account.dart';
 
 // 统一媒体元数据（对齐 backend media.MediaInfo）。
 class MediaInfo {
@@ -41,7 +42,13 @@ class MediaInfo {
 }
 
 class RecommendApi {
+  RecommendApi({StreamFrames? frames}) : _frames = frames;
+
+  final StreamFrames? _frames;
   final _api = ApiClient();
+
+  Stream<MapEntry<String, Map<String, dynamic>>> _stream(String path) =>
+      _frames?.call(path) ?? _api.streamGet(path);
 
   // 热门/趋势信息流：GET /media/recommend?source=&category=&page=&refresh=1
   Future<List<MediaInfo>> feed({
@@ -58,8 +65,8 @@ class RecommendApi {
     return list.map((e) => MediaInfo.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// 流式首屏（SSE）：每源完成推一帧 batch，逐帧产出该源条目列表；取消监听即中断请求。
-  Stream<List<MediaInfo>> feedStream({
+  /// 流式首屏（SSE）：每源完成推一帧 batch；done 帧带源账面（跑了几个源、谁失败了）。
+  Stream<StreamBatch<MediaInfo>> feedStream({
     String source = '',
     String category = 'movie',
     int page = 1,
@@ -68,15 +75,13 @@ class RecommendApi {
     var q = '?category=${Uri.encodeQueryComponent(category)}&page=$page';
     if (source.isNotEmpty) q += '&source=${Uri.encodeQueryComponent(source)}';
     if (refresh) q += '&refresh=1';
-    return _api.streamGet('/media/recommend/stream$q').expand((ev) {
-      if (ev.key == 'batch' && ev.value['results'] is List) {
-        return [
-          (ev.value['results'] as List)
-              .map((e) => MediaInfo.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        ];
-      }
-      return const <List<MediaInfo>>[];
+    return _stream('/media/recommend/stream$q').map((ev) {
+      final batch = mapStreamFrame(ev, MediaInfo.fromJson);
+      if (ev.key != 'done') return batch;
+      return StreamBatch(
+        items: batch.items,
+        listError: recommendStreamNotice(ev.value),
+      );
     });
   }
 }

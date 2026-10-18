@@ -27,18 +27,56 @@ type BaseHTMLAdapter struct {
 // fetchDoc GET 一个相对路径并解析为 goquery 文档。返回文档与原始响应（供登录态/CF 判定）。
 // baseURL + path 经 joinURL 拼接；cookie 注入鉴权；命中 Cloudflare 时返回错误。
 func (a *BaseHTMLAdapter) fetchDoc(ctx context.Context, baseURL, path, cookie string) (*goquery.Document, *httpclient.Response, error) {
-	resp, err := a.hc.Get(ctx, joinURL(baseURL, path), cookie, true)
+	return fetchHTMLDoc(ctx, a.hc, baseURL, path, cookie)
+}
+
+// fetchHTMLDoc 是 HTML 抓取的单一判定管道：CF 盾、5xx 错误页、解析失败三道都会报错。
+// BaseHTMLAdapter.fetchDoc 与不走基类的站点自建 GET helper（torrentleech 系等）共用，
+// 否则旁路的那些站点会漏判——错误页被解析成空文档就成了「成功的空数据」。
+func fetchHTMLDoc(ctx context.Context, hc *httpclient.Client, baseURL, path, cookie string) (*goquery.Document, *httpclient.Response, error) {
+	full := joinURL(baseURL, path)
+	resp, err := hc.Get(ctx, full, cookie, true)
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
-	if resp.IsCloudflare() {
-		return nil, nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站；cf_clearance cookie 需一并包含）", baseURL)
+	if err := guardHTMLResp(resp, baseURL, full); err != nil {
+		return nil, resp, err
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse html: %w", err)
+		return nil, resp, fmt.Errorf("parse html: %w", err)
 	}
 	return doc, resp, nil
+}
+
+// guardHTMLResp 两道响应判定：CF 人机验证页、5xx 服务器错误页。
+// 两者都不可能当数据用——硬解析只会得到「所有选择器落空」的空文档，
+// 上层于是拿到「什么都没解析到但没有错误」的结果，全 0 被当真实数据写进快照。
+func guardHTMLResp(resp *httpclient.Response, baseURL, fullURL string) error {
+	if resp.IsCloudflare() {
+		return fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站；cf_clearance cookie 需一并包含）", baseURL)
+	}
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("站点返回 HTTP %d（服务器错误页，未作为数据解析）: %s", resp.StatusCode, fullURL)
+	}
+	return nil
+}
+
+// userInfoParsesEmpty 一次用户信息抓取是否什么都没解析到。
+// 有用户名 / uid / 等级 / 任一数值信号即认为读到东西——只有这些全空时，
+// 拿到的其实是「空结构」，与真实的 0 上传新号无法区分，只能按失败处理。
+func userInfoParsesEmpty(u *site.UserInfo) bool {
+	return u != nil && u.Name == "" && u.ID == "" && u.Level == "" &&
+		u.Uploaded == 0 && u.Downloaded == 0 && u.Ratio == 0 &&
+		u.Seeding == 0 && u.SeedingSize == 0 && u.Bonus == 0
+}
+
+// emptyUserInfoErr 「什么都没解析到」的统一错误。
+// 不能当成功返回：调用方（聚合快照/仪表盘/考核）会把全 0 的 UserInfo 当真实数据
+// 写进 site_stats 并标成 connected，用户看到「分享率一夜跌到 0」的假事故，
+// 真因（页面没解析出来）反而被埋。
+func emptyUserInfoErr(baseURL, page string) error {
+	return fmt.Errorf("未从 %s 的%s解析到任何用户信息（站点改版或返回了错误页），已按失败处理以免写入全 0 快照", baseURL, page)
 }
 
 // loggedOut 判定响应是否处于未登录态：兼顾最终 URL 与 Location 重定向头。

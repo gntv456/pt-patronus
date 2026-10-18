@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'ent_read_fail.dart';
 
 // 卡牌合成：目标卡 + 碎片库存网格 + 单抽/十连/百连/合成 + 记录（对齐 Web 卡牌合成面板）。
 class CardSynthView extends StatefulWidget {
@@ -31,15 +32,17 @@ class _CardSynthViewState extends State<CardSynthView> {
   Future<void> _loadAll() async {
     try {
       final results = await Future.wait([
-        _api.syntheses(widget.siteId, 'medal_synthesis').catchError((_) => <SynthesisTarget>[]),
-        _api.stats(widget.siteId, 'medal_synthesis').catchError((_) => GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 500)),
+        _api.syntheses(widget.siteId, 'medal_synthesis').catchError((e) { if (mounted) entReadFailed(context, 'syntheses', e); return <SynthesisTarget>[]; }),
+        _api.stats(widget.siteId, 'medal_synthesis').catchError((e) { if (mounted) entReadFailed(context, 'panel', e); return GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 500); }),
       ]);
       _targets = results[0] as List<SynthesisTarget>;
       _stats = results[1] as GameStats;
       if (_selectedId == null || !_targets.any((t) => t.id == _selectedId)) {
         _selectedId = _targets.isNotEmpty ? _targets.first.id : null;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     if (mounted) setState(() {});
   }
 
@@ -101,7 +104,9 @@ class _CardSynthViewState extends State<CardSynthView> {
   Future<void> _reloadHistory() async {
     try {
       _history = await _api.history(widget.siteId, 'medal_synthesis');
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
     if (mounted) setState(() {});
   }
 

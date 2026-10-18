@@ -2,6 +2,8 @@ package filemanager
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,8 +267,8 @@ func TestRclone_Delete(t *testing.T) {
 		}
 	})
 
-	// 不存在 → 幂等，不调用 purge/deletefile
-	t.Run("missing_is_noop", func(t *testing.T) {
+	// 不存在 → 报 fs.ErrNotExist（旧行为返回 nil，界面把没删成的行报成「已删除」）
+	t.Run("missing_is_reported", func(t *testing.T) {
 		r := newTestRclone(t, "/Media")
 		var ops []string
 		r.execFunc = func(ctx context.Context, name string, args ...string) ([]byte, error) {
@@ -277,8 +279,9 @@ func TestRclone_Delete(t *testing.T) {
 			ops = append(ops, args...)
 			return nil, nil
 		}
-		if err := r.Delete(ctx, "/ghost"); err != nil {
-			t.Fatalf("Delete missing 应返回 nil, got %v", err)
+		err := r.Delete(ctx, "/ghost")
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("Delete missing err=%v，应判为 fs.ErrNotExist（handler 靠它归类成 404 中文提示）", err)
 		}
 		if len(ops) != 0 {
 			t.Errorf("不存在的路径不应触发删除操作, ops=%v", ops)

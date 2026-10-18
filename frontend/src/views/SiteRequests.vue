@@ -19,7 +19,7 @@
             <el-tag size="small" type="info">{{ t('siterequests.count', { n: g.requests.length }) }}</el-tag>
             <span v-if="g.error" class="err small">{{ g.error }}</span>
           </div>
-          <el-table :data="g.requests" size="small" :empty-text="t('siterequests.emptySite')">
+          <el-table :data="g.requests" size="small" :empty-text="g.error ? t('siterequests.emptyFailed') : t('siterequests.emptySite')">
             <el-table-column :label="t('siterequests.colTitle')" min-width="260">
               <template #default="{ row }">
                 <a

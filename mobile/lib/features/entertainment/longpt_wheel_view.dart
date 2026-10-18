@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'ent_read_fail.dart';
 
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
@@ -60,7 +61,9 @@ class _LongPTWheelViewState extends State<LongPTWheelView>
   Future<void> _load() async {
     try {
       _prizes = await _api.prizes(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'prizes', e);
+    }
     await _refresh();
     if (mounted) setState(() {});
   }
@@ -68,10 +71,14 @@ class _LongPTWheelViewState extends State<LongPTWheelView>
   Future<void> _refresh() async {
     try {
       _stats = await _api.stats(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'stats', e);
+    }
     try {
       _records = await _api.history(widget.siteId, _game);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) entReadFailed(context, 'history', e);
+    }
   }
 
   int _idToIndex(int id) {

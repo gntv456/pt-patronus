@@ -1,10 +1,10 @@
 {
-  "latestVersion": "1.03.23",
+  "latestVersion": "1.03.24",
   "minVersion": "0.60.00",
-  "releaseName": "全链路深度审计加固版",
-  "releaseNotes": "1.03.23：新增 FluxTorrent 建站系统适配（schema: fluxtorrent）。①站点适配——搜索走 /compat/nexusphp/torrents.json（NP 字段口径，促销档位映射为免费/半价/双倍双因子）；用户信息走 ptppUserInfo 聚合端点；下载走 download.php?id=&passkey=（NexusPHP 同形）。②凭据体验——鉴权用 API Token（fxo_，网页端「我的 → API Token」签发，180 天可续期；注意 Authorization 头前缀为 Token 非 Bearer）；passkey 无需手填，首次用户信息抓取自动从站点获取并加密回写。③能力端点——H&R 违约列表（/open/me/hr，时长缺口换算人类可读）、做种明细（/open/me/seeding，保种契约逐条聚合）、站内信只读（/open/me/messages）；三项默认放行，站点 YAML 显式 enabled:false 可关。④接入方式——添加站点时定义选「FluxTorrent」、地址填站点域名、API Key 粘贴 Token 即可（建站系统域名各异，全站共用一个模板）。",
+  "releaseName": "门禁加固版",
+  "releaseNotes": "1.03.24：工程门禁体系加固与文件拆分。①行宽门禁——80 列棘轮上线（check_file_length.sh 双 baseline：行数 + 列宽，列宽按字符数计，中文行不按字节误报），CI 与 pre-push 同款拦截，登记文件只许减不许增。②pre-push 钩子——新增 gofmt 检查（未格式化 Go 文件直接拦）与行数/列宽门禁前置（vet/test 之前秒级反馈）。③文件拆分——cloud.go/servarr.go/site.go/errcode codes.go 四个超标文件按职责拆出 cloud_sign.go/servarr_convert.go/parse_helpers.go/codes_backup.go，行数门禁 NEW OFFENDER 清零。④其余为全仓积压的多轮修复内容（错误码收口、OIDC 流程、备份导入、站点凭据等），随本版一并发布。",
   "isForced": false,
-  "publishedAt": "2026-10-04T16:00:00+08:00",
+  "publishedAt": "2026-10-18T12:00:00+08:00",
   "targets": {
     "docker": {
       "image": "ghcr.io/gntv456/pt-patronus:1.03.23",

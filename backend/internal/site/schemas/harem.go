@@ -26,7 +26,10 @@ func (n *NexusPHP) FetchInviteStatus(ctx context.Context, def *site.SiteMetadata
 	}
 	doc, resp, err := n.fetchDoc(ctx, baseURL, u, cookie)
 	if err != nil {
-		return &site.InviteStatus{Reason: "网络异常: " + err.Error()}, nil
+		// 从前这里返回「空 status + nil 错误」，原因塞进 InviteStatus.Reason——
+		// 而那个字段全仓无人读：链层据此判定成功，界面渲染成「剩余 0、权限 ✗」的假数据，
+		// 还把这次失败当成功结果缓存 30min。抓取失败必须把错误交回去。
+		return nil, err
 	}
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
@@ -126,7 +129,7 @@ func (m *MTeam) FetchInviteStatus(ctx context.Context, def *site.SiteMetadata,
 		} `json:"memberCount"`
 	}
 	if err := json.Unmarshal(data, &prof); err != nil {
-		return &site.InviteStatus{Reason: "解析失败"}, nil
+		return nil, fmt.Errorf("邀请库存响应解析失败：%w", err)
 	}
 	perm := toInt(jsonNumberString(prof.Invites))
 	temp := toInt(jsonNumberString(prof.LimitInvites))

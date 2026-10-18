@@ -25,8 +25,8 @@ async function run(fix: boolean) {
   else loading.value = true
   try {
     report.value = fix ? await systemApi.fixDoctor() : await systemApi.runDoctor()
-  } catch {
-    ElMessage.error(t('doctor.runFailed'))
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || t('doctor.runFailed'))
   } finally {
     loading.value = false
     fixing.value = false

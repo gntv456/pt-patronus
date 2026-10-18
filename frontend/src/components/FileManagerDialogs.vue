@@ -21,6 +21,7 @@ const form = defineModel<{
   agent_id: number
 }>('form', { required: true })
 const agents = defineModel<Agent[]>('agents', { required: true })
+const agentsError = defineModel<string>('agentsError', { required: true })
 const submitting = defineModel<boolean>('submitting', { required: true })
 const mkdirVisible = defineModel<boolean>('mkdirVisible', { required: true })
 const mkdirName = defineModel<string>('mkdirName', { required: true })
@@ -124,6 +125,9 @@ async function testConnection() {
             />
           </el-select>
         </el-form-item>
+        <div v-if="agentsError" class="hint" style="color: var(--el-color-danger)">
+          {{ t('fmd.agentsReadFail', { reason: agentsError }) }}
+        </div>
         <div class="hint">{{ t('fmd.agentHint') }}</div>
       </template>
       <template v-else-if="form.type === 'rclone'">

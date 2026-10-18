@@ -78,7 +78,10 @@ func (w *WxPusher) Send(ctx context.Context, msg Message) error {
 		Code int    `json:"code"`
 		Msg  string `json:"msg"`
 	}
-	if json.Unmarshal(raw, &be) == nil && be.Code != 1000 {
+	if err := decodeEnvelope("wxpusher", raw, &be); err != nil {
+		return err
+	}
+	if be.Code != 1000 {
 		return fmt.Errorf("wxpusher: code %d: %s", be.Code, be.Msg)
 	}
 	return nil

@@ -152,10 +152,15 @@ func (f *fakeAgentStore) RecordSnapshot(_ *models.MonitorTarget, m Metrics, _ er
 	f.snapshots++
 	return m, nil
 }
+func (f *fakeAgentStore) RecordProbe(*models.MonitorTarget, bool, error) error     { return nil }
 func (f *fakeAgentStore) UpdateRTSPURL(uint, string) error                         { return nil }
 func (f *fakeAgentStore) CreateAlert(*models.MonitorAlert) error                   { return nil }
 func (f *fakeAgentStore) ResolveOpenAlerts(uint, string) error                     { return nil }
 func (f *fakeAgentStore) LastOpenAlert(uint, string) (*models.MonitorAlert, error) { return nil, nil }
+
+func (f *fakeAgentStore) ActiveSilenceUntil(uint, string, time.Time) (*time.Time, error) {
+	return nil, nil
+}
 
 func noopNotifier(context.Context, string, string, string) {}
 

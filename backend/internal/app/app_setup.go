@@ -53,6 +53,7 @@ func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base
 		defsDir = defaultDefinitionsDir()
 	}
 	loadSiteDefinitions(registry, defsDir, defsDirExplicit)
+	warnBrokenSiteFilterPatterns(registry)
 	nexus := schemas.NewNexusPHP(hc)
 	registry.RegisterAdapter(nexus)
 	mteam := schemas.NewMTeam(hc)
@@ -274,6 +275,18 @@ func loadSiteDefinitions(registry *site.Registry, defsDir string, externalExplic
 		return
 	}
 	slog.Info("loaded external site definitions", "dir", defsDir, "total", len(registry.Definitions()))
+}
+
+// warnBrokenSiteFilterPatterns 启动期体检抓取规则里的正则：写错（如 RE2 不支持的 (?=…)）
+// 的那条规则永远提不出值，但抓取时并不会报错——原始文本会继续被 parse_size/parse_number
+// 抽成「整段里第一个数量」，界面上是一个完全合法的数字（错值，不是空值）。
+// 定义数量有界（几百个），启动时一次报清 site + 字段路径 + 原因，比抓取时刷一条光秃秃的
+// pattern 有用得多。
+func warnBrokenSiteFilterPatterns(registry *site.Registry) {
+	for _, bad := range registry.RecordFilterPatternDiagnostics() {
+		slog.Warn("site filter regexp does not compile; that rule can never extract a value",
+			"site", bad.Site, "path", bad.Path, "name", bad.Name, "pattern", bad.Pattern, "err", bad.Err)
+	}
 }
 
 // registerWorkflowNodes 注册全部工作流节点（RSS/搜索/过滤/下载/订阅/通知/HTTP/条件/

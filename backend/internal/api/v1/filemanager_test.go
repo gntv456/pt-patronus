@@ -135,3 +135,18 @@ func TestFileStorage_ParamValidation(t *testing.T) {
 		t.Fatalf("test 非法 id 应 400，got %d", rec.Code)
 	}
 }
+
+// TestFileManager_MissingStorageErrorIsChinese 回归：软失败面（200+{ok:false,error}）
+// 不得把 raw Go 错误 "record not found" 弹给中文界面用户。
+// 形状仍是 200（读列表失败要在原地显示而不是整页抛错），只本地化文案。
+func TestFileManager_MissingStorageErrorIsChinese(t *testing.T) {
+	r, _, _ := setupFileServer(t)
+	rec := doFS(t, r, http.MethodGet, "/file-storages/999/files?path=/", "")
+	body := rec.Body.String()
+	if !strings.Contains(body, "存储后端不存在") {
+		t.Fatalf("应给中文说明，got %s", body)
+	}
+	if strings.Contains(body, "record not found") {
+		t.Fatalf("不得回显 Go 原文，got %s", body)
+	}
+}

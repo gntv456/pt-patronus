@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -39,8 +40,14 @@ func TestConnectionsStream(t *testing.T) {
 	mm.Register(&fakeAdapter{schema: "nexusphp", ui: &site.UserInfo{Level: "VIP"}})
 	ch := NewSiteChain(NewBase(mm, event.New()), siteOp, site.NewRegistry())
 
+	// emit 由多站 goroutine 并发回调（链的契约：调用方自行串行化）——无锁 append 会丢帧。
+	var mu sync.Mutex
 	var got []SiteConnectionResult
-	ch.TestConnectionsStream(context.Background(), func(r SiteConnectionResult) { got = append(got, r) })
+	ch.TestConnectionsStream(context.Background(), func(r SiteConnectionResult) {
+		mu.Lock()
+		got = append(got, r)
+		mu.Unlock()
+	})
 
 	if len(got) != 3 {
 		t.Fatalf("emit count=%d, want 3", len(got))

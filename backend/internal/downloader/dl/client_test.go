@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -173,5 +174,38 @@ func TestDLBadPassword(t *testing.T) {
 	c := New(srv.URL, "", "wrong")
 	if err := c.TestConnection(context.Background()); err != downloader.ErrInvalidCredentials {
 		t.Fatalf("want ErrInvalidCredentials, got %v", err)
+	}
+}
+
+// TestDLAddFailureReturnsError Deluge add 失败返回 [false,"原因"]：此前只取 hash 不校验
+// ok，失败被当成功（RSS 标记已下载、辅种记 added）。
+func TestDLAddFailureReturnsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req struct {
+			Method string `json:"method"`
+		}
+		_ = json.Unmarshal(body, &req)
+		w.Header().Set("Content-Type", "application/json")
+		switch req.Method {
+		case "auth.login":
+			http.SetCookie(w, &http.Cookie{Name: "_session", Value: "s"})
+			_, _ = w.Write([]byte(rpcResp("true")))
+		case "web.connected":
+			_, _ = w.Write([]byte(rpcResp("true")))
+		case "core.add_torrent_url":
+			_, _ = w.Write([]byte(rpcResp(`[false,"Duplicate torrent"]`)))
+		default:
+			_, _ = w.Write([]byte(rpcResp("null")))
+		}
+	}))
+	defer srv.Close()
+	c := New(srv.URL, "", "secret")
+	err := c.AddTorrent(context.Background(), downloader.AddOptions{URL: "magnet:?xt=urn:btih:x"})
+	if err == nil {
+		t.Fatal("add 失败必须报错")
+	}
+	if !strings.Contains(err.Error(), "Duplicate torrent") {
+		t.Errorf("错误应含 Deluge 原因: %v", err)
 	}
 }

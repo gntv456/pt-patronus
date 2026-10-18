@@ -106,3 +106,38 @@ func TestUpdateEditableFieldsNullBool(t *testing.T) {
 		t.Errorf("best_version should be NULL, got %v", *got.BestVersion)
 	}
 }
+
+// HasAnyHit 按订阅维度判断「是否已推过种子」（电影洗版无画质信息时的基线判据）：
+// 必须只看本订阅，别把别的订阅的命中算进来。
+func TestHasAnyHitPerSubscription(t *testing.T) {
+	db := newSubDB(t)
+	if err := db.AutoMigrate(&models.SubscriptionHit{}); err != nil {
+		t.Fatal(err)
+	}
+	op := NewSubscriptionOper(db)
+	truth := true
+	s1 := &models.Subscription{Source: "tmdb", SourceID: "m:1", Title: "Movie A", Type: "movie",
+		Status: "subscribed", BestVersion: &truth}
+	s2 := &models.Subscription{Source: "tmdb", SourceID: "m:2", Title: "Movie B", Type: "movie",
+		Status: "subscribed", BestVersion: &truth}
+	for _, s := range []*models.Subscription{s1, s2} {
+		if err := op.Create(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, id := range []uint{s1.ID, s2.ID} {
+		if ok, err := op.HasAnyHit(id); err != nil || ok {
+			t.Fatalf("fresh subscription sub=%d: HasAnyHit=%v err=%v, want false/nil", id, ok, err)
+		}
+	}
+	if err := op.AddHit(&models.SubscriptionHit{SubscriptionID: s1.ID, TorrentKey: "k1", Title: "T"}); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := op.HasAnyHit(s1.ID); err != nil || !ok {
+		t.Errorf("after hit: HasAnyHit=%v err=%v, want true/nil", ok, err)
+	}
+	if ok, err := op.HasAnyHit(s2.ID); err != nil || ok {
+		t.Errorf("other subscription must stay false: HasAnyHit=%v err=%v", ok, err)
+	}
+}

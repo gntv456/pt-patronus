@@ -13,10 +13,21 @@ func NewAgentConversationOper(db *gorm.DB) *AgentConversationOper {
 	return &AgentConversationOper{db: db}
 }
 
+// AgentConvListLimit 会话清单单页上限。
+const AgentConvListLimit = 200
+
 // List 按更新时间倒序（最近活跃在前）。始终返回非 nil。
 func (o *AgentConversationOper) List() ([]models.AgentConversation, error) {
 	out := make([]models.AgentConversation, 0)
-	return out, o.db.Order("updated_at DESC").Limit(200).Find(&out).Error
+	return out, o.db.Order("updated_at DESC").Limit(AgentConvListLimit).Find(&out).Error
+}
+
+// Count 会话总数。清单有上限，不把总数带出去，侧栏就把「最近 200 个会话」
+// 画成「我用过的全部会话」，更早的会话在界面上找不到也删不掉。
+func (o *AgentConversationOper) Count() (int64, error) {
+	var n int64
+	err := o.db.Model(&models.AgentConversation{}).Count(&n).Error
+	return n, err
 }
 
 // Get 单条。

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -160,7 +161,7 @@ func TestGenerateCover(t *testing.T) {
 		t.Fatalf("NewClient: %v", err)
 	}
 	opt := CoverOptions{Cols: 2, Rows: 1, ThumbW: 50, ThumbH: 75}
-	data, err := GenerateCover(context.Background(), cli, "lib", opt)
+	data, _, err := GenerateCover(context.Background(), cli, "lib", opt)
 	if err != nil {
 		t.Fatalf("GenerateCover: %v", err)
 	}
@@ -296,13 +297,56 @@ func TestNormalizeTitle(t *testing.T) {
 }
 
 func TestGenerateCoverSkipBadImage(t *testing.T) {
+	poster := func() []byte {
+		img := solidImage(color.RGBA{R: 0, G: 200, B: 0, A: 255}, 60, 90)
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, img, nil); err != nil {
+			t.Fatalf("jpeg encode: %v", err)
+		}
+		return buf.Bytes()
+	}()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/Items":
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"Items":[{"Id":"1","Name":"A"}]}`)
+			_ = json.NewEncoder(w).Encode(map[string]any{"Items": []map[string]any{
+				{"Id": "1", "Name": "A"}, {"Id": "2", "Name": "B"},
+			}})
 		case r.URL.Path == "/Items/1/Images/Primary":
-			http.NotFound(w, r)
+			w.Header().Set("Content-Type", "image/jpeg")
+			_, _ = w.Write(poster)
+		default:
+			http.NotFound(w, r) // 第二张取不到
+		}
+	}))
+	defer srv.Close()
+	cli, err := NewClient(Server{Type: "emby", URL: srv.URL, Token: "T"}, newTestClient(t))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	data, st, err := GenerateCover(context.Background(), cli, "lib", CoverOptions{Cols: 2, Rows: 1, ThumbW: 20, ThumbH: 30})
+	if err != nil {
+		t.Fatalf("部分封面取不到时仍该出图: %v", err)
+	}
+	if ct := http.DetectContentType(data); ct != "image/jpeg" {
+		t.Errorf("content type = %q", ct)
+	}
+	// 账面必须把两种留黑原因分开（界面上的黑格子看不出区别，排障只能靠这份数）
+	if st.Items != 2 || st.Placed != 1 || st.FetchFail != 1 || st.NoImage != 0 {
+		t.Errorf("账面 = %+v，期望 items=2 placed=1 fetch_fail=1 no_image=0", st)
+	}
+}
+
+// #304：一张都没贴上时必须报错，不能回一张全黑的 200 成功图。
+// 黑图在界面上等于「这批新片都没有海报」，而真实情况常常是图片通道整个坏了（未授权/不可达）。
+func TestGenerateCoverAllImagesFailIsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Items":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"Items": []map[string]any{
+				{"Id": "1", "Name": "A"}, {"Id": "2", "Name": "B"},
+			}})
 		default:
 			http.NotFound(w, r)
 		}
@@ -312,12 +356,33 @@ func TestGenerateCoverSkipBadImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	data, err := GenerateCover(context.Background(), cli, "lib", CoverOptions{Cols: 1, Rows: 1, ThumbW: 20, ThumbH: 30})
-	if err != nil {
-		t.Fatalf("GenerateCover should tolerate bad image: %v", err)
+	data, st, err := GenerateCover(context.Background(), cli, "lib", CoverOptions{Cols: 2, Rows: 1, ThumbW: 20, ThumbH: 30})
+	if !errors.Is(err, ErrNoCoverPlaced) {
+		t.Fatalf("全失败应回 ErrNoCoverPlaced，got err=%v data=%d bytes", err, len(data))
 	}
-	if ct := http.DetectContentType(data); ct != "image/jpeg" {
-		t.Errorf("content type = %q", ct)
+	if len(data) != 0 {
+		t.Errorf("全失败不得返回图片字节（会被界面当成功渲染）")
+	}
+	if st.Placed != 0 || st.FetchFail != 2 {
+		t.Errorf("账面 = %+v，期望 placed=0 fetch_fail=2", st)
+	}
+	if !strings.Contains(err.Error(), "2") || !strings.Contains(err.Error(), "图片通道") {
+		t.Errorf("错误句子要带数字与下一步: %q", err.Error())
+	}
+	// 正控：库确实是空的 → 不算失败（空态与故障必须能分开）
+	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"Items":[]}`))
+	}))
+	defer empty.Close()
+	ecli, err := NewClient(Server{Type: "emby", URL: empty.URL, Token: "T"}, newTestClient(t))
+	if err != nil {
+		t.Fatalf("NewClient(empty): %v", err)
+	}
+	if _, est, eerr := GenerateCover(context.Background(), ecli, "lib", CoverOptions{Cols: 2, Rows: 1, ThumbW: 20, ThumbH: 30}); eerr != nil {
+		t.Errorf("空库不该报「取不到封面」: %v", eerr)
+	} else if est.Items != 0 {
+		t.Errorf("空库账面 items=%d，期望 0", est.Items)
 	}
 }
 

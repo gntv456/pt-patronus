@@ -126,10 +126,11 @@ func TestDashboardRecordStatIncludesRescueSeedingBonusPerHour(t *testing.T) {
 	if stat.UniqueGroups != 6 || stat.PerfectFLAC != 5 || stat.Invited != 4 {
 		t.Fatalf("community extras = unique_groups %d perfect_flac %d invited %d", stat.UniqueGroups, stat.PerfectFLAC, stat.Invited)
 	}
-	history, err := chain.History(context.Background(), 7, 30)
+	histRes, err := chain.History(context.Background(), 7, 30)
 	if err != nil {
 		t.Fatalf("History: %v", err)
 	}
+	history := histRes.Points
 	if len(history) != 1 || history[0].RescueSeedingBonusPerHour != 10 {
 		t.Fatalf("history rescue_seeding_bonus_per_hour = %+v, want one value 10", history)
 	}

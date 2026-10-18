@@ -18,6 +18,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/ws"
 	"gorm.io/gorm"
@@ -53,7 +54,7 @@ type Service struct {
 	sched    *scheduler.Scheduler
 	siteCh   *chain.SiteChain
 	siteOp   *oper.SiteOper
-	notif    *chain.NotificationChain
+	notif    notifier
 	regCh    *chain.RegistrationChain
 	keepSeed keepSeedRunner // 定时自动辅种（nil 则跳过）
 	db       *gorm.DB
@@ -67,6 +68,7 @@ type Service struct {
 	assessCh *chain.AssessmentChain // 聚合快照复用 uid 跑考核（nil 则跳过 assessment）
 	// hxcardPush 守护神名片自动推送（site-snapshot 末尾触发；nil 跳过。闭包内已含开关/密钥判断）
 	hxcardPush func(ctx context.Context)
+	hrGapDay   string // H&R 漏检自曝的当日去重标记（进程内，重启后当天再提示一次可接受）
 }
 
 // SetHxCardPush 注入守护神名片自动推送闭包（app 装配时；nil 安全）。
@@ -76,7 +78,7 @@ func (s *Service) SetHxCardPush(fn func(ctx context.Context)) {
 
 // New 构造服务。rootCtx 用于任务执行（随进程关闭取消）。
 func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteOper,
-	notif *chain.NotificationChain, regCh *chain.RegistrationChain, keepSeed keepSeedRunner,
+	notif notifier, regCh *chain.RegistrationChain, keepSeed keepSeedRunner,
 	db *gorm.DB, cfg Config,
 	rootCtx context.Context, hub *ws.Hub, hxptAuth auth.HxptAuthenticator, crypto *security.Crypto,
 	notice *notice.Service, cfgOp *oper.SystemConfigOper, assessCh *chain.AssessmentChain) *Service {
@@ -154,3 +156,10 @@ func (s *Service) Start() {
 
 // runStatsSync 已并入 site-snapshot 聚合任务（dispatchSnapshotSite → recordStat）。
 // humanBytes / recordStat 见 stats.go。
+
+// notifier 是自动化域要用的通知能力（链层 NotificationChain 天然满足）。
+// 抽成接口是为了让失败出声这条判据可测：此前 runKeepSeed 的两处失败出口只写日志，
+// 而「读设置失败」那处会通知——形状不一致，且测试无法验证后两处（#352）。
+type notifier interface {
+	Notify(ctx context.Context, msg notification.Message) []notification.SendResult
+}

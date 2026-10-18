@@ -3,6 +3,7 @@ import 'package:ptpatronus/api/brushflow.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/filter_rules.dart';
 import 'package:ptpatronus/api/site.dart';
+import 'package:ptpatronus/features/common/capped_list_notice.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
@@ -68,9 +69,18 @@ class _BrushFlowPageState extends State<BrushFlowPage> with BrushFlowOpsMixin {
 
   Future<void> _showSeeds(BrushFlowTask t) async {
     List<BrushFlowSeed> seeds = [];
+    String notice = '';
     String? err;
     try {
-      seeds = await _api.seeds(t.id);
+      final page = await _api.seedsPage(t.id);
+      seeds = page.items;
+      notice = cappedListNotice(
+        shown: page.items.length,
+        total: page.total,
+        truncated: page.truncated,
+        unknownTotal: (n) => '已显示最近 $n 条种子记录，但总数读取失败——可能还有更多',
+        knownTotal: (n, total) => '仅显示最近 $n 条种子记录（该任务共 $total 条，更早的未加载）',
+      );
     } catch (e) {
       err = '$e';
     }
@@ -100,6 +110,14 @@ class _BrushFlowPageState extends State<BrushFlowPage> with BrushFlowOpsMixin {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (notice.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(
+                  notice,
+                  style: TextStyle(fontSize: 12, color: context.dimText),
+                ),
+              ),
             for (final s in seeds)
               ListTile(
                 dense: true,

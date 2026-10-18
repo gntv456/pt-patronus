@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -36,10 +36,13 @@ const {
   targets,
   selectedTarget,
   localAvailable,
+  localStatusHint,
   loading,
   error,
   data,
   stats,
+  statsError,
+  statsLastOkAt,
   projectCount,
   sshTargets,
   loadTargets,
@@ -52,6 +55,11 @@ const {
   resetHistory,
   initLocalAvailability,
 } = useDockerData(() => mode.value)
+
+// 资源条的「停更」水位：只显示真成功过的时刻，从没成功过时不谎报时间。
+function statsWatermark(): string {
+  return statsLastOkAt.value ? new Date(statsLastOkAt.value).toLocaleTimeString() : '--:--:--'
+}
 const activeTab = ref<'containers' | 'images' | 'volumes' | 'networks' | 'projects'>('containers')
 const searchText = ref('')
 const stateFilter = ref<'all' | 'running' | 'stopped'>('all')
@@ -153,7 +161,7 @@ const {
 )
 
 // 初始化/商店选中/模式切换拆出 useDockerOpsInit
-const { openAppStore, onStoreComposeSelected, onStoreTemplateSelected, copyDockerSockHint, switchMode } =
+const { openAppStore, onStoreComposeSelected, onStoreTemplateSelected, copyDockerSockHint, switchMode, reprobe } =
   useDockerOpsInit({
     mode,
     selectedTarget,
@@ -167,6 +175,10 @@ const { openAppStore, onStoreComposeSelected, onStoreTemplateSelected, copyDocke
     refresh,
     startStatsPolling,
     resetHistory,
+    // 挂载时的那次探测交给它（判据只有 useDockerData 里那一份）：工具栏那句
+    // 「为什么不可用 + 该怎么办」来自这次探测的 error（#249 实测到的是「解构了却没调用」，
+    // 所以这里必须由挂载真的调起来，渲染层用例盯着这条）。
+    probeLocalAvailability: initLocalAvailability,
     t: (k: string) => t(k),
   })
 
@@ -181,14 +193,20 @@ onBeforeUnmount(() => {
     <OpsDockerToolbar
       :mode="mode"
       :local-available="localAvailable"
+      :local-hint="localStatusHint"
       :selected-target="selectedTarget"
       :ssh-targets="sshTargets"
       :loading="loading"
       :error="error"
       @update:selected-target="selectedTarget = $event"
       @switch-mode="switchMode"
-      @refresh="refresh"
+      @refresh="reprobe"
     />
+
+    <!-- 统计读失败：容器列表可能照常显示，但 CPU/内存已经是「—」，得说清为什么停更（#245）。 -->
+    <div v-if="statsError" class="docker-stats-warn glass">
+      {{ t('opsdocker.statsStale', { reason: statsError, time: statsWatermark() }) }}
+    </div>
 
     <template v-if="!selectedTarget && sshTargets.length === 0 && !localAvailable">
       <div class="docker-empty glass">

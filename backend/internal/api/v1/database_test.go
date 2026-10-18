@@ -54,8 +54,11 @@ func TestDatabaseTables(t *testing.T) {
 	for _, tb := range resp.Tables {
 		if tb.Name == "users" {
 			found = true
-			if tb.RowCount != 2 {
-				t.Errorf("users row_count = %d, want 2", tb.RowCount)
+			// #397 RowCount 变成 *int64（nil = 数不出来）。成功路径仍必须给出真实行数。
+			if tb.RowCount == nil {
+				t.Error("users row_count = nil, want 2")
+			} else if *tb.RowCount != 2 {
+				t.Errorf("users row_count = %d, want 2", *tb.RowCount)
 			}
 		}
 	}

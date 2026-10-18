@@ -116,3 +116,12 @@ func (o *RegistrationOper) UpdateStatus(id uint, open bool) (*bool, error) {
 	}
 	return prev, nil
 }
+
+// TouchChecked 只刷新「最近查过」时间戳，保留 last_open。
+// 用于本轮无法判定（被拦截 / 页面认不出标记）的情况：状态不动，就不会把已开放的站写成
+// 关闭、下一轮读通又重复提醒。
+func (o *RegistrationOper) TouchChecked(id uint) error {
+	return o.db.Model(&models.RegistrationWatch{}).
+		Where("id = ?", id).
+		Update("last_checked_at", time.Now()).Error
+}

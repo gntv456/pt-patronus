@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,10 +26,11 @@ func probeDuration(ctx context.Context, video string) (float64, error) {
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
 		video)
-	var stdout bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("ffprobe: %v", err)
+		return 0, ffprobeError(err, stderr.String())
 	}
 	s := strings.TrimSpace(stdout.String())
 	if s == "" {
@@ -175,7 +177,7 @@ func (p *playletCategoryPlugin) ExecuteAction(ctx context.Context, rt Runtime, a
 	case "status":
 		return p.snapshotStatus(), nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 
@@ -319,4 +321,17 @@ func (p *playletCategoryPlugin) doScan(ctx context.Context, rt Runtime, cfg map[
 		p.setStatus(res.scanned, res.moved, len(res.errors))
 	}
 	return res, nil
+}
+
+// ffprobeError 分清两种「拿不到时长」：宿主机根本没装 ffmpeg（可操作：装或停用插件），
+// 与这一次探测失败（原因在 stderr——`ffprobe -v error` 的诊断信息全走 stderr，
+// 从前只留 exit status 1，用户与日志都不知道是文件不存在、格式不支持还是超时被杀）。
+func ffprobeError(err error, stderr string) error {
+	if errors.Is(err, exec.ErrNotFound) {
+		return fmt.Errorf("未找到 ffprobe：该插件需要宿主机安装 ffmpeg，请安装后重试，或在插件页停用「短剧分类」")
+	}
+	if msg := strings.TrimSpace(stderr); msg != "" {
+		return fmt.Errorf("ffprobe: %v: %s", err, msg)
+	}
+	return fmt.Errorf("ffprobe: %v", err)
 }

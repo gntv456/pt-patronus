@@ -62,16 +62,29 @@ func doSubt(t *testing.T, r *gin.Engine, method, path, body string) *httptest.Re
 	return w
 }
 
-// TestSubtitle_SearchValidation 搜索必填校验。
+// TestSubtitle_SearchValidation 搜索必填校验 + 「打真字幕站」的结果契约。
+// 有 q 这一支会真的外呼（subhd/zimuku 不需要凭据就发请求），所以只断言两态之一：
+// 200（有 results，可能确实没字幕）或 502（源没答话，带本域码与逐源原因）。
+// 明令禁止 500：修复前全源失败被抹成「200 + 空结果」（假绿），修好后离线/被墙的执行会拿到 502 ——
+// 两种都算通过，只有「服务内部错误」这种既不给原因也指不出方向的回法是红。
 func TestSubtitle_SearchValidation(t *testing.T) {
 	r := setupSubtitleServer(t)
 	if rec := doSubt(t, r, http.MethodGet, "/subtitle/search?q=", ""); rec.Code != http.StatusBadRequest {
 		t.Fatalf("缺 q 应 400，got %d", rec.Code)
 	}
-	// 有 q：空源集合 → 空结果（不 5xx）
 	rec := doSubt(t, r, http.MethodGet, "/subtitle/search?q=test&language=chs", "")
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "results") {
-		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	code, body := rec.Code, rec.Body.String()
+	switch code {
+	case http.StatusOK:
+		if !strings.Contains(body, "results") {
+			t.Fatalf("200 必须带 results 字段，got %s", body)
+		}
+	case http.StatusBadGateway:
+		if !strings.Contains(body, "subtitle_sources_failed") || !strings.Contains(body, "原因：") {
+			t.Fatalf("502 必须带本域码与逐源原因，got %s", body)
+		}
+	default:
+		t.Fatalf("只许 200 或 502，got %d body=%s", code, body)
 	}
 }
 

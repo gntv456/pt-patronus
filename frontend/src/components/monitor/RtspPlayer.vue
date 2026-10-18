@@ -3,12 +3,16 @@ import { useI18n } from 'vue-i18n'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import { authApi } from '@/api/auth'
+import { assetsReady, assetUrl } from '@/utils/jessibucaAssets'
 
 // RtspPlayer — jessibuca(wasm) 播放器封装：动态加载 public/jessibuca/ 资源，连后端 RTSP→WS 代理播放。
 const { t } = useI18n()
 const props = defineProps<{ target: MonitorTarget }>()
 const containerRef = ref<HTMLDivElement>()
 const err = ref('')
+// 资源尚未就位（首次使用，后端正在按需下载）：这不是故障，不该走重连退避。
+// 直接继续发起播放请求即可——后端会等下载完成再响应，这里只是先给个「准备中」提示。
+const assetsPending = ref(false)
 type JessibucaPlayer = {
   destroy: () => void
   play: (u: string) => void
@@ -32,16 +36,19 @@ function scheduleReconnect() {
   reconnects++
   err.value = t('rp.reconnecting')
   window.clearTimeout(reconnectTimer)
-  reconnectTimer = window.setTimeout(() => {
-    if (stopped) return
-    try {
-      player?.destroy()
-    } catch {
-      /* ignore */
-    }
-    player = null
-    start()
-  }, Math.min(2000 * reconnects, 10000))
+  reconnectTimer = window.setTimeout(
+    () => {
+      if (stopped) return
+      try {
+        player?.destroy()
+      } catch {
+        /* ignore */
+      }
+      player = null
+      start()
+    },
+    Math.min(2000 * reconnects, 10000),
+  )
 }
 
 function loadScript(src: string): Promise<void> {
@@ -61,8 +68,12 @@ async function start() {
     err.value = t('rp.noRtsp')
     return
   }
+  // 先探一次只为显示状态，不阻断：资源不在镜像里，由后端按需下载，
+  // 首次播放请求会阻塞到下载完成为止。探测失败也照常发起播放。
+  assetsPending.value = !(await assetsReady())
+  err.value = assetsPending.value ? t('rp.assetsPending') : ''
   try {
-    await loadScript('/jessibuca/jessibuca.js')
+    await loadScript(assetUrl('jessibuca.js'))
     const w = window as unknown as {
       Jessibuca?: new (o: object) => JessibucaPlayer
       JessibucaPro?: new (o: object) => JessibucaPlayer
@@ -74,7 +85,7 @@ async function start() {
       videoBuffer: 0.2,
       isResize: true,
       loadingText: t('rp.connecting'),
-      decoder: '/jessibuca/decoder.js',
+      decoder: assetUrl('decoder.js'),
       timeout: 15,
     })
     player = p
@@ -106,7 +117,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="rtsp-wrap">
     <div ref="containerRef" class="rtsp-player"></div>
-    <div v-if="err" class="rtsp-err">{{ err }}</div>
+    <div v-if="err" class="rtsp-err">
+      <template v-if="assetsPending">
+        <p class="rtsp-err-main">{{ t('rp.assetsPending') }}</p>
+        <p class="rtsp-err-note">{{ t('rp.assetsPendingHint') }}</p>
+      </template>
+      <template v-else>{{ err }}</template>
+    </div>
   </div>
 </template>
 
@@ -122,6 +139,15 @@ onBeforeUnmount(() => {
 .rtsp-player {
   width: 100%;
   height: 100%;
+}
+.rtsp-err-main {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.rtsp-err-note {
+  font-size: var(--fs-xs);
+  opacity: 0.85;
+  margin: 4px 0;
 }
 .rtsp-err {
   position: absolute;

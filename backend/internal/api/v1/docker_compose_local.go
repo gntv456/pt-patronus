@@ -20,7 +20,12 @@ import (
 // 支持两种输入：
 //   - content：直接粘贴 compose 内容（写到临时文件执行，最常用）
 //   - path：容器内可访问的 compose 文件路径（需挂载宿主目录）
-type LocalComposeHandler struct{}
+type LocalComposeHandler struct {
+	// output 是 compose CLI 的执行替身缝（nil 走真 CombinedOutput）。
+	// 有这个缝才能在不启动 docker/daemon 的前提下，证明「detached 的执行上下文
+	// 真的传到了 exec 那一步」——从前这条只有推断，没有红证。见 runCompose。
+	output composeOutputFunc
+}
 
 func NewLocalComposeHandler() *LocalComposeHandler {
 	return &LocalComposeHandler{}
@@ -37,6 +42,16 @@ type composeContentRequest struct {
 // localComposeDir 存放临时 compose 文件的目录。
 const localComposeDir = "/app/data/compose"
 
+// detachedAction 给「已下发、必须由服务端做完」的动作用：客户端一断开（切页、刷新、
+// 或前端 15s 超时先到）就取消请求上下文，会把正在执行的 `docker compose up -d` /
+// 前端 15s 超时先到）不该取消它——compose up/down 由 CLI 逐步编排，中途 SIGKILL
+// 会留下建了一半的容器与网络；stop/rm/rmi/pull 被掐则多半已在守护进程侧发生，
+// 界面却报失败（假红），用户只能重试。
+// 沿用本仓既有口径（ops_command_run.go、monitor/power.go、brushflow 同型修法）。
+func detachedAction(req context.Context) context.Context {
+	return context.WithoutCancel(req)
+}
+
 // runComposeCLI 执行 docker compose 命令，返回合并输出。
 // workDir 是 compose 文件所在目录。
 func (h *LocalComposeHandler) runComposeCLI(ctx context.Context, action, workDir, projectName string) (string, error) {
@@ -49,8 +64,7 @@ func (h *LocalComposeHandler) runComposeCLI(ctx context.Context, action, workDir
 	cmd.Dir = workDir
 	// 通过 socket 连 daemon（不用宿主机 docker daemon 的默认 socket 路径可能不同）
 	cmd.Env = append(os.Environ(), "DOCKER_HOST=unix:///var/run/docker.sock")
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return h.runCompose(ctx, cmd)
 }
 
 // ComposeUp 执行 docker compose up -d（粘贴内容模式）。
@@ -67,7 +81,7 @@ func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {
 	}
 	defer cleanup()
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(detachedAction(c.Request.Context()), 5*time.Minute)
 	defer cancel()
 	// up 带 -d（detached）
 	out, err := h.runComposeCLIWithFlags(ctx, workDir, in.Name, []string{"up", "-d"})
@@ -97,7 +111,7 @@ func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 	}
 	defer cleanup()
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(detachedAction(c.Request.Context()), 3*time.Minute)
 	defer cancel()
 	out, err := h.runComposeCLIWithFlags(ctx, workDir, in.Name, []string{"down"})
 	if err != nil {
@@ -141,8 +155,7 @@ func (h *LocalComposeHandler) runComposeCLIWithFlags(ctx context.Context, workDi
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Dir = workDir
 	cmd.Env = append(os.Environ(), "DOCKER_HOST=unix:///var/run/docker.sock")
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return h.runCompose(ctx, cmd)
 }
 
 // projectNameRe 项目名只允许字母数字下划线连字符。

@@ -33,6 +33,35 @@ func NewCrypto(seed string) *Crypto {
 	return &Crypto{key: deriveKey(seed, hkdfInfoAES), legacyKey: sum[:]}
 }
 
+// hkdfInfoJWT JWT 签名密钥的 HKDF info（域分隔）。
+//
+// #406 补记：hkdfInfoAES 上面那句「与 JWT 签名密钥同源不同派生」此前**只在 AES 侧成立** ——
+// Crypto 派生过，而 NewJWT 直接吃 []byte(SECRET_KEY)。也就是说 JWT 签名密钥与
+// AES-at-rest 密钥的派生方式完全不同、却没有真正隔离。现在 JWT 侧也走 HKDF（信息串不同），
+// 两者才是真的「同源不同派生」。
+const hkdfInfoJWT = "ptpatronus:jwt-hs256:v1"
+
+// hkdfInfoDirectLink 云盘直链签名密钥（302 公开端点即凭证，同样要隔离）。
+//
+// 这条链路此前是 SetDirectLinkSignKey([]byte(cfg.SecretKey)) —— 第三个直接吃
+// SECRET_KEY 原始字节的地方。直链 URL 会出现在 .strm 文件里、能被播放器读出去，
+// 所以它的密钥泄漏面比 JWT 更宽，更不该与 AES/JWT 共用同一段原始密钥。
+const hkdfInfoDirectLink = "ptpatronus:directlink-hmac:v1"
+
+// DeriveKey 暴露按域分隔派生 32 字节密钥的口子。
+//
+// 给 JWT 签名与直链 HMAC 用（见 #406）：它们此前都直接吃 []byte(cfg.SecretKey)，
+// 与 AES-at-rest 没有任何派生隔离。deriveKey 本来是包内私有的，加这个导出口是为了
+// 让「派生规则集中在 crypto.go 一处」——新增用途时必须给新的 info 串，不许复用既有的。
+//
+// 注意：改了 info 串等于换了密钥 ⇒ 已签发的 JWT / 已生成的 .strm 直链会失效。
+// 所以 info 串带 vN 版本后缀，改算法时升版本号，别就地改。
+func DeriveKey(seed, info string) []byte { return deriveKey(seed, info) }
+
+// HKDFInfoJWT / HKDFInfoDirectLink 供 app 装配时用（避免信息串散落两处写错）。
+func HKDFInfoJWT() string        { return hkdfInfoJWT }
+func HKDFInfoDirectLink() string { return hkdfInfoDirectLink }
+
 // deriveKeyHKDF 用 HKDF-SHA256 从 seed 派生 32 字节密钥。
 func deriveKey(seed, info string) []byte {
 	prk := hkdfExtract(seed)

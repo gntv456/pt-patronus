@@ -8,8 +8,14 @@ import { fmtTime } from '@/utils/format'
 // 23 类事件源）。source→emoji 映射常见来源，未匹配用通用铃铛。
 const { t } = useI18n()
 const items = ref<Notice[]>([])
+const failed = ref(false)
 async function load() {
-  const all = await noticeApi.list().catch(() => [] as Notice[])
+  failed.value = false
+  const all = await noticeApi.list().catch(() => {
+    // 读不到通知中心 ≠ 近期没有活动：不标记就会把故障画成空时间线。
+    failed.value = true
+    return [] as Notice[]
+  })
   items.value = all.slice(0, 30)
 }
 onMounted(load)
@@ -20,6 +26,16 @@ const SOURCE_ICON: Record<string, string> = {
   transfer_done: '🎬',
   transfer_fail: '⚠️',
   subscribe_hit: '🎯',
+  subscribe_list_fail: '⛔',
+  rss_list_fail: '⛔',
+  strm_list_fail: '⛔',
+  brushflow_list_fail: '⛔',
+  contract_list_fail: '⛔',
+  dirsync_list_fail: '⛔',
+  brushflow: '🧹',
+  cloud: '☁️',
+  contract: '📜',
+  mediaserver: '📺',
   rss_hit: '📰',
   workflow: '⚙️',
   reseed_done: '🌱',
@@ -31,6 +47,7 @@ const SOURCE_ICON: Record<string, string> = {
   site_offline: '🔴',
   host_offline: '🔴',
   nas_offline: '🔴',
+  camera_offline: '📹',
   backup_done: '💾',
   backup_import: '💾',
   site_anniv: '🎂',
@@ -58,6 +75,7 @@ function shortTime(s: string): string {
         <h3>{{ t('dat.title') }}</h3>
         <p>{{ t('dat.sub') }}</p>
       </div>
+      <span v-if="failed" class="dc-tag">{{ t('common.loadFailed') }}</span>
     </div>
 
     <div v-if="items.length" class="timeline">

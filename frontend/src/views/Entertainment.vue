@@ -53,8 +53,9 @@ async function loadSites() {
         currentSite.value = sites.value[0].id
       }
     }
-  } catch {
-    ElMessage.error(t('entertainment.loadSitesFailed'))
+  } catch (e: unknown) {
+    // 优先用后端给的原因（例如 ENTERTAINMENT_ENABLED=false 的 503 说明），泛化文案只兜底
+    ElMessage.error((e as Error).message || t('entertainment.loadSitesFailed'))
   }
 }
 const pendingGame = ref<string | undefined>()
@@ -75,9 +76,9 @@ async function loadGames() {
       (pendingGame.value && games.value.some((g) => g.id === pendingGame.value) ? pendingGame.value : undefined) ??
       games.value[0]?.id
     pendingGame.value = undefined
-  } catch {
+  } catch (e: unknown) {
     if (seq !== gamesSeq) return
-    ElMessage.error(t('entertainment.loadGamesFailed'))
+    ElMessage.error((e as Error).message || t('entertainment.loadGamesFailed'))
   } finally {
     if (seq === gamesSeq) loading.value = false
   }

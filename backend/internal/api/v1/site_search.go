@@ -25,12 +25,12 @@ func (h *SiteHandler) Search(c *gin.Context) {
 	page := atoiDefault(c.Query("page"), 1)
 	s, err := h.oper.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.oper)
 		return
 	}
 	ts, err := h.siteCh.Search(c.Request.Context(), s, keyword, category, page)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"torrents": []any{}, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"torrents": []any{}, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"torrents": ts})
@@ -47,7 +47,14 @@ func (h *SiteHandler) SearchAll(c *gin.Context) {
 	}
 	category := c.Query("category") // movie/tv/music（空=综合）
 	siteIDs := parseUintSlice(c.Query("site_ids"))
-	results := h.siteCh.SearchSites(c.Request.Context(), keyword, category, siteIDs)
+	results, err := h.siteCh.SearchSites(c.Request.Context(), keyword, category, siteIDs)
+	if err != nil {
+		errcode.Respond(c, errcode.Internal.WithErr(err))
+		return
+	}
+	if results == nil {
+		results = []chain.SiteResult{}
+	}
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
 
@@ -63,10 +70,14 @@ func (h *SiteHandler) SearchAllStream(c *gin.Context) {
 	category := c.Query("category")
 	siteIDs := parseUintSlice(c.Query("site_ids"))
 	emit := beginSSE(c.Writer)
-	h.siteCh.SearchSitesStream(c.Request.Context(), keyword, category, siteIDs, func(r chain.SiteResult) {
+	listErr := h.siteCh.SearchSitesStream(c.Request.Context(), keyword, category, siteIDs, func(r chain.SiteResult) {
 		emit("batch", gin.H{"results": []chain.SiteResult{r}})
 	})
-	emit("done", gin.H{})
+	done := gin.H{}
+	if listErr != "" {
+		done["list_error"] = listErr
+	}
+	emit("done", done)
 }
 
 // TorrentDetail 抓取并解析单条种子详情页（?url=<详情页绝对 URL>）。
@@ -83,13 +94,23 @@ func (h *SiteHandler) TorrentDetail(c *gin.Context) {
 	}
 	s, err := h.oper.Get(id)
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.oper)
 		return
 	}
 	d, err := h.siteCh.TorrentDetail(c.Request.Context(), s, detailURL)
 	if err != nil {
-		// 502：目标站点详情页抓取/解析失败，非客户端参数错误。
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
+		// #399 归统一判据 respondFetchError，不再自己抄一份 WithErr。
+		//
+		// 旧形状（裸 BadGateway.WithErr）有两处错：
+		//  1. **绕过 SSRF 分档**：站点建在内网被守卫拦下时，也只回「上游服务不可用」，
+		//     而用户唯一能做的动作（换公网地址或开 ALLOW_PRIVATE_SITES）没被说出来；
+		//  2. **不认凭据哨兵**：TorrentDetail 链层第一步就是 credentialWithErr，
+		//     主密钥换过时那句「请到『站点』里重新保存凭据；本次未向站点发请求」
+		//     被整段丢进日志，界面只见「上游服务不可用，请稍后重试」。
+		//
+		// 与 message 的四个出口同型（同一份「抓站点」判据），故走同一个函数，
+		// 而不是在这里再抄一遍 errors.Is ——#377 的教训正是「哨兵铺开了、出口没跟上」。
+		respondFetchError(c, err, errcode.BadGateway)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": d})
@@ -178,5 +199,14 @@ func (h *SiteHandler) Definitions(c *gin.Context) {
 		// aka/description/tags：含中文名别名与描述，供 UI 搜索（很多站 name 是英文，靠 aka 中文名才能检索到）。
 		out = append(out, gin.H{"id": d.ID, "name": d.Name, "schema": d.Schema, "dead": d.Dead, "urls": d.URLs, "aka": d.AKA, "description": d.Description, "tags": d.Tags})
 	}
-	c.JSON(http.StatusOK, gin.H{"definitions": out})
+	// diagnostics：四类「站点定义被静默忽略」的账面（正则编不出来 / 未知键 / 同目录重复 id /
+	// 子目录没读）。只有日志时用户看到的是「这个站抓不到东西」，界面读到了才看得出「有 N 条规则没生效」。
+	c.JSON(http.StatusOK, gin.H{"definitions": out, "diagnostics": h.reg.Diagnostics()})
+}
+
+// DefinitionDiagnostics 单独给出「站点定义被静默忽略」的账面（四类：正则编不出来 /
+// 未知键 / 同目录重复 id / 子目录没读）。独立端点是为了让界面能廉价地只拉这一小张表，
+// 不必把 300 多条定义整个再读一遍。
+func (h *SiteHandler) DefinitionDiagnostics(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"diagnostics": h.reg.Diagnostics()})
 }

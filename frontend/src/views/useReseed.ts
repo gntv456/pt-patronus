@@ -22,6 +22,10 @@ export function useReseed() {
   const selectedDl = ref<number | null>(null)
   const reseeding = ref(false)
   const tasks = ref<ReseedTask[]>([])
+  // 后端单次最多返回 500 条候选：被截断时表头必须说清「这是最近 500 条，一共 N 条」，
+  // 否则部分会被渲染成全部，清完这 500 条后还谎报「没有待处理候选」。
+  const taskTotal = ref<number | null>(null)
+  const tasksTruncated = ref(false)
   const loadingTasks = ref(false)
   const route = useRoute()
   const focusSiteId = computed(() => {
@@ -108,9 +112,15 @@ export function useReseed() {
   async function loadTasks() {
     loadingTasks.value = true
     try {
-      tasks.value = await reseedApi.tasks(statusFilter.value, focusSiteId.value)
+      const res = await reseedApi.tasks(statusFilter.value, focusSiteId.value)
+      tasks.value = res.tasks
+      taskTotal.value = res.total
+      tasksTruncated.value = res.truncated
     } catch {
       ElMessage.warning('任务列表加载失败')
+      tasks.value = []
+      taskTotal.value = null
+      tasksTruncated.value = false
     } finally {
       loadingTasks.value = false
     }
@@ -247,6 +257,8 @@ export function useReseed() {
     selectedDl,
     reseeding,
     tasks,
+    taskTotal,
+    tasksTruncated,
     loadingTasks,
     focusSiteId,
     focusSiteName,

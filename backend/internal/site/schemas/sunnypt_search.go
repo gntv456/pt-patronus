@@ -61,14 +61,11 @@ func (g *GenericJSON) SearchSunnypt(ctx context.Context, def *site.SiteMetadata,
 		tail = tail[:2048]
 	}
 	slog.Debug("sunnypt torrent/list", "status", st, "keyword", keyword, "len", len(body), "body", tail)
-	var wrap struct {
-		Code int             `json:"code"`
-		Data json.RawMessage `json:"data"`
+	data, err := sunnyData(body, st)
+	if err != nil {
+		return nil, err
 	}
-	if json.Unmarshal(body, &wrap) != nil || wrap.Code != 0 {
-		return []site.Torrent{}, nil
-	}
-	items := sunnyItems(wrap.Data)
+	items := sunnyItems(data)
 	out := make([]site.Torrent, 0, len(items))
 	for _, it := range items {
 		t := sunnyItemToTorrent(it)

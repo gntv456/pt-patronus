@@ -122,7 +122,7 @@ func (p *plexSuitePlugin) ExecuteAction(ctx context.Context, rt Runtime, action 
 		}
 		return map[string]any{"ok": true, "results": results, "server_url": s.ServerURL}, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }
 

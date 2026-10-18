@@ -322,18 +322,18 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 		slog.Error("workflow run record create failed", "id", id, "err", err)
 	}
 
-	// 解析图
-	var gnodes []workflow.GraphNode
-	var edges []workflow.GraphEdge
-	_ = json.Unmarshal([]byte(wf.Nodes), &gnodes)
-	_ = json.Unmarshal([]byte(wf.Edges), &edges)
+	// 解析库里的图（坏图必须记 failed 而非「什么都不跑然后 success」，见 parseGraphStrict）。
+	gnodes, edges, runErr := parseGraphStrict(wf)
 
 	ecx := &workflow.Context{Variables: map[string]any{"trigger": trigger}}
 	for k, v := range eventData {
 		ecx.Variables[k] = v
 	}
 
-	logEntries, runErr := c.exec.Run(rctx, gnodes, edges, ecx)
+	var logEntries []workflow.LogEntry
+	if runErr == nil {
+		logEntries, runErr = c.exec.Run(rctx, gnodes, edges, ecx)
+	}
 
 	state := "success"
 	result := strings.Join(ecx.Messages, "\n")
@@ -364,9 +364,13 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 
 	if runErr != nil && c.notice != nil {
 		nc, ncancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// 按「工作流 + 当天」去重：分钟级定时器每轮都发一条的话一天能刷 1440 条同名通知，
+		// 用户只会把通知关掉（那比漏报更糟）。逐轮完整原因仍留在 workflow_run 记录里。
 		_ = c.notice.Notice(nc, notice.Input{
-			Source: notice.SourceWorkflow, Title: "工作流执行失败：" + wf.Name, Body: result, Level: "warning",
-		}, false)
+			Source: notice.SourceWorkflow,
+			Key:    fmt.Sprintf("fail:%d:%s", id, time.Now().Format("2006-01-02")),
+			Title:  "工作流执行失败：" + wf.Name, Body: result, Level: "warning",
+		}, true)
 		ncancel()
 	}
 	slog.Info("workflow run done", "id", id, "name", wf.Name, "state", state, "duration_ms", run.DurationMS)
@@ -376,6 +380,11 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 // ListRuns 运行历史。
 func (c *WorkflowChain) ListRuns(workflowID uint, limit int) ([]models.WorkflowRun, error) {
 	return c.runOp.ListByWorkflow(workflowID, limit)
+}
+
+// CountRuns 某工作流的运行总数（与 ListRuns 同筛选）。
+func (c *WorkflowChain) CountRuns(workflowID uint) (int64, error) {
+	return c.runOp.CountByWorkflow(workflowID)
 }
 
 // GetRun 单次运行详情。

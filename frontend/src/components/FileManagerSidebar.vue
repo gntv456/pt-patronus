@@ -11,6 +11,9 @@ const { t } = useI18n()
 defineProps<{
   list: StorageItem[]
   loading: boolean
+  drivesFailed?: boolean
+  fsFailed?: boolean
+  fsForbidden?: boolean
   current: StorageItem | null
   itemKey: (it: StorageItem) => string
   itemIcon: (it: StorageItem) => string
@@ -75,7 +78,10 @@ const emit = defineEmits<{
           </template>
         </el-dropdown>
       </div>
-      <div v-if="!list.length && !loading" class="sb-empty">
+      <div v-if="fsForbidden" class="sb-fail">{{ t('filemanager.storagesAdminOnly') }}</div>
+      <div v-else-if="fsFailed" class="sb-fail">{{ t('common.loadFailed') }}</div>
+      <div v-if="drivesFailed" class="sb-fail">{{ t('common.loadFailed') }}</div>
+      <div v-if="!list.length && !loading && !drivesFailed && !fsFailed && !fsForbidden" class="sb-empty">
         <EmptyState icon="📁" :title="t('filemanager.noStorageTitle')" :description="t('filemanager.noStorageDesc')" />
       </div>
     </div>

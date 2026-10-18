@@ -52,9 +52,24 @@ func (n *SearchAllSitesNode) Execute(ctx context.Context, params map[string]any,
 		return fmt.Errorf("关键词为空")
 	}
 	category := workflow.ParamString(params, "category")
-	results := n.siteCh.SearchSites(ctx, kw, category, nil)
+	results, err := n.siteCh.SearchSites(ctx, kw, category, nil)
+	if err != nil {
+		return fmt.Errorf("跨站搜索失败: %w", err)
+	}
+	if len(results) == 0 {
+		return fmt.Errorf("没有可搜索的站点（请先在「站点」页添加并登录）")
+	}
 	total := 0
+	failed := 0
+	var firstErr string
 	for _, r := range results {
+		if r.Error != "" {
+			failed++
+			if firstErr == "" {
+				firstErr = r.SiteName + "：" + r.Error
+			}
+			continue
+		}
 		for i := range r.Torrents {
 			if r.Torrents[i].SiteName == "" {
 				r.Torrents[i].SiteName = r.SiteName
@@ -63,7 +78,14 @@ func (n *SearchAllSitesNode) Execute(ctx context.Context, params map[string]any,
 		ecx.Torrents = append(ecx.Torrents, r.Torrents...)
 		total += len(r.Torrents)
 	}
-	ecx.Messages = append(ecx.Messages, fmt.Sprintf("跨站搜索「%s」：%d 条", kw, total))
+	if failed > 0 && failed == len(results) {
+		return fmt.Errorf("%d 个站点搜索全部失败，未取得任何结果（首个：%s）", failed, firstErr)
+	}
+	msg := fmt.Sprintf("跨站搜索「%s」：%d 条", kw, total)
+	if failed > 0 {
+		msg += fmt.Sprintf("（%d/%d 个站点失败，首个：%s）", failed, len(results), firstErr)
+	}
+	ecx.Messages = append(ecx.Messages, msg)
 	return nil
 }
 

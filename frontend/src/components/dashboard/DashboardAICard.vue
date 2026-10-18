@@ -7,8 +7,22 @@ import Sparkline from './Sparkline.vue'
 // DashboardAICard — 区④AI 助手用量与成本：消费 GET /agent/stats（13 维度，进程内内存，重启清零）。
 const { t } = useI18n()
 const stats = ref<AgentStats | null>(null)
+// 读不到 stats 时以前直接落到「暂无…」空态，与真的没调用过 AI 同形。
+const failed = ref(false)
+// GET /agent/stats 是 admin-only：非管理员拿到的 403 是权限，不是「这页读失败」，
+// 说成加载失败会让人反复刷新（同区系统资源卡已有 forbidden 分支，这里补齐）。
+const forbidden = ref(false)
 async function load() {
-  stats.value = await agentApi.stats().catch(() => null)
+  failed.value = false
+  forbidden.value = false
+  try {
+    stats.value = await agentApi.stats()
+  } catch (e: unknown) {
+    const status = (e as { response?: { status?: number } }).response?.status
+    forbidden.value = status === 403
+    failed.value = status !== 403
+    stats.value = null
+  }
 }
 onMounted(load)
 defineExpose({ refresh: load })
@@ -38,7 +52,9 @@ function fmtToken(n: number): string {
       </div>
     </div>
 
-    <div v-if="!stats" class="dc-empty">{{ t('daic.empty') }}</div>
+    <div v-if="forbidden" class="dc-empty">{{ t('daic.forbidden') }}</div>
+    <div v-else-if="failed" class="dc-empty">{{ t('common.loadFailed') }}</div>
+    <div v-else-if="!stats" class="dc-empty">{{ t('daic.empty') }}</div>
     <template v-else>
       <div class="ai-grid">
         <div class="ai-cell">

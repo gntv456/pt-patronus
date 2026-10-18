@@ -38,7 +38,10 @@ func UTLSDialContext(allowPrivate, insecure bool) func(ctx context.Context, netw
 				}
 			}
 			if dialIP == nil {
-				return nil, fmt.Errorf("ssrf: blocked private/internal address %s", host)
+				// 必须包裹 ErrBlocked：这条路径从前只返回字面相似的错误，
+				// errors.Is(err, ErrBlocked) 判不出来 ⇒ 「确定的拒绝绝不重试」与
+				// errtext 的中文可操作提示双双落空。
+				return nil, fmt.Errorf("%w: %s", ErrBlocked, host)
 			}
 			dialAddr = net.JoinHostPort(dialIP.String(), port)
 		}

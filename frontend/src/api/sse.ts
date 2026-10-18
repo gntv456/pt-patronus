@@ -4,6 +4,20 @@
 import { expireSession } from './http'
 import { terr } from './i18nErr'
 
+// errText 从后端统一错误信封 {code,error,message} 里取人话。不取的话整坨 JSON 会被
+// 拼进 toast：用户看到 `{"code":"agent_disabled","error":...}（HTTP 503）`。
+// 与 http.ts 拦截器同一口径（先 error 再 message）。
+function errText(raw: string): string {
+  try {
+    const j = JSON.parse(raw) as { error?: string; message?: string }
+    const m = j && (j.error || j.message)
+    if (m) return m
+  } catch {
+    /* 非 JSON 响应（HTML 拦截页/纯文本）按原文截断 */
+  }
+  return raw.slice(0, 200)
+}
+
 // streamErr 流式请求错误友好化：401 清会话回登录（与 axios 拦截器同语义），
 // 其余拼 i18n 文案 + HTTP 状态。供 sse/agent/message/announcement/freeleech 复用。
 export async function streamErr(res: Response): Promise<string> {
@@ -13,7 +27,7 @@ export async function streamErr(res: Response): Promise<string> {
   }
   let txt = ''
   try {
-    txt = (await res.text()).slice(0, 200)
+    txt = errText(await res.text())
   } catch {
     /* body 不可读 */
   }
@@ -37,7 +51,7 @@ export async function streamSSE(
       throw new Error('登录已失效，请重新登录')
     }
     const txt = await resp.text().catch(() => '')
-    throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 200)}`)
+    throw new Error(`HTTP ${resp.status}: ${errText(txt)}`)
   }
   const reader = resp.body.getReader()
   const dec = new TextDecoder()

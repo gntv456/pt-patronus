@@ -40,21 +40,31 @@ func (fakeMedalHTTP) Do(context.Context, string, string, []byte, map[string]stri
 }
 
 // fakeMedalAdapter 实现 medalwall.Adapter；FetchShop 阻塞 + atomic 计数，验证 singleflight。
+// owned/ownedErr 供「已拥有列表回源失败」用例控制返回值（零值 = 成功的空列表，兼容既有用例）。
+// panicOnURL 供 per-site 隔离用例：命中该 BaseURL 的 FetchShop 直接 panic。
 type fakeMedalAdapter struct {
-	shop    []medalwall.Item
-	calls   int32
-	proceed chan struct{}
+	shop       []medalwall.Item
+	owned      []medalwall.Owned
+	ownedErr   error
+	calls      int32
+	proceed    chan struct{}
+	panicOnURL string
 }
 
 func (f *fakeMedalAdapter) Platform() string { return "nexusphp" }
 func (f *fakeMedalAdapter) Supported() bool  { return true }
-func (f *fakeMedalAdapter) FetchShop(context.Context, medalwall.HTTPDoer, medalwall.Def, string, string) ([]medalwall.Item, error) {
+func (f *fakeMedalAdapter) FetchShop(_ context.Context, _ medalwall.HTTPDoer, _ medalwall.Def, baseURL, _ string) ([]medalwall.Item, error) {
 	atomic.AddInt32(&f.calls, 1)
-	<-f.proceed
+	if f.panicOnURL != "" && baseURL == f.panicOnURL {
+		panic("medal shop boom")
+	}
+	if f.proceed != nil {
+		<-f.proceed
+	}
 	return f.shop, nil
 }
 func (f *fakeMedalAdapter) FetchOwned(context.Context, medalwall.HTTPDoer, medalwall.Def, string, string, string) ([]medalwall.Owned, error) {
-	return nil, nil
+	return f.owned, f.ownedErr
 }
 func (f *fakeMedalAdapter) Buy(context.Context, medalwall.HTTPDoer, medalwall.Def, string, string, string) (medalwall.ActionResult, error) {
 	return medalwall.ActionResult{}, nil
@@ -254,5 +264,31 @@ func TestOwnedOnlyMedalSnapshot(t *testing.T) {
 	}
 	if ownedOnlyMedalSnapshot([]medalwall.Item{{MedalID: "owned:a", PurchaseStatus: medalwall.StatusAvailable}}) {
 		t.Error("non-owned status is not an owned-only snapshot")
+	}
+}
+
+// TestMedalListFailurePropagates 验证站点清单读失败必须交回错误（JSON errcode / SSE done 帧的
+// list_error），不能渲染成「0 张勋章」的假绿。
+func TestMedalListFailurePropagates(t *testing.T) {
+	db := newChainDB(t)
+	siteOp := oper.NewSiteOper(db, security.NewCrypto("seed"))
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+	if _, e := siteOp.ListActive(); e == nil {
+		t.Fatal("前提不成立：关闭 DB 后 ListActive 仍成功")
+	}
+	siteCh := NewSiteChain(NewBase(module.New(), event.New()), siteOp, site.NewRegistry())
+	ch := newMedalChain(siteCh, medalwall.NewRegistry(), oper.NewMedalOper(newMedalDB(t)), nil)
+
+	if _, err := ch.MedalAll(context.Background(), false); err == nil {
+		t.Error("MedalAll：ListActive 失败应交回错误，而不是空切片+nil")
+	}
+	emitted := 0
+	listErr := ch.MedalAllStream(context.Background(), false, func([]MedalCard) { emitted++ })
+	if listErr == "" {
+		t.Error("MedalAllStream：ListActive 失败应返回 listErr，供 done 帧带出")
+	}
+	if emitted != 0 {
+		t.Errorf("MedalAllStream：失败时不应 emit 任何帧，emitted=%d", emitted)
 	}
 }

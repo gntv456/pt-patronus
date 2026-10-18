@@ -7,6 +7,7 @@ import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'device_form_sheet.dart';
+import 'trend_window.dart';
 
 part 'inapp_webview_page.dart';
 
@@ -21,7 +22,8 @@ class MonitorDetailPage extends StatefulWidget {
   State<MonitorDetailPage> createState() => _MonitorDetailPageState();
 }
 
-class _MonitorDetailPageState extends State<MonitorDetailPage> with MonitorDetailOpsMixin {
+class _MonitorDetailPageState extends State<MonitorDetailPage>
+    with MonitorDetailOpsMixin {
   @override
   void _toast(String m) {
     if (!mounted) return;
@@ -97,7 +99,11 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> with MonitorDetai
             onPressed: _probing ? null : _probe,
             tooltip: '探活',
           ),
-          IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _load),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: '刷新',
+            onPressed: _load,
+          ),
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'edit') _edit();
@@ -244,11 +250,12 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> with MonitorDetai
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _trend('CPU %', [
-                        for (final s in _history) s.metrics?.cpuUsage ?? 0,
+                        for (final s in _history) s.metrics?.cpuUsage,
                       ]),
                       _trend('内存 %', [
-                        for (final s in _history) s.metrics?.memUsage ?? 0,
+                        for (final s in _history) s.metrics?.memUsage,
                       ], color: PTColors.primary2),
+                      _trendWindowNote(),
                       const Divider(),
                       _info('网络 ↓', _fmtRate(m.netRxRate)),
                       _info('网络 ↑', _fmtRate(m.netTxRate)),

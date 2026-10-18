@@ -3,20 +3,13 @@ package oper
 import (
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
 )
 
 func setupRuleDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	// 内存库 + 关闭清理（Windows 下 TempDir RemoveAll 与 sqlite 文件句柄竞态）
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB, _ := db.DB()
-	t.Cleanup(func() { _ = sqlDB.Close() })
+	db := openIsolatedDB(t) // 每条用例一个命名内存库，避免同进程共享缓存串数据（见 testdb_test.go）
 	if err := db.AutoMigrate(&models.StrmRule{}, &models.StrmRecord{}); err != nil {
 		t.Fatal(err)
 	}

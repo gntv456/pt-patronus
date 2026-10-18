@@ -62,3 +62,10 @@ __pycache__/
 **/node_modules/
 **/oh_modules/
 ohos/.hvigor/
+
+# jessibuca 摄像头播放器资源（GPL-3.0，不随仓库/镜像分发）。
+# 用 `bash scripts/fetch-jessibuca.sh` 拉取（幂等 + sha256 校验）。
+# 只忽略三个二进制，保留 README.md 作为说明。
+frontend/public/jessibuca/jessibuca.js
+frontend/public/jessibuca/decoder.js
+frontend/public/jessibuca/decoder.wasm

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -155,7 +156,14 @@ func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 	}
 	handle := c.bus.Subscribe(eventType, 100, func(ctx context.Context, e event.Event) {
 		cur, err := c.op.Get(wfID)
-		if err != nil || cur == nil || !cur.Enabled || cur.TriggerType != "event" || cur.EventType != eventType {
+		if err != nil {
+			// 读不出 ≠ 已删除/停用：事件总线不重放，SQLite busy 这一刻到的触发就此永久丢失。
+			// 从前它与下面的正当丢弃并成一个条件、静默 return ⇒ 用户只看到「它就是没跑」，
+			// 日志里一个字都没有，排障无从下手（同 #307/#311「判不出来必须与没有问题分开」）。
+			slog.Warn("workflow event dropped: cannot read workflow", "id", wfID, "event", eventType, "err", err)
+			return
+		}
+		if cur == nil || !cur.Enabled || cur.TriggerType != "event" || cur.EventType != eventType {
 			return // 已删除/禁用/改型/改事件类型 → 自废（双保险，正常路径已由 Unsubscribe 退订）
 		}
 		if !evaluateEventConditions(cur.EventConditions, e.Data) {
@@ -170,21 +178,44 @@ func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 	c.eventSubscribed[key] = handle
 }
 
-// validateGraph 解析并校验节点图。
-func (c *WorkflowChain) validateGraph(wf *models.Workflow) error {
+// parseGraphStrict 解析 workflow 行里的节点图。坏图必须报错而不是返回半个图：
+// 写入侧 validateGraph 会拒非法图，但 Run 读的是库里的行——备份恢复、手工改库、旧版本遗留
+// 都可能让 nodes 残缺，而 encoding/json 会先填出前几个节点再报错（半个图被静默执行、
+// 或解析出 0 个节点「什么都不跑却记成 success」都属假绿）。
+func parseGraphStrict(wf *models.Workflow) ([]workflow.GraphNode, []workflow.GraphEdge, error) {
 	var gnodes []workflow.GraphNode
 	var edges []workflow.GraphEdge
-	if wf.Nodes != "" {
-		if err := json.Unmarshal([]byte(wf.Nodes), &gnodes); err != nil {
-			return fmt.Errorf("节点 JSON 无效: %w", err)
-		}
+	if strings.TrimSpace(wf.Nodes) == "" {
+		return nil, nil, errors.New("节点图为空（nodes 未含任何节点）")
+	}
+	if err := json.Unmarshal([]byte(wf.Nodes), &gnodes); err != nil {
+		return nil, nil, fmt.Errorf("节点图 JSON 无效: %w", err)
+	}
+	if len(gnodes) == 0 {
+		return nil, nil, errors.New("节点图为空（nodes 未含任何节点）")
 	}
 	if wf.Edges != "" {
 		if err := json.Unmarshal([]byte(wf.Edges), &edges); err != nil {
-			return fmt.Errorf("连线 JSON 无效: %w", err)
+			return nil, nil, fmt.Errorf("连线 JSON 无效: %w", err)
 		}
 	}
-	return c.exec.Validate(gnodes, edges)
+	return gnodes, edges, nil
+}
+
+// ErrInvalidGraph 标记「节点图不合法」这一类自产校验错误：文案本身是写给用户的中文，
+// 处理链据此把原因带回响应，而不是退回一句「请求参数有误，请检查后重试」。
+var ErrInvalidGraph = errors.New("工作流节点图不合法")
+
+// validateGraph 解析并校验节点图。
+func (c *WorkflowChain) validateGraph(wf *models.Workflow) error {
+	gnodes, edges, err := parseGraphStrict(wf)
+	if err != nil {
+		return fmt.Errorf("%w：%w", ErrInvalidGraph, err)
+	}
+	if err := c.exec.Validate(gnodes, edges); err != nil {
+		return fmt.Errorf("%w：%w", ErrInvalidGraph, err)
+	}
+	return nil
 }
 
 // evaluateEventConditions 校验事件触发条件（全部命中才运行）。空条件=放行。

@@ -2,12 +2,9 @@ package v1
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -141,100 +138,6 @@ func boolStr(b bool) string {
 	return "fail"
 }
 
-// ===== OIDC / SSO（Authorization Code + PKCE） =====
-
-// oidcRedirectURI 计算回调地址（本后端的 /api/v1/auth/oidc/callback）。
-// 优先用请求的对外基址（X-Forwarded-Proto/Host），回退 Request.Host。
-func oidcRedirectURI(c *gin.Context) string {
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-	return fmt.Sprintf("%s://%s/api/v1/auth/oidc/callback", scheme, c.Request.Host)
-}
-
-// OIDCStart 发起 OIDC 授权：写 state/verifier cookie 并 302 跳转到 Provider 授权端点。
-func (h *AuthHandler) OIDCStart(c *gin.Context) {
-	if h.oidc == nil {
-		errcode.Respond(c, errcode.OIDCNotConfigured)
-		return
-	}
-	flow, err := h.oidc.StartFlow(c.Request.Context(), oidcRedirectURI(c))
-	if err != nil {
-		audit(c, "oidc_start", "fail", slog.String("err", err.Error()))
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	http.SetCookie(c.Writer, &flow.StateCookie)
-	http.SetCookie(c.Writer, &flow.VerifierCookie)
-	c.Redirect(http.StatusFound, flow.AuthorizeURL)
-}
-
-// OIDCCallback 处理 Provider 回调：校验 state + 换令牌 + 取 userinfo + 签发本地 JWT + 302 回前端。
-func (h *AuthHandler) OIDCCallback(c *gin.Context) {
-	if h.oidc == nil {
-		errcode.Respond(c, errcode.OIDCNotConfigured)
-		return
-	}
-	stateCookie, err := c.Cookie("ptp_oidc_state")
-	verifier, _ := c.Cookie("ptp_oidc_verifier")
-	code := c.Query("code")
-	state := c.Query("state")
-	if err != nil || code == "" || state == "" || state != stateCookie {
-		audit(c, "oidc_callback", "fail", slog.String("reason", "state_mismatch"))
-		errcode.Respond(c, errcode.OIDCStateMismatch)
-		return
-	}
-	ui, err := h.oidc.CompleteFlow(c.Request.Context(), code, state, verifier, oidcRedirectURI(c))
-	// 清掉一次性 cookie。
-	clearOIDCCookie(c, "ptp_oidc_state")
-	clearOIDCCookie(c, "ptp_oidc_verifier")
-	if err != nil {
-		audit(c, "oidc_callback", "fail", slog.String("err", err.Error()))
-		errcode.Respond(c, errcode.BadGateway.WithErr(err))
-		return
-	}
-	// 映射用户名：preferred_username → name → email 前缀 → sub。
-	username := ui.Username
-	if username == "" {
-		username = ui.Name
-	}
-	if username == "" && ui.Email != "" {
-		username = strings.SplitN(ui.Email, "@", 2)[0]
-	}
-	if username == "" {
-		username = ui.Sub
-	}
-	token, err := h.issueForOIDC("oidc:"+ui.Sub, username)
-	if err != nil {
-		// 单用户限制拒绝（errcode 信封透传给前端）与签发失败分开呈现。
-		if errors.Is(err, errcode.AuthUserRejected) {
-			audit(c, "oidc_callback", "reject", slog.String("sub", ui.Sub), slog.String("reason", "single_user_limit"))
-			errcode.Respond(c, errcode.AuthUserRejected)
-			return
-		}
-		errcode.Respond(c, errcode.AuthTokenFailed)
-		return
-	}
-	audit(c, "oidc_callback", "ok", slog.String("sub", ui.Sub), slog.String("user", username))
-	// 302 回前端：用 fragment(#oidc_token=) 传递短 TTL JWT。fragment 不进服务器访问日志、
-	// 不随 Referrer 头外泄、不留在浏览器历史的 query 串里，比 query 更安全（仍建议生产走 HTTPS）。
-	cfg := h.oidc.LoadSettings()
-	target := strings.TrimSpace(cfg.FrontendRedirect)
-	if target == "" {
-		target = "/login"
-	}
-	fragSep := "#"
-	if strings.Contains(target, "#") {
-		fragSep = "&"
-	}
-	c.Redirect(http.StatusFound, target+fragSep+"oidc_token="+url.QueryEscape(token))
-}
-
-func clearOIDCCookie(c *gin.Context, name string) {
-	http.SetCookie(c.Writer, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1})
-}
-
 // issueForOIDC 按 OIDC sub upsert User 并签发 JWT。OIDC 由管理员显式启用，视为可信身份：
 // VipLevel=1 + VipVerifiedAt=now（放行 VIP 准入）；首个 OIDC 用户成为 admin（供配置者自助）。
 // 单用户硬限制（与好学登录同口径）：实例已有真实用户时拒绝第二账号创建。
@@ -244,13 +147,21 @@ func (h *AuthHandler) issueForOIDC(hxptUID, username string) (string, error) {
 	err := h.db.Where("hxpt_uid = ?", hxptUID).First(&u).Error
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		if uid := h.existingRealUserUID(); uid != "" && uid != hxptUID {
+		ownerUID, err := h.existingRealUserUID()
+		if err != nil {
+			return "", err
+		}
+		if ownerUID != "" && ownerUID != hxptUID {
 			slog.Warn("SECURITY: second oidc user rejected (single-user instance)", slog.String("sub", hxptUID))
 			return "", errcode.AuthUserRejected
 		}
+		isFirst, err := h.firstOIDCUser()
+		if err != nil {
+			return "", err
+		}
 		u = models.User{
 			Username: username, HxptUID: hxptUID, HxptUsername: username,
-			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: h.firstOIDCUser(),
+			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: isFirst,
 		}
 		if err := h.db.Create(&u).Error; err != nil {
 			return "", err
@@ -271,29 +182,42 @@ func (h *AuthHandler) issueForOIDC(hxptUID, username string) (string, error) {
 }
 
 // firstOIDCUser 报告是否尚无 OIDC 绑定用户（首个 OIDC 用户成为 admin）。
-func (h *AuthHandler) firstOIDCUser() bool {
+// 查不出来时返回错误而不是 true：把 DB 故障当「还没有 OIDC 用户」，
+// 等于这一次登录直接被提成 admin。
+func (h *AuthHandler) firstOIDCUser() (bool, error) {
 	var n int64
-	h.db.Model(&models.User{}).Where("hxpt_uid LIKE 'oidc:%'").Count(&n)
-	return n == 0
+	if err := h.db.Model(&models.User{}).Where("hxpt_uid LIKE 'oidc:%'").Count(&n).Error; err != nil {
+		return false, err
+	}
+	return n == 0, nil
 }
 
 // firstHxptUser 报告是否尚无好学 VIP 绑定用户（首个 HXPT 用户成为 admin，与 firstOIDCUser 对称）。
-func (h *AuthHandler) firstHxptUser() bool {
-	return h.existingRealUserUID() == ""
+func (h *AuthHandler) firstHxptUser() (bool, error) {
+	uid, err := h.existingRealUserUID()
+	if err != nil {
+		return false, err
+	}
+	return uid == "", nil
 }
 
 // existingRealUserUID 返回已有的任一「真实」用户（好学/OIDC 绑定账号）的 hxpt_uid；
 // 无则返回 ""。demo 演示账号与 emergency:% 应急账号不计——demo 由 DemoMode 开关控制、
 // emergency 需 SECRET_KEY 派生口令，均非「第二个能自助注册的身份」。单用户硬限制
 // 依据此判定：非空即实例已有主人，任何新身份一律拒绝创建。
-func (h *AuthHandler) existingRealUserUID() string {
+// 查询出错必须与「确实没有主人」区分：把故障当「没主人」会同时打开单用户硬限制
+// 与「首位登录者即 admin」两条闸门。
+func (h *AuthHandler) existingRealUserUID() (string, error) {
 	var u models.User
 	err := h.db.Where("hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' AND hxpt_uid != 'demo'").
 		Order("id ASC").First(&u).Error
-	if err != nil {
-		return ""
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", nil
 	}
-	return u.HxptUID
+	if err != nil {
+		return "", err
+	}
+	return u.HxptUID, nil
 }
 
 // maskUID 日志脱敏：UID 只留前 6 位 + 长度（防审计日志反推完整好学账号）。
@@ -371,7 +295,8 @@ func (h *AuthHandler) SetOIDCConfig(c *gin.Context) {
 		next.FrontendRedirect = req.FrontendRedirect
 	}
 	if err := h.oidc.SaveSettings(next); err != nil {
-		errcode.Respond(c, errcode.SaveFailed)
+		// #353 带上原因：底层是系统配置写库（store.Set），失败原因具体却被丢掉，界面只剩「保存失败」。
+		errcode.Respond(c, errcode.SaveFailed.WithErr(err))
 		return
 	}
 	audit(c, "oidc_config", "ok", slog.Bool("enabled", next.Enabled))

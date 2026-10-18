@@ -43,7 +43,10 @@ const emit = defineEmits<{
         <div class="cred-main">
           <div>
             <b>{{ c.name }}</b>
-            <span>{{ credentialTypeText(c.type) }} · {{ c.username || t('ncd.noUser') }}</span>
+            <span
+              >{{ credentialTypeText(c.type) }} ·
+              {{ c.username || (c.has_username ? t('ncd.userUnreadable') : t('ncd.noUser')) }}</span
+            >
           </div>
           <el-tag size="small" type="info">{{ t('ncd.devices', { n: credentialUsage(c.id) }) }}</el-tag>
         </div>

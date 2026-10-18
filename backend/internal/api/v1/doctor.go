@@ -26,7 +26,7 @@ func (h *DoctorHandler) checks() []doctor.Check {
 	cs := []doctor.Check{
 		doctor.CheckDatabase(h.db),
 		doctor.CheckRuntimePaths(h.cfg),
-		doctor.CheckSystemResources(),
+		doctor.CheckSystemResources(nil), // nil=真实采集（gopsutil）
 		doctor.CheckConfigSecurity(h.cfg),
 		doctor.CheckSafeMode(h.cfg),
 	}

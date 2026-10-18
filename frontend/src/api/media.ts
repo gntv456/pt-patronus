@@ -72,6 +72,8 @@ export interface MediaSourceConfig {
   douban_app_key_configured: boolean
   bangumi_token: string // 脱敏
   bangumi_token_configured: boolean
+  omdb_api_key: string // 脱敏（IMDb 评分源；后端一直返回这两个字段，此前前端类型里没有）
+  omdb_api_key_configured: boolean
 }
 
 // 提交体：各字段空串=不修改（便于只改部分项而不必重输全部 secret）。
@@ -81,6 +83,7 @@ export type MediaSourceConfigInput = Partial<{
   douban_secret: string
   douban_app_key: string
   bangumi_token: string
+  omdb_api_key: string
 }>
 
 export const mediaConfigApi = {

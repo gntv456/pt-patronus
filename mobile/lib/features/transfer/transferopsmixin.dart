@@ -2,10 +2,11 @@
 part of 'package:ptpatronus/features/transfer/transfer_page.dart';
 
 mixin TransferOpsMixin on State<TransferPage> {
-
   final _api = TransferApi();
   final _dlApi = DownloaderApi();
   List<TransferHistory> _list = [];
+  // 取数窗口提示：被单页上限截断时要说出来。
+  String _historyNote = '';
   bool _loading = true;
   final String _status = ''; // '' | success | failed
   final _redoing = <int>{};
@@ -15,9 +16,16 @@ mixin TransferOpsMixin on State<TransferPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      _list = await _api.history(_status, 200);
+      final page = await _api.historyPage(_status, 200);
+      _list = page.items;
+      _historyNote = transferHistoryWindowLabel(
+        shown: page.items.length,
+        total: page.total,
+        truncated: page.truncated,
+      );
     } catch (_) {
       _toast('加载失败');
+      _historyNote = '';
     } finally {
       if (mounted) setState(() => _loading = false);
     }

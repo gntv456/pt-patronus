@@ -103,11 +103,20 @@ export interface WechatQRStatus {
   message?: string
 }
 
+// NOTIFY_TEST_TIMEOUT 必须 ≥ 后端 notifyFanoutBudget（internal/api/v1/notification.go）。
+export const NOTIFY_TEST_TIMEOUT = 30000
+
 export const notificationApi = {
   channels: () => http.get<{ channels: string[] }>('/notification/channels').then((r) => r.data.channels ?? []),
   test: (title: string, body = '') =>
     http
-      .post<{ channels: string[]; results: NotifySendResult[] }>('/notification/test', { title, body })
+      // 后端扇出预算 30s（单渠道 8s DNS + 15s HTTP），用全局 15s 会先掐断请求：
+      // 界面看不到真实回执，而后端仍在发（同 #231 的量法）。
+      .post<{ channels: string[]; results: NotifySendResult[] }>(
+        '/notification/test',
+        { title, body },
+        { timeout: NOTIFY_TEST_TIMEOUT },
+      )
       .then((r) => r.data),
   getConfig: () => http.get<NotifyConfig>('/notification/config').then((r) => r.data),
   setConfig: (cfg: NotifyConfigInput) => http.put<{ ok: boolean }>('/notification/config', cfg).then((r) => r.data),

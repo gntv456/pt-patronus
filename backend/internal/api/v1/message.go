@@ -73,7 +73,11 @@ func (h *MessageHandler) Stream(c *gin.Context) {
 			flusher.Flush()
 		}
 	}
-	h.ch.MessagesStream(c.Request.Context(), mb, force, emit)
+	listErr := h.ch.MessagesStream(c.Request.Context(), mb, force, emit)
+	if listErr != "" {
+		// 站点清单读失败=0 行且无任何错误留痕，末尾 done 行带 list_error 供前端弹错。
+		emitDone(w, &mu, flusher, listErr)
+	}
 }
 
 // SyncOne 立即抓取单站消息。
@@ -85,14 +89,16 @@ func (h *MessageHandler) SyncOne(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	mb := parseMailbox(c.DefaultQuery("mailbox", "inbox"))
 	msgs, e := h.ch.Messages(c.Request.Context(), s, mb)
 	r := chain.MessageResult{SiteID: s.ID, SiteName: s.Name, Messages: msgs}
+	// 未接线判定与聚合面同源：漏接这一处，用户点单站刷新后「平台没适配私信」会退化成「这站没私信」。
+	r.Unsupported = !h.ch.MessagesWired(s)
 	if e != nil {
-		r.Error = e.Error()
+		r.Error = userErrText(e)
 	}
 	c.JSON(http.StatusOK, r)
 }
@@ -106,12 +112,12 @@ func (h *MessageHandler) Content(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	content, e := h.ch.MessageContent(c.Request.Context(), s, c.Query("url"))
 	if e != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(e))
+		respondFetchError(c, e, errcode.BadGateway)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"content": content})
@@ -134,12 +140,12 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	r, e := h.ch.ReplyMessage(c.Request.Context(), s, body.URL, body.Content)
 	if e != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(e))
+		respondFetchError(c, e, errcode.BadGateway)
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -161,11 +167,11 @@ func (h *MessageHandler) Delete(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	if e := h.ch.DeleteMessage(c.Request.Context(), s, body.URL); e != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(e))
+		respondFetchError(c, e, errcode.BadGateway)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -187,12 +193,12 @@ func (h *MessageHandler) MarkRead(c *gin.Context) {
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		errcode.Respond(c, errcode.SiteNotFound)
+		respondSiteLookup(c, err, h.siteOp)
 		return
 	}
 	r, e := h.ch.MarkRead(c.Request.Context(), s, body.IDs)
 	if e != nil {
-		errcode.Respond(c, errcode.BadGateway.WithErr(e))
+		respondFetchError(c, e, errcode.BadGateway)
 		return
 	}
 	c.JSON(http.StatusOK, r)

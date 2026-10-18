@@ -28,6 +28,15 @@ func NewCommandRunHandler(targets *oper.MonitorOper, runs *oper.CommandRunOper, 
 	return &CommandRunHandler{targets: targets, runs: runs, svc: svc}
 }
 
+// opsRunMaxDuration 一次批量命令执行的总时长上限（脱离请求上下文后得有人兜底）。
+const opsRunMaxDuration = 30 * time.Minute
+
+// opsExecContext 派生批量执行用的上下文：不随客户端断开而取消（审计型批量任务不能被
+// 一次关页面腰斩），值仍从请求上下文继承（trace 等），外加总时长上限。
+func opsExecContext(req context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(req), opsRunMaxDuration)
+}
+
 type commandRunRequest struct {
 	TargetIDs   []uint `json:"target_ids" binding:"max=200"` // DoS 硬上限；业务上限 50 由 Create 内 len 检查 + 友好错误处理
 	Command     string `json:"command" binding:"max=2000"`
@@ -38,13 +47,26 @@ type commandRunRequest struct {
 }
 
 func (h *CommandRunHandler) List(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	runs, err := h.runs.List(c.Query("source"), limit)
+	source := c.Query("source")
+	reqLimit, _ := strconv.Atoi(c.Query("limit"))
+	// 回显生效 limit：这条是运维审计台账，调用方以为自己要到了 500 条、
+	// 实际只拿到默认 30 条时，「没有失败记录」会被读成整段历史的结论。
+	limit := oper.NormalizeCommandRunLimit(reqLimit)
+	runs, err := h.runs.List(source, limit)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"runs": runs})
+	total, cntErr := h.runs.Count(source)
+	truncated := cntErr != nil || total > int64(len(runs))
+	if cntErr != nil {
+		slog.Warn("command run count failed", "source", source, "err", cntErr)
+	}
+	resp := gin.H{"runs": runs, "limit": limit, "truncated": truncated}
+	if cntErr == nil {
+		resp["total"] = total
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *CommandRunHandler) Get(c *gin.Context) {
@@ -106,11 +128,17 @@ func (h *CommandRunHandler) Create(c *gin.Context) {
 		StartedAt:  started,
 	}
 	if err := h.runs.Create(run); err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		// #391 审计写不进去 ⇒ 命令一条都没执行。这句必须说明白：
+		// 旧文案「服务内部错误，请稍后重试」会诱导盲目重试（甚至重复执行）。
+		respondOpsAuditWriteErr(c, err)
 		return
 	}
 
-	ctx := c.Request.Context()
+	// 执行上下文不能挂在 HTTP 请求上：一次批量要跑几十台、每台可到 timeout_sec。
+	// 用 c.Request.Context() 时，浏览器关标签页/前端超时会把在途命令一起取消，
+	// 而远端的命令多半已经执行甚至跑完——审计记录却把它们写成 context canceled 的「失败」。
+	ctx, cancelExec := opsExecContext(c.Request.Context())
+	defer cancelExec()
 	sem := make(chan struct{}, 6)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -184,7 +212,7 @@ func (h *CommandRunHandler) runOneTarget(ctx context.Context, runID uint, target
 	durationMS := int64(0)
 	if err != nil {
 		finished = time.Now()
-		errText = err.Error()
+		errText = userErrText(err) // 与其它面一致：认识的哨兵翻成中文可操作提示，其余原样透传
 		durationMS = finished.Sub(started).Milliseconds()
 	} else {
 		if result.TargetName != "" {

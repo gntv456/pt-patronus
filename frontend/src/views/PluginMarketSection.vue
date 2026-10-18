@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Delete, Download, Plus, Refresh, Setting, Star, StarFilled, Top, Bottom } from '@element-plus/icons-vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PluginMarketIndex, PluginMarketItem, ChartRow, PluginInstance } from '@/api/plugin'
 import {
+  marketSourceIssues,
   shortSource,
   canInstallMarketItem,
   compatibilityType,
@@ -13,7 +15,7 @@ import {
 } from './pluginsHelpers'
 const { t } = useI18n()
 
-defineProps<{
+const props = defineProps<{
   market: PluginMarketIndex | null
   loading: boolean
   installing: string
@@ -29,14 +31,12 @@ defineProps<{
   // 运营层（百鸟朝凤/百宝袋/分神/天序）
   marketView: 'all' | 'favorites' | 'charts'
   marketCharts: { disciples: ChartRow[]; newcomers: ChartRow[] } | null
-  favoritePlugins: PluginMarketItem[]
+  favoritePlugins: PluginMarketItem[] | null
   instancesVisible: boolean
   instancePluginId: string
   instances: PluginInstance[]
   singleInstance: boolean
 }>()
-
-
 
 const emit = defineEmits<{
   (e: 'refresh'): void
@@ -65,6 +65,8 @@ function createInstance() {
   emit('createInstance', newInstanceKey.value)
   newInstanceKey.value = ''
 }
+
+const sourceIssues = computed(() => marketSourceIssues(props.market))
 </script>
 
 <template>
@@ -80,6 +82,14 @@ function createInstance() {
       <span v-if="marketSources.length" class="market-src-count">{{
         t('pms.srcCount', { n: marketSources.length })
       }}</span>
+    </div>
+
+    <!-- 部分市场源没取到：这份清单是残缺的，不能显示成「仓库里就这些插件」 -->
+    <div v-if="sourceIssues.length" class="market-src-warn">
+      {{ t('pms.srcPartial', { n: sourceIssues.length, ok: market?.sources_ok ?? 0 }) }}
+      <ul>
+        <li v-for="issue in sourceIssues" :key="issue.source">{{ issue.source }} — {{ issue.reason }}</li>
+      </ul>
     </div>
 
     <!-- 视图切换：万灵阁(全部) / 百宝袋(收藏) / 百鸟朝凤(老树洞/蹦蹦新窝) -->
@@ -113,8 +123,8 @@ function createInstance() {
           <span class="chart-num">{{ t('pms.installs', { n: row.installs }) }}</span>
         </div>
         <el-empty
-          v-if="!(marketCharts?.disciples ?? []).length"
-          :description="t('pms.noInstallData')"
+          v-if="!marketCharts || !(marketCharts.disciples ?? []).length"
+          :description="marketCharts ? t('pms.noInstallData') : t('pms.chartsReadFail')"
           :image-size="60"
         />
       </div>
@@ -125,7 +135,11 @@ function createInstance() {
           <span class="chart-name">{{ row.plugin_id }}</span>
           <span class="chart-num">{{ t('pms.installs', { n: row.installs }) }}</span>
         </div>
-        <el-empty v-if="!(marketCharts?.newcomers ?? []).length" :description="t('pms.noData')" :image-size="60" />
+        <el-empty
+          v-if="!marketCharts || !(marketCharts.newcomers ?? []).length"
+          :description="marketCharts ? t('pms.noData') : t('pms.chartsReadFail')"
+          :image-size="60"
+        />
       </div>
     </div>
 
@@ -147,7 +161,10 @@ function createInstance() {
           </el-button>
         </div>
       </div>
-      <el-empty v-if="!loading && !favoritePlugins.length" :description="t('pms.favEmpty')" />
+      <el-empty
+        v-if="!loading && !favoritePlugins?.length"
+        :description="favoritePlugins ? t('pms.favEmpty') : t('pms.favoritesReadFail')"
+      />
     </div>
 
     <!-- 万灵阁（全部）视图 -->

@@ -2,6 +2,7 @@ package errcode
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,11 +24,19 @@ func allCodes() []*Error {
 		AuthBadCredentials, AuthCookieRequired, DemoDisabled, APIKeyNoRefresh, APIKeyNoLogout,
 		InvalidKey, ValueTooLarge, ValueInvalidJSON, VIPCheckDisabled,
 		OIDCNotConfigured, OIDCStateMismatch, SaveFailed,
-		WebhookNotFound, WebhookInvalid, WebhookBadPayload, WebhookBadSignature, WebhookNameRequired,
+		WebhookNotFound, WebhookInvalid, WebhookBadPayload, WebhookBadSignature, WebhookNameRequired, WebhookSecretUnavailable,
 		SiteNotFound, SiteInvalidID, SiteDuplicate,
 		DownloaderNotFound, DownloaderInvalidInput, DownloaderConnFailed, DownloaderPushFailed,
+		MediaServerNotFound,
+		PluginNotReloadable, PluginMarketUnreachable, PluginNotInMarket, PluginNotInstallable, PluginPackageUntrusted, PluginPackageInvalid, PluginInstallFailed,
 		BackupPasswordRequired, BackupPasswordIncorrect,
+		MonitorTargetNotFound,
+		RegistrationNotFound, CloudDriveNotFound, StrmRuleNotFound,
+		BackupNotOurFile, BackupVersionTooNew,
+		EntertainmentDisabled,
+		SSRFBlocked,
 		AgentNameRequired, AgentTypeInvalid, AgentNotFound, AgentMsgRequired, AgentConfirmGone,
+		AgentDisabled, AgentNoAPIKey, AgentKeyUnreadable,
 		DockerLocalNotReady,
 		DockerContainerNameRequired, ResourceNotFound, AuthTokenFailed, TicketInvalidOrExpired, SubscriptionNotFound,
 		DiskInvalidMountpoint, TorrentHashRequired, MediaLibraryRequired, UrlRequired, ServarrCreateFailed,
@@ -143,4 +152,45 @@ func TestRespondEnvelope(t *testing.T) {
 	if !strings.Contains(rec2.Body.String(), `"code":"internal"`) {
 		t.Fatalf("应归一 internal:\n%s", rec2.Body.String())
 	}
+}
+
+// TestRespondLogsCause 回归：WithErr 的底层原因必须落日志（包文档一直这么承诺，但
+// Respond 过去只挂不写，导致全仓 WithErr 白附加——400/500 事后连原因都查不到）。
+// 分级：5xx 走 Warn（默认可见），4xx 走 Debug（用户输入噪声不刷日志）。
+func TestRespondLogsCause(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	r := gin.New()
+	cause := "本机存储必须填写根目录"
+	r.GET("/bad", func(c *gin.Context) { Respond(c, InvalidInput.WithErr(errors.New(cause))) })
+	r.GET("/down", func(c *gin.Context) { Respond(c, Internal.WithErr(errors.New("upstream 503"))) })
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest("GET", "/bad", nil))
+	log4xx := buf.String()
+	if !strings.Contains(log4xx, cause) || !strings.Contains(log4xx, "level=DEBUG") {
+		t.Fatalf("400 的原因应以 DEBUG 落日志，日志=%s", log4xx)
+	}
+	if !strings.Contains(log4xx, `path=/bad`) {
+		t.Fatalf("日志应带请求路径便于定位，日志=%s", log4xx)
+	}
+	if strings.Contains(rec.Body.String(), cause) {
+		t.Fatal("原因不得进响应体")
+	}
+
+	buf.Reset()
+	rec2 := httptest.NewRecorder()
+	r.ServeHTTP(rec2, httptest.NewRequest("GET", "/down", nil))
+	log5xx := buf.String()
+	if !strings.Contains(log5xx, "upstream 503") || !strings.Contains(log5xx, "level=WARN") {
+		t.Fatalf("500 的原因应以 WARN 落日志，日志=%s", log5xx)
+	}
+
+	// 裸 gin.Context（无 Request）不得因取路径而 panic——回归时正是这条把 api/v1 全套打挂。
+	bare, _ := gin.CreateTestContext(httptest.NewRecorder())
+	Respond(bare, Internal.WithErr(errors.New("no request")))
 }

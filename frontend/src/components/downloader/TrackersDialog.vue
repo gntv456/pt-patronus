@@ -14,8 +14,8 @@ async function load() {
   try {
     const r = await downloaderApi.trackers(props.downloaderId, props.hash)
     trackers.value = r.trackers ?? []
-  } catch {
-    ElMessage.warning(t('common.loadFailed'))
+  } catch (e: unknown) {
+    ElMessage.warning((e as Error).message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }

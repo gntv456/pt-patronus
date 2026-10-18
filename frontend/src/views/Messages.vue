@@ -84,13 +84,30 @@ async function openDetail(msg: Message) {
   try {
     if (msg.url) detailContent.value = await messageApi.content(msg.site_id, msg.url)
     // 打开即标记已读
-    if (!msg.is_read && msg.admin_actions?.item_id) {
-      messageApi.markRead(msg.site_id, [msg.admin_actions.item_id]).then(() => load())
-    }
+    void markRead(msg)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('messages.loadContentFailed'))
   } finally {
     detailLoading.value = false
+  }
+}
+
+// markRead 打开即标已读，但成败要回到界面：站点常常回 HTTP 200 却 failed:1（或明确不支持远程
+// 标记，如馒头/FluxTorrent 走 5xx），旧写法 `.then(() => load())` 把这两种都吞掉——红点原地不
+// 动、不报错，用户只能反复点开同一条；而它挂在 try 里也拦不住自己的 rejection（游离 Promise）。
+async function markRead(msg: Message) {
+  const id = msg.admin_actions?.item_id
+  if (msg.is_read || !id) return
+  try {
+    const r = await messageApi.markRead(msg.site_id, [id])
+    if (r.failed > 0 || r.success < 1) {
+      ElMessage.warning(r.errors?.[0] || t('messages.markReadFailed'))
+      return
+    }
+    // 就地清红点：为一颗点重扫全站会把正在读的这条所在的流 abort 掉
+    msg.is_read = true
+  } catch (e: unknown) {
+    ElMessage.warning((e as Error).message || t('messages.markReadFailed'))
   }
 }
 
@@ -163,6 +180,9 @@ onUnmounted(() => abortCtrl?.abort())
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.error" class="err-tag" :title="r.error">{{ friendlyError(r.error) }}</span>
+          <span v-else-if="r.unsupported" class="text-muted" :title="t('messages.notSupportedTip')">{{
+            t('messages.notSupported')
+          }}</span>
           <span v-else-if="!r.messages.length" class="text-muted">{{ t('messages.noMessages') }}</span>
         </div>
         <div class="msg-list">

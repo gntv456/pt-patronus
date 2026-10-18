@@ -29,6 +29,16 @@ export interface FileEntry {
   mod_time: string
 }
 
+// 目标目录读不出来时该弹什么：后端（文件管理器）是「同名即覆盖」的语义，所以
+// 「预检没做成」绝不能被读成「目标没有同名项」——判定与文案收在这里，界面只负责弹。
+export function targetReadFailedNotice(mode: 'move' | 'copy', sources: number): { title: string; body: string } {
+  const verb = mode === 'move' ? '移动' : '复制'
+  return {
+    title: '无法确认目标是否有同名文件',
+    body: `目标目录读取失败，无法确认是否已存在同名文件。继续${verb}将直接覆盖同名内容且不可恢复（共 ${sources} 项待处理），是否继续？`,
+  }
+}
+
 export const fileApi = {
   list: () => http.get<{ storages: FileStorage[] }>('/storages').then((r) => r.data.storages ?? []),
   create: (input: FileStorageInput) => http.post<FileStorage>('/storages', input).then((r) => r.data),
@@ -36,7 +46,15 @@ export const fileApi = {
   remove: (id: number) => http.delete(`/storages/${id}`).then((r) => r.data),
   test: (id: number) => http.post<{ ok: boolean; error?: string }>(`/storages/${id}/test`).then((r) => r.data),
   files: (id: number, path = '/') =>
-    http.get<{ entries: FileEntry[] }>(`/storages/${id}/files`, { params: { path } }).then((r) => r.data.entries ?? []),
+    http
+      .get<{ entries: FileEntry[]; error?: string }>(`/storages/${id}/files`, { params: { path } })
+      // 后端读不到目录时回 200 + {entries: [], error: '中文原因'}（filemanager.go:105）：
+      // 状态码与空数组都不说话。丢掉 error 会让「读不到」被下游读成「这个目录是空的」——
+      // 移动/复制的同名预检因此放行，而后端是同名静默覆盖（不可逆）。
+      .then((r) => {
+        if (r.data.error) throw new Error(r.data.error)
+        return r.data.entries ?? []
+      }),
   upload: (id: number, path: string, file: File, onProgress?: (percent: number) => void) => {
     const form = new FormData()
     form.append('path', path)

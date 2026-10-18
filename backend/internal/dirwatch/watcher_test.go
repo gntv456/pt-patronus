@@ -46,3 +46,18 @@ func TestScanAndProcessTTLDedup(t *testing.T) {
 		t.Errorf("want process once (TTL 去重), got %d", n)
 	}
 }
+
+// TestScanAndProcessDiscoversM2TS 发现范围必须覆盖引擎可整理的全部视频（.m2ts 为 BD
+// remux 常见容器）：旧实现 dirwatch 自有清单含 .m2ts 而 transfer 不认，反复失败。
+func TestScanAndProcessDiscoversM2TS(t *testing.T) {
+	dir := t.TempDir()
+	_ = os.WriteFile(filepath.Join(dir, "Movie.2024.2160p.REMUX.m2ts"), []byte("x"), 0o644)
+	var got []transfer.FileInput
+	w := New(Config{DebounceMs: 50}, func(ctx context.Context, srcDir string, files []transfer.FileInput) {
+		got = files
+	})
+	w.scanAndProcess(context.Background(), dir)
+	if len(got) != 1 {
+		t.Fatalf(".m2ts 应被发现, got %d files", len(got))
+	}
+}

@@ -97,8 +97,10 @@ class _TraktPageState extends State<TraktPage> {
       _toast('请在打开的页面输入授权码');
       await _launch(dc.verificationUrl);
       _startPoll();
-    } catch (_) {
-      _toast('发起授权失败，请先在配置填 client_id/secret');
+    } catch (e) {
+      // 从前这句猜死一个原因（「请先在配置填 client_id/secret」），真被墙/超时时会把人指错方向；
+      // ApiException.toString() 就是后端那句分档好的人话。
+      _toast('发起授权失败：$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -106,17 +108,30 @@ class _TraktPageState extends State<TraktPage> {
 
   void _startPoll() {
     _poll?.cancel();
+    var fails = 0;
     _poll = Timer.periodic(const Duration(seconds: 3), (_) async {
-      try {
-        final ok = await _api.deviceStatus();
-        if (ok) {
-          _poll?.cancel();
-          if (!mounted) return;
-          setState(() => _device = null);
-          _toast('Trakt 授权成功');
-          await _load();
-        }
-      } catch (_) {/* keep polling */}
+      final st = await _api.deviceStatus();
+      if (st.authorized) {
+        _poll?.cancel();
+        if (!mounted) return;
+        setState(() => _device = null);
+        _toast('Trakt 授权成功');
+        await _load();
+        return;
+      }
+      if (st.terminal) {
+        // 授权码过期 / 凭据没填：停下来把后端那句下一步说出来，别让用户盯着废码干等。
+        _poll?.cancel();
+        if (!mounted) return;
+        setState(() => _device = null);
+        _toast(st.message.isEmpty ? '设备授权未能完成，请重新发起授权' : st.message);
+        return;
+      }
+      // 什么都判不出来（网络抖动）：连续多次才放弃，措辞不许说成「授权失败」。
+      if (++fails >= traktPollGiveUpAfter) {
+        _poll?.cancel();
+        _toast(traktPollGiveUpText(fails));
+      }
     });
   }
 
@@ -126,8 +141,8 @@ class _TraktPageState extends State<TraktPage> {
       final n = await _api.sync();
       _toast('同步完成，新增 $n 条订阅');
       await _load();
-    } catch (_) {
-      _toast('同步失败，请先完成授权');
+    } catch (e) {
+      _toast('同步失败：$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

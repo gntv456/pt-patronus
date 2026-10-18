@@ -20,6 +20,9 @@ class Subscription {
   final List<int> siteIds; // 参与站点 id；空=全部活跃站点
   final int currentPriority; // 洗版电影当前最优 PriOrder（0=未下过）
   final String? lastCheckedAt;
+  // 上一轮检查里「读不出来的站」留下的原因（空串=整轮干净）。
+  // 只有检查时刻时，「2 个站里 1 个 cookie 失效所以什么都没搜到」看着就像「确实没新命中」。
+  final String lastCheckError;
   final String createdAt;
 
   Subscription({
@@ -41,6 +44,7 @@ class Subscription {
     this.siteIds = const [],
     this.currentPriority = 0,
     required this.lastCheckedAt,
+    this.lastCheckError = '',
     required this.createdAt,
   });
 
@@ -63,6 +67,7 @@ class Subscription {
         siteIds: (j['site_ids'] as List?)?.map((e) => (e as num).toInt()).toList() ?? const [],
         currentPriority: (j['current_priority'] as num?)?.toInt() ?? 0,
         lastCheckedAt: j['last_checked_at'] as String?,
+        lastCheckError: j['last_check_error'] as String? ?? '',
         createdAt: j['created_at'] as String? ?? '',
       );
 

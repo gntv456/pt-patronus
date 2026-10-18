@@ -2,8 +2,10 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/mediaserver"
+	"gorm.io/gorm"
 )
 
 // MediaServerHandler 处理媒体服务器 CRUD + 连接测试 + 库操作 + 封面生成 + webhook 接收。
@@ -40,7 +43,7 @@ func (h *MediaServerHandler) List(c *gin.Context) {
 func (h *MediaServerHandler) Create(c *gin.Context) {
 	var in oper.MediaServerInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	m, err := h.svc.Create(in)
@@ -59,7 +62,7 @@ func (h *MediaServerHandler) Update(c *gin.Context) {
 	}
 	var in oper.MediaServerInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	m, err := h.svc.Update(id, in)
@@ -76,6 +79,9 @@ func (h *MediaServerHandler) Delete(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !requireExists(c, h.svc.Get, id, errcode.MediaServerNotFound) {
+		return
+	}
 	opResult(c, h.svc.Delete(id))
 }
 
@@ -87,7 +93,7 @@ func (h *MediaServerHandler) Test(c *gin.Context) {
 	}
 	info, err := h.svc.Test(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": mediaServerErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "info": info})
@@ -101,7 +107,7 @@ func (h *MediaServerHandler) Libraries(c *gin.Context) {
 	}
 	libs, err := h.svc.Libraries(c.Request.Context(), id)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"libraries": libs})
@@ -119,26 +125,25 @@ func (h *MediaServerHandler) Scan(c *gin.Context) {
 	// 空 body（io.EOF）= 扫全部库（合法用法）；仅非法 JSON（非 EOF）才拒绝，
 	// 避免坏请求因 LibraryID 零值静默落入"全库扫描"分支。
 	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	if body.LibraryID != "" {
-		opResult(c, h.svc.LibraryScan(c.Request.Context(), id, body.LibraryID))
-		return
-	}
-	// 空 library_id：扫该服务器全部库。
-	libs, err := h.svc.Libraries(c.Request.Context(), id)
-	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	for _, lib := range libs {
-		if e := h.svc.LibraryScan(c.Request.Context(), id, lib.ID); e != nil {
-			opResult(c, e)
+		if err := h.svc.LibraryScan(c.Request.Context(), id, body.LibraryID); err != nil {
+			opResult(c, err)
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{"ok": true, "scanned": 1})
+		return
 	}
-	opResult(c, nil)
+	// 空 library_id：扫该服务器全部库（与工具面共用 LibraryScanAll，同一套「几个库扫成了」的账）。
+	// 此前本地自实现逐个扫描、第一个库失败就整体报错，扫成 1/5 与一个都没扫成回执相同。
+	n, err := h.svc.LibraryScanAll(c.Request.Context(), id)
+	if err != nil {
+		opResult(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "scanned": n})
 }
 
 // Refresh 刷新库元数据（body: {library_id}）。
@@ -181,10 +186,24 @@ func (h *MediaServerHandler) Cover(c *gin.Context) {
 	if v, err := strconv.Atoi(c.Query("h")); err == nil && v > 0 {
 		opt.ThumbH = v
 	}
-	data, err := h.svc.Cover(c.Request.Context(), id, libID, opt)
+	data, st, err := h.svc.Cover(c.Request.Context(), id, libID, opt)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 一张都没贴上不是「这批片子没海报」：回错误让界面把数字与去处说清楚，
+		// 而不是发一张全黑的 200 成功图（黑图会被读成「没有封面」，用户从此不再看封面墙）。
+		if errors.Is(err, mediaserver.ErrNoCoverPlaced) {
+			errcode.Respond(c, errcode.MediaCoverNoImage.WithDetail(err))
+			return
+		}
+		respondMediaServerError(c, err)
 		return
+	}
+	if st.NoImage+st.FetchFail > 0 {
+		// 部分留黑：两种原因的数量挂响应头并打日志。<img> 通道看不到响应头，
+		// 但界面走的是 blob 请求（coverBlob），排障与自动化都能对上账。
+		c.Header("X-Cover-Stats", fmt.Sprintf("items=%d placed=%d no_image=%d fetch_fail=%d",
+			st.Items, st.Placed, st.NoImage, st.FetchFail))
+		slog.Warn("mediaserver: cover cells left blank", "server", id, "library", libID,
+			"items", st.Items, "placed", st.Placed, "no_image", st.NoImage, "fetch_fail", st.FetchFail)
 	}
 	c.Header("Cache-Control", "no-store")
 	c.Data(http.StatusOK, "image/jpeg", data)
@@ -201,7 +220,7 @@ func (h *MediaServerHandler) Notify(c *gin.Context) {
 		Body  string `json:"body"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	if body.Title == "" {
@@ -210,13 +229,9 @@ func (h *MediaServerHandler) Notify(c *gin.Context) {
 	opResult(c, h.svc.NotifyOne(c.Request.Context(), id, body.Title, body.Body))
 }
 
-// respondMediaErr 把 oper 错误映射到状态码：输入校验（类型/URL 非法）→ 400，其余 → 500。
+// respondMediaErr 把 oper 错误映射到状态码：记录不存在 → 404，输入校验 → 400 带原因，其余 → 500。
 func respondMediaErr(c *gin.Context, err error) {
-	if errors.Is(err, oper.ErrInvalidInput) {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
-		return
-	}
-	errcode.Respond(c, errcode.Internal.WithErr(err))
+	respondRecordError(c, err, errcode.MediaServerNotFound, errcode.InvalidInput, errcode.Internal)
 }
 
 // Webhook 公开接收媒体服务器播放/事件回调（媒体服务器无法带 JWT，故公开；按 :id 路由）。
@@ -248,7 +263,7 @@ func (h *MediaServerHandler) PlaybackReport(c *gin.Context) {
 	days := atoiDefault(c.Query("days"), 30)
 	rep, err := h.svc.PlaybackReport(c.Request.Context(), id, days)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rep)
@@ -275,13 +290,16 @@ func (h *MediaServerHandler) FixSubtitles(c *gin.Context) {
 			errcode.Respond(c, errcode.Conflict.WithErr(err))
 			return
 		}
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
-	// 深拷贝快照：out 会被后台 goroutine 持续更新，直接序列化同一指针存在 data race
-	//（五轮 P3 修复）。
-	c.JSON(http.StatusAccepted, chain.SubtitleFixReport{
-		Fixed: result.Fixed, Skipped: result.Skipped, Errors: append([]string{}, result.Errors...),
+	// 只回「受理了多少部」。此前这里序列化的是 Fixed/Skipped/Errors：三个字段由后台
+	// goroutine 逐条累加（写者全程持 subtitleFix.mu，读者不加锁＝data race），
+	// 而受理那一刻它们恒为 0 ——回出去的账面既无意义又谎报「补齐 0 条」。
+	// 最终账面在通知里（notice.SourceSubtitleFix），界面据 queued=0 明确报「没东西可补」。
+	c.JSON(http.StatusAccepted, gin.H{
+		"queued":  result.Queued,
+		"running": result.Queued > 0,
 	})
 }
 
@@ -298,7 +316,7 @@ func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 	}
 	groups, err := h.svc.DetectDuplicates(c.Request.Context(), id, libID)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondMediaServerError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"groups": groups})
@@ -320,4 +338,26 @@ func (h *MediaServerHandler) Direct(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, target)
+}
+
+// respondMediaServerError 库里查不到这台服务器要说「媒体服务器不存在」(404)，不能混成
+// 「请求参数有误」(400)：删掉服务器后另一个标签页仍在用旧 id、书签里的旧 id 都会走到这里，
+// 400 会把用户支去改参数而不是重选服务器。
+func respondMediaServerError(c *gin.Context, err error) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		errcode.Respond(c, errcode.MediaServerNotFound)
+		return
+	}
+	// oper 的输入校验文案是写给人看的中文（「地址必须是 http/https 协议…」），
+	// 直接带回；只有别种错误才退回泛化的「参数有误」。
+	respondInputError(c, err, errcode.InvalidInput)
+}
+
+// mediaServerErrText 给 200+{ok:false,error} 软失败面用：raw Go 错误（"record not found"）
+// 会被前端原样弹给用户，这里换成中文。
+func mediaServerErrText(err error) string {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "媒体服务器不存在"
+	}
+	return err.Error()
 }

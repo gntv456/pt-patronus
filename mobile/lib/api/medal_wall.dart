@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import '../features/common/stream_account.dart';
 
 class Medal {
   final int siteId;
@@ -82,8 +83,21 @@ class ActionResult {
       );
 }
 
+/// 勋章墙流式事件：batch 帧（该站多张卡）或 done 帧（清单账面）。
+class MedalStreamEvent {
+  final List<Medal> cards;
+  final String listError;
+  MedalStreamEvent({this.cards = const [], this.listError = ''});
+}
+
 class MedalWallApi {
+  MedalWallApi({StreamFrames? frames}) : _frames = frames;
+
+  final StreamFrames? _frames;
   final _api = ApiClient();
+
+  Stream<MapEntry<String, Map<String, dynamic>>> _stream(String path) =>
+      _frames?.call(path) ?? _api.streamGet(path);
 
   Future<List<Medal>> all({bool refresh = false}) async {
     final r = await _api.get('/medalwall${refresh ? '?refresh=1' : ''}');
@@ -91,17 +105,11 @@ class MedalWallApi {
     return list.map((e) => Medal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// 流式首屏（SSE）：每站完成推一帧 batch（该站多张卡）；取消监听即中断。
-  Stream<List<Medal>> allStream({bool refresh = false}) {
-    return _api.streamGet('/medalwall/stream${refresh ? '?refresh=1' : ''}').expand((ev) {
-      if (ev.key == 'batch' && ev.value['results'] is List) {
-        return [
-          (ev.value['results'] as List)
-              .map((e) => Medal.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        ];
-      }
-      return const <List<Medal>>[];
+  /// 流式首屏（SSE）：每站完成推一帧 batch（该站多张卡）；done 帧带清单账面；取消监听即中断。
+  Stream<MedalStreamEvent> allStream({bool refresh = false}) {
+    return _stream('/medalwall/stream${refresh ? '?refresh=1' : ''}').map((ev) {
+      final batch = mapStreamFrame(ev, Medal.fromJson);
+      return MedalStreamEvent(cards: batch.items, listError: batch.listError);
     });
   }
 

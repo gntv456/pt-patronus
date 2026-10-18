@@ -100,10 +100,10 @@ func TestFilterRule_CustomCRUD(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("更新失败 code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	// 重复创建同 id → 400（校验冲突）
+	// 重复创建同 id → 400，且要带「哪个 id 撞了」这句人话（从前只回「请求参数有误，请检查后重试」）
 	rec = doFilter(t, r, http.MethodPost, "/custom", `{"id":"myrule","name":"dup"}`)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("重复 id 应 400，got %d", rec.Code)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "已存在") {
+		t.Fatalf("重复 id 应 400 并点名冲突，got %d body=%s", rec.Code, rec.Body.String())
 	}
 	// 非法输入（缺 id）→ 400
 	rec = doFilter(t, r, http.MethodPost, "/custom", `{"name":"no-id"}`)
@@ -115,10 +115,14 @@ func TestFilterRule_CustomCRUD(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "myrule") {
 		t.Fatalf("删除失败 code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	// 再删 → 400
+	// 再删：「记录已被删掉」不是用户表单填错 ⇒ 404 + 本域码 + 点名是哪条。
+	// 旧断言写的是「应 400」——那是把误分类当成了契约（#253）。
 	rec = doFilter(t, r, http.MethodDelete, "/custom/myrule", "")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("删除不存在应 400，got %d", rec.Code)
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "filter_rule_not_found") {
+		t.Fatalf("删除不存在应 404 filter_rule_not_found，got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "myrule") {
+		t.Fatalf("404 要说出是哪条规则没了，body=%s", rec.Body.String())
 	}
 }
 

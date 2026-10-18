@@ -145,16 +145,44 @@ func (c *Client) RefreshToken(ctx context.Context, refresh, redirectURI string, 
 		"grant_type":    "refresh_token",
 		"redirect_uri":  redirectURI,
 	}
-	var tok Token
-	raw, err := c.postJSONRaw(ctx, c.baseURL+"/oauth/token", body)
+	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(raw, &tok); err != nil {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/oauth/token", bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("trakt-api-version", APIVersion)
+	data, status, err := c.rawStatus(req)
+	if err != nil {
+		return nil, err // 传输层错误（超时/断网）→ 调用方按瞬时故障处理
+	}
+	if status >= 400 {
+		// 400/401=服务端明确拒绝 refresh_token（invalid_grant，须重新授权）；
+		// 5xx/429=瞬时故障——调用方保留令牌稍后重试，不得清空。
+		dead := status == http.StatusBadRequest || status == http.StatusUnauthorized
+		return nil, &RefreshError{StatusCode: status, Body: snippet(data), AuthDead: dead}
+	}
+	var tok Token
+	if err := json.Unmarshal(data, &tok); err != nil {
 		return nil, err
 	}
 	tok.CreatedAt = time.Now().Unix()
 	return &tok, nil
+}
+
+// RefreshError 刷新令牌失败。AuthDead=true 表示服务端明确拒绝（refresh_token 已失效，
+// 需重新授权）；false 表示瞬时故障（网络/5xx/429），调用方应保留令牌稍后重试。
+type RefreshError struct {
+	StatusCode int
+	Body       string
+	AuthDead   bool
+}
+
+func (e *RefreshError) Error() string {
+	return fmt.Sprintf("trakt refresh %d: %s", e.StatusCode, e.Body)
 }
 
 // Watchlist 拉取指定类型（movies/shows）的 watchlist。
@@ -253,19 +281,27 @@ func (c *Client) do(req *http.Request, out any) error {
 }
 
 func (c *Client) raw(req *http.Request) ([]byte, error) {
-	resp, err := c.hc.Do(req)
+	data, status, err := c.rawStatus(req)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	data := readBody(resp)
-	if resp.StatusCode >= 400 {
-		if resp.StatusCode == http.StatusUnauthorized {
+	if status >= 400 {
+		if status == http.StatusUnauthorized {
 			return nil, &UnauthorizedError{Body: snippet(data)}
 		}
-		return nil, fmt.Errorf("trakt %d: %s", resp.StatusCode, snippet(data))
+		return nil, fmt.Errorf("trakt %d: %s", status, snippet(data))
 	}
 	return data, nil
+}
+
+// rawStatus 执行请求并返回 (响应体, 状态码)；仅传输层错误返回 err。
+func (c *Client) rawStatus(req *http.Request) ([]byte, int, error) {
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	return readBody(resp), resp.StatusCode, nil
 }
 
 // UnauthorizedError 表示访问令牌被服务端拒绝（401）——通常令牌被提前吊销或失效。

@@ -142,8 +142,23 @@ func (c *Client) doBody(ctx context.Context, method, path string, bodyFactory fu
 			return status, b, err
 		}
 		status, b, err = exec()
+		if err != nil {
+			return status, b, err
+		}
+	}
+	// 2xx 却回 HTML 文档：qB 的 API 成功从不回 HTML，这一般是登录页/代理认证页/门户拦截页
+	// 顶着 200 回来。多数写操作只看状态码、丢弃正文，于是「下载器啥也没改」会被报成操作成功。
+	if status >= 200 && status < 300 && looksLikeHTMLDocument(b) {
+		return status, b, fmt.Errorf("%s: qB 返回 HTML 页面而不是 API 结果（会话失效或被登录/代理认证页拦截），该操作未生效: %w",
+			path, downloader.ErrCannotConnect)
 	}
 	return status, b, err
+}
+
+// looksLikeHTMLDocument 正文开头是否为 HTML 文档（容忍 BOM/空白与 <!doctype 形式）。
+func looksLikeHTMLDocument(b []byte) bool {
+	s := strings.ToLower(strings.TrimLeft(strings.TrimSpace(string(b)), "\ufeff\x00"))
+	return strings.HasPrefix(s, "<!doctype html") || strings.HasPrefix(s, "<html")
 }
 
 // do 是字符串 body 的便捷封装（urlencoded form 等）。内部复用 doBody。

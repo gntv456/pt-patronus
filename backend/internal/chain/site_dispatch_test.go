@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,12 +24,19 @@ type fakeAdapter struct {
 	ui       *site.UserInfo
 	err      error         // Search 返回的错误（零值 nil，向后兼容已有用例）
 	delay    time.Duration // Search 前的模拟耗时（零值不阻塞）
+	panicOn  bool          // Search 直接 panic（模拟适配器解析畸形 HTML 崩溃）
+	// panicUserinfoHost 非空时，baseURL 命中的站在 FetchUserInfo 现场 panic
+	// （连通检测 TestConnections/TestConnectionsStream 的 per-site 隔离用例）。
+	panicUserinfoHost string
 }
 
 func (f *fakeAdapter) Name() string   { return "fake" }
 func (f *fakeAdapter) Priority() int  { return 100 }
 func (f *fakeAdapter) Schema() string { return f.schema }
 func (f *fakeAdapter) Search(ctx context.Context, _ *site.SiteMetadata, _, _, _, _ string, _ int) ([]site.Torrent, error) {
+	if f.panicOn {
+		panic("nil pointer dereference on malformed html")
+	}
 	if f.delay > 0 {
 		select {
 		case <-time.After(f.delay):
@@ -38,7 +46,10 @@ func (f *fakeAdapter) Search(ctx context.Context, _ *site.SiteMetadata, _, _, _,
 	}
 	return f.torrents, f.err
 }
-func (f *fakeAdapter) FetchUserInfo(_ context.Context, _ *site.SiteMetadata, _, _ string) (*site.UserInfo, error) {
+func (f *fakeAdapter) FetchUserInfo(_ context.Context, _ *site.SiteMetadata, baseURL, _ string) (*site.UserInfo, error) {
+	if f.panicUserinfoHost != "" && strings.Contains(baseURL, f.panicUserinfoHost) {
+		panic("nil pointer dereference on malformed userinfo page")
+	}
 	return f.ui, nil
 }
 

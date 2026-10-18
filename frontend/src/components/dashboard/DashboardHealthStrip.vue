@@ -61,6 +61,17 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
     </div>
   </div>
 
+  <div v-if="overview?.stat_read_error" class="statread-alert glass">
+    <span class="statread-badge">!</span>
+    <div class="statread-body">
+      <div class="statread-title">
+        <strong>{{ t('dhs.statReadFailed') }}</strong>
+        <span class="statread-hint">{{ t('dhs.statReadFailedHint') }}</span>
+      </div>
+      <div class="statread-reason">{{ overview.stat_read_error }}</div>
+    </div>
+  </div>
+
   <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert glass">
     <span class="nodata-badge">⚠</span>
     <div class="nodata-body">
@@ -196,6 +207,47 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   padding: 14px 18px;
   margin-bottom: 16px;
   border-left: 3px solid #f59e0b;
+}
+/* 统计读取故障：与「站点无数据」分色（红=系统读不到，琥珀=站点侧真没采到），
+   两者不会同屏——后端读失败时不再判定无数据。 */
+.statread-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  border-left: 3px solid #dc2626;
+}
+.statread-badge {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: #dc2626;
+  background: var(--pt-danger-bg, rgba(220, 38, 38, 0.12));
+}
+.statread-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.statread-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.statread-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.statread-reason {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
 }
 .nodata-badge {
   flex: 0 0 auto;

@@ -44,7 +44,7 @@ func TestFluxTorrentLiveE2E(t *testing.T) {
 	if u.Name == "" || u.Level == "" {
 		t.Fatalf("userinfo empty identity")
 	}
-	pk := f.TakePasskey()
+	pk := u.DiscoveredPasskey
 	if len(pk) != 32 {
 		t.Fatalf("passkey len = %d, want 32", len(pk))
 	}

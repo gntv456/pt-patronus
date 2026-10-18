@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
 import { useLoginAuth } from '@/composables/useLoginAuth'
+import { oidcFailText } from '@/utils/oidcFail'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
@@ -40,6 +41,12 @@ onMounted(async () => {
     await auth.loginByToken(oidcToken)
     router.replace({ name: 'dashboard' })
     return
+  }
+  // SSO 失败：后端把错误码放进 fragment 回跳（整页导航下 JSON 信封会被浏览器渲染成一屏 JSON）。
+  const oidcError = oidcHash.get('oidc_error')
+  if (oidcError) {
+    err.value = oidcFailText(oidcError)
+    router.replace({ path: route.path, query: route.query }) // 抹掉 fragment，刷新不重播旧错误
   }
   await Promise.all([loadBootStatus(), fetchCaptcha()])
 })

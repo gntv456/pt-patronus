@@ -65,20 +65,36 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 		open, _ := a.store.LastOpenAlert(t.ID, metric)
 		if open == nil {
 			now := time.Now()
+			silence, serr := a.store.ActiveSilenceUntil(t.ID, metric, now)
+			if serr != nil {
+				// 读不到静默就照旧通知：监控的默认方向是「宁可吵一句」，
+				// 反过来因为查询失败而静默会让告警彻底消失。
+				slog.Warn("monitor silence lookup failed", "target", t.Name, "metric", metric, "err", serr)
+			}
 			if e := a.store.CreateAlert(&models.MonitorAlert{
-				TargetID: t.ID, Level: r.Level, Metric: r.Metric, Value: r.Value, Message: r.Message, CreatedAt: now,
+				TargetID: t.ID, Level: r.Level, Metric: r.Metric, Value: r.Value, Message: r.Message,
+				CreatedAt: now, SilencedUntil: silence,
 			}); e != nil {
 				// 告警落库失败 = 监控失明（既无审计记录，下次采集又因 LastOpenAlert 查不到而重复通知）。
 				slog.Error("monitor alert create failed", "target", t.Name, "metric", metric, "err", e)
 			}
+			if silence != nil {
+				// 同一告警抖动回来了，静默期还没过：留痕（含 silenced_until，界面看得见），但不吵。
+				continue
+			}
 			if a.notif != nil && a.shouldNotify(t.ID) {
 				a.notif(ctx, "设备告警："+t.Name, r.Message, r.Level)
 			}
-			// 通知中心：离线类告警按设备类型发站内通知（host/nas，当天去重）
+			// 通知中心：离线类告警按设备类型发站内通知（host/nas/camera，当天去重）。
+			// 摄像头此前落到 host_offline，用户在通知中心看到的是「服务器掉线」，
+			// 与真实设备对不上——这类来源必须按 type 分派，不能默认兜底。
 			if metric == "offline" && a.notice != nil {
 				src := notice.SourceHostOffline
-				if t.Type == "nas" {
+				switch t.Type {
+				case "nas":
 					src = notice.SourceNASOffline
+				case "camera":
+					src = notice.SourceCameraOffline
 				}
 				_ = a.notice.Notice(ctx, notice.Input{
 					Source: src,
@@ -90,7 +106,11 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 			}
 		} else if alertSilenced(open) {
 			continue
-		} else if !open.CreatedAt.IsZero() && time.Since(open.CreatedAt) >= alertEscalateAfter && a.notif != nil && a.shouldNotify(t.ID) {
+		} else if open.AcknowledgedAt == nil && !open.CreatedAt.IsZero() && time.Since(open.CreatedAt) >= alertEscalateAfter && a.notif != nil && a.shouldNotify(t.ID) {
+			// 「已确认」= 有人接手在处理：持续提醒到此为止。此前这条只看「还开着 + 超过阈值」，
+			// 完全无视 AcknowledgedAt——用户点了确认还是每过冷却期收一条「设备告警持续」，
+			// 确认这个动作在提醒链上等于没做。（列表里的已确认状态照旧保留，恢复也照旧 Resolve；
+			// 「标记已读」是更弱的信号——扫一眼列表——不拿来压制提醒。）
 			a.notif(ctx, "设备告警持续："+t.Name, r.Message, "danger")
 		}
 	}

@@ -34,17 +34,43 @@ func (o *CommandRunOper) Finish(id uint, status string, success, failure int, fi
 	}).Error
 }
 
-func (o *CommandRunOper) List(source string, limit int) ([]models.OpsCommandRun, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 30
+const (
+	CommandRunListDefault = 30
+	CommandRunListLimit   = 100
+)
+
+// NormalizeCommandRunLimit 留空/非法取默认，超上限取上限。
+// 旧写法把 `limit>100` 一并退回 30：要 500 条的人只拿到 30 条还看不出来。
+func NormalizeCommandRunLimit(n int) int {
+	if n <= 0 {
+		return CommandRunListDefault
 	}
-	q := o.db.Order("id desc").Limit(limit)
+	if n > CommandRunListLimit {
+		return CommandRunListLimit
+	}
+	return n
+}
+
+func (o *CommandRunOper) List(source string, limit int) ([]models.OpsCommandRun, error) {
+	q := o.db.Order("id desc").Limit(NormalizeCommandRunLimit(limit))
 	if source != "" {
 		q = q.Where("source = ?", source)
 	}
 	var runs []models.OpsCommandRun
 	err := q.Find(&runs).Error
 	return runs, err
+}
+
+// Count 命令批次总数（筛选与 List 一致）。审计台账只回最近 30 条时，
+// 「这一批是不是全在这里」必须能回答，否则翻不到的失败批次等于不存在。
+func (o *CommandRunOper) Count(source string) (int64, error) {
+	q := o.db.Model(&models.OpsCommandRun{})
+	if source != "" {
+		q = q.Where("source = ?", source)
+	}
+	var n int64
+	err := q.Count(&n).Error
+	return n, err
 }
 
 func (o *CommandRunOper) Get(id uint) (*models.OpsCommandRun, error) {

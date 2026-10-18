@@ -1,9 +1,10 @@
 package filter
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
 // expr 是单个优先级层级表达式（不含 '>'）的 AST 节点。
@@ -52,7 +53,7 @@ func SplitLevels(ruleString string) ([]string, error) {
 	for _, p := range parts {
 		t := strings.TrimSpace(p)
 		if t == "" {
-			return nil, fmt.Errorf("rule_string 含空层级：%q", ruleString)
+			return nil, oper.InputReasonf("规则表达式里有空层级：%q", ruleString)
 		}
 		levels = append(levels, t)
 	}
@@ -69,7 +70,7 @@ func Parse(level string) (expr, error) {
 	}
 	p.skipSpaces()
 	if p.pos != len(p.s) {
-		return nil, fmt.Errorf("表达式 %q 在位置 %d 有未消费字符 %q", level, p.pos, p.s[p.pos:])
+		return nil, oper.InputReasonf("表达式 %q 在位置 %d 有没吃完的字符 %q，检查这里的括号或运算符", level, p.pos, p.s[p.pos:])
 	}
 	return e, nil
 }
@@ -118,7 +119,7 @@ func (p *ruleParser) parseNot() (expr, error) {
 func (p *ruleParser) parseAtom() (expr, error) {
 	p.skipSpaces()
 	if p.pos >= len(p.s) {
-		return nil, fmt.Errorf("表达式意外结束")
+		return nil, oper.InputReasonf("表达式意外结束：括号或运算符没写完")
 	}
 	if p.s[p.pos] == '(' {
 		p.pos++ // 跳过 '('
@@ -128,14 +129,14 @@ func (p *ruleParser) parseAtom() (expr, error) {
 		}
 		p.skipSpaces()
 		if p.pos >= len(p.s) || p.s[p.pos] != ')' {
-			return nil, fmt.Errorf("缺少右括号")
+			return nil, oper.InputReasonf("缺少右括号")
 		}
 		p.pos++ // 跳过 ')'
 		return e, nil
 	}
 	loc := tokenRe.FindStringIndex(p.s[p.pos:])
 	if loc == nil || loc[0] != 0 {
-		return nil, fmt.Errorf("位置 %d 处期待规则 id，实际 %q", p.pos, p.s[p.pos:])
+		return nil, oper.InputReasonf("位置 %d 处应该是规则 id，实际写的是 %q", p.pos, p.s[p.pos:])
 	}
 	tok := p.s[p.pos : p.pos+loc[1]]
 	p.pos += loc[1]

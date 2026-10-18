@@ -13,7 +13,8 @@ import (
 // STRM 文本文件：内容单行，指向真实播放路径（云盘挂载路径或直链）。
 // 媒体服务器（Emby/JF/Plex）读取 .strm 后按该路径直链播放云盘资源，无需本地落地。
 
-const defaultStrmTemplate = "{mount}{cloudpath}"
+// DefaultStrmTemplate 规则生成默认模板（挂载路径风格）。导出供修复链路按规则原样重渲染。
+const DefaultStrmTemplate = "{mount}{cloudpath}"
 
 // GenerateOptions STRM 生成参数（由 StrmRule / 订阅追更映射而来）。
 type GenerateOptions struct {
@@ -42,6 +43,8 @@ type GenerateOptions struct {
 	// （模板可能拼 {cloudpath}/{relpath}/{filename} 的任意组合），不能挂在 {direct}
 	// 占位符上——此前 sign 挂占位符尾部，{cloudpath} 后续拼进 query 导致端点 404。
 	SignFunc func(driveID uint, cloudPath string) string
+	// DirectBase 直链端点路径前缀（默认 /api/v1/cloud/direct）。
+	DirectBase string
 	// OnFile 每个媒体文件回调：written=是否新建/更新（false=本地已存在且内容相同）。
 	OnFile func(written bool, cloudPath, strmPath string, size int64)
 }
@@ -58,7 +61,7 @@ type GenerateResult struct {
 func Generate(ctx context.Context, cli Client, opts GenerateOptions) (GenerateResult, error) {
 	opts.CloudPath = CleanPath(opts.CloudPath)
 	if opts.Template == "" {
-		opts.Template = defaultStrmTemplate
+		opts.Template = DefaultStrmTemplate
 	}
 	opts.IncludeExts = normalizeExtList(opts.IncludeExts)
 	opts.ExcludeKeywords = normalizeKeywordList(opts.ExcludeKeywords)
@@ -178,37 +181,39 @@ func validateStrmOutputDir(dir string) error {
 	return nil
 }
 
-// directEndpoints 由规则双地址解析 {direct}/{directPublic} 的基址：
+// directEndpoints 解析 {direct}/{directPublic} 的完整端点前缀（含 DirectBase）：
 // {direct} = LocalBaseURL > FallbackBaseURL(全局 AppBaseURL) > 相对路径；
-// {directPublic} = PublicBaseURL > 同 {direct}。
-func directEndpoints(opts GenerateOptions, direct WriteStrmOptions) (directBase, publicBase string) {
-	fallback := strings.TrimRight(direct.AppBaseURL, "/")
+// {directPublic} = PublicBaseURL > 同 {direct}。规则生成与直写路径共用，保证同参数内容一致。
+func directEndpoints(opts GenerateOptions) (directURL, publicURL string) {
 	local := strings.TrimRight(opts.LocalBaseURL, "/")
 	if local == "" {
 		local = strings.TrimRight(opts.FallbackBaseURL, "/")
-	}
-	if local == "" {
-		local = fallback
 	}
 	public := strings.TrimRight(opts.PublicBaseURL, "/")
 	if public == "" {
 		public = local
 	}
-	return local, public
+	base := strings.TrimRight(opts.DirectBase, "/")
+	if base == "" {
+		base = "/api/v1/cloud/direct"
+	}
+	return local + base, public + base
 }
 
-// renderStrmContent 渲染 .strm 内容：先替换路径变量，再按规则双地址替换 {direct}/{directPublic}。
-// Generate（规则生成）路径用：mount 型模板不含 direct 时行为与旧版一致。
-// 二轮 P0-1/P1-1 修复：{direct} 只替换为「端点基址 + /:driveId」，云盘路径由模板其余
+// renderStrmContent 渲染 .strm 内容：先替换路径变量（含 {mount}），再按规则双地址替换
+// {direct}/{directPublic}。Generate（规则生成）与 WriteStrmFile（直写/修复）路径共用同一
+// 渲染，修复链路才能按规则原样重渲染（此前修复路径 mount 恒空 + 忽略 {directPublic}，
+// 6h 一轮 cron 静默改坏规则生成的 .strm）。
+// 二轮 P0-1/P1-1 修复：{direct} 只替换为「端点基址」，云盘路径由模板其余
 // 变量（{cloudpath} 等）拼接；签名在 appendDirectSign 里对最终完整 URL 行尾追加——
 // 替换完成后 content 即完整单行 URL，行尾加 ?sign= 不会截断路径。
 func renderStrmContent(opts GenerateOptions, f File, rel string) string {
 	content := RenderTemplate(opts.Template, opts.MountRoot, f.Path, rel, f.Name)
 	if strings.Contains(content, "{direct}") || strings.Contains(content, "{directPublic}") {
-		directBase, publicBase := directEndpoints(opts, WriteStrmOptions{})
+		localURL, publicURL := directEndpoints(opts)
 		drive := strconv.FormatUint(uint64(opts.DriveID), 10)
-		content = strings.ReplaceAll(content, "{direct}", directBase+"/api/v1/cloud/direct/"+drive)
-		content = strings.ReplaceAll(content, "{directPublic}", publicBase+"/api/v1/cloud/direct/"+drive)
+		content = strings.ReplaceAll(content, "{direct}", localURL+"/"+drive)
+		content = strings.ReplaceAll(content, "{directPublic}", publicURL+"/"+drive)
 		content = appendDirectSign(content, opts.DriveID, opts.SignFunc)
 	}
 	return content
@@ -345,15 +350,20 @@ func RenderTemplate(tmpl, mount, cloudpath, relpath, filename string) string {
 	return out
 }
 
-// WriteStrmOptions 单文件 .strm 落地参数（自动上传链路用；不走网盘扫描）。
+// WriteStrmOptions 单文件 .strm 落地参数（自动上传链路 + 修复链路用；不走网盘扫描）。
 type WriteStrmOptions struct {
 	OutputDir  string // 本地输出根目录
 	CloudPath  string // 文件在云盘的完整路径（/{cloudpath} 变量与相对目录）
-	Template   string // 内容模板（额外支持 {direct}）
+	Template   string // 内容模板（额外支持 {direct}/{directPublic}）
 	FileName   string // 源文件名（a.mkv）
 	DriveID    uint   // {direct} → DirectBase/:driveId
 	DirectBase string // 直链端点前缀，空=/api/v1/cloud/direct
 	AppBaseURL string // 服务对外基址（含协议+主机+端口）；非空时 strm 内容渲染为绝对 URL
+	// MountRoot/LocalBaseURL/PublicBaseURL 规则级渲染上下文：修复链路按记录所属规则
+	// 原样重渲染 {mount}/{direct}/{directPublic}，缺失会静默改坏规则生成的 .strm。
+	MountRoot     string
+	LocalBaseURL  string
+	PublicBaseURL string
 	// Sign 直链限时签名（<exp>.<hmac>，由 CloudChain.SignDirectLink 生成）。
 	// SignFunc 直链限时签名（P0-1 修复：Sign 字符串改为函数——签名须基于渲染后的
 	// 最终云盘路径计算，占位符阶段拿不到完整路径）。nil=兼容模式不签名。
@@ -366,51 +376,52 @@ type WriteStrmOptions struct {
 	OutPath string
 }
 
-// signFunc 适配器：把 SignFunc 归一为 appendDirectSign 需要的形态。
-func (w WriteStrmOptions) signFunc() func(uint, string) string {
-	return w.SignFunc
-}
-
-// WriteStrmFile 写单个 .strm 文件（幂等：内容相同跳过）。与规则生成的 .strm 结构一致，
-// Emby 扫描 .strm 即入库；内容指向 302 直链端点时由后端实时解析网盘限时直链。
-func WriteStrmFile(opts WriteStrmOptions) error {
+// WriteStrmFile 写单个 .strm 文件（幂等：内容相同跳过），返回实际 .strm 路径。
+// 与规则生成的 .strm 渲染同口径（模板/mount/双地址/签名），Emby 扫描 .strm 即入库；
+// 内容指向 302 直链端点时由后端实时解析网盘限时直链。
+func WriteStrmFile(opts WriteStrmOptions) (string, error) {
 	if err := validateStrmOutputDir(opts.OutputDir); err != nil {
-		return err
+		return "", err
 	}
 	if opts.Template == "" {
-		opts.Template = defaultStrmTemplate
+		opts.Template = DefaultStrmTemplate
 	}
 	root := opts.StructRoot
 	if root == "" {
 		root = cloudDirOf(opts.CloudPath) // 默认父目录 → 文件直落 OutputDir
 	}
-	g := GenerateOptions{OutputDir: opts.OutputDir, CloudPath: root, Template: opts.Template, KeepExt: true}
+	g := GenerateOptions{
+		OutputDir: opts.OutputDir, CloudPath: root, Template: opts.Template, KeepExt: true,
+		DriveID: opts.DriveID, MountRoot: opts.MountRoot, DirectBase: opts.DirectBase,
+		LocalBaseURL: opts.LocalBaseURL, PublicBaseURL: opts.PublicBaseURL,
+		FallbackBaseURL: opts.AppBaseURL, SignFunc: opts.SignFunc,
+	}
 	f := File{Name: opts.FileName, Path: opts.CloudPath}
 	if opts.OutPath != "" {
-		return writeStrmAt(g, f, opts, opts.OutPath)
+		_, outPath, err := writeStrmAt(g, f, opts.OutPath)
+		return outPath, err
 	}
-	_, _, err := writeStrmDirect(g, f, opts)
-	return err
+	_, outPath, err := writeStrmDirect(g, f)
+	return outPath, err
 }
 
-// writeStrmAt 按指定绝对路径写 .strm（幂等：内容相同跳过），内容渲染与 writeStrmDirect 一致。
-func writeStrmAt(opts GenerateOptions, f File, direct WriteStrmOptions, outPath string) error {
-	if !isWithinDir(outPath, opts.OutputDir) {
-		return fmt.Errorf("strm 输出路径逃出 OutputDir: %s", outPath)
+// writeStrmAt 按指定绝对路径写 .strm（幂等：内容相同跳过），渲染与规则生成同口径。
+func writeStrmAt(g GenerateOptions, f File, outPath string) (bool, string, error) {
+	if !isWithinDir(outPath, g.OutputDir) {
+		return false, outPath, fmt.Errorf("strm 输出路径逃出 OutputDir: %s", outPath)
 	}
-	rel := strings.TrimPrefix(f.Path, opts.CloudPath)
-	content := RenderTemplate(opts.Template, "", f.Path, rel, f.Name)
-	if strings.Contains(content, "{direct}") {
-		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
-	}
-	content = appendDirectSign(content, direct.DriveID, direct.signFunc()) + "\n"
+	rel := strings.TrimPrefix(f.Path, g.CloudPath)
+	content := renderStrmContent(g, f, rel) + "\n"
 	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {
-		return nil
+		return false, outPath, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		return err
+		return false, outPath, err
 	}
-	return writeFileAtomic(outPath, []byte(content), 0o644)
+	if err := writeFileAtomic(outPath, []byte(content), 0o644); err != nil {
+		return false, outPath, err
+	}
+	return true, outPath, nil
 }
 
 // writeFileAtomic tmp+rename 原子写（四轮 P2 修复：直写崩溃/并发写会留半行 .strm，
@@ -427,27 +438,6 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 	return nil
 }
 
-// directURLFor {direct} 占位符的完整替换值：端点基址 + /:driveId（+ 限时签名 query）。
-// Sign 非空时追加 ?sign=<exp>.<hmac>——公开 302 端点校验之（URL 即凭证）。
-func directURLFor(direct WriteStrmOptions) string {
-	// P0-1 修复：仅返回端点基址 + /:driveId。签名不在此挂——占位符后还有 {cloudpath}
-	// 等路径变量拼接，sign 挂这会把路径挤进 query（端点必败）。签名由 appendDirectSign 行尾追加。
-	return directBaseURL(direct) + "/" + strconv.FormatUint(uint64(direct.DriveID), 10)
-}
-
-// directBaseURL 直链端点基址。AppBaseURL 配置时渲染绝对 URL（Emby strm 播放必需：
-// 播放器在远端解析内容，相对路径无宿主）；否则保留相对路径（同机场景）。
-func directBaseURL(direct WriteStrmOptions) string {
-	base := strings.TrimRight(direct.DirectBase, "/")
-	if base == "" {
-		base = "/api/v1/cloud/direct"
-	}
-	if direct.AppBaseURL != "" && strings.HasPrefix(base, "/") {
-		return strings.TrimRight(direct.AppBaseURL, "/") + base
-	}
-	return base
-}
-
 // cloudDirOf 云盘路径父目录（根则 "/"）。
 func cloudDirOf(p string) string {
 	if i := strings.LastIndex(p, "/"); i > 0 {
@@ -456,21 +446,17 @@ func cloudDirOf(p string) string {
 	return "/"
 }
 
-// writeStrmDirect writeStrm 的直链变体：先替换既有变量，再把 {direct} 替换为
-// 直链端点 + /:driveId，幂等写入（复用路径穿越防御与目录创建）。
-func writeStrmDirect(opts GenerateOptions, f File, direct WriteStrmOptions) (bool, string, error) {
-	rel := strings.TrimPrefix(f.Path, opts.CloudPath)
+// writeStrmDirect writeStrm 的直链变体：渲染与规则生成同口径，幂等写入
+// （复用路径穿越防御与目录创建）。
+func writeStrmDirect(g GenerateOptions, f File) (bool, string, error) {
+	rel := strings.TrimPrefix(f.Path, g.CloudPath)
 	relDir := filepath.FromSlash(filepath.Dir(strings.TrimPrefix(rel, "/")))
 	strmName := filepath.Base(f.Name) + ".strm"
-	outPath := filepath.Join(opts.OutputDir, relDir, strmName)
-	if !isWithinDir(outPath, opts.OutputDir) {
+	outPath := filepath.Join(g.OutputDir, relDir, strmName)
+	if !isWithinDir(outPath, g.OutputDir) {
 		return false, outPath, fmt.Errorf("strm 输出路径逃出 OutputDir: %s", outPath)
 	}
-	content := RenderTemplate(opts.Template, "", f.Path, rel, f.Name)
-	if strings.Contains(content, "{direct}") {
-		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
-	}
-	content = appendDirectSign(content, direct.DriveID, direct.signFunc()) + "\n"
+	content := renderStrmContent(g, f, rel) + "\n"
 	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {
 		return false, outPath, nil
 	}

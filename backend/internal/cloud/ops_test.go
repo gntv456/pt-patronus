@@ -142,11 +142,10 @@ func TestUploadQuarkExist(t *testing.T) {
 // TestWriteStrmFileDirect 直链模板：{direct} → /api/v1/cloud/direct/:driveId + {cloudpath}。
 func TestWriteStrmFileDirect(t *testing.T) {
 	dir := t.TempDir()
-	err := WriteStrmFile(WriteStrmOptions{
+	if _, err := WriteStrmFile(WriteStrmOptions{
 		OutputDir: dir, CloudPath: "/媒体库/电影/A.mkv",
 		Template: "{direct}{cloudpath}", FileName: "A.mkv", DriveID: 3,
-	})
-	if err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "A.mkv.strm"))
@@ -158,7 +157,7 @@ func TestWriteStrmFileDirect(t *testing.T) {
 		t.Errorf("strm content=%q want %q", b, want)
 	}
 	// 幂等：再写一次内容不变不报错
-	if err := WriteStrmFile(WriteStrmOptions{
+	if _, err := WriteStrmFile(WriteStrmOptions{
 		OutputDir: dir, CloudPath: "/媒体库/电影/A.mkv",
 		Template: "{direct}{cloudpath}", FileName: "A.mkv", DriveID: 3,
 	}); err != nil {
@@ -169,7 +168,7 @@ func TestWriteStrmFileDirect(t *testing.T) {
 // TestWriteStrmFileAbsoluteURL AppBaseURL 配置时渲染绝对地址（Emby 远端播放必需）。
 func TestWriteStrmFileAbsoluteURL(t *testing.T) {
 	dir := t.TempDir()
-	if err := WriteStrmFile(WriteStrmOptions{
+	if _, err := WriteStrmFile(WriteStrmOptions{
 		OutputDir: dir, CloudPath: "/电影/A.mkv",
 		Template: "{direct}{cloudpath}", FileName: "A.mkv", DriveID: 3,
 		AppBaseURL: "http://nas.local:8088/",

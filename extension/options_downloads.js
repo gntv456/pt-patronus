@@ -118,7 +118,16 @@ export function initDownloadsPage($, feedback) {
     }
     $('refreshDl').onclick = refreshDownloads
     $('pauseAll').onclick = async () => {
-      const { torrents } = await listTorrents(await getConfig(), dlCurId)
+      // listTorrents 是**永不抛**的出口（downloads.js 内建 .catch）：读不到下载器时
+      // 回 {torrents:[], error:'原因'}，与「真的没有任务」长得一模一样。此前这里裸解构
+      // { torrents } 把 .error 丢掉，于是读不到清单 ⇒ hs 为空 ⇒ 直接 return，
+      // 页面一个字都不变——用户看到的是「点了全部暂停，任务却还在」，实际是压根没连上。
+      // 同文件的 renderDownloads 早就消费了 .error，这里是漏的另一半。
+      const { torrents, error: listErr } = await listTorrents(await getConfig(), dlCurId)
+      if (listErr) {
+        $('dlStats').innerHTML = `<span class="err">读不到任务清单：${esc(String(listErr).slice(0, 80))}（下载器不可达？）</span>`
+        return
+      }
       const hs = torrents.filter((t) => !/paused|stopped/.test(t.state || '')).map((t) => t.hash)
       if (!hs.length) return
       try {
@@ -129,7 +138,12 @@ export function initDownloadsPage($, feedback) {
       await refreshDownloads()
     }
     $('resumeAll').onclick = async () => {
-      const { torrents } = await listTorrents(await getConfig(), dlCurId)
+      // 同 pauseAll：.error 是「读不到清单」与「没有任务」唯一的可判别信号，不许丢。
+      const { torrents, error: listErr } = await listTorrents(await getConfig(), dlCurId)
+      if (listErr) {
+        $('dlStats').innerHTML = `<span class="err">读不到任务清单：${esc(String(listErr).slice(0, 80))}（下载器不可达？）</span>`
+        return
+      }
       const hs = torrents.filter((t) => /paused|stopped/.test(t.state || '')).map((t) => t.hash)
       if (!hs.length) return
       try {

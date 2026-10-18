@@ -5,6 +5,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'transfer_account.dart';
 
 part 'transferopsmixin.dart';
 part 'transfer_widgets.dart';
@@ -174,11 +175,22 @@ class _TransferPageState extends State<TransferPage> with TransferOpsMixin {
         onRefresh: _load,
         child: _list.isEmpty && !_loading
             ? _empty()
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
-                itemCount: _list.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _historyCard(_list[i])),
+            : Column(
+                children: [
+                  if (_historyNote.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+                      child: Text(_historyNote, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
+                    ),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                      itemCount: _list.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _historyCard(_list[i])),
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -303,8 +315,10 @@ class _TransferPageState extends State<TransferPage> with TransferOpsMixin {
       setS(() => loadingT = true);
       try {
         torrents = await _dlApi.torrents(selDl);
-      } catch (_) {
+      } catch (e) {
         torrents = [];
+        // 以前是 catch (_) 直接留空表：下载器挂了 / Cookie 失效看起来像「这个下载器没种子」。
+        if (mounted) _toast('读取种子失败：$e');
       }
       if (mounted) setS(() => loadingT = false);
     }

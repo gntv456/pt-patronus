@@ -33,7 +33,7 @@ func setupBrushServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 			_ = sqlDB.Close()
 		}
 	})
-	if err := db.AutoMigrate(&models.BrushFlowTask{}, &models.Site{}, &models.Downloader{}, &models.SystemConfig{}); err != nil {
+	if err := db.AutoMigrate(&models.BrushFlowTask{}, &models.BrushFlowSeed{}, &models.Site{}, &models.Downloader{}, &models.SystemConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	base := chain.NewBase(module.New(), event.New())
@@ -47,6 +47,7 @@ func setupBrushServer(t *testing.T) (*gin.Engine, *gorm.DB) {
 	h := NewBrushFlowHandler(svc)
 	r := gin.New()
 	r.GET("/brush/tasks", h.List)
+	r.DELETE("/brushflow/:id", h.Delete)
 	r.GET("/brush/tasks/:id", h.Get)
 	r.POST("/brush/tasks", h.Create)
 	r.PUT("/brush/tasks/:id", h.Update)
@@ -84,9 +85,10 @@ func TestBrush_ListAndGet(t *testing.T) {
 	}
 }
 
-// TestBrush_CreateValidation 创建校验：名称/站点/下载器必填，统计字段清零。
+// TestBrush_CreateValidation 创建校验：名称/站点/下载器必填，统计字段清零；
+// 下载器须真实存在且支持标签（刷流依赖 tag 识别任务种子）。
 func TestBrush_CreateValidation(t *testing.T) {
-	r, _ := setupBrushServer(t)
+	r, db := setupBrushServer(t)
 
 	if rec := doBrush(t, r, http.MethodPost, "/brush/tasks", `{"name":""}`); rec.Code != http.StatusBadRequest {
 		t.Fatalf("空名应 400，got %d", rec.Code)
@@ -95,8 +97,21 @@ func TestBrush_CreateValidation(t *testing.T) {
 		t.Fatalf("缺站点/下载器应 400，got %d", rec.Code)
 	}
 
-	// 合法创建（引用不存在的站点/下载器 id：入库层允许，运行时 Select 会失败——分开验证）
+	// 真实下载器：qb 支持标签（合法），ut 不支持（建任务须被拒）。
+	if err := db.Create(&models.Downloader{Name: "qb", Type: "qb", URL: "http://qb:8080"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.Downloader{Name: "ut", Type: "ut", URL: "http://ut:8080"}).Error; err != nil {
+		t.Fatal(err)
+	}
 	rec := doBrush(t, r, http.MethodPost, "/brush/tasks",
+		`{"name":"ut任务","site_id":1,"downloader_id":2,"max_seeds":5}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "brushflow_downloader_no_tags") {
+		t.Fatalf("tagless 下载器应 400 + 专属错误码: code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	// 合法创建（引用不存在的站点 id：入库层允许，运行时 Select 会失败——分开验证）
+	rec = doBrush(t, r, http.MethodPost, "/brush/tasks",
 		`{"name":"刷流任务","site_id":1,"downloader_id":1,"max_seeds":5,"total_added":999,"id":777}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("创建失败 code=%d body=%s", rec.Code, rec.Body.String())
@@ -122,8 +137,15 @@ func TestBrush_CreateValidation(t *testing.T) {
 
 // TestBrush_SelectSweepFailure 选种/清扫失败语义（站点不存在 → 错误响应不 5xx）。
 func TestBrush_SelectSweepFailure(t *testing.T) {
-	r, _ := setupBrushServer(t)
-	doBrush(t, r, http.MethodPost, "/brush/tasks", `{"name":"空跑","site_id":999,"downloader_id":999}`)
+	r, db := setupBrushServer(t)
+	if err := db.Create(&models.Downloader{Name: "qb", Type: "qb", URL: "http://qb:8080"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	// 站点 id 可不存在（运行时校验）；下载器须真实存在且支持标签（建任务前置校验）。
+	if rec := doBrush(t, r, http.MethodPost, "/brush/tasks",
+		`{"name":"空跑","site_id":999,"downloader_id":1}`); rec.Code != http.StatusOK {
+		t.Fatalf("建任务失败: %d %s", rec.Code, rec.Body.String())
+	}
 
 	rec := doBrush(t, r, http.MethodPost, "/brush/tasks/1/select", "")
 	if rec.Code == 0 || rec.Code >= 500 {

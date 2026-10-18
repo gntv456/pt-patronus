@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/chain"
+	"gorm.io/gorm"
 )
 
 // EntertainmentHandler 处理娱乐游戏。
@@ -42,13 +43,52 @@ func (h *EntertainmentHandler) checkOrigin(r *http.Request) bool {
 }
 
 // spendErr 处理"花钱"操作（Play/Buy/Draw/Synthesize）的错误：
-// 重复提交（in-flight 守卫拦截）→ 429，避免双击/重放重复扣站点游戏币；其余 → 400。
+// 重复提交（in-flight 守卫拦截）→ 429，避免双击/重放重复扣站点游戏币。
 func spendErr(c *gin.Context, err error) {
+	spendErrAt(c, err, true)
+}
+
+// entReadErr 读侧（档位/奖品/记录/余额/总览）同款分类，只是不谈扣费。
+func entReadErr(c *gin.Context, err error) {
+	spendErrAt(c, err, false)
+}
+
+// spendErrAt 三类处境分开说。从前只有「重复提交 → 429」这一档被区分，
+// 其余一律 400「请求参数有误，请检查后重试」：
+//   - 链层写的「该游戏不支持 X」是人话原因，WithErr 只进日志 ⇒ 用户不知道该换游戏；
+//   - 站点/网络失败是上游问题，而且花钱操作**是否已扣费界面完全没说**，
+//     用户要么以为没扣反复点（重复消耗），要么以为扣了而不敢重试。
+func spendErrAt(c *gin.Context, err error, spend bool) {
 	if errors.Is(err, chain.ErrDuplicateSpend) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"code": errcode.DuplicateSpend.Code, "message": err.Error(), "error": err.Error()})
 		return
 	}
-	errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 站点已被删除：链层 siteOp.Get 抛的是记录不存在，与「没有这个游戏」不是一回事。
+		errcode.Respond(c, errcode.SiteNotFound.WithErr(err))
+		return
+	}
+	if errors.Is(err, chain.ErrGameNotFound) {
+		// 站点没注册这个游戏（含站点已被删）：是引用失效，不是上游故障也不是参数问题。
+		errcode.Respond(c, errcode.EntertainmentGameNotFound.WithErr(err))
+		return
+	}
+	if errors.Is(err, chain.ErrGameUnsupported) {
+		// WithDetail：链层这句本来就是写给人看的，原样抵达界面。
+		errcode.Respond(c, errcode.EntertainmentGameUnsupported.WithDetail(err))
+		return
+	}
+	if errors.Is(err, chain.ErrSiteCredentialUnreadable) {
+		// 必须先于 spend/读侧兜底两档：这一档能确定地说「没发请求、没扣费」，
+		// 而 EntertainmentSpendFailed 的措辞是「是否已扣费以站点页面为准」，套上去会把人引去核余额。
+		errcode.Respond(c, errcode.EntertainmentCredentialUnreadable.WithDetail(err))
+		return
+	}
+	if spend {
+		errcode.Respond(c, errcode.EntertainmentSpendFailed.WithErr(err))
+		return
+	}
+	errcode.Respond(c, errcode.EntertainmentDataUnreadable.WithErr(err))
 }
 
 // Sites 列出全部站点及其已适配的娱乐项目数（娱乐页站点筛选用，GET /entertainment）。
@@ -110,7 +150,7 @@ func (h *EntertainmentHandler) Stats(c *gin.Context) {
 	}
 	res, err := h.ent.Stats(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -124,7 +164,7 @@ func (h *EntertainmentHandler) BuyOptions(c *gin.Context) {
 	}
 	opts, err := h.ent.BuyOptions(id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"options": opts})
@@ -184,7 +224,7 @@ func (h *EntertainmentHandler) Prizes(c *gin.Context) {
 	}
 	res, err := h.ent.Prizes(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"prizes": res})
@@ -198,7 +238,7 @@ func (h *EntertainmentHandler) History(c *gin.Context) {
 	}
 	res, err := h.ent.History(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"records": res})
@@ -208,7 +248,7 @@ func (h *EntertainmentHandler) History(c *gin.Context) {
 func (h *EntertainmentHandler) Overview(c *gin.Context) {
 	res, err := h.ent.Overview()
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		entReadErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)

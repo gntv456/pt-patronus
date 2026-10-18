@@ -59,7 +59,7 @@ func (g *GenericJSON) Search(ctx context.Context, def *site.SiteMetadata,
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		return nil, site.ErrNotLoggedIn
 	}
-	return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	return site.ParseJSONSearch(resp.Body, def, baseURL)
 }
 
 func (g *GenericJSON) searchFSM(ctx context.Context, def *site.SiteMetadata, baseURL, credRaw, keyword string, page int) ([]site.Torrent, error) {
@@ -87,7 +87,7 @@ func (g *GenericJSON) searchFSM(ctx context.Context, def *site.SiteMetadata, bas
 	if err := json.Unmarshal(resp.Body, &probe); err == nil && !probe.Success {
 		return nil, site.ErrNotLoggedIn
 	}
-	return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	return site.ParseJSONSearch(resp.Body, def, baseURL)
 }
 
 func (g *GenericJSON) searchF3NIX(ctx context.Context, def *site.SiteMetadata, baseURL, credRaw, keyword string, page int) ([]site.Torrent, error) {
@@ -125,7 +125,7 @@ func (g *GenericJSON) searchF3NIX(ctx context.Context, def *site.SiteMetadata, b
 	if err := json.Unmarshal(resp.Body, &probe); err == nil && (!probe.Success || probe.StatusCode != 1) {
 		return nil, site.ErrNotLoggedIn
 	}
-	return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	return site.ParseJSONSearch(resp.Body, def, baseURL)
 }
 
 func (g *GenericJSON) searchYemaPT(ctx context.Context, def *site.SiteMetadata, baseURL, cookie, keyword string, page int) ([]site.Torrent, error) {
@@ -158,7 +158,7 @@ func (g *GenericJSON) searchYemaPT(ctx context.Context, def *site.SiteMetadata, 
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		return nil, site.ErrNotLoggedIn
 	}
-	return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	return site.ParseJSONSearch(resp.Body, def, baseURL)
 }
 
 // FetchUserInfo JSON 站 YAML 普遍无 user_info → stub（不报错）。

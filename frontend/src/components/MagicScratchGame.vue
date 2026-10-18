@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult } from '@/api/entertainment'
+import { entFail } from '@/utils/entFail'
 
 const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
@@ -11,7 +12,7 @@ const playing = ref(false)
 const reveal = ref<PlayResult | null>(null)
 
 async function refreshStats() {
-  stats.value = await entertainmentApi.stats(props.siteId, 'magic_scratch').catch(() => stats.value)
+  stats.value = await entertainmentApi.stats(props.siteId, 'magic_scratch').catch(entFail('stats', stats.value))
 }
 
 async function scratch() {

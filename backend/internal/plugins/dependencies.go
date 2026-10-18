@@ -64,7 +64,7 @@ func (m *Manager) evaluateDependencies(dependencies []PluginDependency, requireE
 		if !status.Satisfied && !status.Optional {
 			allRequiredSatisfied = false
 			if reason == "" {
-				reason = fmt.Sprintf("requires plugin dependency %s", dependency.ID)
+				reason = fmt.Sprintf("需要先安装/启用依赖插件 %s", dependency.ID)
 				if status.Message != "" {
 					reason = fmt.Sprintf("%s: %s", reason, status.Message)
 				}
@@ -89,9 +89,9 @@ func (m *Manager) evaluateDependency(dependency PluginDependency, requireEnabled
 	}
 	switch {
 	case !status.Installed:
-		status.Message = "dependency is not installed"
+		status.Message = "依赖插件本机没装"
 	case strings.TrimSpace(status.InstalledVersion) == "":
-		status.Message = "dependency version is unknown"
+		status.Message = "依赖插件版本未知"
 	case dependency.Version != "":
 		if err := validateDependencyVersion(dependency.ID, dependency.Version, status.InstalledVersion); err != nil {
 			status.Message = err.Error()

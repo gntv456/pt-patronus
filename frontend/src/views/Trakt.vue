@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { traktApi, type TraktConfig } from '@/api/trakt'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
+import { devicePollTerminal, traktFailText, traktPollGiveUpText, TRAKT_POLL_GIVEUP } from './traktHelpers'
 
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
@@ -30,6 +31,8 @@ const device = ref<{ user_code: string; verification_url: string } | null>(null)
 const authBusy = ref(false)
 const syncing = ref(false)
 let pollTimer: ReturnType<typeof setInterval> | null = null
+// 连续「什么都读不到」的次数：只在该停下来时才停（一次网络抖动不等于授权坏了）。
+let pollFails = 0
 
 async function load() {
   loading.value = true
@@ -43,7 +46,7 @@ async function load() {
       startPolling()
     }
   } catch (e: unknown) {
-    ElMessage.error(t('trakt.loadCfgFailed'))
+    ElMessage.error(traktFailText(e, t('trakt.loadCfgFailed')))
   } finally {
     loading.value = false
   }
@@ -88,7 +91,8 @@ async function startDeviceAuth() {
     window.open(dc.verification_url, '_blank')
     startPolling()
   } catch (e: unknown) {
-    ElMessage.error(t('trakt.authStartFailed'))
+    // e 不能只当「发不出去」：后端会区分「凭据还没填（去设置里填）」和「Trakt 没响应」。
+    ElMessage.error(traktFailText(e, t('trakt.authStartFailed')))
   } finally {
     authBusy.value = false
   }
@@ -99,14 +103,26 @@ function startPolling() {
   pollTimer = setInterval(async () => {
     try {
       const st = await traktApi.deviceStatus()
+      pollFails = 0
       if (st.authorized) {
         stopPolling()
         device.value = null
         ElMessage.success(t('trakt.authOk'))
         await load()
       }
-    } catch {
-      /* ignore */
+    } catch (e: unknown) {
+      // 授权码过期 / 凭据没填是「再等也不会亮」的终端态：必须停下来把这句说出来，
+      // 否则面板挂着一张废码每 3s 空转，用户不知道要重新发起。
+      if (devicePollTerminal(e)) {
+        stopPolling()
+        device.value = null
+        ElMessage.error(traktFailText(e, t('trakt.authStartFailed')))
+        return
+      }
+      if (++pollFails >= TRAKT_POLL_GIVEUP) {
+        stopPolling()
+        ElMessage.warning(traktPollGiveUpText(pollFails))
+      }
     }
   }, 3000)
 }
@@ -116,6 +132,7 @@ function stopPolling() {
     clearInterval(pollTimer)
     pollTimer = null
   }
+  pollFails = 0
 }
 
 async function syncNow() {
@@ -125,7 +142,8 @@ async function syncNow() {
     ElMessage.success(t('trakt.syncDone', { n: r.created }))
     await load()
   } catch (e: unknown) {
-    ElMessage.error(t('trakt.syncFailed'))
+    // 「同步失败」不够：未授权要说「先点发起授权」，上游没响应才该劝人稍后再试。
+    ElMessage.error(traktFailText(e, t('trakt.syncFailed')))
   } finally {
     syncing.value = false
   }

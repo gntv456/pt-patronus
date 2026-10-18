@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -31,8 +32,7 @@ func registerMediaServerTools(reg *plugins.HostToolRegistry, ms *chain.MediaServ
 		InputSchema: objSchema(map[string]any{"server_id": intProp(""), "library_id": strProp("optional; empty=scan all")}, []string{"server_id"}),
 		Timeout:     60 * time.Second,
 	}, func(ctx context.Context, a map[string]any) (any, error) {
-		err := ms.LibraryScan(ctx, uint(argInt(a, "server_id")), argString(a, "library_id", ""))
-		return okCount("scanned", 1, err)
+		return scanMediaLibraries(ctx, ms, uint(argInt(a, "server_id")), argString(a, "library_id", ""))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "mediaserver_refresh", Category: "mediaserver", Permission: "mediaserver:write",
@@ -41,7 +41,7 @@ func registerMediaServerTools(reg *plugins.HostToolRegistry, ms *chain.MediaServ
 		Timeout:     60 * time.Second,
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := ms.Refresh(ctx, uint(argInt(a, "server_id")), argString(a, "library_id", ""))
-		return okCount("refreshed", 1, err)
+		return okCount("refreshed", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "mediaserver_notify", Category: "mediaserver", Permission: "mediaserver:write",
@@ -49,7 +49,7 @@ func registerMediaServerTools(reg *plugins.HostToolRegistry, ms *chain.MediaServ
 		InputSchema: objSchema(map[string]any{"server_id": intProp(""), "title": strProp(""), "body": strProp("")}, []string{"server_id", "title", "body"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := ms.NotifyOne(ctx, uint(argInt(a, "server_id")), argString(a, "title", ""), argString(a, "body", ""))
-		return okCount("notified", 1, err)
+		return okCount("notified", 1, mcpErr(err))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "mediaserver_playback_report", Category: "mediaserver", Permission: "mediaserver:read",
@@ -65,6 +65,23 @@ func registerMediaServerTools(reg *plugins.HostToolRegistry, ms *chain.MediaServ
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		return ms.DetectDuplicates(ctx, uint(argInt(a, "server_id")), argString(a, "library_id", ""))
 	})
+}
+
+// scanMediaLibraries 供插件与 agent 两面共用：library_id 为空 = 扫全部库并回报库数。
+// 直接拿空 library_id 调 LibraryScan 会拼出 /Items//Refresh 这种无效请求，
+// 而旧回执写死 scanned:1，把「什么都没扫成」渲染成「扫好了一个库」。
+func scanMediaLibraries(ctx context.Context, ms *chain.MediaServerChain, serverID uint, libraryID string) (map[string]any, error) {
+	if libraryID != "" {
+		if err := ms.LibraryScan(ctx, serverID, libraryID); err != nil {
+			return nil, mcpErr(err)
+		}
+		return map[string]any{"scanned": 1, "library_id": libraryID}, nil
+	}
+	n, err := ms.LibraryScanAll(ctx, serverID)
+	if err != nil {
+		return nil, mcpErr(err)
+	}
+	return map[string]any{"scanned": n}, nil
 }
 
 // ===== 订阅 =====
@@ -85,11 +102,11 @@ func registerSubscribeTools(reg *plugins.HostToolRegistry, sub *chain.SubscribeC
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		s, err := sub.Get(uint(argInt(a, "id")))
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		n, err := sub.Check(ctx, s)
 		if err != nil {
-			return nil, err
+			return nil, mcpErr(err)
 		}
 		return map[string]any{"checked": n}, nil
 	})
@@ -108,11 +125,14 @@ func registerTransferTools(reg *plugins.HostToolRegistry, tr *chain.TransferChai
 	})
 	reg.Register(plugins.HostTool{
 		Name: "transfer_sweep", Category: "transfer", Permission: "transfer:write",
-		Description: "Trigger a full organize sweep over completed torrents (async on the host).",
+		Description: "Trigger a full organize sweep over completed torrents (async on the host). Errors when the organize feature is disabled.",
 		InputSchema: noArgsSchema(),
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
+		if !tr.SweepEnabled() {
+			return nil, errors.New("整理功能未启用，扫描不会处理任何种子（先在整理页开启总开关）")
+		}
 		go tr.Sweep(context.Background())
-		return map[string]any{"ok": true}, nil
+		return map[string]any{"started": true, "note": "扫描在后台进行，完成后看整理历史"}, nil
 	})
 }
 
@@ -128,17 +148,10 @@ func registerReseedTools(reg *plugins.HostToolRegistry, ks *chain.KeepSeedChain)
 	})
 	reg.Register(plugins.HostTool{
 		Name: "reseed_find_missing", Category: "reseed", Permission: "reseed:read",
-		Description: "Audit which target sites are missing cross-seeds for a downloader's torrents.",
-		InputSchema: objSchema(map[string]any{"downloader_id": intProp(""), "target_site_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}}}, []string{"downloader_id"}),
+		Description: "Audit which target sites are missing cross-seeds for a downloader's torrents. target_site_ids must list at least one site.",
+		InputSchema: objSchema(map[string]any{"downloader_id": intProp(""), "target_site_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "minItems": 1, "description": "target site ids to audit; at least one"}}, []string{"downloader_id", "target_site_ids"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
-		rawSites, _ := a["target_site_ids"].([]any)
-		ids := make([]uint, 0, len(rawSites))
-		for _, e := range rawSites {
-			if f, ok := e.(float64); ok {
-				ids = append(ids, uint(f))
-			}
-		}
-		return ks.FindMissing(ctx, uint(argInt(a, "downloader_id")), ids)
+		return ks.FindMissing(ctx, uint(argInt(a, "downloader_id")), argIDSlice(a, "target_site_ids"))
 	})
 	reg.Register(plugins.HostTool{
 		Name: "reseed_resolve", Category: "reseed", Permission: "reseed:write",
@@ -146,7 +159,7 @@ func registerReseedTools(reg *plugins.HostToolRegistry, ks *chain.KeepSeedChain)
 		InputSchema: objSchema(map[string]any{"task_id": intProp(""), "action": strProp("add | skip")}, []string{"task_id", "action"}),
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := ks.Resolve(ctx, uint(argInt(a, "task_id")), argString(a, "action", ""))
-		return okCount("resolved", 1, err)
+		return okCount("resolved", 1, mcpErr(err))
 	})
 }
 

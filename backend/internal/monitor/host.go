@@ -39,7 +39,21 @@ func (HostCollector) Power(ctx context.Context, _ *models.MonitorTarget, _ Crede
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
 	}
-	return exec.CommandContext(ctx, name, args...).Run()
+	return runLocalPower(ctx, name, args)
+}
+
+// runLocalPower 执行本机电源命令，并把 stderr/stdout 一并带回错误里。
+// `shutdown.exe /r` 在权限不足时只回 exit status 5，真正的原因（拒绝访问）在 stderr；
+// 从前用 Run() 丢掉它，界面上就只剩「exit status 5」这种没头没尾的失败。
+func runLocalPower(ctx context.Context, name string, args []string) error {
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if msg := strings.TrimSpace(string(out)); msg != "" {
+		return fmt.Errorf("%w: %s", err, msg)
+	}
+	return err
 }
 
 func localPowerCommand(action string) (string, []string, error) {

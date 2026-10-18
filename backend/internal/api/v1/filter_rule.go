@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -19,6 +21,23 @@ type FilterRuleHandler struct {
 // NewFilterRuleHandler 构造。
 func NewFilterRuleHandler(store *filter.Store, eng *filter.Engine) *FilterRuleHandler {
 	return &FilterRuleHandler{store: store, eng: eng}
+}
+
+// respondFilterErr 过滤域写出口的分类口径（判据只写一份，六个增删改出口 + 测试口共用）：
+//   - 「规则/规则组不存在」⇒ 404 + 本域码。从前这里回的是 400「请求参数有误」，
+//     用户既以为是自己填错了表单，也看不出到底是哪个名字没了；
+//   - 自产的人话原因（id 已占用、被规则组引用、正则/语法非法）⇒ 仍 400，但把那句带进响应；
+//   - 其余（读写 system_config 真失败、存量 JSON 解析不了）⇒ 500，原因只进日志。
+func respondFilterErr(c *gin.Context, err error, notFound *errcode.Error) {
+	if notFound != nil && (errors.Is(err, filter.ErrRuleNotFound) || errors.Is(err, filter.ErrGroupNotFound)) {
+		errcode.Respond(c, notFound.WithDetail(err))
+		return
+	}
+	if reason := oper.InputReasonErr(err); reason != nil {
+		errcode.Respond(c, errcode.InvalidInput.WithDetail(reason))
+		return
+	}
+	errcode.Respond(c, errcode.Internal.WithErr(err))
 }
 
 // ListBuiltins 列出 22 条内置规则（只读，前端展示）。
@@ -45,7 +64,7 @@ func (h *FilterRuleHandler) CreateCustom(c *gin.Context) {
 	}
 	r, err := h.store.AddCustomRule(in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterRuleNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rule": r})
@@ -61,7 +80,7 @@ func (h *FilterRuleHandler) UpdateCustom(c *gin.Context) {
 	}
 	r, err := h.store.UpdateCustomRule(id, in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterRuleNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rule": r})
@@ -71,7 +90,7 @@ func (h *FilterRuleHandler) UpdateCustom(c *gin.Context) {
 func (h *FilterRuleHandler) DeleteCustom(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.store.DeleteCustomRule(id); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterRuleNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -96,7 +115,7 @@ func (h *FilterRuleHandler) CreateGroup(c *gin.Context) {
 	}
 	g, err := h.store.AddGroup(in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterGroupNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"group": g})
@@ -112,7 +131,7 @@ func (h *FilterRuleHandler) UpdateGroup(c *gin.Context) {
 	}
 	g, err := h.store.UpdateGroup(name, in)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterGroupNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"group": g})
@@ -122,7 +141,7 @@ func (h *FilterRuleHandler) UpdateGroup(c *gin.Context) {
 func (h *FilterRuleHandler) DeleteGroup(c *gin.Context) {
 	name := c.Param("name")
 	if err := h.store.DeleteGroup(name); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, errcode.FilterGroupNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": name})
@@ -185,7 +204,7 @@ func (h *FilterRuleHandler) Test(c *gin.Context) {
 	}
 	matched, dropped, levels, err := h.eng.ApplyGroupForTest(c.Request.Context(), req.RuleString, req.Torrents, req.Media)
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondFilterErr(c, err, nil)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"matched": matched, "dropped": dropped, "levels": levels})

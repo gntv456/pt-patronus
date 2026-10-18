@@ -40,20 +40,25 @@ type HealthReport struct {
 	MissingSub  int           `json:"missing_subtitle"`
 	Upgradeable int           `json:"upgradeable"`
 	CheckedAt   time.Time     `json:"checked_at"`
+	// Errors 本轮未能覆盖到的部分（服务器连不上、库读不出来……），每条带服务器名/库名。
+	// 必须显式回传：否则「一条问题都没有」既可能是库很干净，也可能是根本没扫成，
+	// 前端会统一渲染成绿色健康，用户据此不再巡检。
+	Errors []string `json:"errors,omitempty"`
 }
 
-// HealthCheck 对所有服务器全库巡检（best-effort：单服务器失败跳过）。Emby/JF/Plex 均支持；
-// Plex 缺集走 leafCount（EpisodeCount 已适配）。
+// HealthCheck 对所有服务器全库巡检（best-effort：单服务器失败跳过，但失败原因记入
+// report.Errors 供前端提示）。Emby/JF/Plex 均支持；Plex 缺集走 leafCount（EpisodeCount 已适配）。
 // subtitleScan=true 时对条目路径做本地字幕扫描（后端需能访问媒体路径/挂载）。
 // upgradeable=true 时对 TMDB 条目做版本升级检测（库内存在同 TMDB ID 的更高分辨率条目）。
 func (c *MediaServerChain) HealthCheck(ctx context.Context, subtitleScan, upgradeable bool) *HealthReport {
 	rep := &HealthReport{Issues: []HealthIssue{}, CheckedAt: time.Now()}
 	servers, err := c.op.List()
 	if err != nil {
+		rep.Errors = append(rep.Errors, "媒体服务器列表读取失败："+err.Error())
 		return rep
 	}
 	for _, sv := range servers {
-		c.healthCheckServer(ctx, sv.ID, subtitleScan, upgradeable, rep)
+		c.healthCheckServer(ctx, sv.ID, sv.Name, subtitleScan, upgradeable, rep)
 	}
 	rep.Unmatched = countIssues(rep.Issues, "unmatched")
 	rep.MissingEps = countIssues(rep.Issues, "missing_episodes")
@@ -63,19 +68,23 @@ func (c *MediaServerChain) HealthCheck(ctx context.Context, subtitleScan, upgrad
 }
 
 // healthCheckServer 单服务器巡检：series 用 LibraryItems + Episodes 子查询。
-func (c *MediaServerChain) healthCheckServer(ctx context.Context, serverID uint, subtitleScan, upgradeable bool, rep *HealthReport) {
-	cli, m, err := c.client(serverID)
+// 各失败出口都把原因写进 rep.Errors（跳过该服务器/该库，但不再静默）。
+func (c *MediaServerChain) healthCheckServer(ctx context.Context, serverID uint, serverName string, subtitleScan, upgradeable bool, rep *HealthReport) {
+	cli, _, err := c.client(serverID)
 	if err != nil {
 		slog.Warn("health: client build failed", "server", serverID, "err", err)
+		rep.Errors = append(rep.Errors, fmt.Sprintf("%s：连接配置不可用（%v）", serverName, err))
 		return
 	}
 	libs, err := cli.Libraries(ctx)
 	if err != nil {
 		slog.Warn("health: libraries failed", "server", serverID, "err", err)
+		rep.Errors = append(rep.Errors, fmt.Sprintf("%s：库列表读取失败（%v）", serverName, err))
 		return
 	}
 	ec, ok := cli.(episodeCounter)
 	if !ok {
+		rep.Errors = append(rep.Errors, fmt.Sprintf("%s：该服务器类型暂不支持健康巡检", serverName))
 		return
 	}
 	for _, lib := range libs {
@@ -85,45 +94,59 @@ func (c *MediaServerChain) healthCheckServer(ctx context.Context, serverID uint,
 		items, err := cli.LibraryItems(ctx, lib.ID)
 		if err != nil {
 			slog.Debug("health: library items failed", "lib", lib.Name, "err", err)
+			rep.Errors = append(rep.Errors, fmt.Sprintf("%s：库「%s」条目读取失败（%v）", serverName, lib.Name, err))
 			continue
 		}
 		if upgradeable {
 			detectUpgradable(serverID, lib.Name, items, rep)
 		}
 		for _, it := range items {
-			// 未匹配：无 Provider ID（电影与剧集同判）
-			if it.TMDBID == "" && it.IMDbID == "" {
+			appendItemIssues(ctx, serverID, lib.Type, lib.Name, it, ec, subtitleScan, rep)
+		}
+	}
+	sort.Slice(rep.Issues, func(i, j int) bool { return rep.Issues[i].Type < rep.Issues[j].Type })
+}
+
+// appendItemIssues 单条目的三类问题判定（拆出便于单测）。
+func appendItemIssues(ctx context.Context, serverID uint, libType, libName string, it mediaserver.DetailedItem, ec episodeCounter, subtitleScan bool, rep *HealthReport) {
+	// 未匹配：无 Provider ID（电影与剧集同判）
+	if it.TMDBID == "" && it.IMDbID == "" {
+		rep.Issues = append(rep.Issues, HealthIssue{
+			ServerID: serverID, Library: libName, ItemID: it.ItemID,
+			Title: it.Name, Type: "unmatched", Detail: "无 TMDB/IMDb 标识（刮削失败或未刮削）",
+		})
+	}
+	// 缺集：剧集类目下集数过少（>0 且 <3 为启发阈值；0 完全无集）
+	if libType == "tvshows" || libType == "mixed" {
+		if it.Type == "series" {
+			if n, err := ec.EpisodeCount(ctx, it.ItemID); err == nil && n < 3 {
 				rep.Issues = append(rep.Issues, HealthIssue{
-					ServerID: serverID, Library: lib.Name, ItemID: it.ItemID,
-					Title: it.Name, Type: "unmatched", Detail: "无 TMDB/IMDb 标识（刮削失败或未刮削）",
+					ServerID: serverID, Library: libName, ItemID: it.ItemID,
+					Title: it.Name, Type: "missing_episodes", Path: it.Path,
+					Detail: fmt.Sprintf("仅 %d 集（疑似缺集）", n),
 				})
-			}
-			// 缺集：剧集类目下集数过少（>0 且 <3 为启发阈值；0 完全无集）
-			if lib.Type == "tvshows" || lib.Type == "mixed" {
-				if it.Type == "series" {
-					if n, err := ec.EpisodeCount(ctx, it.ItemID); err == nil && n < 3 {
-						rep.Issues = append(rep.Issues, HealthIssue{
-							ServerID: serverID, Library: lib.Name, ItemID: it.ItemID,
-							Title: it.Name, Type: "missing_episodes", Path: it.Path,
-							Detail: fmt.Sprintf("仅 %d 集（疑似缺集）", n),
-						})
-					}
-				}
-			}
-			// 缺字幕：本地同目录无字幕文件（需后端可访问路径）
-			if subtitleScan && it.Path != "" {
-				if !hasSubtitleNextTo(it.Path) {
-					rep.Issues = append(rep.Issues, HealthIssue{
-						ServerID: serverID, Library: lib.Name, ItemID: it.ItemID,
-						Title: it.Name, Type: "missing_subtitle", Path: it.Path,
-						Detail: "同目录无 .srt/.ass 字幕",
-					})
-				}
 			}
 		}
 	}
-	_ = m
-	sort.Slice(rep.Issues, func(i, j int) bool { return rep.Issues[i].Type < rep.Issues[j].Type })
+	// 缺字幕：本地同目录无字幕文件（需后端可访问路径）
+	if subtitleScan && subtitleCheckablePath(it.Path) && !hasSubtitleNextTo(it.Path) {
+		rep.Issues = append(rep.Issues, HealthIssue{
+			ServerID: serverID, Library: libName, ItemID: it.ItemID,
+			Title: it.Name, Type: "missing_subtitle", Path: it.Path,
+			Detail: "同目录无 .srt/.ass 字幕",
+		})
+	}
+}
+
+// subtitleCheckablePath 仅当 Path 指向媒体文件本身时才可做同目录字幕判定。
+// 剧集（Series）条目的 Path 是剧集目录：对其判定会读到父目录（库根）造成全库误报，
+// 「一键补齐」还会把字幕写到库根（幻影文件），并反过来遮蔽后续全部检测（自遮蔽）。
+func subtitleCheckablePath(p string) bool {
+	switch strings.ToLower(filepath.Ext(p)) {
+	case ".mkv", ".mp4", ".ts", ".m2ts", ".avi", ".mov", ".wmv", ".flv", ".m4v", ".iso", ".rmvb", ".rm", ".webm":
+		return true
+	}
+	return false
 }
 
 // episodeCounter 剧集集数查询（embyJellyfinClient / plexClient 实现）。

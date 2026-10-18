@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/medal_wall.dart';
+import 'package:ptpatronus/features/common/stream_account.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -12,7 +13,11 @@ part 'medalwallopsmixin.dart';
 part 'medal_wall_widgets.dart';
 
 class MedalWallPage extends StatefulWidget {
-  const MedalWallPage({super.key});
+  const MedalWallPage({super.key, this.frames});
+
+  /// 帧源注入缝（对齐 #195/#199/#201 的做法）：done 帧的账面要被页面吸收成
+  /// `_error` / `_streamBanner`，不从这儿喂帧就永远只能在 widget 层外挂断言。
+  final StreamFrames? frames;
   @override
   State<MedalWallPage> createState() => _MedalWallPageState();
 }
@@ -106,6 +111,7 @@ class _MedalWallPageState extends State<MedalWallPage> with MedalWallOpsMixin {
             : ListView(
                 padding: const EdgeInsets.all(12),
                 children: [
+                  StreamNoticeBanner(text: _streamBanner),
                   if (_filtered.isEmpty)
                     PTEmptyState(
                       icon: Icons.military_tech_outlined,

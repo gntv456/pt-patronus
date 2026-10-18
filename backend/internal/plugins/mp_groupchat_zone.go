@@ -152,6 +152,6 @@ func (p *groupChatZonePlugin) ExecuteAction(ctx context.Context, rt Runtime, act
 		rt.Log(logInfo, action, "group chat messages fetched", map[string]any{"base_url": pluginString(input["base_url"]), "status_code": out["status_code"]})
 		return out, nil
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return nil, unknownActionErr(action)
 	}
 }

@@ -49,12 +49,17 @@ func (n *SendMessageNode) Execute(ctx context.Context, params map[string]any, ec
 	if title == "" {
 		title = "工作流通知"
 	}
-	if n.notice != nil {
-		_ = n.notice.Notice(ctx, notice.Input{
-			Source: notice.SourceWorkflow,
-			Key:    "", // 一次性通知（不去重）
-			Title:  title, Body: body, Level: level,
-		}, false)
+	if n.notice == nil {
+		return fmt.Errorf("通知服务未初始化，站内通知未能发送")
+	}
+	if err := n.notice.Notice(ctx, notice.Input{
+		Source: notice.SourceWorkflow,
+		Key:    "", // 一次性通知（不去重）
+		Title:  title, Body: body, Level: level,
+	}, false); err != nil {
+		// 写库/外发失败以前被 _ = 丢掉，节点仍往运行日志里写「已发送通知：X」，
+		// 而这条通知根本没落地——用户以为已经提醒了自己，实际什么都没发生。
+		return fmt.Errorf("站内通知发送失败：%w", err)
 	}
 	ecx.Messages = append(ecx.Messages, "已发送通知："+title)
 	return nil

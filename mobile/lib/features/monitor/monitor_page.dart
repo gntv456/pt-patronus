@@ -26,7 +26,10 @@ class MonitorPage extends StatefulWidget {
 }
 
 class _MonitorPageState extends State<MonitorPage>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver, MonitorOpsMixin {
+    with
+        SingleTickerProviderStateMixin,
+        WidgetsBindingObserver,
+        MonitorOpsMixin {
   late final TabController _tab = TabController(length: 3, vsync: this);
 
   Future<void> _load() async {
@@ -45,8 +48,10 @@ class _MonitorPageState extends State<MonitorPage>
       // 并发取每个非摄像头设备的最新快照（best-effort，任一失败不阻断整体加载）。
       final mFutures = _targets.where((t) => t.type != 'camera').map((t) async {
         try {
-          final snaps = await _api.metrics(t.id, limit: 1);
-          _latest[t.id] = snaps.isEmpty ? null : snaps.last.metrics;
+          final page = await _api.metrics(t.id, limit: 1);
+          _latest[t.id] = page.snapshots.isEmpty
+              ? null
+              : page.snapshots.last.metrics;
         } catch (_) {
           _latest[t.id] = null;
         }
@@ -62,6 +67,7 @@ class _MonitorPageState extends State<MonitorPage>
       if (mounted) setState(() => _loading = false);
     }
   }
+
   void _toast(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

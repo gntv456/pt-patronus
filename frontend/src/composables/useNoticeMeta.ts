@@ -5,11 +5,13 @@ import type { NoticeSource } from '@/api/notice'
 // NotificationCenter.vue 各持一份完全相同的拷贝，改文案/加来源必然漏一边）。
 // 配色改用语义 token（var(--pt-*)）：暗色主题下按各自主题对比度重映射，
 // 此前 Tailwind hex 按明色对比度选色，暗色下偏暗。
-const { t } = useI18n()
-
 export type NoticeMeta = { icon: string; color: string; label: string }
 
 export function useNoticeMeta() {
+  // useI18n() 必须在 setup 上下文内调用：此前放在模块顶层导致 Vite 代码分割后
+  // 该 chunk 被动态 import() 求值时抛 I18nError(26)=MUST_BE_CALL_SETUP_TOP，
+  // 导航中止整页白屏（自 1.03.22 起）。移入组合式函数内由消费组件 setup 调用。
+  const { t } = useI18n()
   const sourceMeta: Record<NoticeSource, NoticeMeta> = {
     site_anniv: { icon: 'party-popper', color: 'var(--pt-warn)', label: t('notices.source.site_anniv') },
     new_mail: { icon: 'mail', color: 'var(--pt-primary-2)', label: t('notices.source.new_mail') },
@@ -18,6 +20,7 @@ export function useNoticeMeta() {
     announce: { icon: 'megaphone', color: 'var(--pt-primary-2)', label: t('notices.source.announce') },
     host_offline: { icon: 'alert-triangle', color: 'var(--pt-danger)', label: t('notices.source.host_offline') },
     nas_offline: { icon: 'alert-triangle', color: 'var(--pt-danger)', label: t('notices.source.nas_offline') },
+    camera_offline: { icon: 'alert-triangle', color: 'var(--pt-danger)', label: t('notices.source.camera_offline') },
     reseed_done: { icon: 'check-circle', color: 'var(--pt-success)', label: t('notices.source.reseed_done') },
     dl_done: { icon: 'download', color: 'var(--pt-success)', label: t('notices.source.dl_done') },
     site_offline: { icon: 'alert-triangle', color: 'var(--pt-danger)', label: t('notices.source.site_offline') },
@@ -25,6 +28,33 @@ export function useNoticeMeta() {
     backup_import: { icon: 'check-circle', color: 'var(--pt-success)', label: t('notices.source.backup_import') },
     freeleech: { icon: 'party-popper', color: 'var(--pt-warn)', label: 'Freeleech' },
     subscribe_hit: { icon: 'check-circle', color: 'var(--pt-success)', label: t('notices.source.subscribe_hit') },
+    subscribe_list_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.subscribe_list_fail'),
+    },
+    rss_list_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.rss_list_fail') },
+    rss_check_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.rss_check_fail') },
+    strm_list_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.strm_list_fail') },
+    brushflow_list_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.brushflow_list_fail'),
+    },
+    contract_list_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.contract_list_fail'),
+    },
+    dirsync_list_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.dirsync_list_fail'),
+    },
+    brushflow: { icon: 'brushflow', color: 'var(--pt-primary-2)', label: t('notices.source.brushflow') },
+    cloud: { icon: 'cloud', color: 'var(--pt-primary-2)', label: t('notices.source.cloud') },
+    contract: { icon: 'contract', color: 'var(--pt-warn)', label: t('notices.source.contract') },
+    mediaserver: { icon: 'mediaserver', color: 'var(--pt-primary-2)', label: t('notices.source.mediaserver') },
     workflow: { icon: 'zap', color: 'var(--pt-primary)', label: t('notices.source.workflow') },
     rss_hit: { icon: 'rss', color: 'var(--pt-primary-2)', label: t('notices.source.rss_hit') },
     webhook: { icon: 'webhook', color: 'var(--pt-primary)', label: t('notices.source.webhook') },
@@ -54,11 +84,23 @@ export const noticeSourceRoute: Record<NoticeSource, string> = {
   site_offline: 'nas-server',
   host_offline: 'nas-server',
   nas_offline: 'nas-server',
+  camera_offline: 'nas-server',
   freeleech: 'freeleech',
   announce: 'announcements',
   backup_done: 'backup',
   backup_import: 'backup',
   subscribe_hit: 'subscriptions',
+  subscribe_list_fail: 'subscriptions',
+  rss_list_fail: 'rss',
+  rss_check_fail: 'rss',
+  strm_list_fail: 'cloud',
+  brushflow_list_fail: 'brushflow',
+  contract_list_fail: 'contract',
+  dirsync_list_fail: 'transfer',
+  brushflow: 'brushflow',
+  cloud: 'cloud',
+  contract: 'contract',
+  mediaserver: 'mediaserver',
   workflow: 'workflow',
   rss_hit: 'rss',
   webhook: 'workflow',

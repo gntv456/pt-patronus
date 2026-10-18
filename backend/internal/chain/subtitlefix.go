@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
 )
@@ -39,6 +40,10 @@ type subtitleItem struct {
 
 // SubtitleFixReport 补齐结果。
 type SubtitleFixReport struct {
+	// Queued 本轮真正排进后台队列的条目数：在受理那一刻确定，之后不再变动。
+	// Fixed/Skipped/Errors 由 goroutine 逐条累加（全程持 subtitleFix.mu），调用方在受理时
+	// 读它们只能拿到全 0 的假快照，而且是并发读——最终账面写进通知（SourceSubtitleFix）。
+	Queued  int      `json:"queued"`
 	Fixed   int      `json:"fixed"`   // 成功落盘数
 	Skipped int      `json:"skipped"` // 搜索无结果/下载失败
 	Errors  []string `json:"errors,omitempty"`
@@ -68,17 +73,21 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 	}
 	var targets []HealthIssue
 	for _, i := range rep.Issues {
-		if i.Type == "missing_subtitle" && i.Path != "" {
+		// 只接受媒体文件路径：Series 目录 Path（或客户端手写报告）会算出库根落盘路径，
+		// 写出「剧集名.chs.srt」幻影文件并反过来遮蔽后续全库检测。
+		if i.Type == "missing_subtitle" && subtitleCheckablePath(i.Path) {
 			targets = append(targets, i)
 		}
 	}
 	if len(targets) == 0 {
+		// 一部都没排进队列：不起 goroutine，也不会发通知。调用方必须把 queued=0 当
+		// 终态报出去，否则界面只能回一句「已受理」，用户等一条永远不会来的通知。
 		return &SubtitleFixReport{}, nil
 	}
 	if !c.subtitleFix.running.CompareAndSwap(false, true) {
 		return nil, ErrSubtitleFixRunning
 	}
-	out := &SubtitleFixReport{}
+	out := &SubtitleFixReport{Queued: len(targets)}
 	go func() {
 		defer c.subtitleFix.running.Store(false)
 		actx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -92,11 +101,19 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 				continue
 			}
 			subs, err := fixer.Search(actx, query, language)
-			if err != nil || len(subs) == 0 {
+			if err != nil {
+				// 搜索失败 ≠ 「这部片没字幕」：以前和空结果合成同一个 Skipped++，通知正文只报
+				// 「成功 N，跳过 M」，字幕源全崩听起来像库里本来就没字幕（同 #75 写失败混进 skipped）。
+				c.subtitleFix.mu.Lock()
+				out.Errors = append(out.Errors, t.Title+": 字幕搜索失败: "+errtext.Text(err))
+				c.subtitleFix.mu.Unlock()
+				slog.Warn("subtitle fix: search failed", "title", t.Title, "err", err)
+				continue
+			}
+			if len(subs) == 0 {
 				c.subtitleFix.mu.Lock()
 				out.Skipped++
 				c.subtitleFix.mu.Unlock()
-				slog.Debug("subtitle fix: no result", "title", t.Title, "err", err)
 				continue
 			}
 			// 语言优先级：精确匹配偏好 → chs → bi → eng → 任意
@@ -109,9 +126,13 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 			}
 			data, fname, err := fixer.Download(actx, *pick)
 			if err != nil || len(data) == 0 {
+				if err == nil {
+					err = errors.New("下载内容为空")
+				}
 				c.subtitleFix.mu.Lock()
-				out.Skipped++
+				out.Errors = append(out.Errors, t.Title+": 字幕下载失败: "+errtext.Text(err))
 				c.subtitleFix.mu.Unlock()
+				slog.Warn("subtitle fix: download failed", "title", t.Title, "err", err)
 				continue
 			}
 			dst := subtitleDestPath(t.Path, pick.LangCode, fname)
@@ -132,16 +153,26 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 			c.subtitleFix.mu.Unlock()
 			slog.Info("subtitle fix: saved", "file", filepath.Base(dst))
 		}
-		// 结果发通知（后台异步，调用方只拿受理快照）。
+		// 结果发通知（后台异步，调用方只拿受理快照；前端不轮询这份报告，账面必须写进正文）。
 		if c.notice != nil {
 			level := "success"
-			if out.Fixed == 0 {
+			title := "字幕补齐完成"
+			body := fmt.Sprintf("成功 %d，跳过 %d", out.Fixed, out.Skipped)
+			if len(out.Errors) > 0 {
+				level = "warning"
+				title = "字幕补齐结束（有失败）"
+				reasons := out.Errors
+				if len(reasons) > 2 {
+					reasons = append(append([]string{}, reasons[:2]...), fmt.Sprintf("…另 %d 条", len(reasons)-2))
+				}
+				body = fmt.Sprintf("成功 %d，跳过 %d，失败 %d：%s", out.Fixed, out.Skipped, len(out.Errors), strings.Join(reasons, "；"))
+			} else if out.Fixed == 0 {
 				level = "warning"
 			}
 			_ = c.notice.Notice(context.Background(), notice.Input{
 				Source: notice.SourceSubtitleFix,
-				Title:  "字幕补齐完成",
-				Body:   fmt.Sprintf("成功 %d，跳过 %d", out.Fixed, out.Skipped),
+				Title:  title,
+				Body:   body,
 				Level:  level,
 			}, false)
 		}

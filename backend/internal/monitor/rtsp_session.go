@@ -3,18 +3,10 @@ package monitor
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
-	"net"
 	"sync"
 	"time"
 
-	"github.com/bluenviron/gortsplib/v5"
-	"github.com/bluenviron/gortsplib/v5/pkg/base"
-	"github.com/bluenviron/gortsplib/v5/pkg/description"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/gorilla/websocket"
-	"github.com/pion/rtp"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 const (
@@ -34,38 +26,48 @@ type wsViewer struct {
 
 // ProxySession 一路摄像头拉流，被多个 ws 观众复用（一对多）。stream 生命周期与 request 解耦。
 type ProxySession struct {
-	rtspURL   string
-	mu        sync.RWMutex
-	viewers   map[*wsViewer]struct{}
-	client    *gortsplib.Client
-	spsPPS    []byte // 缓存 SPS/PPS（annexB），新观众补发
-	spsRaw    []byte // 原始 SPS（供 hlsSink 建段头）
-	ppsRaw    []byte // 原始 PPS
-	hls       *hlsSink
-	hlsTimer  *time.Timer // HLS 租约：每次 HLS 请求刷新；超 hlsLease 无请求则释放 sink
-	cancel    context.CancelFunc
-	startOnce sync.Once
-	startErr  error
-	done      chan struct{}
-	stopped   bool // stop() 后置 true，供 RTSPProxy.getOrCreate 识别僵尸 session 并重建
+	rtspURL string
+	mu      sync.RWMutex
+	viewers map[*wsViewer]struct{}
+	codec   VideoCodec // 实际选中的编码（H264 优先，其次 H265），ready 信令要上报
+	// 参数集：annexB 串供新观众补发/段头；raw 三件套供 hlsSink 按 codec 分派。
+	paramsAnnexB []byte
+	vpsRaw       []byte
+	spsRaw       []byte
+	ppsRaw       []byte
+	hls          *hlsSink
+	hlsTimer     *time.Timer // HLS 租约：每次 HLS 请求刷新；超 hlsLease 无请求则释放 sink
+	cancel       context.CancelFunc
+	startOnce    sync.Once
+	startErr     error
+	done         chan struct{}
+	stopped      bool // stop() 后置 true，供 RTSPProxy.getOrCreate 识别僵尸 session 并重建
 }
 
 func newProxySession(rtspURL string) *ProxySession {
 	return &ProxySession{rtspURL: rtspURL, viewers: map[*wsViewer]struct{}{}, done: make(chan struct{})}
 }
 
-// addViewer 注册观众，发送 ready 信令 + 补发 SPS/PPS。
+// addViewer 注册观众，发送 ready 信令（含实际编码）+ 补发参数集。
 func (s *ProxySession) addViewer(v *wsViewer) error {
-	if err := v.conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"ready","codec":"h264"}`)); err != nil {
+	s.mu.RLock()
+	codec, params := s.codec, s.paramsAnnexB
+	s.mu.RUnlock()
+	// 拉流尚未建轨时 codec 为空，回退 h264：此时还没有任何帧可播，
+	// 前端拿到的一定是后续的「连不上」而非错误解码。
+	if codec == "" {
+		codec = CodecH264
+	}
+	ready := `{"type":"ready","codec":"` + string(codec) + `"}`
+	if err := v.conn.WriteMessage(websocket.TextMessage, []byte(ready)); err != nil {
 		return err
+	}
+	if params != nil {
+		_ = v.conn.WriteMessage(websocket.BinaryMessage, frameMessage(0, params))
 	}
 	s.mu.Lock()
 	s.viewers[v] = struct{}{}
-	spsPPS := s.spsPPS
 	s.mu.Unlock()
-	if spsPPS != nil {
-		_ = v.conn.WriteMessage(websocket.BinaryMessage, frameMessage(0, spsPPS))
-	}
 	return nil
 }
 
@@ -90,7 +92,7 @@ func (s *ProxySession) removeViewer(v *wsViewer) {
 func (s *ProxySession) ensureStarted() error {
 	s.startOnce.Do(func() {
 		streamCtx, cancel := context.WithCancel(context.Background())
-		s.startErr = s.startStream(streamCtx)
+		s.startErr = s.startTrack(streamCtx)
 		if s.startErr != nil {
 			cancel()
 		} else {
@@ -98,80 +100,6 @@ func (s *ProxySession) ensureStarted() error {
 		}
 	})
 	return s.startErr
-}
-
-// startStream 拉流 → 找 H264 轨 → Setup/Play → OnPacketRTP 解码为 annexB 广播。
-func (s *ProxySession) startStream(ctx context.Context) error {
-	u, err := base.ParseURL(s.rtspURL)
-	if err != nil {
-		return err
-	}
-	c := &gortsplib.Client{
-		Scheme:      u.Scheme,
-		Host:        u.Host,
-		DialContext: (&net.Dialer{Timeout: streamDialTimeout}).DialContext,
-	}
-	s.client = c
-	if err := c.Start(); err != nil {
-		return err
-	}
-	desc, _, err := c.Describe(u)
-	if err != nil {
-		c.Close()
-		return err
-	}
-	var h264Media *description.Media
-	var h264Forma *format.H264
-	for _, m := range desc.Medias {
-		for _, f := range m.Formats {
-			if h, ok := f.(*format.H264); ok {
-				h264Media, h264Forma = m, h
-				break
-			}
-		}
-		if h264Media != nil {
-			break
-		}
-	}
-	if h264Media == nil {
-		c.Close()
-		return fmt.Errorf("no h264 track in stream")
-	}
-	if _, err := c.Setup(desc.BaseURL, h264Media, 0, 0); err != nil {
-		c.Close()
-		return err
-	}
-	dec, err := h264Forma.CreateDecoder()
-	if err != nil {
-		c.Close()
-		return err
-	}
-	if len(h264Forma.SPS) > 0 && len(h264Forma.PPS) > 0 {
-		spsPPS := makeAnnexB([][]byte{h264Forma.SPS, h264Forma.PPS})
-		s.mu.Lock()
-		s.spsPPS = spsPPS
-		s.spsRaw = h264Forma.SPS
-		s.ppsRaw = h264Forma.PPS
-		s.mu.Unlock()
-		s.broadcast(frameMessage(0, spsPPS))
-	}
-	c.OnPacketRTP(h264Media, h264Forma, func(pkt *rtp.Packet) {
-		nalus, err := dec.Decode(pkt)
-		if err != nil || len(nalus) == 0 {
-			return
-		}
-		s.dispatch(pkt.Timestamp, nalus)
-	})
-	if _, err := c.Play(nil); err != nil {
-		c.Close()
-		return err
-	}
-	safego.Go("rtsp_session:168", func() {
-		defer close(s.done)
-		defer c.Close()
-		<-ctx.Done()
-	})
-	return nil
 }
 
 // broadcast 把帧发给所有观众（队列满则丢帧）。
@@ -187,14 +115,21 @@ func (s *ProxySession) broadcast(msg []byte) {
 }
 
 // dispatch 把一个 access unit 同时喂给 ws 观众（jessibuca 帧）和 hls sink（若存在）。
-func (s *ProxySession) dispatch(ts uint32, nalus [][]byte) {
-	s.broadcast(frameMessage(ts, makeAnnexB(nalus)))
+// 参数集在此剥离并缓存——它们不属于任何一帧，但新观众/新段都需要。
+func (s *ProxySession) dispatch(ts uint32, codec VideoCodec, nalus [][]byte) {
 	s.mu.RLock()
 	hls := s.hls
 	s.mu.RUnlock()
-	if hls != nil {
-		hls.writeAU(int64(ts), nalus)
-	}
+	splitAccessUnits(codec, nalus,
+		func(vps, sps, pps []byte) {
+			s.cacheParams(paramsAnnexB(codec, vps, sps, pps), vps, sps, pps)
+		},
+		func(au [][]byte, _ bool) {
+			s.broadcast(frameMessage(ts, makeAnnexB(au)))
+			if hls != nil {
+				hls.writeAU(int64(ts), codec, au)
+			}
+		})
 }
 
 // anyViewerLocked 报告是否还有任意类型观众（调用方持锁）：ws 观众或 HLS 租约未过期。
@@ -214,7 +149,7 @@ func (s *ProxySession) anyViewer() bool {
 func (s *ProxySession) touchHLS() {
 	s.mu.Lock()
 	if s.hls == nil {
-		s.hls = newHLSSink(s.spsRaw, s.ppsRaw)
+		s.hls = newHLSSink(s.codec, s.vpsRaw, s.spsRaw, s.ppsRaw)
 	}
 	if s.hlsTimer != nil {
 		s.hlsTimer.Stop()

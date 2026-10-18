@@ -11,6 +11,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -24,7 +25,10 @@ func (c *SiteChain) Checkin(ctx context.Context, s *models.Site, source string) 
 	}
 	defer c.checkinGuard.release(guardKey)
 	def := c.defFor(s)
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var result *site.CheckinResult
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		cc, ok := a.(site.CheckinCapable)
@@ -57,7 +61,7 @@ func (c *SiteChain) recordCheckin(s *models.Site, source string, r *site.Checkin
 	}
 	rec := &models.CheckinRecord{SiteID: s.ID, SiteName: s.Name, Source: source}
 	if err != nil {
-		rec.Error = err.Error()
+		rec.Error = errtext.Text(err)
 	} else if r != nil {
 		rec.Success = r.Success
 		rec.Message = r.Message
@@ -69,6 +73,14 @@ func (c *SiteChain) recordCheckin(s *models.Site, source string, r *site.Checkin
 }
 
 // ListCheckinRecords 列签到历史（按时间倒序）。siteID=0 不过滤；limit<=0 默认 100。
+// CountCheckinRecords 签到记录总数（与 ListCheckinRecords 同筛选）。
+func (c *SiteChain) CountCheckinRecords(siteID uint) (int64, error) {
+	if c.records == nil {
+		return 0, errors.New("checkin record store unavailable")
+	}
+	return c.records.Count(siteID)
+}
+
 func (c *SiteChain) ListCheckinRecords(siteID uint, limit, offset int) ([]models.CheckinRecord, error) {
 	if c.records == nil {
 		return nil, nil
@@ -89,12 +101,44 @@ type CheckinSiteResult struct {
 // checkinTimeout 是单站签到超时上限（签到是 POST，部分站点响应慢，给足时间）。
 const checkinTimeout = 30 * time.Second
 
+// checkinOneSite 跑单站签到并产出该站结果。兜住 panic：safego.Go 只记日志，
+// 不兜住则 results[i] 停在零值——一键签到的结果里出现一条「无名、无错误」的记录，
+// 用户既不知道是哪个站出的问题，也不知道这个站到底没签上。
+func (c *SiteChain) checkinOneSite(ctx context.Context, s *models.Site) (r CheckinSiteResult) {
+	r = CheckinSiteResult{SiteID: s.ID, SiteName: s.Name}
+	defer func() {
+		if p := recover(); p != nil {
+			slog.Error("site checkin panic", "site", s.Name, "panic", p)
+			r = CheckinSiteResult{SiteID: s.ID, SiteName: s.Name, Error: fmt.Sprintf("签到异常(panic): %v", p)}
+		}
+	}()
+	siteCtx, cancel := context.WithTimeout(ctx, checkinTimeout)
+	defer cancel()
+
+	res, e := c.Checkin(siteCtx, s, "manual")
+	if e != nil {
+		// ErrNotSupported（如 mteam 未实现 CheckinCapable）/ 网络错误均聚合到 Error，不阻断其它站。
+		r.Error = errtext.Text(e)
+		return r
+	}
+	if res != nil {
+		r.Success = res.Success
+		r.Message = res.Message
+		r.Bonus = res.Bonus
+	}
+	return r
+}
+
 // CheckinAll 跨所有启用站点并发签到（每站独立超时；容错：单站失败不影响其它）。
 // 各 goroutine 写入预分配 results 的不同下标，无需加锁；并发安全依据同 SearchSites。
-func (c *SiteChain) CheckinAll(ctx context.Context) []CheckinSiteResult {
+//
+// 「站点清单本身读不出来」必须回错误：从前这里 `return nil`，于是
+// 一键签到回 `{"results": null}`、工作流节点播报「0/0 成功」、MCP 工具回空数组、
+// 移动端与 Web 各自把「读不到」讲成「没有启用的站点」——四种说法都是同一种谎。
+func (c *SiteChain) CheckinAll(ctx context.Context) ([]CheckinSiteResult, error) {
 	sites, err := c.sites.ListActive()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("读取启用站点清单失败: %w", err)
 	}
 	results := make([]CheckinSiteResult, len(sites))
 	sem := make(chan struct{}, searchConcurrency)
@@ -105,25 +149,11 @@ func (c *SiteChain) CheckinAll(ctx context.Context) []CheckinSiteResult {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-
-			siteCtx, cancel := context.WithTimeout(ctx, checkinTimeout)
-			defer cancel()
-
-			r := CheckinSiteResult{SiteID: s.ID, SiteName: s.Name}
-			res, e := c.Checkin(siteCtx, &s, "manual")
-			if e != nil {
-				// ErrNotSupported（如 mteam 未实现 CheckinCapable）/ 网络错误均聚合到 Error，不阻断其它站。
-				r.Error = e.Error()
-			} else if res != nil {
-				r.Success = res.Success
-				r.Message = res.Message
-				r.Bonus = res.Bonus
-			}
-			results[i] = r
+			results[i] = c.checkinOneSite(ctx, &s)
 		})
 	}
 	wg.Wait()
-	return results
+	return results, nil
 }
 
 // KeepAlive 保活站点 cookie（适配器需实现 site.KeepAliveCapable）。
@@ -140,7 +170,10 @@ func (c *SiteChain) KeepAlive(ctx context.Context, s *models.Site) (*site.KeepAl
 // 将适配器返回的 jar cookie 与原凭证合并，仅在语义变化时填 RefreshedCookie。
 func (c *SiteChain) keepAliveLocked(ctx context.Context, s *models.Site) (*site.KeepAliveResult, error) {
 	def := c.defFor(s)
-	token := c.credential(s, def)
+	token, cerr := c.credentialWithErr(s, def)
+	if cerr != nil {
+		return nil, cerr
+	}
 	var res *site.KeepAliveResult
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
 		kc, ok := a.(site.KeepAliveCapable)

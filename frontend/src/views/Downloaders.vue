@@ -320,7 +320,7 @@ onMounted(load)
 
         <div v-if="!list.length && !loading" class="empty">
           <EmptyState
-            icon="downloaders"
+            icon="📥"
             :title="t('downloaders.card.emptyTitle')"
             :description="t('downloaders.card.emptyDesc')"
           >

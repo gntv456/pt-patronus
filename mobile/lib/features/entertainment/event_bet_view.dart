@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
+import 'ent_read_fail.dart';
 
 // OurBits 赛事押注（菠菜）：列表 → 盘口（选项+赔率，按赔率升序热门在前）→ 下单 → 结果。
 class EventBetView extends StatefulWidget {
@@ -34,8 +35,8 @@ class _EventBetViewState extends State<EventBetView> {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        _api.events(widget.siteId, _game).catchError((_) => <BetEvent>[]),
-        _api.stats(widget.siteId, _game).catchError((_) => GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 0)),
+        _api.events(widget.siteId, _game).catchError((e) { if (mounted) entReadFailed(context, 'events', e); return <BetEvent>[]; }),
+        _api.stats(widget.siteId, _game).catchError((e) { if (mounted) entReadFailed(context, 'stats', e); return GameStats(balance: 0, cardNumber: 0, todaySpins: 0, maxDaily: 0, costPerPlay: 0); }),
       ]);
       _events = results[0] as List<BetEvent>;
       _balance = (results[1] as GameStats).balance;
@@ -86,7 +87,7 @@ class _EventBetViewState extends State<EventBetView> {
       if (res.success && res.balance > 0) _balance = res.balance;
       await _refresh();
       if (_detail != null) {
-        final d = await _api.eventDetail(widget.siteId, _game, _detail!.event.id).catchError((_) => _detail!);
+        final d = await _api.eventDetail(widget.siteId, _game, _detail!.event.id).catchError((e) { if (mounted) entReadFailed(context, 'eventDetail', e); return _detail!; });
         if (mounted) setState(() => _detail = d);
       }
     } catch (e) {

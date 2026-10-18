@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path"
@@ -223,7 +224,9 @@ func (r *Rclone) isDirPath(ctx context.Context, clamped string) (isDir, found bo
 	return false, false, nil
 }
 
-// Delete 先探测类型：目录用 purge（递归），文件用 deletefile；不存在视为已删除（幂等，与 webdav 404 处理一致）。
+// Delete 先探测类型：目录用 purge（递归），文件用 deletefile。
+// 探不到就返回 fs.ErrNotExist：原先此处 `return nil` 把「没删成」报成「已删除」，
+// 界面那行还留在列表里，且与 local/smb 的口径相反（同一动作在不同后端两种真假）。
 // 拒绝删除存储根（p 解析为 rootDir）——防 AI 工具 file_delete 清空整个存储（与 local/smb/alist 一致）。
 func (r *Rclone) Delete(ctx context.Context, p string) error {
 	clamped := resolvePath(r.rootDir, p)
@@ -236,7 +239,7 @@ func (r *Rclone) Delete(ctx context.Context, p string) error {
 		return err
 	}
 	if !found {
-		return nil
+		return fmt.Errorf("rclone 删除 %s: %w", clamped, fs.ErrNotExist)
 	}
 	if isDir {
 		_, err = r.run(ctx, "purge", rp)

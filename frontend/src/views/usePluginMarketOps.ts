@@ -22,19 +22,23 @@ export function usePluginMarketOps(opts: {
   const marketSourceOfficial = opts.marketSourceOfficial
   // ---- 市场运营层：百鸟朝凤（老树洞/蹦蹦新窝）与百宝袋（收藏） ----
   const marketCharts = ref<{ disciples: ChartRow[]; newcomers: ChartRow[] } | null>(null)
-  const favoritePlugins = ref<PluginMarketItem[]>([])
+  // null = 一次都没读成功；[] 才是「读出来了，确实没有」。两者在界面上不能同形。
+  const favoritePlugins = ref<PluginMarketItem[] | null>(null)
   async function loadMarketCharts() {
     try {
       marketCharts.value = await pluginApi.marketCharts()
-    } catch {
-      marketCharts.value = { disciples: [], newcomers: [] }
+    } catch (e: unknown) {
+      // 旧写法把 502 演成「读到了空榜单」——百鸟朝凤从此看着像没人上榜。
+      marketCharts.value = null
+      ElMessage.error('百鸟朝凤读不出来：' + ((e as Error).message || '未知原因'))
     }
   }
   async function loadFavorites() {
     try {
       favoritePlugins.value = await pluginApi.marketFavorites()
-    } catch {
-      favoritePlugins.value = []
+    } catch (e: unknown) {
+      favoritePlugins.value = null
+      ElMessage.error('百宝袋收藏读不出来：' + ((e as Error).message || '未知原因'))
     }
   }
   async function toggleFavorite(item: PluginMarketItem) {
@@ -42,12 +46,12 @@ export function usePluginMarketOps(opts: {
       if (item.favorited) {
         await pluginApi.unfavorite(item.id)
         item.favorited = false
-        favoritePlugins.value = favoritePlugins.value.filter((p) => p.id !== item.id)
+        favoritePlugins.value = (favoritePlugins.value ?? []).filter((p) => p.id !== item.id)
         ElMessage.success('已取消收藏')
       } else {
         await pluginApi.favorite(item.id)
         item.favorited = true
-        favoritePlugins.value = [item, ...favoritePlugins.value]
+        favoritePlugins.value = [item, ...(favoritePlugins.value ?? [])]
         ElMessage.success('已收藏（百宝袋）')
       }
     } catch (e: unknown) {
@@ -123,25 +127,41 @@ export function usePluginMarketOps(opts: {
   onMounted(async () => {
     try {
       const r = await pluginApi.getMarketSources()
-      marketSources.value = r.sources
-      marketSourceOfficial.value = r.official
-    } catch {
-      // 忽略：未配置时为空列表，刷新走本地 data/plugin-market.json
+      marketSources.value = r.sources ?? []
+      marketSourceOfficial.value = r.official ?? ''
+    } catch (e: unknown) {
+      // 从前是 catch {} 忽略：读失败与「您还没配过源」在界面上长得一样，
+      // 计数显示 0 个，用户以为源列表丢了就去重建——保存是整份替换，真源列表就此没了。
+      ElMessage.error(
+        '市场源读不出来：' + ((e as Error).message || '未知原因') + '（点开「管理市场源」会重新尝试读取）',
+      )
     }
   })
 
   // 首次切到「插件市场」tab 即自动加载（空配置时后端回退本地 plugin-market.json）；
   // 百鸟朝凤与收藏懒加载一次（此后收藏切换本地同步，榜单在安装后由刷新按钮重载）。
-  watch(() => opts.activeTab.value, (tab) => {
-    if (tab === 'market') {
-      if (!market.value) loadMarket()
-      if (!marketCharts.value) loadMarketCharts()
-      if (!favoritePlugins.value.length) loadFavorites()
-    }
-  })
+  watch(
+    () => opts.activeTab.value,
+    (tab) => {
+      if (tab === 'market') {
+        if (!market.value) loadMarket()
+        if (!marketCharts.value) loadMarketCharts()
+        if (!favoritePlugins.value) loadFavorites()
+      }
+    },
+  )
 
-  // 打开市场源管理弹窗：用当前持久化列表拷贝成草稿，增删后统一保存。
-  function openMarketSource() {
+  // 打开市场源管理弹窗：现读一次持久化列表再拷成草稿——
+  // 读不出来时不开弹窗，避免拿一份假空草稿去整份替换真实源列表。
+  async function openMarketSource() {
+    try {
+      const r = await pluginApi.getMarketSources()
+      marketSources.value = r.sources ?? []
+      marketSourceOfficial.value = r.official ?? ''
+    } catch (e: unknown) {
+      ElMessage.error('市场源读不出来，未打开编辑：' + ((e as Error).message || '未知原因'))
+      return
+    }
     marketSourceDraft.value = marketSources.value.map((s) => s)
     marketSourceVisible.value = true
   }

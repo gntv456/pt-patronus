@@ -17,6 +17,7 @@ const props = defineProps<{ target?: MonitorTarget | null }>()
 const targetRef = toRef(props, 'target')
 
 const {
+  trendWindow,
   latest,
   loading,
   powerLoading,
@@ -73,6 +74,7 @@ function onPower(action: PowerAction) {
       <DeviceHostDetail
         v-else-if="target && target.type !== 'camera'"
         :target="target"
+        :trend-window="trendWindow"
         :latest="latest"
         :device-id="deviceID"
         :collect-time="collectTime"

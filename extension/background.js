@@ -85,8 +85,9 @@ chrome.commands.onCommand.addListener(async (command) => {
 // —— 统一消息路由：content/popup → background ——
 // 消息类型即契约（ptp-push-download 等）；异步处理统一 return true 保活 sendResponse。
 // 安全约束（收权改造）：敏感消息（TOTP/凭据/OCR——会回传验证码、密码、验证内容的）
-// 只接受来自扩展自身页面或白名单站点页面的 sender；任何站点上的页面脚本都无法
-// 伪造 sender.origin，因此被攻陷的普通网站拿不到 TOTP/凭据。
+// 只接受来自扩展自身页面或未被黑名单禁用站点的 sender；页面脚本无法伪造 sender.origin，
+// 且填充/保存请求的 host 必须就是发送页自己所在的站（sameSiteAsSender），
+// 所以被攻陷的普通网站既进不来、也借别人的站名取走凭据/2FA 码。
 // 站点范围模型：默认全站可用，黑名单禁用。扩展自身页面恒信任；
 // 站点页面只要不在完全黑名单内即信任（黑名单模型替代旧白名单判定）。
 async function trustedSender(sender) {
@@ -96,6 +97,23 @@ async function trustedSender(sender) {
   let host = ''
   try { host = new URL(sender.origin).hostname } catch { return false }
   return !(await isBlocked(host))
+}
+
+// senderHost 发送页自己的 host（sender.origin 由浏览器填，页面改不了）。
+// 扩展自身页面返回 ''，表示不受「同站」约束。
+function senderHost(sender) {
+  if (!sender || !sender.origin || sender.origin.startsWith(chrome.runtime.getURL(''))) return ''
+  try { return String(new URL(sender.origin).hostname || '').toLowerCase() } catch { return '' }
+}
+
+// sameSiteAsSender 请求要填充/保存的 host 必须就是发送页所在的站。
+// content 脚本一直传 location.hostname，正常流量恒真；这条约束挡的是「host 一旦来自
+// 页面可控数据」时的跨站取密（A 站页面要 B 站凭据）与往别人名下写凭据污染库。
+function sameSiteAsSender(msgHost, sender) {
+  const self = senderHost(sender)
+  if (!self) return true
+  const want = String(msgHost || '').trim().toLowerCase()
+  return want !== '' && want === self
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -109,20 +127,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // TOTP 自动填充：content_totp.js 按 hostname 匹配验证器条目，回当期 6 位码。
     // Secret 不出后台——页面只能拿到数字本身。仅当验证器页本轮会话已解锁
     // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
-    // PIN 锁定态保持锁定语义，不后台解密。仅白名单站点可请求。
+    // PIN 锁定态保持锁定语义，不后台解密。只回答页面自己所在站（sameSiteAsSender）。
     case 'ptp-totp-autofill':
       trustedSender(sender).then((ok) => {
         if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+        if (!sameSiteAsSender(msg.host, sender)) { sendResponse({ ok: false, error: 'off-site-request' }); return }
         totpAutofill(msg.host).then(sendResponse)
       })
       return true
     // 凭据自动填充：content_creds.js 按 hostname 匹配本地凭据库，回单条凭据。
     // 同 TOTP 语义：仅当凭据页本轮会话已解锁（明文缓存 storage.session）或
-    // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库。仅白名单站点可请求。
+    // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库，且只回答页面自己所在站。
     case 'ptp-cred-autofill':
       trustedSender(sender).then(async (ok) => {
-        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
-        if (!(await credAllowed(new URL(sender.origin).hostname))) { sendResponse({ ok: false, error: 'cred-blacklisted' }); return }
+        if (!ok) { sendResponse(await credReadFail('untrusted-sender')); return }
+        if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credReadFail('off-site-request')); return }
+        if (!(await credAllowed(new URL(sender.origin).hostname))) { sendResponse(await credReadFail('cred-blacklisted')); return }
         credAutofill(msg.host).then(sendResponse)
       })
       return true
@@ -131,6 +151,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'ptp-cred-check': {
       trustedSender(sender).then(async (ok) => {
         if (!ok) { sendResponse({ known: 'untrusted' }); return }
+        if (!sameSiteAsSender(msg.host, sender)) { sendResponse({ known: true }); return } // 跨站请求：静默当作已知，不弹保存
         if (!(await credAllowed(msg.host))) { sendResponse({ known: true }); return } // 凭据黑名单:静默当作已知,不弹保存
         credCheckNew(msg.host, msg.username).then(sendResponse)
       })
@@ -141,8 +162,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // 只有该会话内能直接写库；锁定态返回 need-unlock，content 提示去设置页解锁。
     case 'ptp-cred-save': {
       trustedSender(sender).then(async (ok) => {
-        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
-        if (!(await credAllowed(msg.host))) { sendResponse({ ok: false, error: 'cred-blacklisted' }); return }
+        if (!ok) { sendResponse(await credFail('untrusted-sender')); return }
+        if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credFail('off-site-request')); return }
+        if (!(await credAllowed(msg.host))) { sendResponse(await credFail('cred-blacklisted')); return }
         credSaveCaptured(msg).then(sendResponse)
       })
       return true
@@ -163,9 +185,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })
       return true
     // 跨站收藏：详情页浮钮长按/右键或批量栏收藏按钮写入本机收藏夹。
+    // #362 addFavorite 会抛（#338 起 read() 遇损坏数据就抛），从前这条出口
+    // `.then(() => sendResponse({ok:true}))` 只挂在成功分支：失败时 sendResponse 永不被调用，
+    // 页面侧 sendMessage 的回调等不到 → r 是 undefined → 批量栏只 `if (r && r.ok) n++`
+    // 于是全部种子都没存，按钮却照样显示「已收藏 0」（读起来像「收藏成功、就是没东西」）。
+    // 现在两个分支都回调，并把真实原因带回页面。
     case 'ptp-favorite':
       addFavorite({ url: msg.url, title: msg.title || '', site: msg.site || '' })
         .then(() => sendResponse({ ok: true }))
+        .catch((e) => sendResponse({ ok: false, error: e && e.message ? e.message : String(e) }))
       return true
     // content_torrent.js 在 dragstart 时上报；仅记录最近一次拖放 URL 供 popup 快捷用。
     case 'ptp-drag-capture':
@@ -208,7 +236,9 @@ async function totpAutofill(host) {
   try {
     const lib = await import(chrome.runtime.getURL('totp_autofill_lib.js'))
     const { ptp_vault: v } = await chrome.storage.local.get('ptp_vault')
-    if (!v) return { ok: false, error: 'no-vault' }
+    // #400 五个失败出口全部走 totpAutofillFail；不再手写 {ok:false,error}、
+    // 也不再借用凭据侧的 credReadFail（两个域的码表不同，见该函数注释）。
+    if (!v) return totpAutofillFail('no-vault')
     let entries = null
     if (v.plain !== undefined) {
       entries = JSON.parse(v.plain) // 未设 PIN：本地明文库直接可用
@@ -216,18 +246,24 @@ async function totpAutofill(host) {
       // PIN 库：仅当验证器页本轮已解锁（明文条目缓存在 storage.session）才可填充。
       const sess = await chrome.storage.session.get(['ptp_vault_entries'])
       entries = sess && sess.ptp_vault_entries
-      if (!entries) return { ok: false, error: 'locked' }
+      if (!entries) return totpAutofillFail('locked')
     }
-    const label = String(host || '').split('.')[0].toLowerCase()
+    // 与 credentials.js matchCred 同口径先剥 www.，否则 www.站 取到的 label 是「www」，
+    // 既填不出自己的码，又可能命中任何 label/issuer 含 www 的条目；空 host 的 label 为 ''
+    // 时 includes('') 恒真，会把库里第一条的验证码发给页面。
+    const label = String(host || '').replace(/^www\./, '').split('.')[0].toLowerCase()
+    if (!label) return totpAutofillFail('no-match')
     const hit = (entries || []).find((e) => {
       const hay = [e.label, e.issuer].filter(Boolean).join(' ').toLowerCase()
       return hay.includes(label)
     })
-    if (!hit) return { ok: false, error: 'no-match' }
+    if (!hit) return totpAutofillFail('no-match')
     const { code } = await lib.totpNow(hit)
     return { ok: true, code }
   } catch (e) {
-    return { ok: false, error: e.message }
+    // #400 第五个出口：catch 兜底也走统一分类器，
+    // 否则 e.message 会被当成「原因码」原样抛给页面（那里没有 TOTP 码表去翻它）。
+    return totpAutofillFail(e && e.message)
   }
 }
 
@@ -245,8 +281,14 @@ async function credAutofill(host) {
           const sv = await openVault()
           if (sv && sv.salt) await chrome.storage.local.set({ ptp_credentials: sv })
           return sv
-        } catch { return null }
+        } catch {
+          // #337 从服务器取信封失败 ≠ 「本地没有库」：以前这里 return null，
+          // 往下被压成 no-vault，用户只看到空表单，以为扩展没装凭据。分出原因码，
+          // 让内容脚本能说清「检查登录/网络后重试」。
+          return { __unreachable: true }
+        }
       })())
+    if (v && v.__unreachable) return credReadFail('server-unreachable')
     let entries = null
     if (v && v.plain !== undefined) {
       entries = JSON.parse(v.plain)
@@ -254,22 +296,32 @@ async function credAutofill(host) {
       const sess = await chrome.storage.session.get(['ptp_cred_entries'])
       entries = sess && sess.ptp_cred_entries
     }
-    if (!entries || !entries.length) return { ok: false, error: 'no-vault' }
+    // 区分「没有库」「库锁着」「库是空的」——以前一律 no-vault。
+    if (!v) return credReadFail('no-vault')
+    if (!entries) return credReadFail('need-unlock') // 有信封但无明文：PIN 锁定态
+    if (!entries.length) return credReadFail('no-match') // 库解锁了，确实一条没有
     const h = String(host || '').replace(/^www\./, '')
     const hit = (await import(chrome.runtime.getURL('credentials.js'))).matchCred(entries, h)
-    if (!hit) return { ok: false, error: 'no-match' }
+    if (!hit) return credReadFail('no-match')
     return {
       ok: true,
       cred: { username: hit.username || '', password: hit.password || '' },
     }
   } catch (e) {
-    return { ok: false, error: e.message }
+    return { ok: false, error: e.message, message: `自动填充未完成：${e.message}` }
   }
 }
 
 // credEntriesForRead：取当前可读的明文条目（明文库或 session 缓存）；锁定态 null。
 // server 模式跨设备场景：本地无信封时先用本地镜像/服务器信封补一个「库存在」的信号——
 // 解密仍需用户在 options 输 PIN（session 缓存才有明文），这里只保证 check/autofill 不误判 no-vault。
+//
+// #360 返回值语义分三种，调用方（credCheckNew）据此决定要不要打扰用户：
+//   条目数组 = 可读（可能为空数组，库里真没这条）；
+//   null      = 库锁着（PIN 未解锁）——不能与「读不到」混；
+//   __unreachable = server 模式此刻读不到（没登录/网络不通）——此前被 `catch{}` 吞成 null，
+//                    于是查询失败被当成「库里没有这条」，用户拿到一条重复的保存气泡，
+//                    点保存时又报「no-vault」，两处都在指错路。
 async function credEntriesForRead() {
   let v = (await chrome.storage.local.get('ptp_credentials')).ptp_credentials
   if (!v) {
@@ -278,9 +330,20 @@ async function credEntriesForRead() {
       const { getCredStoreMode, openVault } = await import(chrome.runtime.getURL('credentials.js'))
       if ((await getCredStoreMode()) === 'server') {
         v = await openVault()
+        // #360 openVault 现在自报 {__unreachable:true}；它没有 salt，**不许**写进本地镜像，
+        // 否则会污染存储、让后面所有读取都以为「有库但锁着」。
+        if (v && v.__unreachable) return v
         if (v && v.salt) await chrome.storage.local.set({ ptp_credentials: v })
       }
-    } catch { /* 未登录/离线：按无库处理 */ }
+    } catch (e) {
+      // #379 从前这里是 `catch { /* 未登录/离线：按无库处理 */ }`：异常被吞，v 留 undefined，
+      // 落到下面的 `if (!v) return null`。而 null 在本函数的语义里是「库锁着（PIN 未解锁）」
+      // —— 于是「取信封的一次故障」被说成「请去解锁凭据库」。与 #335/#337 同形，但更隐蔽：
+      // #360 的 __unreachable 哨兵只保护 openVault **自己成功返回**的那条路径，
+      // 保护不到「它抛异常」这一格，所以 :404 那道防线在这里是死代码。
+      // 交出同一个哨兵，调用方就能按 server-unreachable 归类（credCheckNew 已经认它）。
+      v = { __unreachable: true, err: e && e.message ? String(e.message) : String(e) }
+    }
   }
   if (!v) return null
   if (v.plain !== undefined) return JSON.parse(v.plain)
@@ -288,11 +351,63 @@ async function credEntriesForRead() {
   return (sess && sess.ptp_cred_entries) || null
 }
 
+// credFail：凭据保存失败的统一出口——原因码 + 人话文案（文案单一来源 credentials.js#credSaveFailText）。
+// 内容脚本没有 web_accessible_resources，拿不到 credentials.js ⇒ 文案在后台拼好随响应发出，
+// 页面只显示。不这样做的话，前端就只能对所有失败猜同一句原因。
+async function credFail(code) {
+  try {
+    const m = await import(chrome.runtime.getURL('credentials.js'))
+    return { ok: false, error: code, message: m.credSaveFailText(code) }
+  } catch {
+    return { ok: false, error: code, message: `保存失败：${code}` }
+  }
+}
+
+// totpAutofillFail：TOTP 自动填充失败的统一出口（#400）。
+//
+// 文案的**单一来源**是 totp_autofill_fail.js#totpAutofillFailText —— 与 credentials.js
+// 的 credSaveFailText / credReadFailText 同构（分类器放可导入模块，才能写行为测试；
+// 留在 service worker 里就只能源码扫描，而 #336 的教训正是「源码里有那句中文」
+// 曾被当成证据、出口照样丢）。这里只负责把码与文案组装成响应。
+//
+// 静默/出声的判定：no-match 回空 message（库里没这条是正常状态，首次登录本站属正常），
+// no-vault / locked 必须出声（用户盯着空白 2FA 框，而扩展有码或压根没建库）。
+//
+// 不与 credReadFail 共用码表：验证器库没有凭据黑名单、没有服务器侧；之前借用
+// credReadFail('no-match') 只是碰巧对（那张表里 no-match 的 message 恰好为空），
+// 将来凭据侧给 no-match 补上提示，TOTP 就会跟着冒出一句不属于它的话。
+async function totpAutofillFail(code) {
+  try {
+    const m = await import(chrome.runtime.getURL('totp_autofill_fail.js'))
+    return { ok: false, error: String(code || ''), message: m.totpAutofillFailText(code) }
+  } catch {
+    // import 失败时也不许丢原因：把码原样带出（下面测试钉住「未知码原样带出」）。
+    return { ok: false, error: String(code || ''), message: `未能自动填码：${code || '未返回原因'}` }
+  }
+}
+
+// credReadFail：凭据读取（自动填充）失败的统一出口——与 credFail 同形，文案单一来源
+// credentials.js#credReadFailText。内容脚本同样拿不到 credentials.js（无
+// web_accessible_resources），所以文案在后台拼好随响应发出。
+// no-match 会返回空 message：那属正常状态（库里没这条），页面不该弹提示打扰登录。
+async function credReadFail(code) {
+  try {
+    const m = await import(chrome.runtime.getURL('credentials.js'))
+    return { ok: false, error: code, message: m.credReadFailText(code) }
+  } catch {
+    return { ok: false, error: code, message: `自动填充未完成：${code}` }
+  }
+}
+
 // credCheckNew 登录捕获查重：同站同用户名且密码一致 → known；否则视为新凭据。
 async function credCheckNew(host, username) {
   try {
     const entries = await credEntriesForRead()
-    if (!entries) return { known: 'unknown' } // 库锁定/为空：仍让 content 弹保存气泡
+    // #360 读不到（server 模式未登录/网络不通）时 credEntriesForRead 回 __unreachable 哨兵。
+    // 它不是数组：直接丢给 matchCred 会得到 undefined，看起来与「库里没这条」同形 ⇒
+    // 弹一个重复的保存气泡，用户点下去才报另一个原因。查重失败就老实说 unknown，
+    // 让页面照旧弹气泡（气泡里的保存动作会给出真原因）。
+    if (!Array.isArray(entries)) return { known: 'unknown' } // 锁定 / 空 / 读不到：仍让 content 弹保存气泡
     const h = String(host || '').replace(/^www\./, '')
     const { matchCred, hostOf } = await import(chrome.runtime.getURL('credentials.js'))
     const hit = matchCred(entries, h)
@@ -316,9 +431,20 @@ async function credSaveCaptured(msg) {
       try {
         const { getCredStoreMode, openVault } = await import(chrome.runtime.getURL('credentials.js'))
         if ((await getCredStoreMode()) === 'server') vault = await openVault()
-      } catch { /* 未登录/离线：按无库处理 */ }
+      } catch (e) {
+        // #379 同上：不能让 vault 留 undefined 落到下一行的 credFail('no-vault') ——
+        // 那句文案是「这台设备还没有凭据库：到扩展设置页『凭据』里新建或导入」，
+        // 用户照做会**真的新建一个空库**，而他的库好好在服务器上、只是这一刻没取到。
+        // 这是本仓「把原因钉成一个猜测」里最坏的一档：#335 让人去解锁，这里让人去新建。
+        // 交出同一个哨兵，:404 的 credFail('server-unreachable') 就会如实生效。
+        vault = { __unreachable: true, err: e && e.message ? String(e.message) : String(e) }
+      }
     }
-    if (!vault) return { ok: false, error: 'no-vault' }
+    // #360 openVault 现在会把「server 模式读不到」自报成 {__unreachable:true}（旧形状是
+    // 吞掉异常回 null）。这个哨兵必须先摘出来：它没有 salt，当信封用会在下面的
+    // `vault.plain !== undefined` 与 saveCredVault 里当成真库，一路报出看不懂的错。
+    if (vault && vault.__unreachable) return credFail('server-unreachable')
+    if (!vault) return credFail('no-vault')
     // 明文库（无 PIN）直接写
     if (vault.plain !== undefined) {
       const entries = JSON.parse(vault.plain)
@@ -328,7 +454,7 @@ async function credSaveCaptured(msg) {
     }
     const pin = sess && sess.ptp_cred_pin
     const entries = sess && sess.ptp_cred_entries
-    if (!pin || !entries) return { ok: false, error: 'need-unlock' }
+    if (!pin || !entries) return credFail('need-unlock')
     await upsertCaptured(entries, msg)
     const { saveCredVault } = await import(chrome.runtime.getURL('credentials.js'))
     await saveCredVault(pin, entries) // 双模式：本地或服务器（sealVault 内部按模式分流）
@@ -485,3 +611,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   getSiteHosts().then((hosts) => sendResponse({ ok: true, hosts }))
   return true
 })
+
+
+
+

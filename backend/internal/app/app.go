@@ -27,7 +27,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/site"
-	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
@@ -42,12 +41,12 @@ type App struct {
 	sched          *scheduler.Scheduler
 	pluginMgr      *plugins.Manager
 	http           *http.Server
-	monCancel      context.CancelFunc // 停监控采集 goroutine
-	dirwatchCancel context.CancelFunc // 停目录监视 goroutine（C 阶段填，nil=safe-mode/未启用）
-	tgbotCancel    context.CancelFunc // 停 Telegram bot goroutine（A 阶段填，nil=safe-mode/未启用）
-	cloudCh        *chain.CloudChain  // 云任务执行器停机用（D 阶段填，nil=safe-mode）
+	monCancel      context.CancelFunc   // 停监控采集 goroutine
+	dirwatchCancel context.CancelFunc   // 停目录监视 goroutine（C 阶段填，nil=safe-mode/未启用）
+	tgbotCancel    context.CancelFunc   // 停 Telegram bot goroutine（A 阶段填，nil=safe-mode/未启用）
+	cloudCh        *chain.CloudChain    // 云任务执行器停机用（D 阶段填，nil=safe-mode）
 	transferCh     *chain.TransferChain // 整理链（直传云上传兜底路径的停机等待，四轮 P2）
-	wsBCStop       func()             // 停 WS 广播器（含在途下载完成钩子收尾，四轮 P1 修复）
+	wsBCStop       func()               // 停 WS 广播器（含在途下载完成钩子收尾，四轮 P1 修复）
 }
 
 // New wires all dependencies and builds the HTTP server (does not start it).
@@ -62,10 +61,19 @@ func New(cfg *config.Config) (*App, error) {
 
 	// 站点抓取客户端：开重试以容忍 Cloudflare/网络偶发的 connection reset by peer
 	// （实测标准 TLS 能正常连通 CF 站点，reset 多为瞬态，重试即可恢复）。
-	hc, err := httpclient.New(httpclient.Options{FollowRedirect: true, MaxRetries: 2})
+	// AllowPrivate 默认关（SSRF 守卫）；ALLOW_PRIVATE_SITES=true 时放行内网/环回站点，
+	// 供自建 tracker（本机 Docker 的 FluxTorrent、NAS 上的 PT 站）接入。
+	hc, err := httpclient.New(httpclient.Options{FollowRedirect: true, MaxRetries: 2, AllowPrivate: cfg.AllowPrivateSites})
 	if err != nil {
 		return nil, err
 	}
+	if cfg.AllowPrivateSites {
+		slog.Warn("site fetch SSRF guard relaxed: private/loopback targets allowed (ALLOW_PRIVATE_SITES=true)")
+	}
+	// 通知渠道的守卫读同一个开关：从前 notification 自己抄了一份判定，只认 loopback/公网，
+	// 于是「ntfy/Apprise 装在同一台 NAS 的局域网」「compose 里的兄弟服务（172.17.x）」
+	// 这两种自托管布置被永久拦死，而提示里也不说这个开关存在。
+	notification.SetAllowPrivateTargets(cfg.AllowPrivateSites)
 
 	registry, bus, base, mteam := newSiteInfra(hc)
 
@@ -256,9 +264,13 @@ func New(cfg *config.Config) (*App, error) {
 	cloudTaskOp := oper.NewCloudTaskOper(database)
 	cloudCh.SetTransferConfigGetter(cfgOp)
 	cloudCh.SetAppBaseURL(cfg.AppBaseURL)
-	// 直链签名密钥（与 SECRET_KEY 同源）：公开 302 端点 URL 即凭证（?sign=<exp>.<hmac>），
-	// 防匿名枚举 driveId+路径换取全盘直链；签名随 .strm 生成时嵌入，12h 有效。
-	cloudCh.SetDirectLinkSignKey([]byte(cfg.SecretKey))
+	// 直链签名密钥（#406：由 SECRET_KEY 经 HKDF 按域派生，不再直接吃原始字节）：
+	// 防匿名枚举 driveId+路径换取全盘直链；签名随 .strm 生成时嵌入，7 天有效（对齐 cloud-strm cron 的重写节奏）。
+	// 第二段是升级前的原始 SECRET_KEY：存量 .strm 里的 URL 用它签的名，
+	// 换密钥后必须仍能验过（#406），否则播放全库 404。新签名一律用派生那把。
+	cloudCh.SetDirectLinkSignKeys(
+		security.DeriveKey(cfg.SecretKey, security.HKDFInfoDirectLink()),
+		[]byte(cfg.SecretKey))
 	cloudCh.SetCloudTaskOper(cloudTaskOp)
 	// 云端上传任务落地 .strm 后自动扫库（整理链的 OnDownloadCompleted 复用：
 	// 整理瞬间扫库时 strm 尚未生成，此处补一次，云端条目才能进媒体库）。
@@ -281,25 +293,12 @@ func New(cfg *config.Config) (*App, error) {
 		return &chain.MediaSearchItem{Title: m.Title, Year: m.Year, Type: string(m.Type)}, nil
 	})
 
-	// 字幕搜索/下载：多源（ASSRT/OpenSubtitles API + SubHD/Zimuku 抓取）聚合 + 解 zip + 繁简。
-	// 源凭据走 SystemConfig（回退 env ASSRT_TOKEN/OPENSUBTITLES_KEY），UI 改动即时 rebuild。
-	subtitleProvider, err := chain.NewSubtitleSourceProvider(cfgOp, chain.SubtitleSettings{
-		AssrtToken:       cfg.AssrtToken,
-		OpenSubtitlesKey: cfg.OpenSubtitlesKey,
-	})
+	// 字幕搜索/下载 + 自动化（详见 wireSubtitleStack）。
+	subtitleCh, subAutoSvc, err := wireSubtitleStack(cfg, cfgOp, base, bus, noticeSvc, mediaServerCh)
 	if err != nil {
 		wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 		return nil, err
 	}
-	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
-	// 媒体健康中心联动：missing_subtitle 一键补齐（复用字幕搜索/下载源）。
-	mediaServerCh.SetSubtitleFixer(chain.SubtitleChainAdapter{Ch: subtitleCh})
-
-	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（Bazarr /
-	// ChineseSubFinder 模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
-	// 通知走 noticeSvc；默认关闭，用户经 /subtitle/automation/config 开启。异步 handler 不阻塞整理。
-	subAutoSvc := subauto.New(bus, subtitleCh, cfgOp, noticeSvc)
-	subAutoSvc.Start()
 
 	// MCP 服务端 + 宿主内置插件注册（详见 wireMCPAndBuiltinPlugins）。
 	mcpSrv := wireMCPAndBuiltinPlugins(pluginMgr, siteOp, siteCh, subCh, dlOp)

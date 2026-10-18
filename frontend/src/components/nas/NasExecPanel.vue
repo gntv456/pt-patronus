@@ -26,6 +26,8 @@ defineProps<{
   execRunning: boolean
   commandHistory: string[]
   commandRuns: CommandRun[]
+  runsTruncated?: boolean
+  runsTotal?: number
   execLogs: ExecLog[]
   isAdmin: boolean
 }>()
@@ -135,6 +137,13 @@ function onPickScriptFile() {
           </el-button>
         </div>
       </div>
+    </div>
+    <div v-if="runsTruncated" class="runs-note">
+      {{
+        runsTotal == null
+          ? ti('nas.runsCappedUnknown', { shown: commandRuns.length })
+          : ti('nas.runsCapped', { shown: commandRuns.length, total: runsTotal })
+      }}
     </div>
     <div v-if="commandRuns.length" class="run-history">
       <div class="section-title">{{ ti('nep.history') }}</div>

@@ -196,13 +196,30 @@ async function saveNotif() {
   }
 }
 
+// notifyTestOutcome 把「逐通道回执」翻译成一个提示级别与文案。
+// 此前只要 results 非空就报「已向全部通道发送测试」——3 个通道全部失败（token 失效、
+// 被墙、URL 不通）时界面同样是绿的，而失败信息只躺在下面的结果表里。
+export function notifyTestOutcome(results: NotifySendResult[] | undefined): {
+  kind: 'success' | 'warning' | 'error'
+  text: string
+} {
+  const rs = results ?? []
+  if (!rs.length) return { kind: 'warning', text: '没有已启用的通道，请先启用并保存至少一个通道' }
+  const failed = rs.filter((r) => !r.ok)
+  const ok = rs.length - failed.length
+  if (!failed.length) return { kind: 'success', text: `已向 ${ok} 个通道发送测试` }
+  const detail = failed.map((f) => (f.error ? `${f.channel}：${f.error}` : f.channel)).join('；')
+  if (ok) return { kind: 'warning', text: `${ok}/${rs.length} 个通道成功，失败：${detail}` }
+  return { kind: 'error', text: `全部 ${rs.length} 个通道都失败了：${detail}` }
+}
+
 async function testNotif() {
   testLoading.value = true
   try {
     const r = await notificationApi.test('PTPatronus 测试通知', '看到这条消息说明通知通道工作正常 ✅')
     testResults.value = r.results
-    if (!r.results.length) ElMessage.warning('没有已启用的通道，请先启用并保存至少一个通道')
-    else ElMessage.success('已向全部通道发送测试')
+    const out = notifyTestOutcome(r.results)
+    ElMessage[out.kind](out.text)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '发送测试失败')
   } finally {
@@ -246,13 +263,15 @@ function stopWxPoll() {
     wxTimer = undefined
   }
 }
-onBeforeUnmount(stopWxPoll)
 
 function secretPlaceholder(configured: boolean | undefined) {
   return configured ? '已配置（不修改请留空）' : '请输入'
 }
 
 export function useNotification() {
+  // 必须在 setup 内注册：写在模块顶层时 import 期没有组件实例，钩子从未挂上，
+  // 离开设置页后微信二维码 2s 轮询会一直跑下去。
+  onBeforeUnmount(stopWxPoll)
   return {
     notifCfg,
     notif,

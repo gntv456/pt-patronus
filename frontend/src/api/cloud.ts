@@ -116,7 +116,16 @@ export const cloudApi = {
   }) =>
     // 即时/递归生成 STRM 可能很久：不限时，覆盖 http 实例默认 15s。
     http.post<StrmResult>('/cloud/generate', opts, { timeout: 0 }).then((r) => r.data),
-  generateAll: () => http.post('/cloud/generate-all', null, { timeout: 0 }).then((r) => r.data),
+  // 全部启用规则一次性生成：后端回跨规则汇总（哪条规则整条失败也在里面），
+  // 前端据此决定是成功、无规则、还是「N/M 条规则失败」——不能只回一句「已触发」。
+  generateAll: () =>
+    http
+      .post<{ rules: number; generated: number; skipped: number; file_errors: number; failed?: string[] }>(
+        '/cloud/generate-all',
+        null,
+        { timeout: 0 },
+      )
+      .then((r) => r.data),
   syncSubscriptions: () => http.post('/cloud/sync-subscriptions').then((r) => r.data),
   // ---- STRM 记录 ----
   listRecords: (driveId?: number) =>
@@ -127,11 +136,20 @@ export const cloudApi = {
       .then((r) => r.data.records ?? []),
   removeRecord: (id: number) => http.delete(`/cloud/records/${id}`).then((r) => r.data),
   // ---- 云端任务队列（上传/STRM/目录树导入） ----
+  // 队列有单页上限（默认 50、封顶 200）：total/truncated 要与清单同批返回，否则积压中的队列
+  // 被画成「就这些」。计数读不出时后端不下发 total 且保守报 truncated=true，所以 total 可选。
   listTasks: (status = '', limit = 50) =>
     http
-      .get<{ tasks: CloudTask[] }>('/cloud/tasks', { params: { ...(status ? { status } : {}), limit } })
-      .then((r) => r.data.tasks ?? []),
-  retryTask: (id: number) => http.post(`/cloud/tasks/${id}/retry`).then((r) => r.data),
+      .get<{ tasks: CloudTask[]; total?: number; limit: number; truncated: boolean }>('/cloud/tasks', {
+        params: { ...(status ? { status } : {}), limit },
+      })
+      .then((r) => r.data),
+  // 重试任务（后端 soft-fail：200 + {ok:false,error}，这里转成异常，否则界面一律报「已重新排队」）
+  retryTask: (id: number) =>
+    http.post(`/cloud/tasks/${id}/retry`).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || terr('common.actionFailed', '操作失败'))
+      return r.data
+    }),
   removeTask: (id: number) => http.delete(`/cloud/tasks/${id}`).then((r) => r.data),
   // 115 目录树批量导入生成 STRM（异步任务，入队后由队列执行）。
   importTree: (opts: { drive_id: number; tree: string; base?: string; output_dir: string; template?: string }) =>
@@ -152,7 +170,15 @@ export const cloudApi = {
   // STRM 修复（按当前配置批量重写）
   strmRepair: (driveId?: number) =>
     http
-      .post<{ repaired: number; skipped: number }>('/cloud/strm-repair', { drive_id: driveId ?? 0 }, { timeout: 0 })
+      .post<{
+        repaired: number
+        skipped: number
+        failed?: number
+        errors?: string[]
+        // 规则表这次读不出来：被保守跳过的那些 .strm 仍然是坏的（含在 skipped 里）
+        rules_unavailable?: boolean
+        rules_skipped?: number
+      }>('/cloud/strm-repair', { drive_id: driveId ?? 0 }, { timeout: 0 })
       .then((r) => r.data),
 
   // 115 开放平台设备码授权：发起（返回扫码 URL）→ 轮询 → token 直接建盘

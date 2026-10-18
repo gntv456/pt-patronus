@@ -13,6 +13,8 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 	{
 		sites.GET("", siteH.List)
 		sites.GET("/definitions", siteH.Definitions)
+		// 站点定义诊断（四类「配置被静默忽略」）：界面要能读到，否则用户只看得到「抓不到东西」。
+		sites.GET("/definition-diagnostics", siteH.DefinitionDiagnostics)
 		sites.POST("/inspect", siteH.Inspect)
 		sites.GET("/:id", siteH.Get)
 		// 写操作（含改密钥）与 DELETE 同级收敛 admin：站点配置影响全局抓取行为。

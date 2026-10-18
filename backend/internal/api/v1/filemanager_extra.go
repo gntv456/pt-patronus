@@ -22,7 +22,7 @@ func (h *FileStorageHandler) ReadFile(c *gin.Context) {
 	p := c.Query("path")
 	data, err := h.fileCh.ReadFile(c.Request.Context(), id, p)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "content": string(data)})
@@ -40,7 +40,7 @@ func (h *FileStorageHandler) WriteFile(c *gin.Context) {
 	}
 	p := c.Query("path")
 	if isRootPath(p) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	var in writeFileRequest
@@ -49,7 +49,7 @@ func (h *FileStorageHandler) WriteFile(c *gin.Context) {
 		return
 	}
 	if err := h.fileCh.WriteFile(c.Request.Context(), id, p, []byte(in.Content)); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -64,11 +64,11 @@ func (h *FileStorageHandler) Archive(c *gin.Context) {
 	src := c.Query("src")
 	dst := c.Query("dst")
 	if isRootPath(src) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Archive(c.Request.Context(), id, src, dst); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -83,11 +83,11 @@ func (h *FileStorageHandler) Extract(c *gin.Context) {
 	src := c.Query("src")
 	dst := c.Query("dst")
 	if isRootPath(src) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	if err := h.fileCh.Extract(c.Request.Context(), id, src, dst); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -106,7 +106,7 @@ func (h *FileStorageHandler) Chmod(c *gin.Context) {
 	}
 	p := c.Query("path")
 	if isRootPath(p) {
-		errcode.Respond(c, errcode.OperationForbidden)
+		errcode.Respond(c, errcode.RootPathProtected)
 		return
 	}
 	var in chmodRequest
@@ -115,7 +115,7 @@ func (h *FileStorageHandler) Chmod(c *gin.Context) {
 		return
 	}
 	if err := h.fileCh.Chmod(c.Request.Context(), id, p, in.Mode, in.Recursive); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -134,7 +134,7 @@ func (h *FileStorageHandler) DirSize(c *gin.Context) {
 			errcode.Respond(c, errcode.ResourceStateInvalid)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": userErrText(err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "size": size, "size_str": humanSize(size)})

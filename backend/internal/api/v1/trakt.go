@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,26 @@ type TraktHandler struct {
 
 // NewTraktHandler 构造。
 func NewTraktHandler(ch *chain.TraktChain) *TraktHandler { return &TraktHandler{ch: ch} }
+
+// traktCodeFor 把链层错误分成四档，返回要发出去的那条 *Error。
+// 判档与文案只在接口层写一份，DeviceStatus 要在响应里多带 authorized/terminal 两个字段，
+// 所以这里返回码本身而不是直接 Respond。
+func traktCodeFor(err error) *errcode.Error {
+	switch {
+	case errors.Is(err, chain.ErrTraktNotConfigured):
+		// WithDetail：链层那句「去哪儿填」原样抵达界面。
+		return errcode.TraktNotConfigured.WithDetail(err)
+	case errors.Is(err, chain.ErrTraktNotAuthorized):
+		return errcode.TraktNotAuthorized.WithDetail(err)
+	case errors.Is(err, chain.ErrTraktCodeExpired):
+		return errcode.TraktCodeExpired.WithDetail(err)
+	default:
+		// 其余才是真上游问题（网络 / Trakt 返回非 2xx）：原因只进日志，别把英文原文推给人。
+		return errcode.TraktUpstreamFailed.WithErr(err)
+	}
+}
+
+func traktErr(c *gin.Context, err error) { errcode.Respond(c, traktCodeFor(err)) }
 
 // traktConfigResp 是对外脱敏的配置视图（不回传 client_secret/access_token/refresh_token）。
 type traktConfigResp struct {
@@ -78,33 +99,20 @@ func (h *TraktHandler) SetConfig(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	cur := h.ch.GetSettings()
-	next := cur
-	next.Enabled = req.Enabled
-	next.SyncMovies = req.SyncMovies
-	next.SyncShows = req.SyncShows
-	next.Resolution = req.Resolution
-	next.DownloaderID = req.DownloaderID
-	if req.RedirectURI != "" {
-		next.RedirectURI = req.RedirectURI
-	}
-	// client_id/secret 改变 → 作废既有令牌（凭据已换，旧令牌无效）。
-	if req.ClientID != "" && req.ClientID != cur.ClientID {
-		next.ClientID = req.ClientID
-		next.AccessToken = ""
-		next.RefreshToken = ""
-		next.PendingDeviceCode = ""
-	}
-	if req.ClientSecret != "" {
-		next.ClientSecret = req.ClientSecret
-		if req.ClientSecret != cur.ClientSecret {
-			next.AccessToken = ""
-			next.RefreshToken = ""
-			next.PendingDeviceCode = ""
-		}
-	}
-	if err := h.ch.SaveSettings(next); err != nil {
-		errcode.Respond(c, errcode.SaveFailed)
+	// 读-改-写整体交给 chain：handler 自己 Get 再 Save 的话，中间插入的令牌轮转
+	// 会被这份旧快照写回库里（Trakt 的 refresh_token 一次一换，写回旧值就得重新授权）。
+	if err := h.ch.UpdateConfig(chain.TraktConfigInput{
+		Enabled:      req.Enabled,
+		ClientID:     req.ClientID,
+		ClientSecret: req.ClientSecret,
+		RedirectURI:  req.RedirectURI,
+		SyncMovies:   req.SyncMovies,
+		SyncShows:    req.SyncShows,
+		Resolution:   req.Resolution,
+		DownloaderID: req.DownloaderID,
+	}); err != nil {
+		// #353 带上原因：底层是系统配置写库（store.Set），失败原因具体却被丢掉，界面只剩「保存失败」。
+		errcode.Respond(c, errcode.SaveFailed.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -114,7 +122,7 @@ func (h *TraktHandler) SetConfig(c *gin.Context) {
 func (h *TraktHandler) DeviceCode(c *gin.Context) {
 	s, err := h.ch.StartDeviceAuth(c.Request.Context())
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		traktErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -130,7 +138,17 @@ func (h *TraktHandler) DeviceCode(c *gin.Context) {
 func (h *TraktHandler) DeviceStatus(c *gin.Context) {
 	authorized, err := h.ch.PollDeviceStatus(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"authorized": false, "error": err.Error()})
+		// 面板每 3s 打一次这个 GET。授权码过期 / 凭据没填是「再等也不会亮」的终端态，
+		// 所以除了 code 还要带 terminal，前端才有停下来把话说出来的依据；
+		// 这里不走 errcode.Respond（它只发标准信封），但仍复用同一份判档，两处不各抄一遍。
+		e := traktCodeFor(err)
+		c.JSON(e.HTTP, gin.H{
+			"authorized": false,
+			"code":       e.Code,
+			"message":    e.Message,
+			"error":      e.Message,
+			"terminal":   e.Code != errcode.TraktUpstreamFailed.Code,
+		})
 		return
 	}
 	s := h.ch.GetSettings()
@@ -145,7 +163,7 @@ func (h *TraktHandler) DeviceStatus(c *gin.Context) {
 func (h *TraktHandler) Sync(c *gin.Context) {
 	n, err := h.ch.SyncNow(c.Request.Context())
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		traktErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "created": n})

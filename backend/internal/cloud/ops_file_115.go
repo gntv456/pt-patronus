@@ -209,17 +209,73 @@ func check115State(resp *httpclient.Response, op string) error {
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("115 %s: HTTP %d", op, resp.StatusCode)
 	}
+	return judge115StateBody("115", op, resp.Body)
+}
+
+// judge115StateBody 是 115 系（web 与开放 API）写操作共用的成败判据：HTTP 恒 200，
+// 成败与原因都写在正文里。三条规矩：
+//  1. 读不出正文（HTML 登录页、空 body、网关改写）绝不等于成功——开放 API 从前
+//     `if json.Unmarshal(...) == nil && !body.State` 一短路就把它们报成完成；
+//  2. state 有三种真值形状（true / "true" / 1）；
+//  3. 原因分散在 error、error_msg、msg 与 errno 上，只读 error 会留下「失败: 空」。
+func judge115StateBody(prefix, op string, rb []byte) error {
 	var body struct {
-		State bool   `json:"state"`
-		Err   string `json:"error"`
+		State   any    `json:"state"`
+		Err     string `json:"error"`
+		ErrMsg  string `json:"error_msg"`
+		Msg     string `json:"msg"`
+		Message string `json:"message"`
+		Errno   int    `json:"errno"`
 	}
-	if err := json.Unmarshal(resp.Body, &body); err != nil {
-		return fmt.Errorf("115 %s parse: %w", op, err)
+	if err := json.Unmarshal(rb, &body); err != nil {
+		return fmt.Errorf("%s %s 未确认成功：响应不是合法 JSON（原文：%s）", prefix, op, trimBody(rb))
 	}
-	if !body.State {
-		return fmt.Errorf("115 %s 失败: %s", op, body.Err)
+	if stateIsTrue(body.State) {
+		return nil
 	}
-	return nil
+	reason := firstNonEmpty(body.Err, body.ErrMsg, body.Msg, body.Message)
+	if reason == "" && body.Errno != 0 {
+		reason = fmt.Sprintf("错误码 %d", body.Errno)
+	}
+	if reason == "" {
+		// 既没给原因、也可能压根没 state：这不能算成功，也要把缺什么说清楚。
+		return fmt.Errorf("%s %s 未确认成功：上游没有给出错误原因（响应：%s）", prefix, op, trimBody(rb))
+	}
+	if body.State == nil {
+		return fmt.Errorf("%s %s 未确认成功：响应里没有 state 字段，原因：%s", prefix, op, reason)
+	}
+	return fmt.Errorf("%s %s 失败: %s", prefix, op, reason)
+}
+
+// stateIsTrue 判定 115 的 state 真值（缺席 / false / "false" / 0 都算未成功）。
+func stateIsTrue(v any) bool {
+	switch t := v.(type) {
+	case bool:
+		return t
+	case string:
+		return t == "true" || t == "True" || t == "1"
+	case float64:
+		return t != 0
+	}
+	return false
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// trimBody 只截一小段原文用于定位，不把整个响应体塞进用户提示。
+func trimBody(b []byte) string {
+	const max = 160
+	if len(b) > max {
+		return string(b[:max]) + "…"
+	}
+	return string(b)
 }
 
 // extract115ShareCode 从分享 URL 提取 share_code（/s/后段）。

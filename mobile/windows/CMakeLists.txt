@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.14)
 project(ptpatronus LANGUAGES CXX)
 
+# flutter_inappwebview_windows 仍用 /await + <experimental/coroutine>，VS18 的 MSVC 14.51
+# 直接以 STL1011 硬错误拒绝（CI windows-latest 已是 VS18）。上游 6.1.5 未修（issue #2839），
+# 官方 workaround 即全局定义该宏压制；插件迁移到 C++20 <coroutine> 后可移除。
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "ptpatronus")

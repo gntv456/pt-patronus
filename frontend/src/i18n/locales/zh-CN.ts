@@ -19,6 +19,7 @@ export default {
     httpSuffix: '）',
     readFailed: '读取失败',
     saveFailed: '保存失败',
+    unknownReason: '未知原因',
     archiveFailed: '压缩失败',
     extractFailed: '解压失败',
     chmodFailed: '修改权限失败',

@@ -19,7 +19,9 @@ import (
 // filepath.Rel 再校验结果未逃出 rootDir。注意 os 调用会跟随符号链接，故 rootDir 下
 // 若存在指向外部的软链仍可被访问；本机存储仅应由管理员配置可信目录（API 路由已限管理员）。
 type Local struct {
-	rootDir string // 已 Abs 规范化的物理根目录
+	rootDir  string // 已 Abs 规范化的物理根目录
+	rootReal string // EvalSymlinks(rootDir)；Windows 上 TEMP 常为 8.3 短名（RUNNER~1），
+	// 与子路径 EvalSymlinks 展开出的长名字符串不同，若只用 rootDir 比较会整树误判逃逸
 }
 
 // NewLocal 校验根目录存在且为目录，构造本机后端。
@@ -38,7 +40,11 @@ func NewLocal(basePath string) (*Local, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("本机根路径不是目录: %s", abs)
 	}
-	return &Local{rootDir: abs}, nil
+	rootReal := abs
+	if real, e := filepath.EvalSymlinks(abs); e == nil {
+		rootReal = real
+	}
+	return &Local{rootDir: abs, rootReal: rootReal}, nil
 }
 
 func (l *Local) Type() string { return "local" }
@@ -56,14 +62,24 @@ func (l *Local) resolve(p string) (string, error) {
 		return "", fmt.Errorf("path escapes root: %s", p)
 	}
 	// 符号链接越界防御：EvalSymlinks 解析 full 路径中的所有软链到真实物理路径，
-	// 再校验真实路径仍在 rootDir 之下。root 内指向外部的 symlink 会被拦截。
+	// 再校验真实路径仍在根之下。root 内指向外部的 symlink 会被拦截。
+	// 根同时比对 rootDir 与 rootReal：Windows 上两者可能是同一目录的不同字符串
+	// （8.3 短名 vs 长名），只比一个会把合法子路径误判成逃逸（CI TEMP 即短名）。
 	if real, e := filepath.EvalSymlinks(full); e == nil {
-		realRel, rerr := filepath.Rel(l.rootDir, real)
-		if rerr != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
+		if !underRoot(l.rootDir, real) && !underRoot(l.rootReal, real) {
 			return "", fmt.Errorf("symlink escapes root: %s -> %s", p, real)
 		}
 	}
 	return full, nil
+}
+
+// underRoot 报告 real 是否位于 root 之下（含 root 本身）。
+func underRoot(root, real string) bool {
+	rel, err := filepath.Rel(root, real)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // List 列目录。返回的 Entry.Path 是虚拟路径（/开头），与 agent/webdav 后端格式一致，

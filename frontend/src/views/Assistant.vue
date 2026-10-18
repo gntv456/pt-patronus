@@ -113,14 +113,14 @@ async function openConfig() {
     allTools.value = await agentApi.tools()
   } catch (e: unknown) {
     allTools.value = []
-    toolsError.value = (e as Error).message || '未知原因'
+    toolsError.value = (e as Error).message || t('common.unknownReason')
   }
   try {
     stats.value = await agentApi.stats()
     statsError.value = ''
   } catch (e: unknown) {
     stats.value = null
-    statsError.value = (e as Error).message || '未知原因'
+    statsError.value = (e as Error).message || t('common.unknownReason')
   }
   // enabled_tools 为空 = 全开；否则按显式清单勾选。
   if (cfg.value.enabled_tools.length === 0) {

@@ -309,8 +309,18 @@ export const errcodeI18n = {
 // translateErrcode 按 code 查当前界面的本地文案。
 // locale 非 en-US（目前只有 zh-CN）时直接回原文：后端给的就是中文，
 // 套一层「前端翻译」只会把更具体的原因磨掉——那正是本仓反复出的问题。
-export function translateErrcode(code: string | undefined, backendText: string, locale: string): string {
+//
+// specific=true 时后端给的是**这一条请求专属的原因**（信封带 specific 标记，
+// 由 errcode.WithDetail 系列置上），一律原样显示：过去 en-US 下会把
+// 「缺少必填项 platform」整句换成码的固定译文，后端刚说清楚的字段名又被吞掉。
+export function translateErrcode(
+  code: string | undefined,
+  backendText: string,
+  locale: string,
+  specific = false,
+): string {
   if (locale !== 'en-US') return backendText
+  if (specific) return backendText
   const key = String(code || '')
   if (!key) return backendText
   const table = errcodeI18n.en as Record<string, string>

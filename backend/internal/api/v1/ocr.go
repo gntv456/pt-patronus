@@ -62,7 +62,7 @@ func (h *OCRHandler) SetConfig(c *gin.Context) {
 	}
 	var req ocrConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 两种语义必须分开：endpoint 就是这条链的开关（GetConfig 用 Endpoint!="" 报 enabled），
@@ -136,7 +136,7 @@ func (h *OCRHandler) Recognize(c *gin.Context) {
 	}
 	var req ocrRecognizeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	text, err := cli.Recognize(c.Request.Context(), req.Image)

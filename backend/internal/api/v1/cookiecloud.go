@@ -71,7 +71,7 @@ type cookieCloudConfigReq struct {
 func (h *CookieCloudHandler) SetConfig(c *gin.Context) {
 	var req cookieCloudConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	prev := h.ch.GetSettings()

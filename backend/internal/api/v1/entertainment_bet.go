@@ -26,7 +26,7 @@ func (h *EntertainmentHandler) Bet(c *gin.Context) {
 	}
 	var req betReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Bet(c.Request.Context(), id, c.Param("game"), entertainment.BetRequest{
@@ -84,7 +84,7 @@ func (h *EntertainmentHandler) Blackjack(c *gin.Context) {
 	}
 	var req blackjackReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Blackjack(c.Request.Context(), id, c.Param("game"), req.Action)
@@ -200,7 +200,7 @@ func (h *EntertainmentHandler) BigSmallSendChat(c *gin.Context) {
 	}
 	var req bsSendChatReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.BigSmallSendChat(c.Request.Context(), id, c.Param("game"), req.Message)
@@ -224,7 +224,7 @@ func (h *EntertainmentHandler) BigSmallTaskAction(c *gin.Context) {
 	}
 	var req bsTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.BigSmallTaskAction(c.Request.Context(), id, c.Param("game"), req.Action, req.TaskID)
@@ -247,7 +247,7 @@ func (h *EntertainmentHandler) BigSmallUseItem(c *gin.Context) {
 	}
 	var req bsItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.BigSmallUseItem(c.Request.Context(), id, c.Param("game"), req.Tag)
@@ -271,7 +271,7 @@ func (h *EntertainmentHandler) BigSmallRedpacket(c *gin.Context) {
 	}
 	var req bsRedpacketReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.BigSmallRedpacket(c.Request.Context(), id, c.Param("game"), req.Action, req.Extra)

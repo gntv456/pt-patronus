@@ -88,7 +88,7 @@ func (h *TransferHandler) GetConfig(c *gin.Context) {
 func (h *TransferHandler) SetConfig(c *gin.Context) {
 	var in transferConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.ch.SetConfig(in); err != nil {
@@ -107,7 +107,7 @@ func (h *TransferHandler) GetDirwatchConfig(c *gin.Context) {
 func (h *TransferHandler) SetDirwatchConfig(c *gin.Context) {
 	var in dirwatch.Config
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.ch.SetDirwatchConfig(in); err != nil {
@@ -126,7 +126,7 @@ func (h *TransferHandler) GetCategoriesConfig(c *gin.Context) {
 func (h *TransferHandler) SetCategoriesConfig(c *gin.Context) {
 	var in transfer.CategoryConfig
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.ch.SetCategoriesConfig(in); err != nil {
@@ -140,7 +140,7 @@ func (h *TransferHandler) SetCategoriesConfig(c *gin.Context) {
 func (h *TransferHandler) Organize(c *gin.Context) {
 	var in organizeReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.DownloaderID == 0 || in.Hash == "" {
@@ -195,7 +195,7 @@ func (h *TransferHandler) BatchDeleteHistory(c *gin.Context) {
 		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	failed, err := h.ch.DeleteHistories(body.IDs)
@@ -257,7 +257,7 @@ func (h *TransferHandler) SetDirTags(c *gin.Context) {
 		Tags []transfer.DirTag `json:"tags" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := transfer.SaveDirTags(h.ch.KV(), in.Tags); err != nil {
@@ -280,7 +280,7 @@ func (h *TransferHandler) GetSortRules(c *gin.Context) {
 func (h *TransferHandler) SetSortRules(c *gin.Context) {
 	var r transfer.SortRules
 	if err := c.ShouldBindJSON(&r); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := transfer.SaveSortRules(h.ch.KV(), r); err != nil {
@@ -312,7 +312,7 @@ func (h *TransferHandler) SetDirSync(c *gin.Context) {
 		Tasks []transfer.DirSyncTask `json:"tasks" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := transfer.SaveDirSyncTasks(h.ch.KV(), in.Tasks); err != nil {
@@ -329,7 +329,7 @@ func (h *TransferHandler) RunDirSync(c *gin.Context) {
 		Name string `json:"name" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 读失败必须报 500：此前静默当空清单 → 手动触发被误报「任务不存在」。

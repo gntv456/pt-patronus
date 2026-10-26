@@ -28,9 +28,17 @@ func callClassifier(t *testing.T, fn func(*gin.Context, error), err error) (int,
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/entertainment/1/games/wheel/play", nil)
 	fn(c, err)
-	var env map[string]string
-	if e := json.Unmarshal(rec.Body.Bytes(), &env); e != nil {
+	// 信封可能带非字符串的标记字段（如 specific=true），先宽松解再只取字符串项：
+	// 按 map[string]string 硬解会让"新增一个布尔字段"这种兼容改动整包报错。
+	var raw map[string]any
+	if e := json.Unmarshal(rec.Body.Bytes(), &raw); e != nil {
 		t.Fatalf("响应不是 JSON：%q", rec.Body.String())
+	}
+	env := map[string]string{}
+	for k, v := range raw {
+		if s, ok := v.(string); ok {
+			env[k] = s
+		}
 	}
 	return rec.Code, env
 }

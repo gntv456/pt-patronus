@@ -147,7 +147,7 @@ func respondWorkflowErr(c *gin.Context, err error) {
 func (h *WorkflowHandler) Create(c *gin.Context) {
 	var in wfReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name == "" {
@@ -183,7 +183,7 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 	}
 	var in wfReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name != "" {

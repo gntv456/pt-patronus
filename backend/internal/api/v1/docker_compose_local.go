@@ -71,7 +71,7 @@ func (h *LocalComposeHandler) runComposeCLI(ctx context.Context, action, workDir
 func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)
@@ -96,7 +96,7 @@ func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {
 func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 四轮 P1 修复：down 会停删容器+网络（默认含匿名卷），与远程版对齐要确认。
@@ -125,7 +125,7 @@ func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 func (h *LocalComposeHandler) ComposeValidate(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)

@@ -323,6 +323,10 @@ var (
 // 而 no such column / syntax error 正是操作者要改的地方。
 var (
 	DatabaseQueryFailed = New("database_query_failed", "这条 SQL 没跑起来：把下面数据库给出的原因对着改一下再重跑", http.StatusBadRequest)
+	// 表结构查询：真实表至少有一列，查不到任何列 = 表不存在（可能刚被删）。
+	// 从前回 200 {"columns":[]}，与「空表」同形，界面画一张没有列的表。
+	DatabaseTableNotFound = New("database_table_not_found",
+		"这张表不存在：库结构可能刚变过，请刷新表清单后重选", http.StatusNotFound)
 
 	// #398 站点凭据解不开（「配过、但现在读不出来」）从站点抓取的其它失败里分出来。
 	//

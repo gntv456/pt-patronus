@@ -39,7 +39,7 @@ func (h *DiskHandler) Partition(c *gin.Context) {
 	}
 	var in diskPartitionRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !in.ConfirmRisk {
@@ -137,7 +137,7 @@ func (h *DiskHandler) Mount(c *gin.Context) {
 	}
 	var in diskMountRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !validateDevice(in.Device) {
@@ -182,7 +182,7 @@ func (h *DiskHandler) Umount(c *gin.Context) {
 	}
 	var in diskUmountRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !validateMountpoint(in.Mountpoint) {

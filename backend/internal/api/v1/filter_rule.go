@@ -59,7 +59,7 @@ func (h *FilterRuleHandler) ListCustom(c *gin.Context) {
 func (h *FilterRuleHandler) CreateCustom(c *gin.Context) {
 	var in filter.CustomRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	r, err := h.store.AddCustomRule(in)
@@ -75,7 +75,7 @@ func (h *FilterRuleHandler) UpdateCustom(c *gin.Context) {
 	id := c.Param("id")
 	var in filter.CustomRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	r, err := h.store.UpdateCustomRule(id, in)
@@ -110,7 +110,7 @@ func (h *FilterRuleHandler) ListGroups(c *gin.Context) {
 func (h *FilterRuleHandler) CreateGroup(c *gin.Context) {
 	var in filter.RuleGroupInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	g, err := h.store.AddGroup(in)
@@ -126,7 +126,7 @@ func (h *FilterRuleHandler) UpdateGroup(c *gin.Context) {
 	name := c.Param("name")
 	var in filter.RuleGroupInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	g, err := h.store.UpdateGroup(name, in)
@@ -168,7 +168,7 @@ func (h *FilterRuleHandler) ListBindings(c *gin.Context) {
 func (h *FilterRuleHandler) SetBindings(c *gin.Context) {
 	var b filterBindings
 	if err := c.ShouldBindJSON(&b); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	pairs := map[string][]string{
@@ -196,7 +196,7 @@ type filterTestReq struct {
 func (h *FilterRuleHandler) Test(c *gin.Context) {
 	var req filterTestReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.Torrents == nil {

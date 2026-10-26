@@ -21,7 +21,7 @@ func (h *TransferHandler) SetSharedRepos(c *gin.Context) {
 		Repos []transfer.SharedRepo `json:"repos" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := transfer.SaveSharedRepos(h.ch.KV(), in.Repos); err != nil {
@@ -38,7 +38,7 @@ func (h *TransferHandler) FetchSharedRepo(c *gin.Context) {
 		URL string `json:"url" binding:"required,url"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	words, err := transfer.FetchSharedRepo(c.Request.Context(), in.URL)
@@ -58,7 +58,7 @@ func (h *TransferHandler) ImportSharedRepo(c *gin.Context) {
 		URL string `json:"url" binding:"required,url"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	words, err := transfer.FetchSharedRepo(c.Request.Context(), in.URL)

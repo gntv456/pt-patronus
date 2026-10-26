@@ -21,7 +21,7 @@ func (h *ProcHandler) Kill(c *gin.Context) {
 	}
 	var in procKillRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !in.Confirm {

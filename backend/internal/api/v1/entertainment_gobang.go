@@ -64,12 +64,15 @@ func (h *EntertainmentHandler) GobangAction(c *gin.Context) {
 	}
 	var req gobangActionReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.Params == nil && req.Action != "create" {
 		// 动作需要 params（matchId 等）却没带：站点会拒，先在前端可读地拦下。
-		errcode.Respond(c, errcode.InvalidInput.WithErr(fmt.Errorf("动作 %s 缺少 params", req.Action)))
+		// 这句原因必须走 WithDetail：InvalidInput 的固定文案只有「请求参数有误」，
+		// 用户看不出是哪个动作缺了什么 —— 自产中文没有载体就等于没写（#69 同族）。
+		errcode.Respond(c, errcode.InvalidInput.WithDetail(
+			fmt.Errorf("动作 %s 缺少必要参数（如对局编号）", req.Action)))
 		return
 	}
 	res, err := h.ent.GobangAction(c.Request.Context(), id, c.Param("game"), req.Action, req.Params)
@@ -190,7 +193,7 @@ type gobangHintReq struct {
 func (h *EntertainmentHandler) GobangHint(c *gin.Context) {
 	var req gobangHintReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	theirs := 3 - req.Mine

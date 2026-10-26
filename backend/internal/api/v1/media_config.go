@@ -69,7 +69,7 @@ type mediaConfigReq struct {
 func (h *MediaHandler) SetConfig(c *gin.Context) {
 	var req mediaConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.mediaCh.SetMediaConfig(chain.MediaSettings{

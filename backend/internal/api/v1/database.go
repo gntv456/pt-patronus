@@ -150,6 +150,13 @@ func (h *DatabaseHandler) Schema(c *gin.Context) {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
+	// 任何真实表/视图都至少有一列：零列只可能是「表不存在」（PRAGMA 对缺失表
+	// 返回空结果、PG 的 information_schema 同理）。回 200 空数组会让界面画一张
+	// 没有列的表，和真正的结构读取失败同形。
+	if len(cols) == 0 {
+		errcode.Respond(c, errcode.DatabaseTableNotFound)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"columns": cols})
 }
 
@@ -222,7 +229,7 @@ var dbForbiddenPattern = regexp.MustCompile(`(?i)\b(INSERT|UPDATE|DELETE|REPLACE
 func (h *DatabaseHandler) Query(c *gin.Context) {
 	var in dbQueryRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	sqlText := strings.TrimSpace(in.SQL)

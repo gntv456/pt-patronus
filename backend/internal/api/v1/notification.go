@@ -44,7 +44,7 @@ func notifyFanoutContext(req context.Context) (context.Context, context.CancelFu
 func (h *NotificationHandler) Test(c *gin.Context) {
 	var req notifyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.Level == "" {
@@ -177,9 +177,11 @@ type notifyConfigReq struct {
 		URL     string `json:"url" binding:"max=512"`
 	} `json:"feishu"`
 	Email struct {
-		Enabled  bool   `json:"enabled"`
-		Host     string `json:"host" binding:"max=255"`
-		Port     int    `json:"port" binding:"min=1,max=65535"`
+		Enabled bool   `json:"enabled"`
+		Host    string `json:"host" binding:"max=255"`
+		// omitempty：不传 email（只想改别的通道）时 port=0 不该把整个请求拦下——
+		// 前端总会带默认 25，但 curl/AI 工具的部分更新会被这条 min 误伤（实测）。
+		Port     int    `json:"port" binding:"omitempty,min=1,max=65535"`
 		Username string `json:"username" binding:"max=128"`
 		Password string `json:"password" binding:"max=256"`
 		From     string `json:"from" binding:"max=128"`
@@ -250,7 +252,7 @@ type notifyConfigReq struct {
 func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	var req notifyConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	in := chain.NotificationSettings{}

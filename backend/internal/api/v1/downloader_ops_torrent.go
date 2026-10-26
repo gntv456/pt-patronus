@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
@@ -21,7 +20,7 @@ func (h *DownloaderHandler) SetCategoryOp(c *gin.Context) {
 	}
 	var req categoryReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetCategory(c.Request.Context(), id, req.Hashes, req.Category))
@@ -41,7 +40,7 @@ func (h *DownloaderHandler) TagsOp(c *gin.Context) {
 	}
 	var req tagsReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	ctx := c.Request.Context()
@@ -67,7 +66,7 @@ func (h *DownloaderHandler) Recheck(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.Recheck(c.Request.Context(), id, req.Hashes))
@@ -81,7 +80,7 @@ func (h *DownloaderHandler) Reannounce(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.Reannounce(c.Request.Context(), id, req.Hashes))
@@ -100,7 +99,7 @@ func (h *DownloaderHandler) SetLocation(c *gin.Context) {
 	}
 	var req locationReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetLocation(c.Request.Context(), id, req.Hashes, req.Location))
@@ -122,7 +121,7 @@ func (h *DownloaderHandler) SetLimits(c *gin.Context) {
 	}
 	var req limitsReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetLimits(c.Request.Context(), id, req.Hashes, downloader.Limits{
@@ -157,7 +156,7 @@ func (h *DownloaderHandler) SetSpeedLimits(c *gin.Context) {
 	}
 	var req speedLimitsReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetSpeedLimits(c.Request.Context(), id, downloader.Limits{

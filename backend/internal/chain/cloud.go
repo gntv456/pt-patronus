@@ -227,10 +227,15 @@ func (c *CloudChain) Poll115OpenAuth(ctx context.Context, code *cloud.DeviceCode
 	return true, st, cloud.EncodeTokenPair(*tp), nil
 }
 
+// ErrCloudQueueDisabled 云端任务队列没装配（未注入 oper / 功能没开）。
+// 发哨兵而不是裸中文：调用方要按「配置状态」和「库写失败」分两档回，
+// 否则两者在界面上都是同一句「请求参数有误」。
+var ErrCloudQueueDisabled = errors.New("云端任务队列未启用，请在设置里开启后重试")
+
 // EnqueueCloudTask 入队云端任务（自动上传链路调用；执行器消费）。
 func (c *CloudChain) EnqueueCloudTask(t *models.CloudTask) error {
 	if c.taskOp == nil {
-		return fmt.Errorf("云端任务队列未启用")
+		return ErrCloudQueueDisabled
 	}
 	return c.taskOp.Enqueue(t)
 }
@@ -271,7 +276,7 @@ func (c *CloudChain) CloudTasks(status string, limit int) ([]models.CloudTask, e
 // 「可能被截断」——返回空列表配上「就这些」是把装配缺口渲染成「队列已空」。
 func (c *CloudChain) CountCloudTasks(status string) (int64, error) {
 	if c.taskOp == nil {
-		return 0, errors.New("cloud task store not wired")
+		return 0, errors.New("云盘任务存储未启用：请先到「设置 · 云盘」配好云盘，再发起上传任务")
 	}
 	return c.taskOp.Count(status)
 }

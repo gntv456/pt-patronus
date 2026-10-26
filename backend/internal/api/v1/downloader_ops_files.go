@@ -39,7 +39,7 @@ func (h *DownloaderHandler) SetFilePriority(c *gin.Context) {
 	}
 	var req filePrioReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetFilePriority(c.Request.Context(), id, req.Hash, req.Indices, req.Priority))
@@ -79,7 +79,7 @@ func (h *DownloaderHandler) AddTrackers(c *gin.Context) {
 	}
 	var req trackersReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.AddTrackers(c.Request.Context(), id, req.Hash, req.URLs))
@@ -93,7 +93,7 @@ func (h *DownloaderHandler) RemoveTrackers(c *gin.Context) {
 	}
 	var req trackersReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.RemoveTrackers(c.Request.Context(), id, req.Hash, req.URLs))

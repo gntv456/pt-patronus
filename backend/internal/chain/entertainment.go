@@ -14,7 +14,7 @@ import (
 )
 
 // ErrGameNotFound 该站点未注册此游戏。
-var ErrGameNotFound = errors.New("game not found for site")
+var ErrGameNotFound = errors.New("该站点没有这个游戏：请在娱乐页改选已支持的游戏/站点，或先为该站点登记凭据")
 
 // ErrDuplicateSpend 同一"花钱"操作正在执行（并发双击/重放）。handler 映射为 429。
 // 消耗的是站点游戏币（用站点 cookie 调外部，跨 PTPatronus 用户共享），故去重键按站点+操作。

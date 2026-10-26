@@ -83,7 +83,7 @@ type findReq struct {
 func (h *KeepSeedHandler) Find(c *gin.Context) {
 	var req findReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	cands := h.ks.FindCandidates(c.Request.Context(), req.Name, req.Size)
@@ -159,7 +159,7 @@ type configReq struct {
 func (h *KeepSeedHandler) SetConfig(c *gin.Context) {
 	var req configReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// #392 tokenSaved 记「前面已经写进去多少」，失败出口据此说清（见 respondKeepSeedConfigWriteErr）。
@@ -189,7 +189,7 @@ type reseedReq struct {
 func (h *KeepSeedHandler) Reseed(c *gin.Context) {
 	var req reseedReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	created, err := h.ks.Reseed(c.Request.Context(), req.DownloaderID)
@@ -209,7 +209,7 @@ type missingReq struct {
 func (h *KeepSeedHandler) Missing(c *gin.Context) {
 	var req missingReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	summary, err := h.ks.FindMissing(c.Request.Context(), req.DownloaderID, req.TargetSiteIDs)
@@ -261,7 +261,7 @@ func (h *KeepSeedHandler) Resolve(c *gin.Context) {
 	}
 	var req resolveReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.ks.Resolve(c.Request.Context(), uint(id), req.Action); err != nil {
@@ -298,7 +298,7 @@ type settingReq struct {
 func (h *KeepSeedHandler) SetSetting(c *gin.Context) {
 	var req settingReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	s := models.CrossSeedSetting{

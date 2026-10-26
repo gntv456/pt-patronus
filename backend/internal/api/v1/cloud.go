@@ -39,7 +39,7 @@ func (h *CloudHandler) List(c *gin.Context) {
 func (h *CloudHandler) Create(c *gin.Context) {
 	var in oper.CloudDriveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	m, err := h.svc.Create(in)
@@ -57,7 +57,7 @@ func (h *CloudHandler) Update(c *gin.Context) {
 	}
 	var in oper.CloudDriveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	m, err := h.svc.Update(id, in)
@@ -144,7 +144,7 @@ func (h *CloudHandler) ListRules(c *gin.Context) {
 func (h *CloudHandler) CreateRule(c *gin.Context) {
 	var in oper.StrmRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	r, err := h.svc.CreateRule(in)
@@ -162,7 +162,7 @@ func (h *CloudHandler) UpdateRule(c *gin.Context) {
 	}
 	var in oper.StrmRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	r, err := h.svc.UpdateRule(id, in)
@@ -210,7 +210,7 @@ func (h *CloudHandler) GenerateRule(c *gin.Context) {
 func (h *CloudHandler) Generate(c *gin.Context) {
 	var in chain.GenerateInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.svc.GenerateInstant(c.Request.Context(), in)

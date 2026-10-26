@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // Syntheses 卡牌合成目标列表（含碎片库存）。
@@ -34,7 +33,7 @@ func (h *EntertainmentHandler) Draw(c *gin.Context) {
 	}
 	var req drawReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Draw(c.Request.Context(), id, c.Param("game"), req.SynthesisID, req.Count)
@@ -57,7 +56,7 @@ func (h *EntertainmentHandler) Synthesize(c *gin.Context) {
 	}
 	var req synthReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Synthesize(c.Request.Context(), id, c.Param("game"), req.SynthesisID)
@@ -108,7 +107,7 @@ func (h *EntertainmentHandler) ComposeMedal(c *gin.Context) {
 	}
 	var req composeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.ComposeMedal(c.Request.Context(), id, c.Param("game"), req.MedalID)
@@ -127,7 +126,7 @@ func (h *EntertainmentHandler) ComposeBigMedal(c *gin.Context) {
 	}
 	var req composeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.ComposeBigMedal(c.Request.Context(), id, c.Param("game"), req.MedalID)
@@ -150,7 +149,7 @@ func (h *EntertainmentHandler) ConvertShard(c *gin.Context) {
 	}
 	var req convertReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.ConvertShard(c.Request.Context(), id, c.Param("game"), req.YiYang)
@@ -188,7 +187,7 @@ func (h *EntertainmentHandler) Plant(c *gin.Context) {
 	}
 	var req farmItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Plant(c.Request.Context(), id, c.Param("game"), req.Section, req.ItemID)
@@ -207,7 +206,7 @@ func (h *EntertainmentHandler) Harvest(c *gin.Context) {
 	}
 	var req farmItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Harvest(c.Request.Context(), id, c.Param("game"), req.Section, req.ItemID)
@@ -244,7 +243,7 @@ func (h *EntertainmentHandler) Sell(c *gin.Context) {
 	}
 	var req sellReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Sell(c.Request.Context(), id, c.Param("game"), req.Key)

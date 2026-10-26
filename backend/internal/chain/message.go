@@ -296,7 +296,7 @@ func (c *SiteChain) MessageContent(ctx context.Context, s *models.Site, msgURL s
 // 向其它主机提交写操作。
 func (c *SiteChain) ReplyMessage(ctx context.Context, s *models.Site, msgURL, content string) (*site.MessageReplyResult, error) {
 	if !sameHost(s.BaseURL, msgURL) {
-		return nil, errors.New("reply url host does not match site base url")
+		return nil, errors.New("回复地址与站点首页不同域，已拒绝该请求（防止把本站 cookie 发给别站）")
 	}
 	def := c.defFor(s)
 	token, cerr := c.credentialWithErr(s, def)
@@ -324,7 +324,7 @@ func (c *SiteChain) ReplyMessage(ctx context.Context, s *models.Site, msgURL, co
 // 向其它主机提交删除写操作（URL 白名单）。
 func (c *SiteChain) DeleteMessage(ctx context.Context, s *models.Site, deleteURL string) error {
 	if !sameHost(s.BaseURL, deleteURL) {
-		return errors.New("delete url host does not match site base url")
+		return errors.New("删除地址与站点首页不同域，已拒绝该请求（防止把本站 cookie 发给别站）")
 	}
 	def := c.defFor(s)
 	token, cerr := c.credentialWithErr(s, def)

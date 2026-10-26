@@ -40,7 +40,7 @@ func (h *TgBotHandler) GetConfig(c *gin.Context) {
 func (h *TgBotHandler) SetConfig(c *gin.Context) {
 	var in tgBotConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	cfg := tgbot.Load(h.kv)

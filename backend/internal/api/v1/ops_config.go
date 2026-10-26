@@ -28,7 +28,7 @@ func (h *OpsConfigHandler) List(c *gin.Context) {
 func (h *OpsConfigHandler) Create(c *gin.Context) {
 	var in oper.OpsConfigInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	item, err := h.op.Create(in)
@@ -46,7 +46,7 @@ func (h *OpsConfigHandler) Update(c *gin.Context) {
 	}
 	var in oper.OpsConfigInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	item, err := h.op.Update(id, in)

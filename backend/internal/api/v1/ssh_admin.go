@@ -92,7 +92,7 @@ func (h *SshAdminHandler) Action(c *gin.Context) {
 	}
 	var in sshActionRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 白名单校验
@@ -150,7 +150,7 @@ func (h *SshAdminHandler) Config(c *gin.Context) {
 	}
 	var in sshConfigRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !in.Confirm {

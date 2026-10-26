@@ -131,7 +131,7 @@ func (h *EntertainmentHandler) Play(c *gin.Context) {
 	}
 	var req playReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Play(c.Request.Context(), id, req.Game)
@@ -182,7 +182,7 @@ func (h *EntertainmentHandler) Buy(c *gin.Context) {
 	}
 	var req buyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.Buy(c.Request.Context(), id, c.Param("game"), req.OptionType)
@@ -205,7 +205,7 @@ func (h *EntertainmentHandler) PlayMulti(c *gin.Context) {
 	}
 	var req playMultiReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.ent.PlayMulti(c.Request.Context(), id, c.Param("game"), req.Count)

@@ -95,7 +95,7 @@ func (h *ScheduleHandler) SetConfig(c *gin.Context) {
 		KeepAliveCron string `json:"keepalive_cron"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	req.SnapshotCron = strings.TrimSpace(req.SnapshotCron)

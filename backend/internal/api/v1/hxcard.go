@@ -33,7 +33,7 @@ func (h *HxCardHandler) GetSettings(c *gin.Context) {
 func (h *HxCardHandler) SetSettings(c *gin.Context) {
 	var req hxcardSettingsReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.card.SetSettings(req.Enabled, req.Endpoint, req.Secret); err != nil {

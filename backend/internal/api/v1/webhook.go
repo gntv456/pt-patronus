@@ -173,7 +173,7 @@ func (h *WebhookHandler) List(c *gin.Context) {
 func (h *WebhookHandler) Create(c *gin.Context) {
 	var in webhookReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name == "" {
@@ -230,7 +230,7 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 	}
 	var in webhookReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name != "" {

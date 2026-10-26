@@ -45,7 +45,7 @@ func (h *FileStorageHandler) WriteFile(c *gin.Context) {
 	}
 	var in writeFileRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.fileCh.WriteFile(c.Request.Context(), id, p, []byte(in.Content)); err != nil {
@@ -111,7 +111,7 @@ func (h *FileStorageHandler) Chmod(c *gin.Context) {
 	}
 	var in chmodRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.fileCh.Chmod(c.Request.Context(), id, p, in.Mode, in.Recursive); err != nil {

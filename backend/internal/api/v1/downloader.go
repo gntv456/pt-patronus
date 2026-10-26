@@ -77,7 +77,7 @@ func unknownDownloaderType(typ string) error {
 func (h *DownloaderHandler) Create(c *gin.Context) {
 	var in oper.DownloaderInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !downloader.HasType(in.Type) {
@@ -100,7 +100,7 @@ func (h *DownloaderHandler) Update(c *gin.Context) {
 	}
 	var in oper.DownloaderInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !downloader.HasType(in.Type) {
@@ -191,7 +191,7 @@ func (h *DownloaderHandler) Add(c *gin.Context) {
 	}
 	var req addReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opts := downloader.AddOptions{
@@ -225,7 +225,7 @@ func (h *DownloaderHandler) Pause(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.dl.Pause(c.Request.Context(), id, req.Hashes); err != nil {
@@ -243,7 +243,7 @@ func (h *DownloaderHandler) Resume(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.dl.Resume(c.Request.Context(), id, req.Hashes); err != nil {
@@ -261,7 +261,7 @@ func (h *DownloaderHandler) Remove(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.dl.Delete(c.Request.Context(), id, req.Hashes, req.DeleteFiles); err != nil {

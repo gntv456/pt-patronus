@@ -206,7 +206,7 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 		ConfirmRisk bool   `json:"confirm_risk"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越）
@@ -264,7 +264,7 @@ type projectSaveRequest struct {
 func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 	var in projectSaveRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越写任意文件）

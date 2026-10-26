@@ -171,7 +171,7 @@ http.interceptors.response.use(
       // #355 后端给了文案时按 code 翻成当前界面语言：英文界面下这一档原本直接显示
       // 中文（后端信封总是带 message），i18n 那套 apiErr.* 兜底几乎永远走不到。
       // 查不到 code 对应的译文就原样返回后端文案——那是链层写的唯一线索，不许吞。
-      err.message = translateErrcode(code, backend, i18n.global.locale.value as string)
+      err.message = translateErrcode(code, backend, i18n.global.locale.value as string, body?.specific === true)
     } else if (err.code === 'ECONNABORTED' || /timeout/i.test(err.message || '')) {
       err.message = terr('apiErr.timeout', '请求超时，请稍后重试')
     } else if (!err.response) {

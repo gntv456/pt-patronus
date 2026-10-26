@@ -84,7 +84,7 @@ const detailCacheTTL = 10 * time.Minute
 // 缓存 miss 时走 singleflight 合并同 key 并发抓取（详情页较重，防击穿）。
 func (c *SiteChain) TorrentDetail(ctx context.Context, s *models.Site, detailURL string) (*site.TorrentDetail, error) {
 	if !sameHost(s.BaseURL, detailURL) {
-		return nil, errors.New("detail url host does not match site base url")
+		return nil, errors.New("详情页地址与站点首页不同域，已拒绝该请求（防止把本站 cookie 发给别站）")
 	}
 	key := fmt.Sprintf("%d|%s", s.ID, detailURL)
 	// 快速路径：命中缓存直接返回（不经 singleflight）。

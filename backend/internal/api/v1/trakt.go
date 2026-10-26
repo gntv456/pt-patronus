@@ -96,7 +96,7 @@ type traktConfigReq struct {
 func (h *TraktHandler) SetConfig(c *gin.Context) {
 	var req traktConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 读-改-写整体交给 chain：handler 自己 Get 再 Save 的话，中间插入的令牌轮转

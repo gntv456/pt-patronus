@@ -323,7 +323,7 @@ func (h *LLMGatewayHandler) GetConfig(c *gin.Context) {
 func (h *LLMGatewayHandler) SetConfig(c *gin.Context) {
 	var in llmGatewayConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	cfg := llmgateway.Load(h.kv)

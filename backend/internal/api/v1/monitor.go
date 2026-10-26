@@ -38,7 +38,7 @@ func (h *MonitorHandler) List(c *gin.Context) {
 func (h *MonitorHandler) Create(c *gin.Context) {
 	var in oper.TargetInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name == "" || in.Type == "" {
@@ -61,7 +61,7 @@ func (h *MonitorHandler) Update(c *gin.Context) {
 	}
 	var in oper.TargetInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	t, err := h.op.Update(id, in)
@@ -133,7 +133,7 @@ func (h *MonitorHandler) Power(c *gin.Context) {
 	}
 	var in powerRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.svc.PowerNow(c.Request.Context(), id, in.Action); err != nil {
@@ -151,7 +151,7 @@ func (h *MonitorHandler) Exec(c *gin.Context) {
 	}
 	var in execRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	result, err := h.svc.RunCommandNow(c.Request.Context(), id, in.Command, in.TimeoutSec)

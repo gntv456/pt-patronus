@@ -22,7 +22,7 @@ func (h *TransferHandler) SetIdentifyWords(c *gin.Context) {
 		Words []transfer.IdentifyWord `json:"words" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := transfer.SaveIdentifyWords(h.ch.KV(), in.Words); err != nil {
@@ -38,7 +38,7 @@ func (h *TransferHandler) TestIdentifyWords(c *gin.Context) {
 		Name string `json:"name" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	ws := transfer.LoadIdentifyWords(h.ch.KV())
@@ -57,7 +57,7 @@ func (h *TransferHandler) TestRecognize(c *gin.Context) {
 		Media bool   `json:"media"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	ws := transfer.LoadIdentifyWords(h.ch.KV())

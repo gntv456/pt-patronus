@@ -36,7 +36,7 @@ func (h *RegistrationHandler) List(c *gin.Context) {
 func (h *RegistrationHandler) Create(c *gin.Context) {
 	var in oper.RegistrationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.URL == "" {
@@ -62,7 +62,7 @@ func (h *RegistrationHandler) Update(c *gin.Context) {
 	}
 	var in oper.RegistrationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	w, err := h.op.Update(id, in)

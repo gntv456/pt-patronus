@@ -2,6 +2,9 @@ package v1
 
 import (
 	"errors"
+	"regexp"
+	"strings"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -53,6 +56,94 @@ func respondInputError(c *gin.Context, err error, fallback *errcode.Error) {
 
 func respondInputErrorAs(c *gin.Context, err error, invalid, fallback *errcode.Error) {
 	respondRecordError(c, err, nil, invalid, fallback)
+}
+
+// bindErrRe 摘出 gin/validator 报错里的「字段名 + 未通过的标签」。
+// 不引 validator 包（免得为一个小函数动 go.mod/go.sum）。
+// 取完整命名空间（notifyConfigReq.Email.Port）：从前只匹配「一层点」，
+// 嵌套结构体字段（本仓大量配置请求都是嵌套的）一个都认不出来，全部退化成
+// 「没能指出具体是哪一项」——实测 PUT /notification/config 只传 webhook 就是这条。
+var bindErrRe = regexp.MustCompile(
+	`Key: '([\w.\[\]]+)' Error:Field validation for '(\w+)' failed on the '` +
+		`(\w+)' tag`)
+
+// jsonFieldName 把结构体字段名折成客户端实际写的 JSON 名（BaseURL → base_url）。
+// validator 的错误文本只带结构体字段名，直接小写会编出一个不存在的字段
+// （"baseurl"），那比不说更坏：用户照着这个名字改请求，永远改不对。
+func jsonFieldName(s string) string {
+	runes := []rune(s)
+	var b strings.Builder
+	for i, r := range runes {
+		if !unicode.IsUpper(r) {
+			b.WriteRune(r)
+			continue
+		}
+		prevUpper := i > 0 && unicode.IsUpper(runes[i-1])
+		nextLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+		if i > 0 && (!prevUpper || nextLower) {
+			b.WriteRune('_')
+		}
+		b.WriteRune(unicode.ToLower(r))
+	}
+	return b.String()
+}
+
+// bindFieldReason 把绑定失败翻译成人能核对的一句（缺哪个字段 / 哪个字段不合规则）。
+// 过去所有 ShouldBindJSON 失败都折成 errcode.InvalidInput 的默认文案，
+// 那句文案甚至让用户去「对照接口文档核对必填项」——程序知道是哪个字段却不肯说。
+func bindFieldReason(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "invalid character") ||
+		strings.Contains(msg, "unexpected end of JSON") {
+		return "请求体不是合法 JSON"
+	}
+	ms := bindErrRe.FindAllStringSubmatch(msg, -1)
+	if len(ms) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(ms))
+	for _, m := range ms {
+		field := jsonFieldPath(m[1])
+		switch m[3] {
+		case "required":
+			parts = append(parts, "缺少必填项 "+field)
+		case "max":
+			parts = append(parts, field+" 超出长度上限")
+		case "min":
+			parts = append(parts, field+" 低于最小长度")
+		case "oneof":
+			parts = append(parts, field+" 取值不在允许列表内")
+		default:
+			parts = append(parts, field+" 校验未通过（"+m[2]+"）")
+		}
+	}
+	return strings.Join(parts, "；")
+}
+
+// respondBindError 给「请求体没绑上」这一类失败：有字段级原因就点名到字段，
+// 没有（真认不出来的错）才退回通用一句，原文一律进日志。
+// jsonFieldPath 把 validator 命名空间折成客户端实际写的 JSON 路径：
+// notifyConfigReq.Email.Port → email.port（首段是结构体类型名，不属于字段）。
+func jsonFieldPath(ns string) string {
+	parts := strings.Split(ns, ".")
+	if len(parts) > 1 {
+		parts = parts[1:]
+	}
+	for i, p := range parts {
+		parts[i] = jsonFieldName(p)
+	}
+	return strings.Join(parts, ".")
+}
+
+func respondBindError(c *gin.Context, err error) {
+	if reason := bindFieldReason(err); reason != "" {
+		errcode.Respond(c, errcode.InvalidInput.WithDetail(errors.New(reason)))
+		return
+	}
+	errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 }
 
 // respondSiteLookup 「按 id 取站点」失败的三段归类（#342）。

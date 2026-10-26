@@ -36,7 +36,7 @@ func (h *ContractHandler) List(c *gin.Context) {
 func (h *ContractHandler) Upsert(c *gin.Context) {
 	var r models.ContractRule
 	if err := c.ShouldBindJSON(&r); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if r.SiteID == 0 {

@@ -1,6 +1,7 @@
 package oper
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -92,13 +93,18 @@ func (o *CredentialOper) Update(id uint, in CredentialInput) (*models.OpsCredent
 	return c, nil
 }
 
+// ErrCredentialInUse 凭据还被设备引用，删除被拒。
+// 单独发哨兵而不是只给一句中文：handler 要按「这是业务拒绝」和「这是库读写出错」
+// 分两档回 —— 后者不是 400，也不能把 Go 原文当人话贴进界面。
+var ErrCredentialInUse = errors.New("该凭据不能删除")
+
 func (o *CredentialOper) Delete(id uint) error {
 	n, err := o.UsageCount(id)
 	if err != nil {
 		return err
 	}
 	if n > 0 {
-		return fmt.Errorf("该凭据正被 %d 台设备使用，请先解绑", n)
+		return fmt.Errorf("%w：正被 %d 台设备使用，请先解绑", ErrCredentialInUse, n)
 	}
 	return o.db.Delete(&models.OpsCredential{}, id).Error
 }

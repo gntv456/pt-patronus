@@ -245,7 +245,7 @@ func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 		Driver string `json:"driver"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.local.LocalVolumeCreate(detachedAction(c.Request.Context()), in.Name, in.Driver); err != nil {
@@ -291,7 +291,7 @@ func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
 		Driver string `json:"driver"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.local.LocalNetworkCreate(detachedAction(c.Request.Context()), in.Name, in.Driver); err != nil {

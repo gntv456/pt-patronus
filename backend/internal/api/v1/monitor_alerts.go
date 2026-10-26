@@ -70,7 +70,7 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 	}
 	var in silenceAlertRequest
 	if err := c.ShouldBindJSON(&in); err != nil && !errors.Is(err, io.EOF) {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	until := time.Time{}

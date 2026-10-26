@@ -42,7 +42,7 @@ type inspectReq struct {
 func (h *SiteHandler) Inspect(c *gin.Context) {
 	var req inspectReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := site.Inspect(c.Request.Context(), h.hc, req.URL, req.Cookie, req.Fields, req.NoLogin)
@@ -85,7 +85,7 @@ func (h *SiteHandler) Get(c *gin.Context) {
 func (h *SiteHandler) Create(c *gin.Context) {
 	var in oper.SiteInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	s, err := h.oper.Create(in)
@@ -97,7 +97,7 @@ func (h *SiteHandler) Create(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, oper.ErrInvalidBaseURL) {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			errcode.Respond(c, errcode.InvalidInput.WithDetail(oper.ErrInvalidBaseURL))
 			return
 		}
 		slog.Error("site create failed", "base_url", in.BaseURL, "err", err)
@@ -119,7 +119,7 @@ func (h *SiteHandler) Update(c *gin.Context) {
 	}
 	var in oper.SiteInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	s, err := h.oper.Update(id, in)
@@ -134,7 +134,7 @@ func (h *SiteHandler) Update(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, oper.ErrInvalidBaseURL) {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			errcode.Respond(c, errcode.InvalidInput.WithDetail(oper.ErrInvalidBaseURL))
 			return
 		}
 		slog.Error("site update failed", "id", id, "err", err)
@@ -185,7 +185,7 @@ func (h *SiteHandler) BatchDelete(c *gin.Context) {
 		ConfirmRisk bool   `json:"confirm_risk"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 四轮 P2 修复：批量硬删（一次最多 200 站）要求 ConfirmRisk（同 Delete）。

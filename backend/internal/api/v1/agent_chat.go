@@ -60,7 +60,7 @@ type agentChatReq struct {
 func (h *AgentChatHandler) Chat(c *gin.Context) {
 	var in agentChatReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if strings.TrimSpace(in.Message) == "" {
@@ -222,7 +222,7 @@ func (h *AgentChatHandler) Confirm(c *gin.Context) {
 	}
 	var in agentConfirmReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	token := fmt.Sprintf("%d:%s", convID, in.ToolCallID)
@@ -293,7 +293,7 @@ func respondAgentConfigWriteErr(c *gin.Context, err error) {
 func (h *AgentChatHandler) SetConfig(c *gin.Context) {
 	var in agentConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	existing, _, err := aiagent.Load(h.kv, h.crypto)

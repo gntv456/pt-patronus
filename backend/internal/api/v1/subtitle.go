@@ -60,7 +60,7 @@ type downloadReq struct {
 func (h *SubtitleHandler) Download(c *gin.Context) {
 	var req downloadReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.Source == "" || req.SourceID == "" {
@@ -125,7 +125,7 @@ type subtitleConfigReq struct {
 func (h *SubtitleHandler) SetConfig(c *gin.Context) {
 	var req subtitleConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	tl := strings.TrimSpace(req.TargetLang)
@@ -187,7 +187,7 @@ func (h *SubtitleHandler) SetAutomationConfig(c *gin.Context) {
 	}
 	var cfg subauto.Config
 	if err := c.ShouldBindJSON(&cfg); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.auto.SetConfig(cfg); err != nil {

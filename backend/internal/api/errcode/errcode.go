@@ -20,6 +20,10 @@ type Error struct {
 	Code    string // 机器可读，如 "site_cookie_invalid"
 	Message string // 中文默认文案
 	HTTP    int    // 响应状态码
+	// Specific 为真表示 Message 已被 WithDetail 系列换成本请求专属的原因，
+	// 不再是这个码的固定文案。信封会带 "specific": true，前端据此照原样显示——
+	// 否则 en-US 界面会用码的固定译文整句覆盖掉刚说清楚的那半句原因（#355 的反面）。
+	Specific bool
 	// Err 底层错误（可选）：供日志定位，不进响应体。
 	Err error
 }
@@ -54,6 +58,7 @@ func (e *Error) WithDetail(err error) *Error {
 	ne := *e
 	if err != nil {
 		ne.Message = err.Error()
+		ne.Specific = true
 	}
 	ne.Err = err
 	return &ne
@@ -74,6 +79,7 @@ func (e *Error) WithDetailKeepMessage(err error) *Error {
 	ne := *e
 	if err != nil {
 		ne.Message = ne.Message + "：" + err.Error()
+		ne.Specific = true
 	}
 	ne.Err = err
 	return &ne
@@ -119,6 +125,10 @@ func respondCommon(c *gin.Context, e *Error, env gin.H) {
 	logErr(c, e)
 	if env == nil {
 		env = gin.H{"code": e.Code, "message": e.Message, "error": e.Message}
+	}
+	// 只在真是「本请求专属的原因」时加这个字段：其余信封形状与历史上完全一致。
+	if e.Specific {
+		env["specific"] = true
 	}
 	c.AbortWithStatusJSON(e.HTTP, env)
 }

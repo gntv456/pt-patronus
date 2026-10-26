@@ -85,7 +85,7 @@ func (h *CommandRunHandler) Get(c *gin.Context) {
 func (h *CommandRunHandler) Create(c *gin.Context) {
 	var in commandRunRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	in.Command = strings.TrimRight(in.Command, "\r\n")

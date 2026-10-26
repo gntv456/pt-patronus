@@ -282,7 +282,7 @@ func (h *DockerHandler) ComposeUp(c *gin.Context) {
 	}
 	var in composeRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	cmd := "cd " + shellQuote(in.Path) + " && docker compose up -d 2>&1"
@@ -302,7 +302,7 @@ func (h *DockerHandler) ComposeDown(c *gin.Context) {
 	}
 	var in composeRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if !in.ConfirmRisk {

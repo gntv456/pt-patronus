@@ -36,7 +36,7 @@ type fileOpReq struct {
 func (h *CloudHandler) CloudMkdir(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudMkdir(c.Request.Context(), in.DriveID, in.Path, in.NewName))
@@ -46,7 +46,7 @@ func (h *CloudHandler) CloudMkdir(c *gin.Context) {
 func (h *CloudHandler) CloudMove(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudMove(c.Request.Context(), in.DriveID, in.Path, in.DstDir))
@@ -56,7 +56,7 @@ func (h *CloudHandler) CloudMove(c *gin.Context) {
 func (h *CloudHandler) CloudCopy(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudCopy(c.Request.Context(), in.DriveID, in.Path, in.DstDir))
@@ -66,7 +66,7 @@ func (h *CloudHandler) CloudCopy(c *gin.Context) {
 func (h *CloudHandler) CloudRename(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudRename(c.Request.Context(), in.DriveID, in.Path, in.NewName))
@@ -76,7 +76,7 @@ func (h *CloudHandler) CloudRename(c *gin.Context) {
 func (h *CloudHandler) CloudDelete(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudDelete(c.Request.Context(), in.DriveID, in.Path))
@@ -86,7 +86,7 @@ func (h *CloudHandler) CloudDelete(c *gin.Context) {
 func (h *CloudHandler) CloudOffline(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudOfflineAdd(c.Request.Context(), in.DriveID, in.Path, in.URL))
@@ -96,7 +96,7 @@ func (h *CloudHandler) CloudOffline(c *gin.Context) {
 func (h *CloudHandler) CloudShare(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.svc.CloudSaveShare(c.Request.Context(), in.DriveID, in.Path, in.URL, in.Pwd))
@@ -156,7 +156,7 @@ func (r cloudOrganizeReq) toOptions() cloud.OrganizeOptions {
 func (h *CloudHandler) OrganizeCloud(c *gin.Context) {
 	var req cloudOrganizeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.svc.OrganizeCloud(c.Request.Context(), req.toOptions())
@@ -175,7 +175,7 @@ func (h *CloudHandler) RepairStrm(c *gin.Context) {
 	// 空 body（io.EOF）= 修全部盘（合法用法，前端「全部修复」传 drive_id:0）；
 	// 坏 JSON 不能静默落成 drive_id=0——那等于把「只想修一个盘」的请求放大成全盘重写。
 	if err := c.ShouldBindJSON(&in); err != nil && !errors.Is(err, io.EOF) {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	res, err := h.svc.RepairStrm(c.Request.Context(), in.DriveID)
@@ -195,7 +195,7 @@ func (h *CloudHandler) Start115OpenAuth(c *gin.Context) {
 		AppID string `json:"app_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	code, verifier, err := h.svc.Start115OpenAuth(c.Request.Context(), in.AppID)
@@ -220,7 +220,7 @@ func (h *CloudHandler) Poll115OpenAuth(c *gin.Context) {
 		Verifier string `json:"verifier" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	code := &cloud.DeviceCode115{
@@ -291,7 +291,7 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 		Template  string `json:"template"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	payload, _ := json.Marshal(map[string]string{
@@ -300,7 +300,13 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 	if err := h.svc.EnqueueCloudTask(&models.CloudTask{
 		DriveID: in.DriveID, Kind: "import_tree", Payload: string(payload),
 	}); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 队列没启用是配置状态：给 503 + 可操作中文，不是「请求参数有误」；
+		// 入库失败那一档仍只进日志（Go 原文不能贴界面）。
+		if errors.Is(err, chain.ErrCloudQueueDisabled) {
+			errcode.Respond(c, errcode.Unavailable.WithDetail(err))
+			return
+		}
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enqueued": true})

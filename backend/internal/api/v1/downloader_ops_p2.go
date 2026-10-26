@@ -22,7 +22,7 @@ func (h *DownloaderHandler) SetShareLimits(c *gin.Context) {
 	}
 	var req shareLimitsReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetShareLimits(c.Request.Context(), id, req.Hashes, downloader.ShareLimits{
@@ -46,7 +46,7 @@ func (h *DownloaderHandler) SetQueuePriority(c *gin.Context) {
 	}
 	var req queueReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetQueuePriority(c.Request.Context(), id, req.Hashes, req.Action))
@@ -67,7 +67,7 @@ func (h *DownloaderHandler) SetForceStart(c *gin.Context) {
 	}
 	var req forceStartReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.SetForceStart(c.Request.Context(), id, req.Hashes, req.Enable))
@@ -83,7 +83,7 @@ func (h *DownloaderHandler) ToggleSequential(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.ToggleSequentialDownload(c.Request.Context(), id, req.Hashes))
@@ -97,7 +97,7 @@ func (h *DownloaderHandler) ToggleFirstLast(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.ToggleFirstLastPiece(c.Request.Context(), id, req.Hashes))
@@ -139,7 +139,7 @@ func (h *DownloaderHandler) CreateCategory(c *gin.Context) {
 	}
 	var req categoryEditReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.CreateCategory(c.Request.Context(), id, req.Name, req.SavePath))
@@ -153,7 +153,7 @@ func (h *DownloaderHandler) EditCategory(c *gin.Context) {
 	}
 	var req categoryEditReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.EditCategory(c.Request.Context(), id, req.Name, req.SavePath))
@@ -171,7 +171,7 @@ func (h *DownloaderHandler) DeleteCategories(c *gin.Context) {
 	}
 	var req deleteCategoriesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	opResult(c, h.dl.DeleteCategories(c.Request.Context(), id, req.Names))

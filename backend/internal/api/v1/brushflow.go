@@ -52,7 +52,7 @@ func (h *BrushFlowHandler) Get(c *gin.Context) {
 func (h *BrushFlowHandler) Create(c *gin.Context) {
 	var t models.BrushFlowTask
 	if err := c.ShouldBindJSON(&t); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if t.Name == "" {
@@ -96,7 +96,7 @@ func (h *BrushFlowHandler) Update(c *gin.Context) {
 	}
 	var t models.BrushFlowTask
 	if err := c.ShouldBindJSON(&t); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	t.ID = id

@@ -51,6 +51,46 @@ func TestParseMeta_ResolutionFallsBackFromCodec(t *testing.T) {
 	}
 }
 
+// 动漫常见「标题 - 12」绝对集数 + [fansub] 组名：从前既不识别集数，
+// 标题还会残留 "[SubsPlease] ... ( ) [ABCD1234]"，按它去搜片必然搜不到。
+func TestParseMeta_AnimeAbsoluteEpisode(t *testing.T) {
+	m := ParseMeta("[SubsPlease] Sousou no Frieren - 12 (1080p) [ABCD1234].mkv")
+	if !m.IsTV || m.Episode != 12 {
+		t.Fatalf("absolute episode: got tv=%v E%d", m.IsTV, m.Episode)
+	}
+	if m.Title != "Sousou no Frieren" {
+		t.Fatalf("title: got %q", m.Title)
+	}
+	if m.ReleaseGroup != "SubsPlease" {
+		t.Fatalf("leading fansub tag should be the group, got %q", m.ReleaseGroup)
+	}
+	if m.Resolution != "1080P" {
+		t.Fatalf("resolution: got %q", m.Resolution)
+	}
+
+	zh := ParseMeta("[ANi] 葬送的芙莉莲 - 12 [1080P][Baha][WEB-DL][AAC AVC][CHT].mp4")
+	if !zh.IsTV || zh.Episode != 12 {
+		t.Fatalf("中文动漫 absolute episode: got tv=%v E%d", zh.IsTV, zh.Episode)
+	}
+	if zh.Title != "葬送的芙莉莲" {
+		t.Fatalf("中文 title 残留标签: got %q", zh.Title)
+	}
+	if zh.ReleaseGroup != "ANi" {
+		t.Fatalf("group: got %q", zh.ReleaseGroup)
+	}
+}
+
+// 正控：标题里的「- 数字」后接年份不算集数（不能把电影误判成剧集）。
+func TestParseMeta_DashNumberInMovieTitleStaysMovie(t *testing.T) {
+	m := ParseMeta("Death.Race.2.2008.1080p.BluRay.x264-GROUP")
+	if m.IsTV || m.Episode != 0 {
+		t.Fatalf("movie should stay movie, got tv=%v E%d", m.IsTV, m.Episode)
+	}
+	if m.Year != 2008 {
+		t.Fatalf("year: got %d", m.Year)
+	}
+}
+
 func TestShouldProcess_Filter(t *testing.T) {
 	cfg := DefaultConfig()
 	if !cfg.ShouldProcess("subscribe", nil) {

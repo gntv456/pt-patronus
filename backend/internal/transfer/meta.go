@@ -34,6 +34,14 @@ var (
 	reNoise   = regexp.MustCompile(`(?i)\b(bluray|blu-ray|bdrip|brrip|webrip|web-dl|webdl|web|hdtv|dvdrip|remux|hdr10?|hdr10plus|dts|atmos|truehd|ddp|ddp5|aac|ac3|flac|dual|10bit|hybrid|avc|hevc|x264|x265|h264|h265)\b`)
 	reSep     = regexp.MustCompile(`[._]`)
 	reMultiEp = regexp.MustCompile(`(?i)E(\d{1,3})[-E]?(\d{1,3})`)
+	// 动漫常见「标题 - 12」绝对集数：数字后必须紧跟括号/方括号或行尾，
+	// 避免把「Death Race - 2 2008」这类标题里的数字误判成集数。
+	reEpisodeAbsolute = regexp.MustCompile(
+		`(?i)\s-\s(\d{1,4})(?:\s*(?:END|FIN|v\d+))?\s*(?:[\(\[]|$)`)
+	// 标题开头的 [fansub] 标签：既是发布组来源，也不属于片名。
+	reLeadTag = regexp.MustCompile(`^\s*\[([^\[\]]+)\]`)
+	// 去噪后残留的空括号（[1080P] 剥掉后留下 "[]"）。
+	reEmptyBrackets = regexp.MustCompile(`[\(\[]\s*[\)\]]`)
 )
 
 // ParseMeta 从文件名（含或不含扩展名）解析元信息。
@@ -51,6 +59,9 @@ func ParseMeta(filename string) Meta {
 		m.Season = atoiSafe(g[1])
 		m.IsTV = true
 	} else if g := reEpisodeOnly.FindStringSubmatch(stem); g != nil {
+		m.Episode = atoiSafe(g[1])
+		m.IsTV = true
+	} else if g := reEpisodeAbsolute.FindStringSubmatch(stem); g != nil {
 		m.Episode = atoiSafe(g[1])
 		m.IsTV = true
 	}
@@ -76,10 +87,24 @@ func ParseMeta(filename string) Meta {
 			m.ReleaseGroup = last
 		}
 	}
+	// 动漫发布把组名放在开头 [SubsPlease]：没有后缀组时用它；分辨率/编码标签不算组。
+	if m.ReleaseGroup == "" {
+		if g := reLeadTag.FindStringSubmatch(stem); g != nil {
+			tag := strings.TrimSpace(g[1])
+			if isPlausibleGroup(tag) &&
+				!reResolution.MatchString(tag) && !reNoise.MatchString(tag) {
+				m.ReleaseGroup = tag
+			}
+		}
+	}
 
 	// 标题清洗：取季集/年份之前的部分，去分辨率/质量噪声。
 	titleCut := stem
-	for _, re := range []*regexp.Regexp{reSeasonEpisode, reSeasonPack, reEpisodeOnly} {
+	// 开头 [fansub] 标签不属于片名（组名已在上面取用）。
+	titleCut = reLeadTag.ReplaceAllString(titleCut, " ")
+	for _, re := range []*regexp.Regexp{
+		reSeasonEpisode, reSeasonPack, reEpisodeOnly, reEpisodeAbsolute,
+	} {
 		if loc := re.FindStringIndex(titleCut); loc != nil {
 			titleCut = titleCut[:loc[0]]
 		}
@@ -89,6 +114,8 @@ func ParseMeta(filename string) Meta {
 	}
 	titleCut = reResolution.ReplaceAllString(titleCut, " ")
 	titleCut = reNoise.ReplaceAllString(titleCut, " ")
+	// 去噪后残留的空括号（[1080P] → "[]"）与末尾分隔符一并清掉。
+	titleCut = reEmptyBrackets.ReplaceAllString(titleCut, " ")
 	titleCut = strings.ReplaceAll(titleCut, "-", " ")
 	m.Title = collapseSpaces(strings.TrimSpace(titleCut))
 	if m.Title == "" {

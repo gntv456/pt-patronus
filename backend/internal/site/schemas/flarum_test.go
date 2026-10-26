@@ -206,7 +206,7 @@ func TestFlarumCheckinLoggedOut(t *testing.T) {
 	if r.Success {
 		t.Errorf("401 Success = true, want false")
 	}
-	if !strings.Contains(r.Message, "not logged in") {
+	if !strings.Contains(r.Message, "登录态已失效") {
 		t.Errorf("Message = %q, want 含未登录提示", r.Message)
 	}
 }
@@ -323,7 +323,7 @@ func TestFlarumCheckinPatchUserLoggedOut(t *testing.T) {
 	if r.Success {
 		t.Errorf("未登录应 Success=false")
 	}
-	if !strings.Contains(r.Message, "not logged in") {
+	if !strings.Contains(r.Message, "登录态已失效") {
 		t.Errorf("Message = %q, want 未登录提示", r.Message)
 	}
 }

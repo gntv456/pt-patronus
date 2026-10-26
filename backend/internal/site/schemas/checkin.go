@@ -294,7 +294,7 @@ func parseCheckinResponse(resp *httpclient.Response, def *site.SiteMetadata) *si
 	// 3. 未登录
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if loggedOut(resp, doc, def.NoLogin) {
-		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedIn.Error()}
+		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedInText}
 	}
 	// 4. 兜底
 	return &site.CheckinResult{Success: false, Message: fmt.Sprintf("签到响应未识别(状态%d)", resp.StatusCode)}

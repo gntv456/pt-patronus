@@ -282,3 +282,18 @@ func TestNexusPHPCheckinCaptchaNoOCR(t *testing.T) {
 		t.Errorf("want explicit OCR hint, got %+v", r)
 	}
 }
+
+// 未登录响应进入 CheckinResult.Message（数据字段，界面原样显示）：
+// 必须是可操作中文，不能把哨兵原文 "not logged in" 贴给用户。
+func TestNexusPHPCheckinLoggedOutIsChinese(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html><head><title>请先登录</title></head><body></body></html>`))
+	})
+	r := mustCheckin(t, srv, nil)
+	if r.Success {
+		t.Fatalf("未登录应 Success=false, got %+v", r)
+	}
+	if !strings.Contains(r.Message, "登录态已失效") || strings.Contains(r.Message, "not logged in") {
+		t.Fatalf("Message 要中文可操作, got %q", r.Message)
+	}
+}

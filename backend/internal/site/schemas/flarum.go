@@ -308,7 +308,7 @@ func (f *Flarum) checkinPost(ctx context.Context, def *site.SiteMetadata, baseUR
 func (f *Flarum) checkinPatchUser(ctx context.Context, baseURL, cookie, tok string) (*site.CheckinResult, error) {
 	uid := f.fetchCurrentUserID(ctx, baseURL, cookie)
 	if uid == "" {
-		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedIn.Error()}, nil
+		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedInText}, nil
 	}
 	body, _ := json.Marshal(map[string]any{
 		"data": map[string]any{
@@ -334,7 +334,7 @@ func (f *Flarum) checkinPatchUser(ctx context.Context, baseURL, cookie, tok stri
 // 401/403 未登录；422 今日已签；csrf_mismatch 失败；无 errors 成功。
 func (f *Flarum) parseCheckinResponse(resp *httpclient.Response) *site.CheckinResult {
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
-		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedIn.Error()}
+		return &site.CheckinResult{Success: false, Message: site.ErrNotLoggedInText}
 	}
 	var env flarumErrorEnvelope
 	if json.Unmarshal(resp.Body, &env) == nil && len(env.Errors) > 0 {

@@ -13,6 +13,10 @@ import (
 // ErrNotLoggedIn 表示 cookie 失效或被重定向到登录页。
 var ErrNotLoggedIn = errors.New("not logged in")
 
+// ErrNotLoggedInText 是 ErrNotLoggedIn 给用户看的文案。哨兵本身保持英文供日志/errors.Is，
+// 但签到结果等「数据字段」会直接上界面，不能把 not logged in 原样贴给用户。
+const ErrNotLoggedInText = "站点登录态已失效：请到「站点」页重新获取并保存该站 Cookie 后再签到"
+
 // ResolveURL 把相对 href 解析为基于 baseURL 的绝对 URL。
 func ResolveURL(base *url.URL, href string) string {
 	if href == "" || base == nil {

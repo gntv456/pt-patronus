@@ -100,7 +100,7 @@ func (h *PluginHandler) Disable(c *gin.Context) {
 func (h *PluginHandler) SaveConfig(c *gin.Context) {
 	var in pluginConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Config == nil {
@@ -118,7 +118,7 @@ func (h *PluginHandler) SaveConfig(c *gin.Context) {
 func (h *PluginHandler) Action(c *gin.Context) {
 	var in pluginActionReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Input == nil {
@@ -225,7 +225,7 @@ func (h *PluginHandler) Releases(c *gin.Context) {
 func (h *PluginHandler) Bridge(c *gin.Context) {
 	var in pluginBridgeReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	out, err := h.manager.Bridge(c.Request.Context(), c.Param("id"), in.Method, in.Params)
@@ -265,7 +265,7 @@ func pluginRollbackFailure(err error) *errcode.Error {
 func (h *PluginHandler) Rollback(c *gin.Context) {
 	var in pluginRollbackReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	out, err := h.manager.Rollback(c.Request.Context(), c.Param("id"), in.ReleaseID)
@@ -279,7 +279,7 @@ func (h *PluginHandler) Rollback(c *gin.Context) {
 func (h *PluginHandler) PublishEvent(c *gin.Context) {
 	var in pluginEventReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Type == "" {

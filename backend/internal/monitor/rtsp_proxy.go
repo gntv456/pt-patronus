@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -152,8 +154,22 @@ func (p *RTSPProxy) authHLS(c *gin.Context) bool {
 	// WS 走一次性 ticket 已天然防重放，HLS 走长效 query token 需补此校验）。
 	if p.tvCache != nil {
 		cur, err := p.tvCache.Get(claims.UserID)
-		if err != nil || cur != claims.TokenVersion {
+		// 与 JWTAuth 同一套分档：读不出来 ≠ 会话已更新（后者该重新登录，前者不该）。
+		switch {
+		case err == nil:
+			if cur != claims.TokenVersion {
+				errcode.Respond(c, errcode.TokenMismatch)
+				return false
+			}
+		case errors.Is(err, auth.ErrUserMissing):
+			slog.Warn("rtsp auth rejected: token points at a missing user",
+				"uid", claims.UserID)
 			errcode.Respond(c, errcode.TokenMismatch)
+			return false
+		default:
+			slog.Warn("rtsp auth rejected: token version unreadable",
+				"uid", claims.UserID, "err", err)
+			errcode.Respond(c, errcode.Unavailable.WithErr(err))
 			return false
 		}
 	}

@@ -182,17 +182,46 @@ func (o *PluginMarketOper) GetInstance(pluginID, instanceKey string) (*models.Pl
 	return &it, nil
 }
 
-// SaveInstanceConfig 更新实例配置/启用态。
+// ErrPluginInstanceMissing 要改/要排的分身实例不存在（别的页签删过、key 写错）。
+// GORM 的条件 UPDATE 未命中不报错（RowsAffected=0），不查就会把「什么都没改」报成
+// 「已保存」，用户以为配置存进去了 —— 与 #274 那一族同形。
+var ErrPluginInstanceMissing = errors.New("plugin instance missing")
+
+// SaveInstanceConfig 更新实例配置/启用态；实例不存在时报错而不是静默成功。
 func (o *PluginMarketOper) SaveInstanceConfig(pluginID, instanceKey, configJSON string, enabled bool) error {
-	return o.db.Model(&models.PluginInstance{}).
+	updates := map[string]any{
+		"config_json": configJSON,
+		"enabled":     enabled,
+		"updated_at":  time.Now(),
+	}
+	res := o.db.Model(&models.PluginInstance{}).
 		Where("plugin_id = ? AND instance_key = ?", pluginID, instanceKey).
-		Updates(map[string]any{"config_json": configJSON, "enabled": enabled, "updated_at": time.Now()}).Error
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("%w: %s/%s",
+			ErrPluginInstanceMissing, pluginID, instanceKey)
+	}
+	return nil
 }
 
 // ---- 天序（拖拽排序，服务端持久化 → 跨端同步） ----
 
 // ReorderInstances 按给定实例 id 顺序重写 sort_order（前端拖拽后整表提交）。
 func (o *PluginMarketOper) ReorderInstances(pluginID string, ids []uint) error {
+	// 先对数：提交了 N 条而库里只对得上 M 条，就不能回「已排序 N 条」。
+	var matched int64
+	q := o.db.Model(&models.PluginInstance{}).
+		Where("id IN ? AND plugin_id = ?", ids, pluginID)
+	if err := q.Count(&matched).Error; err != nil {
+		return err
+	}
+	if matched != int64(len(ids)) {
+		return fmt.Errorf("%w: 提交 %d 条，只对上 %d 条",
+			ErrPluginInstanceMissing, len(ids), matched)
+	}
 	return o.db.Transaction(func(tx *gorm.DB) error {
 		for i, id := range ids {
 			if err := tx.Model(&models.PluginInstance{}).

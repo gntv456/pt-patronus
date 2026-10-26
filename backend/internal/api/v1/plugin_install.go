@@ -48,7 +48,7 @@ type pluginMarketSourcesReq struct {
 func (h *PluginHandler) SetMarketSources(c *gin.Context) {
 	var req pluginMarketSourcesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.manager.SetMarketSources(req.Sources); err != nil {
@@ -86,7 +86,7 @@ type pluginTrustConfigReq struct {
 func (h *PluginHandler) SetTrustConfig(c *gin.Context) {
 	var req pluginTrustConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.manager.SetTrustConfig(req.TrustedPublicKeys, req.AllowUnsigned); err != nil {
@@ -148,7 +148,7 @@ func pluginInstallFailure(err error) *errcode.Error {
 func (h *PluginHandler) Install(c *gin.Context) {
 	var in pluginInstallReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	options := plugins.MarketInstallOptions{

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
@@ -102,6 +103,9 @@ func instanceErr(err error) *errcode.Error {
 		return errcode.PluginSingleInst.WithErr(err)
 	case errors.Is(err, plugins.ErrMarketOperUnavailable):
 		return errcode.DependencyMissing.WithErr(err)
+	case errors.Is(err, oper.ErrPluginInstanceMissing):
+		// 分身已被别处删掉/key 不对：说「刷新插件详情」，不是「保存失败」也不是「参数有误」。
+		return errcode.PluginInstanceNotFound.WithErr(err)
 	default:
 		return errcode.SaveFailed.WithErr(err)
 	}
@@ -115,7 +119,7 @@ func (h *PluginHandler) CreatePluginInstance(c *gin.Context) {
 		Config      map[string]any `json:"config"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	inst, err := h.manager.CreatePluginInstance(id, in.InstanceKey, marshalConfig(in.Config))
@@ -134,11 +138,13 @@ func (h *PluginHandler) SavePluginInstanceConfig(c *gin.Context) {
 		Enable *bool          `json:"enable" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.manager.SavePluginInstanceConfig(id, key, marshalConfig(in.Config), *in.Enable); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 走分身这条路共用的分档：市场运营层没装配是 DependencyMissing（重试无用，该去开配置），
+		// 其它写失败是 SaveFailed。从前这里一律 400「请求参数有误」，让人去改那个改不了的插件 id。
+		errcode.Respond(c, instanceErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": key})
@@ -164,11 +170,12 @@ func (h *PluginHandler) ReorderPluginInstances(c *gin.Context) {
 		IDs []uint `json:"ids" binding:"required,min=1,max=200"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.manager.ReorderPluginInstances(id, in.IDs); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		// 同 SavePluginInstanceConfig：复用分身出口的共用分档，不再压成「参数有误」。
+		errcode.Respond(c, instanceErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"reordered": len(in.IDs)})

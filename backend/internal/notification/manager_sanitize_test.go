@@ -34,6 +34,15 @@ func TestSanitizeNotifyErrTranslatesTransport(t *testing.T) {
 		t.Fatalf("包装后的 url.Error 处理不对: %q", got)
 	}
 
+	// 日志侧：同样脱敏 URL 凭据，但底层原文（no such host/refused）必须保留给排障。
+	logLine := sanitizeNotifyLogErr(ue)
+	if strings.Contains(logLine, "SECRET") || !strings.Contains(logLine, "connectex") {
+		t.Fatalf("日志脱敏应保留原文且不含 token, got %q", logLine)
+	}
+	if got := sanitizeNotifyLogErr(dial); !strings.Contains(got, "connectex") {
+		t.Fatalf("非 URL 错误日志应保留原文, got %q", got)
+	}
+
 	// 上游自产文案（Telegram 业务失败等）原样透传，不二次加工。
 	if got := sanitizeNotifyErr(errors.New("telegram: Unauthorized")); got != "telegram: Unauthorized" {
 		t.Fatalf("未识别的上游文案应透传, got %q", got)

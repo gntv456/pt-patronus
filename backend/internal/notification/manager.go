@@ -59,6 +59,24 @@ type SendResult struct {
 // sanitizeNotifyErr 脱敏通知发送错误：*url.Error 的 URL 常含 bot token / 密钥
 // （telegram/gotify/serverchan/bark/apprise 把凭据放 URL path 或 query），
 // 仅保留 host + 底层错误，避免明文进日志 / 返回前端。
+// sanitizeNotifyLogErr 给日志用：URL 凭据同样脱敏，但**保留底层原文**（no such host /
+// connection refused 是排障唯一线索）。界面结果走 sanitizeNotifyErr 翻成中文，
+// 两者不能合成一个——合成就会把原文从日志里一起抹掉（TestNoticeLogsUnrecoverableExternalFailure）。
+func sanitizeNotifyLogErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		host := ue.URL
+		if u, perr := url.Parse(ue.URL); perr == nil {
+			host = u.Host
+		}
+		return fmt.Sprintf("请求 %s 失败: %v", host, ue.Err)
+	}
+	return err.Error()
+}
+
 func sanitizeNotifyErr(err error) string {
 	if err == nil {
 		return ""
@@ -131,9 +149,9 @@ func notifyChannels(ctx context.Context, chs []Channel, msg Message) []SendResul
 				}
 			}()
 			if err := c.Send(ctx, msg); err != nil {
-				safe := sanitizeNotifyErr(err)
-				r.Error = safe
-				slog.Warn("notify failed", "channel", c.Name(), "err", safe)
+				r.Error = sanitizeNotifyErr(err)
+				slog.Warn("notify failed", "channel", c.Name(),
+					"err", sanitizeNotifyLogErr(err))
 			} else {
 				r.Ok = true
 			}

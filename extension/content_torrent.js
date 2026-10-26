@@ -69,9 +69,18 @@
     document.documentElement.appendChild(btn)
   }
 
+  // pushLabel 推送结果文案：与 util.js pushResultLabel 同一判据（三档结局——动作失败 /
+  // 动作成功但下载历史没记下 / 全部正常）。内容脚本是 classic script 不能 import，
+  // 所以这份只能抄；测试 test/push_history_note.test.mjs 钉住「两边都不许少中间那一档」。
+  function pushLabel(res, okText) {
+    if (!res || !res.ok) return `⚠ ${String((res && res.error) || '失败').slice(0, 26)}`
+    if (res.history_error) return `${okText}（历史没记下：${String(res.history_error).slice(0, 26)}）`
+    return okText
+  }
+
   function onReply(res) {
     if (!res || !btn) return
-    btn.textContent = res.ok ? '✅ 已加入下载器' : `⚠ ${String(res.error || '失败').slice(0, 26)}`
+    btn.textContent = pushLabel(res, '✅ 已加入下载器')
     btn.style.background = res.ok
       ? 'linear-gradient(135deg,#2e9d4f,#1d7a3a)'
       : 'linear-gradient(135deg,#c0392b,#8e2b20)'
@@ -153,18 +162,34 @@
       // 用户看到「⚠ 3」无从判断该重试、该登录还是该去设置页，只会反复点。
       // 同菜单 25 行外的批量收藏（#362）已经这么做了 —— 两个出口不该有两种披露标准。
       let reason = ''
+      let historyMiss = 0
       b.textContent = '推送中…'
       for (const u of listUrls) {
-        const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: u })
-        if (r && r.ok) { ok++; continue }
+        let r
+        try {
+          r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: u })
+        } catch (e) {
+          // 一条链接的后台异常不许带走整批（#334 同族）：记一条失败，继续推剩下的。
+          fail++
+          if (!reason) reason = String((e && e.message) || e)
+          continue
+        }
+        if (r && r.ok) {
+          if (r.history_error) historyMiss++
+          ok++
+          continue
+        }
         fail++
         // 同一批只报第一个不同原因：重复刷屏没有新信息。
         if (!reason && r && r.error) reason = String(r.error)
       }
-      b.textContent = fail
+      // 历史没记上是「动作成功、台账缺一笔」，两种收尾都必须带出来：
+      // 只在全成功时报会让 20 条里 3 条没入账的用户以为台账是完整的。
+      const miss = historyMiss ? `（其中 ${historyMiss} 条历史没记下）` : ''
+      b.textContent = (fail
         ? `✅ ${ok} / ⚠ 失败 ${fail}${reason ? `：${reason}` : ''}`
-        : `✅ ${ok}`
-      setTimeout(() => { b.textContent = '⬇ 全部推送下载'; b.disabled = false }, reason ? 4500 : 3500)
+        : `✅ ${ok}`) + miss
+      setTimeout(() => { b.textContent = '⬇ 全部推送下载'; b.disabled = false }, reason || historyMiss ? 4500 : 3500)
     })
     mk('📋 复制全部链接', '#2c3145', async (ev) => {
       const b = ev.target
@@ -180,11 +205,21 @@
       let fail = 0
       let reason = ''
       for (const u of listUrls) {
-        const r = await chrome.runtime.sendMessage({
-          type: 'ptp-favorite', url: u,
-          title: (document.querySelector('a[href*="details.php"]')?.textContent || '').trim(),
-          site: location.hostname,
-        })
+        let r = null
+        try {
+          r = await chrome.runtime.sendMessage({
+            type: 'ptp-favorite', url: u,
+            title: (document.querySelector('a[href*="details.php"]')?.textContent || '').trim(),
+            site: location.hostname,
+          })
+        } catch (e) {
+          // 一条的后台异常不许带走整批（与批量推送 #334 同族）：计一条失败、留第一个原因，
+          // 剩下的继续收。从前这里裸 await，SW 一被回收整批就抛死在循环里，
+          // 按钮停在旧文案、已收到的种子也一并没人报数。
+          fail++
+          if (!reason) reason = String((e && e.message) || e)
+          continue
+        }
         // #362 从前是 `if (r && r.ok) n++`：后台失败时连回调都没有（r === undefined），
         // 于是这条批量操作**一条都没存**，按钮却显示「⭐ 已收藏 0」——那句话读起来
         // 像「收藏成功了 0 条」，而不是「全失败了」。用户只会反复点，不会去查存储。

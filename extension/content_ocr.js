@@ -48,6 +48,21 @@
     }
   }
 
+  // showNote 识别没走通时的一句提示。只在后台给了 message 时才出声：
+  // 「服务没配置」与「这张没认出来」都属正常，人工输入本来就兜得住，不该每次登录都挂一句话。
+  // 同时只允许一条在场（沿用凭据气泡 BUBBLE_SLOT 的做法，避免堆叠）。
+  function showNote(input, text) {
+    if (!text) return
+    const exist = document.getElementById('ptp-ocr-note')
+    if (exist) exist.remove()
+    const note = document.createElement('span')
+    note.id = 'ptp-ocr-note'
+    note.textContent = text
+    note.style.cssText = 'color:#e57373;font-size:12px;margin-left:8px'
+    ;(input.parentElement || document.body).appendChild(note)
+    setTimeout(() => note.remove(), 5200)
+  }
+
   function apply(input, text) {
     input.value = text
     input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -62,7 +77,13 @@
     imgToB64(img).then((b64) => {
       if (!b64) return
       chrome.runtime.sendMessage({ type: 'ptp-ocr-captcha', image: b64 }, (res) => {
-        if (res && res.ok && res.text) apply(input, res.text)
+        if (res && res.ok && res.text) {
+          apply(input, res.text)
+          return
+        }
+        // 从前这一整条是静默的：后台「服务没配」「请求没走通」「异常」三种处境与「这张没认出来」
+        // 在页面上完全同形，用户只会反复点「换一张」或怀疑扩展没装好。
+        showNote(input, (res && res.message) || '')
       })
     })
   }

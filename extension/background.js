@@ -116,35 +116,55 @@ function sameSiteAsSender(msgHost, sender) {
   return want !== '' && want === self
 }
 
+// bgFail 后台异常的统一回包形状。
+// 判据来自 #362：`.then(sendResponse)` 只挂成功分支时，异常路径上 sendResponse 永不被调用，
+// 页面侧拿到 undefined ⇒ 内容脚本那些 `if (res && res.message)` 的出声逻辑一次都不会响，
+// 用户看到的是「点了没反应」，而真实原因（库损坏 / 读不出 / 代码异常）留在后台日志里。
+// error 给 popup/options 那批读 `r.error` 的读者，message 给 content_* 那批读 `res.message` 的读者。
+function bgFail(prefix, e) {
+  const raw = String((e && e.message) || e)
+  return { ok: false, error: raw, message: `${prefix}：${raw}` }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return false
   switch (msg.type) {
     // 种子详情页浮钮 → 推送下载：content 解析出的 download URL 直传，
     // 这里调 POST /downloaders/:id/torrents（id 省略时用默认下载器）。
     case 'ptp-push-download':
-      pushDownload(msg.url).then(sendResponse)
+      pushDownload(msg.url)
+        .then(sendResponse)
+        .catch((e) => sendResponse(bgFail('推送异常', e)))
       return true
     // TOTP 自动填充：content_totp.js 按 hostname 匹配验证器条目，回当期 6 位码。
     // Secret 不出后台——页面只能拿到数字本身。仅当验证器页本轮会话已解锁
     // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
     // PIN 锁定态保持锁定语义，不后台解密。只回答页面自己所在站（sameSiteAsSender）。
     case 'ptp-totp-autofill':
-      trustedSender(sender).then((ok) => {
-        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
-        if (!sameSiteAsSender(msg.host, sender)) { sendResponse({ ok: false, error: 'off-site-request' }); return }
-        totpAutofill(msg.host).then(sendResponse)
-      })
+      trustedSender(sender)
+        .then((ok) => {
+          if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+          if (!sameSiteAsSender(msg.host, sender)) { sendResponse({ ok: false, error: 'off-site-request' }); return }
+          totpAutofill(msg.host)
+            .then(sendResponse)
+            .catch((e) => sendResponse(bgFail('验证器填充异常', e)))
+        })
+        .catch((e) => sendResponse(bgFail('验证器填充异常', e)))
       return true
     // 凭据自动填充：content_creds.js 按 hostname 匹配本地凭据库，回单条凭据。
     // 同 TOTP 语义：仅当凭据页本轮会话已解锁（明文缓存 storage.session）或
     // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库，且只回答页面自己所在站。
     case 'ptp-cred-autofill':
-      trustedSender(sender).then(async (ok) => {
-        if (!ok) { sendResponse(await credReadFail('untrusted-sender')); return }
-        if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credReadFail('off-site-request')); return }
-        if (!(await credAllowed(new URL(sender.origin).hostname))) { sendResponse(await credReadFail('cred-blacklisted')); return }
-        credAutofill(msg.host).then(sendResponse)
-      })
+      trustedSender(sender)
+        .then(async (ok) => {
+          if (!ok) { sendResponse(await credReadFail('untrusted-sender')); return }
+          if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credReadFail('off-site-request')); return }
+          if (!(await credAllowed(new URL(sender.origin).hostname))) { sendResponse(await credReadFail('cred-blacklisted')); return }
+          credAutofill(msg.host)
+            .then(sendResponse)
+            .catch((e) => sendResponse(bgFail('凭据填充异常', e)))
+        })
+        .catch((e) => sendResponse(bgFail('凭据填充异常', e)))
       return true
     // 登录捕获·查重：content 检测到登录提交时问「这条账密是新的吗」。
     // known=true（与库一致）content 不弹保存气泡；unknown/新值弹。只回布尔，不回凭据。
@@ -153,7 +173,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!ok) { sendResponse({ known: 'untrusted' }); return }
         if (!sameSiteAsSender(msg.host, sender)) { sendResponse({ known: true }); return } // 跨站请求：静默当作已知，不弹保存
         if (!(await credAllowed(msg.host))) { sendResponse({ known: true }); return } // 凭据黑名单:静默当作已知,不弹保存
-        credCheckNew(msg.host, msg.username).then(sendResponse)
+        credCheckNew(msg.host, msg.username)
+          .then(sendResponse)
+          .catch((e) => sendResponse(bgFail('凭据查重异常', e)))
       })
       return true
     }
@@ -161,12 +183,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // 凭据库经 options 页解锁后，明文条目缓存在 storage.session（含 PIN）——
     // 只有该会话内能直接写库；锁定态返回 need-unlock，content 提示去设置页解锁。
     case 'ptp-cred-save': {
-      trustedSender(sender).then(async (ok) => {
-        if (!ok) { sendResponse(await credFail('untrusted-sender')); return }
-        if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credFail('off-site-request')); return }
-        if (!(await credAllowed(msg.host))) { sendResponse(await credFail('cred-blacklisted')); return }
-        credSaveCaptured(msg).then(sendResponse)
-      })
+      trustedSender(sender)
+        .then(async (ok) => {
+          if (!ok) { sendResponse(await credFail('untrusted-sender')); return }
+          if (!sameSiteAsSender(msg.host, sender)) { sendResponse(await credFail('off-site-request')); return }
+          if (!(await credAllowed(msg.host))) { sendResponse(await credFail('cred-blacklisted')); return }
+          credSaveCaptured(msg)
+            .then(sendResponse)
+            .catch((e) => sendResponse(bgFail('凭据保存异常', e)))
+        })
+        .catch((e) => sendResponse(bgFail('凭据保存异常', e)))
       return true
     }
     // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
@@ -178,11 +204,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // （管理员 Key；服务端配置 PaddleOCR/simple/ddddoc 端点后生效，未配置静默回退人工输入）。
     // 仅白名单站点可请求（截图内容可能包含站点敏感页面信息）。
     case 'ptp-ocr-captcha':
-      trustedSender(sender).then((ok) => {
-        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
-        if (msg.image) ocrCaptcha(msg.image).then(sendResponse)
-        else sendResponse({ ok: false, error: 'no-image' })
-      })
+      trustedSender(sender)
+        .then((ok) => {
+          if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+          if (msg.image) {
+            ocrCaptcha(msg.image)
+              .then(sendResponse)
+              .catch((e) => sendResponse(bgFail('验证码识别异常', e)))
+          } else sendResponse({ ok: false, error: 'no-image' })
+        })
+        .catch((e) => sendResponse(bgFail('验证码识别异常', e)))
       return true
     // 跨站收藏：详情页浮钮长按/右键或批量栏收藏按钮写入本机收藏夹。
     // #362 addFavorite 会抛（#338 起 read() 遇损坏数据就抛），从前这条出口
@@ -214,9 +245,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false
     // options 页「授予全部站点权限」成功后：对已打开页补注入（新授权的站点立即生效）。
     case 'ptp-inject-all-tabs':
-      injectAllTabs().catch(() => {})
-      sendResponse({ ok: true })
-      return false
+      // 两个分支都要回调，并把汇总带回设置页（#362 同族：只挂成功分支 ⇒ 页面等不到回音）。
+      injectAllTabs()
+        .then(sendResponse)
+        .catch((e) => sendResponse({ tried: 0, injected: 0, ready: 0, skipped: 0, failed: 0, error: `补注入异常：${(e && e.message) || e}` }))
+      return true
     default:
       maybeSyncOnWake().catch(() => {})
       return false
@@ -493,6 +526,7 @@ async function upsertCaptured(entries, msg) {
 async function ocrCaptcha(image) {
   try {
     const cfg = await getConfig()
+    // 没配服务器/没登录：不回 message ⇒ 页面继续不打扰（人工输入本来就兜得住）。
     if (!cfg.server || !cfg.token) return { ok: false, error: 'unconfigured' }
     const body = await api(cfg, '/api/v1/system/ocr/recognize', {
       method: 'POST',
@@ -500,7 +534,9 @@ async function ocrCaptcha(image) {
     })
     return { ok: true, text: body.text || '' }
   } catch (e) {
-    return { ok: false, error: e.message }
+    // 界面读的是 message：英文原文不许当人话直接贴页面（#314 同族），带中文前缀 + 原样留证。
+    const raw = String((e && e.message) || e)
+    return { ok: false, error: raw, message: `验证码识别请求没走通：${raw.slice(0, 60)}` }
   }
 }
 
@@ -526,9 +562,17 @@ async function pushDownload(url) {
         tags: ['ptpatronus-extension'],
       }),
     })
-    // 下载历史：成功即记（仅本机 chrome.storage.local，上限 300 条 FIFO）。
-    addHistory({ url, downloader_id: dlId }).catch(() => {})
-    return { ok: true }
+    // 下载历史是本机可读的台账（设置页「下载历史」列它）：写失败不能 `.catch(() => {})` 吞掉
+    // ——用户以为记上了，实际永久少一条且无从发现（#322 同族：有界面读者的丢弃必须出声）。
+    // 但推送本身已经成功，也不能反过来把动作报成失败 ⇒ 动作回 ok，另带 history_error。
+    let historyError = ''
+    try {
+      await addHistory({ url, downloader_id: dlId })
+    } catch (e) {
+      historyError = (e && e.message) || String(e)
+      console.warn('[ptp] 下载历史写入失败：', historyError)
+    }
+    return { ok: true, history_error: historyError }
   } catch (e) {
     return { ok: false, error: e.message }
   }
@@ -555,32 +599,59 @@ function markInjected(tabId, files) {
 function unmarkTab(tabId) { injectedTabs.delete(tabId) }
 
 // injectIfAllowed：白名单命中 → 注入全部内容脚本；未命中 → 确保无注入（noop）。
+// injectIfAllowed 回这一页的处置结果（injected/ready/skipped 类），供 injectAllTabs 汇总。
+// 从前全部吞掉：用户授权全站后页面上没出现按钮，界面却只说「已授予」。
 async function injectIfAllowed(tabId, url) {
   let host = ''
-  try { host = new URL(url).hostname } catch { return }
+  try { host = new URL(url).hostname } catch { return 'skipped' }
   // 黑名单模型：默认全部站点注入增强；完全黑名单内跳过。
   // 受限页（chrome:// 等）executeScript 会抛错,由下方 catch 忽略。
-  if (await isBlocked(host)) return
+  if (await isBlocked(host)) return 'skipped'
   const done = injectedTabs.get(tabId) || new Set()
   const files = ALL_FILES.filter((f) => !done.has(f))
-  if (!files.length) return
+  if (!files.length) return 'ready'
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
       files,
     })
     markInjected(tabId, files)
-  } catch { /* chrome:// 等受限页面忽略；扩展权限页（options/popup）无 host 需求 */ }
+    return 'injected'
+  } catch { return 'skipped' }
 }
 
 // injectAllTabs：SW 冷启动补注入（浏览器重启后 Map 清空，已打开的站点页需要补）。
+// injectAllTabs 逐页补注入并回汇总。
+// 两条判据：① 一页抛错不许带走整批（#334 同族，排在后面的站点以前永远轮不到）；
+// ② 「读不出标签页清单」与「清单为空」分得开（#338 同族），前者必须把原因带回界面。
 async function injectAllTabs() {
+  const r = { tried: 0, injected: 0, ready: 0, skipped: 0, failed: 0, error: '' }
+  let tabs
   try {
-    const tabs = await chrome.tabs.query({ status: 'complete' })
-    for (const t of tabs) {
-      if (t.id && t.url) await injectIfAllowed(t.id, t.url)
+    tabs = await chrome.tabs.query({ status: 'complete' })
+  } catch (e) {
+    r.error = `读标签页清单失败：${(e && e.message) || e}`
+    return r
+  }
+  r.tried = tabs.length
+  for (const t of tabs) {
+    if (!t.id || !t.url) { r.skipped++; continue }
+    let st = 'failed'
+    let why = ''
+    try {
+      st = await injectIfAllowed(t.id, t.url)
+    } catch (e) {
+      why = (e && e.message) || String(e)
     }
-  } catch { /* tabs 权限受限时静默 */ }
+    if (st === 'injected') r.injected++
+    else if (st === 'ready') r.ready++
+    else if (st === 'skipped') r.skipped++
+    else {
+      r.failed++
+      if (!r.error) r.error = why || '未知注入异常'
+    }
+  }
+  return r
 }
 
 chrome.webNavigation.onCommitted.addListener((details) => {
@@ -608,7 +679,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // popup/options 询问白名单状态（设置页展示「当前白名单 N 站」）。
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== 'ptp-site-hosts-list') return false
-  getSiteHosts().then((hosts) => sendResponse({ ok: true, hosts }))
+  getSiteHosts()
+    .then((hosts) => sendResponse({ ok: true, hosts }))
+    .catch((e) => sendResponse({ ok: false, hosts: [], error: String((e && e.message) || e) }))
   return true
 })
 

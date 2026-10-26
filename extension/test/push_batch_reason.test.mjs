@@ -72,5 +72,5 @@ test('后台的推送出口确实会回真实原因（这条判据才有意义�
   const routeAt = bg.indexOf("case 'ptp-push-download'")
   assert.ok(routeAt > 0, '找不到 ptp-push-download 路由')
   const route = bg.slice(routeAt, routeAt + 120)
-  assert.match(route, /pushDownload\(msg\.url\)\.then\(sendResponse\)/, '推送出口必须把结果送回页面')
+  assert.match(route, /pushDownload\(msg\.url\)\s*\n?\s*\.then\(sendResponse\)/, '推送出口必须把结果送回页面')
 })

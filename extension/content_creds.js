@@ -97,7 +97,9 @@
     chrome.runtime.sendMessage({
       type: 'ptp-cred-check', host: location.hostname, username, url: location.origin,
     }, (res) => {
-      if (!res) return
+      // 没应答（SW 刚被回收／消息通道断）时要把本轮占位撤掉：asked 是在发送前就 add 的，
+      // 留着它就等于「这条账密整个会话再也不问」，用户学到的是假结论——扩展从不提议保存。
+      if (!res) { asked.delete(sig); return }
       if (res.known === true) return // 与库里一致，无需打扰
       offerSave(username, password)
     })

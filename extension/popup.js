@@ -3,7 +3,7 @@
 import { getConfig, isConfigured, api, searchTorrentsStream, searchMedia, createSubscription, openWebSearch, baseUrl } from './api.js'
 import { overview, fmtBonus } from './dashboard.js'
 import { listDownloaders, listTorrents, pauseTorrent, resumeTorrent, globalStats } from './downloads.js'
-import { esc, $, fmtBytes } from './util.js'
+import { esc, $, fmtBytes, pushFailed, pushResultLabel } from './util.js'
 
 async function currentSelection() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -210,8 +210,14 @@ function renderItem(cfg, keyword, t, box) {
   pushBtn.textContent = '推送'
   pushBtn.onclick = async () => {
     pushBtn.disabled = true; pushBtn.textContent = '推送中…'
-    const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
-    pushBtn.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r && r.error || '').slice(0, 12)}`
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
+      pushBtn.textContent = pushResultLabel(r)
+      if (pushFailed(r)) pushBtn.disabled = false
+    } catch (e) {
+      pushBtn.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) })
+      pushBtn.disabled = false
+    }
   }
   const detailBtn = document.createElement('button')
   detailBtn.textContent = '详情'
@@ -264,8 +270,14 @@ function openDetailDrawer(t) {
   push.textContent = '⬇ 推送下载'
   push.onclick = async () => {
     push.disabled = true; push.textContent = '推送中…'
-    const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
-    push.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r && r.error || '').slice(0, 12)}`
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
+      push.textContent = pushResultLabel(r)
+      if (pushFailed(r)) push.disabled = false
+    } catch (e) {
+      push.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) })
+      push.disabled = false
+    }
   }
   const open = document.createElement('button')
   open.className = 'btn-ghost'
@@ -467,8 +479,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       push.textContent = '⬇ 推送'
       push.onclick = async () => {
         push.disabled = true; push.textContent = '推送中…'
-        const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: sess.ptp_last_drag_url })
-        push.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r.error || '').slice(0, 14)}`
+        try {
+          const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: sess.ptp_last_drag_url })
+          push.textContent = pushResultLabel(r)
+          if (pushFailed(r)) push.disabled = false
+        } catch (e) {
+          push.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) })
+          push.disabled = false
+        }
         setTimeout(() => bar.remove(), 2200)
       }
       bar.append(span, push)

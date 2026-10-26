@@ -17,7 +17,8 @@ import { getFavorites, removeFavorite, getHistory } from './collection.js'
 import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
 import { loadCredVault, saveCredVault, newCredId, parseBitwarden, openVault, sealVault } from './credentials.js'
 import { privacyOn as privacyOnFn, maskSecret, maskDomain } from './privacy.js'
-import { esc, $, fmtTime, baseUrl } from './util.js'
+import { esc, $, fmtTime, baseUrl, pushResultLabel, pushFailed } from './util.js'
+import { injectSummaryText, injectSummaryKind } from './inject_report.js'
 import { initStatsPage } from './options_stats.js'
 import { initDownloadsPage } from './options_downloads.js'
 import { initTotpPage } from './options_totp.js'
@@ -610,8 +611,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const granted = await chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] })
       if (granted) {
-        feedback('已授予全部站点权限——默认所有网站可用，黑名单站点除外')
-        chrome.runtime.sendMessage({ type: 'ptp-inject-all-tabs' }).catch(() => {})
+        // 补注入的结果必须出声：从前 `.catch(() => {})` 把后台回音整个丢掉，
+        // 用户授完权发现页面上没出现按钮，界面却只说「已授予」⇒ 把「没生效」讲成「成功了」。
+        let inj = null
+        try {
+          inj = await chrome.runtime.sendMessage({ type: 'ptp-inject-all-tabs' })
+        } catch (e) {
+          inj = { tried: 0, error: `后台没应答：${(e && e.message) || e}` }
+        }
+        feedback(`已授予全部站点权限——${injectSummaryText(inj)}`, injectSummaryKind(inj))
       } else {
         feedback('未授予全站权限：可逐站使用，或稍后再试', 'info')
       }
@@ -1077,9 +1085,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     push.disabled = true
     try {
       const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: push.dataset.url })
-      push.textContent = r && r.ok ? '✅' : `⚠ ${String(r.error || '').slice(0, 10)}`
-    } catch {
-      push.textContent = '⚠ 失败'
+      push.textContent = pushResultLabel(r, '✅')
+      if (pushFailed(r)) push.disabled = false
+    } catch (e) {
+      push.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) }, '✅')
+      push.disabled = false
     }
     if (push.dataset.delfav) {
       await removeFavorite(push.dataset.url)

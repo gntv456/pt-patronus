@@ -66,6 +66,10 @@ func (c *Client) seedCookies(rawURL, cookieStr string) error {
 		cookies = append(cookies, &http.Cookie{
 			Name:  strings.TrimSpace(kv[0]),
 			Value: strings.TrimSpace(kv[1]),
+			// 显式 Path=/：空 Path 会让 cookiejar 按每次请求的目录推导存储路径
+			// （/dl/3 → "/dl/"），同一份站点 cookie 在 "/" 与子目录各存一份，
+			// 请求头出现两遍；换过 cookie 后旧值会排在新值之后被服务端采纳。
+			Path: "/",
 		})
 	}
 	if len(cookies) > 0 {

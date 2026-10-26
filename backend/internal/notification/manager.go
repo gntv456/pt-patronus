@@ -2,8 +2,10 @@ package notification
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 	"log/slog"
 	"net/url"
 	"sync"
@@ -61,14 +63,18 @@ func sanitizeNotifyErr(err error) string {
 	if err == nil {
 		return ""
 	}
-	if ue, ok := err.(*url.Error); ok {
+	// *url.Error 的 URL 常含 bot token / 密钥：先只保留 host，再把底层错误交给
+	// errtext 单一来源翻译（连不上/超时等给可操作中文；上游自产文案原样透传）。
+	// 用 errors.As 是为了覆盖被 fmt.Errorf("...: %w") 包过一层的调用点。
+	var ue *url.Error
+	if errors.As(err, &ue) {
 		host := ue.URL
 		if u, perr := url.Parse(ue.URL); perr == nil {
 			host = u.Host
 		}
-		return fmt.Sprintf("请求 %s 失败: %v", host, ue.Err)
+		return fmt.Sprintf("请求 %s 失败：%s", host, errtext.Text(ue.Err))
 	}
-	return err.Error()
+	return errtext.Text(err)
 }
 
 // Notify 向所有通道并发发送，返回每个通道的结果。

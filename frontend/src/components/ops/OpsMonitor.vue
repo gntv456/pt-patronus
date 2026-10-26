@@ -19,6 +19,20 @@ const memHistory = computed(() => history.value.map((m) => m.mem_usage ?? 0))
 const netRxHistory = computed(() => history.value.map((m) => m.net_rx_rate ?? 0))
 const netTxHistory = computed(() => history.value.map((m) => m.net_tx_rate ?? 0))
 
+// 未采到读数时必须显示「没有读数」，不许画成 0.0% / 0 B / 0 B/s：那等于对着一台
+// 什么都没查到的机器宣布「服务器很闲」。负载与进程数一直是 —，这里与它们对齐。
+function pctOr(v?: number): string {
+  return v === undefined || v === null ? '—' : `${v.toFixed(1)}%`
+}
+
+function bytesOr(v?: number): string {
+  return v === undefined || v === null ? '—' : fmtBytes(v)
+}
+
+function uptimeOr(v?: number): string {
+  return v === undefined || v === null ? '—' : fmtUptime(v)
+}
+
 function fmtBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
@@ -89,7 +103,7 @@ onBeforeUnmount(() => {
         <div class="metric-header">
           <GlassIcon name="dashboard" :size="28" />
           <span class="metric-label">CPU</span>
-          <span class="metric-value">{{ (metrics.cpu_usage ?? 0).toFixed(1) }}%</span>
+          <span class="metric-value">{{ pctOr(metrics.cpu_usage) }}</span>
         </div>
         <div class="metric-bar">
           <div class="metric-bar-fill" :style="{ width: (metrics.cpu_usage ?? 0) + '%' }" />
@@ -105,7 +119,7 @@ onBeforeUnmount(() => {
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#11998e" to="#38ef7d" :size="28" />
           <span class="metric-label">{{ t('opsmonitor.mem') }}</span>
-          <span class="metric-value">{{ (metrics.mem_usage ?? 0).toFixed(1) }}%</span>
+          <span class="metric-value">{{ pctOr(metrics.mem_usage) }}</span>
         </div>
         <div class="metric-bar">
           <div class="metric-bar-fill green" :style="{ width: (metrics.mem_usage ?? 0) + '%' }" />
@@ -113,7 +127,7 @@ onBeforeUnmount(() => {
         <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
           <path :d="sparkline(memHistory)" fill="none" stroke="#38ef7d" stroke-width="1.5" />
         </svg>
-        <div class="metric-sub">{{ fmtBytes(metrics.mem_used ?? 0) }} / {{ fmtBytes(metrics.mem_total ?? 0) }}</div>
+        <div class="metric-sub">{{ bytesOr(metrics.mem_used) }} / {{ bytesOr(metrics.mem_total) }}</div>
       </div>
 
       <!-- 负载 -->
@@ -140,11 +154,11 @@ onBeforeUnmount(() => {
         <div class="net-row">
           <div class="net-item">
             <span class="net-arrow down">↓</span>
-            <span>{{ fmtBytes(metrics.net_rx_rate ?? 0) }}/s</span>
+            <span>{{ bytesOr(metrics.net_rx_rate) }}/s</span>
           </div>
           <div class="net-item">
             <span class="net-arrow up">↑</span>
-            <span>{{ fmtBytes(metrics.net_tx_rate ?? 0) }}/s</span>
+            <span>{{ bytesOr(metrics.net_tx_rate) }}/s</span>
           </div>
         </div>
         <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
@@ -168,7 +182,7 @@ onBeforeUnmount(() => {
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#8e44ad" to="#3498db" :size="28" />
           <span class="metric-label">{{ t('opsmonitor.uptime') }}</span>
-          <span class="metric-value small">{{ fmtUptime(metrics.uptime ?? 0) }}</span>
+          <span class="metric-value small">{{ uptimeOr(metrics.uptime) }}</span>
         </div>
         <div class="metric-sub">{{ metrics.hostname ?? '-' }}</div>
         <div class="metric-sub">{{ metrics.os ?? '-' }}</div>

@@ -84,6 +84,7 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
         'unknown_key' => '有不认识的配置键',
         'duplicate_id' => '站点 id 撞车',
         'skipped_subdir' => '子目录没被读取',
+        'load_failed' => '这份定义没被加载',
         // 后端将来新增一类时不许把裸 kind 当文案糊上去（对齐 Web 的 diagKind.other）。
         _ => '其它配置问题',
       };

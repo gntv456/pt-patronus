@@ -12,7 +12,9 @@ mixin SearchOpsMixin on State<SearchPage> {
       for (var y = now; y >= 1980; y--)
         PTFilterOption(value: '$y', label: '$y'),
     ];
-  }  SearchMode _mode = SearchMode.torrent;
+  }
+
+  SearchMode _mode = SearchMode.torrent;
   late final _ctrl = TextEditingController(text: widget.initialKeyword ?? '');
   String _year = ''; // 影视搜索年份（'' = 全部），由 pill 选择而非输入框，统一只剩一个输入框
 

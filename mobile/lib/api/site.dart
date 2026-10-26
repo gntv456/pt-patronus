@@ -70,7 +70,7 @@ class SiteConnectivityStatus {
 
 /// 站点定义诊断（后端 internal/site 的四类「配置被静默忽略」）。
 class DefinitionDiagnostic {
-  final String kind; // bad_regexp / unknown_key / duplicate_id / skipped_subdir
+  final String kind; // 五类见 internal/site/definitions_diag.go
   final String site;
   final String file;
   final String detail;

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -273,6 +274,11 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 		p, ferr := c.fetchPayload(ctx, s, password)
 		if ferr != nil {
 			if dir == "pull" && !builtin {
+				// 纯拉取时云端没数据不算故障，但也不该把 HTTP 404 原文甩给用户。
+				if errors.Is(ferr, cookiecloud.ErrEmptyPayload) {
+					return report, errors.New("云端该 UUID 暂无数据（浏览器扩展尚未推送）：" +
+						"请先在扩展里同步一次，或把同步方向设为「双向/推送」")
+				}
 				return report, ferr
 			}
 			if dir == "pull" && builtin {
@@ -309,6 +315,19 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 	return report, nil
 }
 
+// cookieCloudDecryptErr 把解密失败翻成可操作中文。填充校验失败分不清「密码错」与
+// 「密文损坏」，文案同时给两条出路；"bad pkcs7 padding" 这类英文对用户没有信息量。
+func cookieCloudDecryptErr(err error) error {
+	switch {
+	case errors.Is(err, cookiecloud.ErrBadPassword):
+		return errors.New("解密 CookieCloud 数据失败：密码不正确，或云端数据由其它密码加密" +
+			"（请确认浏览器扩展与本程序使用同一 UUID 与密码）")
+	case errors.Is(err, cookiecloud.ErrCorruptPayload):
+		return errors.New("解密 CookieCloud 数据失败：云端数据已损坏或格式不受支持（可在扩展里重新同步一次覆盖云端）")
+	}
+	return fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
+}
+
 // fetchPayload 拉取并解密。builtin 模式直读内置 store（无数据时返回「未推送」错误
 // 供调用方区分）；external 模式 GET /get/{uuid}。
 func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettings, password string) (map[string][]cookiecloud.CookieEntry, error) {
@@ -323,7 +342,7 @@ func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettin
 		}
 		payload, err := cookiecloud.DecodeEnvelope(body, s.UUID, password)
 		if err != nil {
-			return nil, fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
+			return nil, cookieCloudDecryptErr(err)
 		}
 		if payload == nil {
 			payload = map[string][]cookiecloud.CookieEntry{}
@@ -338,14 +357,20 @@ func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettin
 	if err != nil {
 		return nil, fmt.Errorf("拉取 CookieCloud 失败: %w", err)
 	}
-	// 非 2xx（5xx/网关错误页等）不能当成「云端没数据」：那样会走进「从空 base 推送」
+	// 404 是「该 UUID 还没有任何数据」（真实 CookieCloud 对未注册 uuid 就回 404）：
+	// 首次推送的常态，按空 payload 处理，否则新账号第一次 Push 永远失败。
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("云端该 UUID 暂无数据（浏览器扩展尚未推送）: %w",
+			cookiecloud.ErrEmptyPayload)
+	}
+	// 其余非 2xx（5xx/网关错误页等）不能当成「云端没数据」：那样会走进「从空 base 推送」
 	// 分支，把云端其它 host 抹掉。状态异常一律按拉取失败处理，由调用方跳过本次推送。
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("拉取 CookieCloud 失败: HTTP %d", resp.StatusCode)
 	}
 	payload, err := cookiecloud.DecodeEnvelope(resp.Body, s.UUID, password)
 	if err != nil {
-		return nil, fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
+		return nil, cookieCloudDecryptErr(err)
 	}
 	if payload == nil {
 		payload = map[string][]cookiecloud.CookieEntry{}

@@ -7,6 +7,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -197,5 +198,22 @@ func TestDecodeEnvelope_CryptoTypeField(t *testing.T) {
 	}
 	if got := CookieStringForHost(payload, "host.io"); !strings.Contains(got, "t=v") {
 		t.Errorf("got %q", got)
+	}
+}
+
+// 密码不对时必须是可归类的 ErrBadPassword（上层据此给「密码错或数据损坏」的人话），
+// 而不再是裸英文 "bad pkcs7 padding"。
+func TestDecryptPayloadWrongPasswordSentinel(t *testing.T) {
+	enc, err := EncryptPayload(map[string][]CookieEntry{
+		"demo.pt": {{Name: "sess", Value: "v", Domain: "demo.pt", Path: "/"}},
+	}, "u-sentinel", "right-pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecryptPayload(enc, "u-sentinel", "wrong-pw"); !errors.Is(err, ErrBadPassword) {
+		t.Fatalf("want ErrBadPassword, got %v", err)
+	}
+	if _, err := DecryptPayload("not-base64!!!", "u-sentinel", "right-pw"); !errors.Is(err, ErrCorruptPayload) {
+		t.Fatalf("bad base64 should be ErrCorruptPayload, got %v", err)
 	}
 }

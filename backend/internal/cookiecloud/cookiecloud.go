@@ -189,10 +189,10 @@ func Decrypt(b64 string, key []byte) ([]byte, error) {
 	}
 	raw, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		return nil, fmt.Errorf("base64: %w", err)
+		return nil, fmt.Errorf("%w: base64: %v", ErrCorruptPayload, err)
 	}
 	if len(raw) == 0 {
-		return nil, fmt.Errorf("ciphertext length invalid")
+		return nil, fmt.Errorf("%w: ciphertext length invalid", ErrCorruptPayload)
 	}
 	// saltedHdrLen 是 "Salted__" + 8 字节盐的长度；legacy 密文 = 头 + AES-256-CBC 块
 	const saltedHdrLen = 8 + 8
@@ -200,7 +200,7 @@ func Decrypt(b64 string, key []byte) ([]byte, error) {
 		return decryptSalted(raw, key[:aes.BlockSize])
 	}
 	if len(raw)%aes.BlockSize != 0 {
-		return nil, fmt.Errorf("ciphertext length invalid")
+		return nil, fmt.Errorf("%w: ciphertext length invalid", ErrCorruptPayload)
 	}
 	block, err := aes.NewCipher(key[:aes.BlockSize])
 	if err != nil {
@@ -217,7 +217,7 @@ func Decrypt(b64 string, key []byte) ([]byte, error) {
 func decryptSalted(raw, key []byte) ([]byte, error) {
 	const hdr = 8 + 8 // "Salted__" + 盐
 	if len(raw) <= hdr || (len(raw)-hdr)%aes.BlockSize != 0 {
-		return nil, fmt.Errorf("ciphertext length invalid")
+		return nil, fmt.Errorf("%w: ciphertext length invalid", ErrCorruptPayload)
 	}
 	salt := raw[8:hdr]
 	dk := evpBytesToKey(key, salt, 32+aes.BlockSize)
@@ -234,15 +234,15 @@ func decryptSalted(raw, key []byte) ([]byte, error) {
 // unpadPKCS7 校验并去除 PKCS7 填充。
 func unpadPKCS7(pt []byte) ([]byte, error) {
 	if len(pt) == 0 {
-		return nil, fmt.Errorf("bad pkcs7 padding")
+		return nil, fmt.Errorf("%w: bad pkcs7 padding", ErrBadPassword)
 	}
 	pad := int(pt[len(pt)-1])
 	if pad < 1 || pad > aes.BlockSize || pad > len(pt) {
-		return nil, fmt.Errorf("bad pkcs7 padding")
+		return nil, fmt.Errorf("%w: bad pkcs7 padding", ErrBadPassword)
 	}
 	for i := len(pt) - pad; i < len(pt); i++ {
 		if int(pt[i]) != pad {
-			return nil, fmt.Errorf("bad pkcs7 padding")
+			return nil, fmt.Errorf("%w: bad pkcs7 padding", ErrBadPassword)
 		}
 	}
 	return pt[:len(pt)-pad], nil
@@ -267,7 +267,7 @@ func DecryptPayload(encryptedB64, uuid, password string) (map[string][]CookieEnt
 func ParsePayload(plain []byte) (map[string][]CookieEntry, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(plain, &top); err != nil {
-		return nil, fmt.Errorf("parse payload: %w", err)
+		return nil, fmt.Errorf("%w: parse payload: %v", ErrCorruptPayload, err)
 	}
 	raw, isWrapped := top["cookie_data"]
 	if !isWrapped {
@@ -276,9 +276,9 @@ func ParsePayload(plain []byte) (map[string][]CookieEntry, error) {
 	var data map[string][]CookieEntry
 	if err := json.Unmarshal(raw, &data); err != nil {
 		if isWrapped {
-			return nil, fmt.Errorf("parse cookie_data: %w", err)
+			return nil, fmt.Errorf("%w: parse cookie_data: %v", ErrCorruptPayload, err)
 		}
-		return nil, fmt.Errorf("parse payload: %w", err)
+		return nil, fmt.Errorf("%w: parse payload: %v", ErrCorruptPayload, err)
 	}
 	return data, nil
 }
@@ -295,7 +295,7 @@ func VerifyPushProof(encryptedB64, uuid, password string) error {
 	}
 	s := strings.TrimLeft(string(plain), " \t\r\n")
 	if s == "" || s[0] != '{' {
-		return fmt.Errorf("payload is not a JSON object")
+		return fmt.Errorf("%w: payload is not a JSON object", ErrCorruptPayload)
 	}
 	return nil
 }
@@ -305,6 +305,14 @@ type Envelope struct {
 	Encrypted  string `json:"encrypted"`
 	CryptoType string `json:"crypto_type"`
 }
+
+// ErrBadPassword 解密失败：密钥不对，或密文被改过。填充/CBC 校验分不清两者，
+// 面向用户的文案必须同时给出两条出路（确认 UUID+密码 / 重新同步）。
+var ErrBadPassword = errors.New(
+	"cookiecloud password incorrect or data corrupted")
+
+// ErrCorruptPayload 密文格式非法（截断/非法 base64/长度不对）或解密后不是预期 JSON。
+var ErrCorruptPayload = errors.New("cookiecloud payload corrupt")
 
 // ErrEmptyPayload 云端该 UUID 还没有任何数据（首次推送前的常态）。
 // 调用方必须把它和「拉取真失败」区分开：前者可以从空 base 开始推送，

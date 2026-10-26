@@ -93,6 +93,10 @@ func TestDoSync_DecryptFailureSkipsPush(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "跳过本次推送") {
 		t.Fatalf("解密失败应跳过推送, got %v", err)
 	}
+	// 密码不匹配要给「密码不正确 / 由其它密码加密」的人话，不许把 bad pkcs7 padding 甩给用户。
+	if !strings.Contains(err.Error(), "密码不正确") || strings.Contains(err.Error(), "padding") {
+		t.Errorf("解密失败文案要可操作且不含密码学术语, got %v", err)
+	}
 	if got := posts.Load(); got != 0 {
 		t.Errorf("解密失败仍推送会抹掉云端 keep.me 等其它 host, posts=%d", got)
 	}
@@ -130,5 +134,46 @@ func TestDoSync_BuiltinEmptyStillPushes(t *testing.T) {
 	}
 	if report.Pushed != 1 {
 		t.Errorf("应把本地站点写进内置 store, pushed=%d", report.Pushed)
+	}
+}
+
+// TestDoSync_FirstPushOn404Allowed 真实 CookieCloud 对未注册 UUID 回 404 ——
+// 这是「云端还没有数据」而不是故障。从前所有非 2xx 都按拉取失败处理，
+// 新账号第一次 Push 永远推不上去（只能先在别处推一次才能激活）。
+func TestDoSync_FirstPushOn404Allowed(t *testing.T) {
+	var posts atomic.Int64
+	srv := ccServer(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"not found"}`))
+	}, &posts)
+	ch := ccChainWithLocalCookie(t)
+	report, err := ch.doSync(context.Background(), ccSettings(t, srv, "u-new", "pass"))
+	if err != nil {
+		t.Fatalf("首次推送（云端 404）不应失败: %v", err)
+	}
+	if report.Pushed != 1 {
+		t.Fatalf("Pushed = %d, want 1", report.Pushed)
+	}
+	if got := posts.Load(); got != 1 {
+		t.Fatalf("应上传一次, posts=%d", got)
+	}
+}
+
+// TestDoSync_PullOnly404Friendly 纯拉取遇到 404：给人话「云端暂无数据」，
+// 不回 HTTP 404 原文，也不触发推送。
+func TestDoSync_PullOnly404Friendly(t *testing.T) {
+	var posts atomic.Int64
+	srv := ccServer(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"not found"}`))
+	}, &posts)
+	ch := ccChainWithLocalCookie(t)
+	s := ccSettings(t, srv, "u-none", "pass")
+	s.Direction = "pull"
+	if _, err := ch.doSync(context.Background(), s); err == nil || !strings.Contains(err.Error(), "暂无数据") {
+		t.Fatalf("want friendly empty message, got %v", err)
+	}
+	if got := posts.Load(); got != 0 {
+		t.Fatalf("pull-only 不该 POST, posts=%d", got)
 	}
 }

@@ -28,6 +28,11 @@ export function useNoticeMeta() {
     backup_import: { icon: 'check-circle', color: 'var(--pt-success)', label: t('notices.source.backup_import') },
     freeleech: { icon: 'party-popper', color: 'var(--pt-warn)', label: 'Freeleech' },
     subscribe_hit: { icon: 'check-circle', color: 'var(--pt-success)', label: t('notices.source.subscribe_hit') },
+    subscribe_check_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.subscribe_check_fail'),
+    },
     subscribe_list_fail: {
       icon: 'alert-circle',
       color: 'var(--pt-warn)',
@@ -35,6 +40,11 @@ export function useNoticeMeta() {
     },
     rss_list_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.rss_list_fail') },
     rss_check_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.rss_check_fail') },
+    rss_download_fail: {
+      icon: 'alert-circle',
+      color: 'var(--pt-warn)',
+      label: t('notices.source.rss_download_fail'),
+    },
     strm_list_fail: { icon: 'alert-circle', color: 'var(--pt-warn)', label: t('notices.source.strm_list_fail') },
     brushflow_list_fail: {
       icon: 'alert-circle',
@@ -90,9 +100,11 @@ export const noticeSourceRoute: Record<NoticeSource, string> = {
   backup_done: 'backup',
   backup_import: 'backup',
   subscribe_hit: 'subscriptions',
+  subscribe_check_fail: 'subscriptions',
   subscribe_list_fail: 'subscriptions',
   rss_list_fail: 'rss',
   rss_check_fail: 'rss',
+  rss_download_fail: 'rss',
   strm_list_fail: 'cloud',
   brushflow_list_fail: 'brushflow',
   contract_list_fail: 'contract',

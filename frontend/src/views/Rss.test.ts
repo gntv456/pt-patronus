@@ -10,7 +10,15 @@ import zhCN from '@/i18n/locales/zh-CN'
 
 type ItemsResponse = { items: unknown[]; total?: number; limit: number; truncated: boolean }
 type CheckResponse =
-  | { ok: true; new_count: number; scanned: number; total: number; truncated: boolean }
+  | {
+      ok: true
+      new_count: number
+      scanned: number
+      total: number
+      truncated: boolean
+      download_failed?: number
+      download_errors?: string[]
+    }
   | { ok: false; new_count: number; error?: string }
 
 const state = vi.hoisted(() => ({
@@ -158,6 +166,26 @@ describe('Rss 手动检查：扫描账面要说给用户', () => {
     await clickCheck(el)
     expect(warn).not.toHaveBeenCalled()
     expect(success).toHaveBeenCalledWith('新增 3 条')
+  })
+
+  // 自动下载失败的条目已回滚：只报「新增 N 条」时条目列表是空的，用户看不到失败。
+  it('自动下载失败：warning 说出失败条数与原因，不报成功', async () => {
+    state.checkRes = {
+      ok: true,
+      new_count: 1,
+      scanned: 1,
+      total: 1,
+      truncated: false,
+      download_failed: 1,
+      download_errors: ['下载器暂时连不上：请确认客户端已启动'],
+    }
+    const el = await mountRss()
+    await clickCheck(el)
+    expect(success).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(1)
+    const msg = warn.mock.calls[0][0] as string
+    expect(msg).toContain('未能推送到下载器')
+    expect(msg).toContain('下载器暂时连不上')
   })
 })
 

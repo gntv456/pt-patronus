@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -84,6 +85,22 @@ type RssCheckResult struct {
 	Scanned   int
 	Total     int
 	Truncated bool
+	// DownloadFailed 本轮「发现了但没能推进下载器」的条数（无下载器 / 推送失败）：
+	// 这些条目已回滚、下轮会重试。必须和 New 一起回给界面——只报「新增 N 条」
+	// 时，条目列表为空没有任何下文，用户不知道自动下载一直没成功。
+	DownloadFailed int
+	// DownloadErrors 前几条失败原因（人类可读，最多 maxRssDownloadErrors 条）。
+	DownloadErrors []string
+}
+
+// maxRssDownloadErrors 回给界面的失败明细上限（计数不封顶）。
+const maxRssDownloadErrors = 3
+
+func noteRssDownloadErr(res *RssCheckResult, reason string) {
+	res.DownloadFailed++
+	if len(res.DownloadErrors) < maxRssDownloadErrors {
+		res.DownloadErrors = append(res.DownloadErrors, reason)
+	}
 }
 
 // Check 检查单个订阅：抓取→解析→过滤→去重→(可选)下载→通知。返回本轮账面。
@@ -234,11 +251,13 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (*Rss
 		if sub.AutoDownload {
 			if dlID == 0 {
 				slog.Warn("rss auto download skipped: no downloader configured", "sub", sub.ID, "title", cd.title)
+				noteRssDownloadErr(res, "未配置下载器（自动下载已开启）：请到「RSS」页为该订阅选择一个下载器")
 				if e := c.itemOp.Delete(it.ID); e != nil {
 					slog.Warn("rss item rollback failed", "sub", sub.ID, "err", e)
 				}
 			} else if err := c.dlCh.Add(ctx, dlID, rssAutoDownloadOptions(sub, cd.torrURL, cd.key)); err != nil {
 				slog.Warn("rss auto download failed", "sub", sub.ID, "title", cd.title, "err", err)
+				noteRssDownloadErr(res, errtext.Text(err))
 				if e := c.itemOp.Delete(it.ID); e != nil {
 					slog.Warn("rss item rollback failed", "sub", sub.ID, "err", e)
 				}
@@ -264,7 +283,30 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (*Rss
 	if newCount > 0 {
 		slog.Info("rss new items", "sub", sub.Name, "count", newCount)
 	}
+	// 自动下载失败在 cron 里只有一行 Warn：条目已回滚、界面恒显示「已检查、新增 N 条」，
+	// 而列表是空的——用户学到的是「RSS 就是没东西下来」。与抓取失败同理必须自曝
+	// （按订阅+当天去重，失败每轮重试时不刷屏）。
+	if res.DownloadFailed > 0 && c.notice != nil {
+		_ = c.notice.Notice(ctx, rssDownloadFailNotice(sub, res), true)
+	}
 	return res, nil
+}
+
+// rssDownloadFailNotice 组装「自动下载推种失败」的站内通知。单独成函数是为了能
+// 不连通知服务直接断言载荷（与 rssCheckFailNotice 同一形状）。
+func rssDownloadFailNotice(
+	sub *models.RssSubscription, res *RssCheckResult,
+) notice.Input {
+	body := fmt.Sprintf("本轮发现 %d 条新条目，其中 %d 条未能推送到下载器：%s。条目已回滚，下轮会自动重试。",
+		res.New, res.DownloadFailed, strings.Join(res.DownloadErrors, "；"))
+	day := time.Now().Format("2006-01-02")
+	return notice.Input{
+		Source: notice.SourceRssDownloadFail,
+		Key:    fmt.Sprintf("rss-dlfail:%d:%s", sub.ID, day),
+		Title:  "RSS 自动下载失败：" + sub.Name,
+		Body:   body,
+		Level:  "warning",
+	}
 }
 
 // rssCheckFailNotice 组装「某个订阅本轮抓取/解析失败」的站内通知。

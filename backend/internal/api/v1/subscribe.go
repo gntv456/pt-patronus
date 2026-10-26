@@ -63,7 +63,7 @@ func (h *SubscribeHandler) List(c *gin.Context) {
 func (h *SubscribeHandler) Create(c *gin.Context) {
 	var in subReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Title == "" || in.Source == "" || in.SourceID == "" {
@@ -124,7 +124,7 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	var in subReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// *bool：nil=不改，非 nil=设订阅自定义值；清空回全局默认走 reset 端点。
@@ -221,7 +221,7 @@ type batchReq struct {
 func (h *SubscribeHandler) Batch(c *gin.Context) {
 	var in batchReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Op == "update" && in.Patch == nil {
@@ -308,7 +308,7 @@ func (h *SubscribeHandler) GetGlobalSettings(c *gin.Context) {
 func (h *SubscribeHandler) UpdateGlobalSettings(c *gin.Context) {
 	var gd chain.GlobalDefaults
 	if err := c.ShouldBindJSON(&gd); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.subCh.SaveGlobalDefaults(gd); err != nil {
@@ -341,7 +341,7 @@ func (h *SubscribeHandler) ResetFields(c *gin.Context) {
 		Fields []string `json:"fields"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	for _, f := range req.Fields {

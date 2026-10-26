@@ -11,8 +11,8 @@
 474	backend/internal/entertainment/games_gobang_search.go
 804	backend/internal/entertainment/games_hdblue_gobang_ai.go
 511	frontend/src/api/entertainmentTypes.ts
-4370	frontend/src/i18n/locales/en-US.ts
-4332	frontend/src/i18n/locales/zh-CN.ts
+4375	frontend/src/i18n/locales/en-US.ts
+4337	frontend/src/i18n/locales/zh-CN.ts
 435	frontend/src/views/Cloud.vue
 415	frontend/src/views/NasServer.vue
 401	frontend/src/views/usePlugins.ts

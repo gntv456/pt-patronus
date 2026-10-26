@@ -78,7 +78,7 @@ func (h *RssHandler) List(c *gin.Context) {
 func (h *RssHandler) Create(c *gin.Context) {
 	var in rssReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if in.Name == "" || in.URL == "" {
@@ -113,7 +113,7 @@ func (h *RssHandler) Update(c *gin.Context) {
 	}
 	var in rssReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	applyRssReq(r, in)
@@ -163,6 +163,9 @@ func (h *RssHandler) Check(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"ok": true, "new_count": res.New,
 		"scanned": res.Scanned, "total": res.Total, "truncated": res.Truncated,
+		// 自动下载失败的条数与原因：这些条目已回滚、下轮重试，不能只报「新增 N 条」——
+		// 条目列表是空的，用户看不到任何失败迹象。
+		"download_failed": res.DownloadFailed, "download_errors": res.DownloadErrors,
 	})
 }
 

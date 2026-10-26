@@ -28,7 +28,7 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			if err := c.op.MarkCheckedWithResult(sub.ID, "未配置默认下载器，本轮没有搜索"); err != nil {
 				slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 			}
-			return 0, fmt.Errorf("no default downloader")
+			return 0, fmt.Errorf("未配置默认下载器：请到「下载器」页把要用的那个设为默认，或在订阅里指定下载器")
 		}
 	}
 

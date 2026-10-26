@@ -51,25 +51,29 @@ type noticeData struct {
 
 // 13 类通知 Source 枚举（事件 tag）。
 const (
-	SourceSiteAnniv         = "site_anniv"          // 今日站庆
-	SourceNewMail           = "new_mail"            // 新邮件
-	SourceAssessPass        = "assess_pass"         // 考核完成
-	SourceAssessFail        = "assess_fail"         // 考核失败
-	SourceAnnounce          = "announce"            // 新公告
-	SourceHostOffline       = "host_offline"        // 服务器掉线
-	SourceNASOffline        = "nas_offline"         // NAS 掉线
-	SourceCameraOffline     = "camera_offline"      // 摄像头掉线（小米等 P2P 设备经 RTSP 探活失败）
-	SourceReseedDone        = "reseed_done"         // 辅种完成
-	SourceReseedFail        = "reseed_fail"         // 辅种 Torznab 搜索失败（端点配置坏但搜索静默返回空）
-	SourceDLDone            = "dl_done"             // 下载完成
-	SourceSiteOffline       = "site_offline"        // 站点掉线（cookie 失效）
-	SourceBackupDone        = "backup_done"         // 备份完成
-	SourceBackupImport      = "backup_import"       // 备份导入成功
-	SourceFreeleech         = "freeleech"           // 今日站免
-	SourceSubscribeHit      = "subscribe_hit"       // 订阅命中（自动下载）
-	SourceSubscribeListFail = "subscribe_list_fail" // 订阅整轮检查未开始（订阅列表读失败）
-	SourceRssListFail       = "rss_list_fail"       // RSS 整轮扫描未开始（启用订阅读失败）
-	SourceRssCheckFail      = "rss_check_fail"      // RSS 单个订阅本轮抓取/解析失败（cron 只留日志＝界面上永远"健康"）
+	SourceSiteAnniv     = "site_anniv"     // 今日站庆
+	SourceNewMail       = "new_mail"       // 新邮件
+	SourceAssessPass    = "assess_pass"    // 考核完成
+	SourceAssessFail    = "assess_fail"    // 考核失败
+	SourceAnnounce      = "announce"       // 新公告
+	SourceHostOffline   = "host_offline"   // 服务器掉线
+	SourceNASOffline    = "nas_offline"    // NAS 掉线
+	SourceCameraOffline = "camera_offline" // 摄像头掉线（小米等 P2P 设备经 RTSP 探活失败）
+	SourceReseedDone    = "reseed_done"    // 辅种完成
+	SourceReseedFail    = "reseed_fail"    // 辅种 Torznab 搜索失败（端点配置坏但搜索静默返回空）
+	SourceDLDone        = "dl_done"        // 下载完成
+	SourceSiteOffline   = "site_offline"   // 站点掉线（cookie 失效）
+	SourceBackupDone    = "backup_done"    // 备份完成
+	SourceBackupImport  = "backup_import"  // 备份导入成功
+	SourceFreeleech     = "freeleech"      // 今日站免
+	SourceSubscribeHit  = "subscribe_hit"  // 订阅命中（自动下载）
+	// 订阅本轮被拦下/跳过（未配置下载器/评分闸门/站点不可用）
+	SourceSubscribeCheckFail = "subscribe_check_fail"
+	SourceSubscribeListFail  = "subscribe_list_fail" // 订阅整轮检查未开始（订阅列表读失败）
+	SourceRssListFail        = "rss_list_fail"       // RSS 整轮扫描未开始（启用订阅读失败）
+	SourceRssCheckFail       = "rss_check_fail"      // RSS 单个订阅本轮抓取/解析失败（cron 只留日志＝界面上永远"健康"）
+	SourceRssDownloadFail    = "rss_download_fail"   // RSS 自动下载推种失败
+	// 条目已回滚、下轮重试；cron 只留日志时条目列表永远为空（静默）。
 	SourceStrmListFail      = "strm_list_fail"      // STRM 后台维护未开始（续签/追更读库失败）
 	SourceBrushflowListFail = "brushflow_list_fail" // 刷流整轮未开始（任务清单读失败）
 	SourceContractListFail  = "contract_list_fail"  // 保种契约整轮未检查（规则清单读失败）

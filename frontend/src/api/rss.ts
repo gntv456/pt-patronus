@@ -67,7 +67,16 @@ export const rssApi = {
   check: (id: number) =>
     http
       .post<
-        | { ok: true; new_count: number; scanned: number; total: number; truncated: boolean }
+        | {
+            ok: true
+            new_count: number
+            scanned: number
+            total: number
+            truncated: boolean
+            // 自动下载失败条数/原因：条目已回滚、下轮重试。缺省=0（旧后端）。
+            download_failed?: number
+            download_errors?: string[]
+          }
         | { ok: false; new_count: number; error?: string }
       >(`/rss/${id}/check`)
       .then((r) => r.data),

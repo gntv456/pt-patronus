@@ -156,8 +156,19 @@ async function check(r: RssSubscription) {
   try {
     const res = await rssApi.check(r.id)
     if (res.ok) {
-      // 截断要说出来：本轮只查了窗口内的条目，只报「新增 N 条」会把「没扫全」说成「扫完了」
-      if (res.truncated) {
+      // 自动下载失败的条目已回滚、下轮重试：只报「新增 N 条」时条目列表是空的，
+      // 用户看不到任何失败迹象（cron 每轮同样如此）。
+      const failed = res.download_failed ?? 0
+      // 截断要说出来：本轮只查了窗口内的条目，只报「新增 N 条」会把「没扫完」说成「扫完了」
+      if (failed > 0) {
+        ElMessage.warning(
+          t('rss.downloadFailed', {
+            n: res.new_count,
+            failed,
+            reason: res.download_errors?.[0] || '',
+          }),
+        )
+      } else if (res.truncated) {
         ElMessage.warning(t('rss.newItemsTruncated', { n: res.new_count, scanned: res.scanned, total: res.total }))
       } else {
         ElMessage.success(t('rss.newItems', { n: res.new_count }))

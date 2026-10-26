@@ -228,21 +228,27 @@ func (c *SubscribeChain) defaultDownloaderID() uint {
 // noticeOnce 发一次性事件通知（命中推送等）：Key 掺时间戳不去重——命中去重靠
 // HitExists，通知层再去重会漏报。
 func (c *SubscribeChain) noticeOnce(ctx context.Context, sub *models.Subscription, title, body, level string) {
-	c.noticeKeyed(ctx, sub, fmt.Sprintf("sub:%d:%d", sub.ID, time.Now().UnixNano()), title, body, level, false)
+	c.noticeKeyed(ctx, sub, notice.SourceSubscribeHit,
+		fmt.Sprintf("sub:%d:%d", sub.ID, time.Now().UnixNano()), title, body, level, false)
 }
 
 // noticeStable 持续型状态提示（稳定 Key + 当天去重）：同订阅同主题当天只发一条。
 // 修复「未配置默认下载器」这类持续状态每轮 cron × 每订阅刷一条通知、淹没真实告警。
+// 来源必须是独立的「检查异常」：这些是未配置下载器/评分拦截/站点不可用，
+// 挂 SourceSubscribeHit 时通知中心会贴「订阅命中」标签，正文却在说失败。
 func (c *SubscribeChain) noticeStable(ctx context.Context, sub *models.Subscription, topic, title, body, level string) {
-	c.noticeKeyed(ctx, sub, fmt.Sprintf("sub:%d:%s", sub.ID, topic), title, body, level, true)
+	c.noticeKeyed(ctx, sub, notice.SourceSubscribeCheckFail,
+		fmt.Sprintf("sub:%d:%s", sub.ID, topic), title, body, level, true)
 }
 
-func (c *SubscribeChain) noticeKeyed(ctx context.Context, sub *models.Subscription, key, title, body, level string, dedup bool) {
+func (c *SubscribeChain) noticeKeyed(
+	ctx context.Context, sub *models.Subscription, source, key, title, body, level string, dedup bool,
+) {
 	if c.notice == nil {
 		return
 	}
 	_ = c.notice.Notice(ctx, notice.Input{
-		Source: notice.SourceSubscribeHit,
+		Source: source,
 		Key:    key,
 		Title:  title, Body: body, Level: level,
 	}, dedup)

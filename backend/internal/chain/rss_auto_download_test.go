@@ -115,6 +115,11 @@ func TestRssAutoDownloadRetriesAfterAddFailure(t *testing.T) {
 	if items, _ := env.itemOp.ListBySubscription(sub.ID, 10); len(items) != 0 {
 		t.Fatalf("add 失败后应回滚去重行（否则永不重试），got %d 行", len(items))
 	}
+	// 失败必须进本轮账面：只回 ok:true/new_count=1 时，界面「新增 1 条」而条目列表为空，
+	// 用户看不到自动下载一直没成功。
+	if res.DownloadFailed != 1 || len(res.DownloadErrors) == 0 {
+		t.Fatalf("推种失败要计数并带原因, got failed=%d errors=%v", res.DownloadFailed, res.DownloadErrors)
+	}
 
 	// 第 2 轮：add 恢复 → 重新发现、成功入队并标记已下载。
 	res, err = env.ch.Check(context.Background(), sub)
@@ -123,6 +128,9 @@ func TestRssAutoDownloadRetriesAfterAddFailure(t *testing.T) {
 	}
 	if res.New != 1 {
 		t.Fatalf("check2 new=%d want 1（回滚后下轮应重见重试）", res.New)
+	}
+	if res.DownloadFailed != 0 {
+		t.Fatalf("恢复后不应再计失败, got %d", res.DownloadFailed)
 	}
 	if got := *env.addCalls; got != 2 {
 		t.Fatalf("check2 addCalls=%d want 2", got)

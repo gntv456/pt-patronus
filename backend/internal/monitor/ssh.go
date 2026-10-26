@@ -136,7 +136,7 @@ func sshTimeout(t *models.MonitorTarget) time.Duration {
 // dialSSH 建立 SSH 会话（密码/私钥认证；creds.PrivateKey 非空时优先 publickey）。
 func dialSSH(store HostKeyStore, t *models.MonitorTarget, creds Credentials, timeout time.Duration) (sshExecutor, error) {
 	if creds.Username == "" {
-		return nil, fmt.Errorf("ssh username is required")
+		return nil, errors.New("SSH 用户名未填写：请在该监控设备的「凭据」里补上用户名后再测")
 	}
 	port := t.Port
 	if port == 0 {

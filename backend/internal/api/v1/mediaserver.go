@@ -241,7 +241,8 @@ func respondMediaErr(c *gin.Context, err error) {
 func (h *MediaServerHandler) Webhook(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
-		c.JSON(http.StatusOK, gin.H{"ok": false})
+		// parseID 已经回过 400 信封（AbortWithStatusJSON），这里再写一次会让响应体里
+		// 出现两段 JSON —— 客户端解析必失败，等于把「哪个 id 不对」这句有用的话送不出去。
 		return
 	}
 	// 公开端点：显式 1MB 上限兜底（webhook 负载本就极小），避免未授权大 body 放大。
@@ -328,7 +329,8 @@ func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 func (h *MediaServerHandler) Direct(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
-		errcode.Respond(c, errcode.ResourceNotFound)
+		// parseID 已经回过 400 信封（AbortWithStatusJSON），这里再写一次会让响应体里
+		// 出现两段 JSON —— 客户端解析必失败，等于把「哪个 id 不对」这句有用的话送不出去。
 		return
 	}
 	target, _, err := h.svc.DirectLink(c.Request.Context(), id, c.Param("path"))
@@ -355,9 +357,13 @@ func respondMediaServerError(c *gin.Context, err error) {
 
 // mediaServerErrText 给 200+{ok:false,error} 软失败面用：raw Go 错误（"record not found"）
 // 会被前端原样弹给用户，这里换成中文。
+//
+// 传输层失败（连不上 / 超时 / 缺协议 / SSRF）交给 errtext 这一处单一来源，
+// 与站点、下载器的「测试连接」同一口径——从前这里只认 record not found，
+// 连接被拒时界面弹的是 `Get "http://…": dial tcp … connectex: No connection…`。
 func mediaServerErrText(err error) string {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "媒体服务器不存在"
 	}
-	return err.Error()
+	return userErrText(err)
 }

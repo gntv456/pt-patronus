@@ -58,6 +58,27 @@ func TestCheckTargetsLongErrorTruncated(t *testing.T) {
 	}
 }
 
+// 体检探活必须跟搜索/识别用同一个 TMDB 地址：写死官方域名时，
+// 配了国内镜像（TMDB_API_DOMAIN）的部署会得到常驻假红。
+func TestNetworkProbeUsesConfiguredTMDB(t *testing.T) {
+	urls := networkProbeURLs(func() string { return "https://api.tmdb.org/3/configuration" })
+	if len(urls) != 2 || urls[0] != "https://api.tmdb.org/3/configuration" {
+		t.Fatalf("首个探活目标应是配置的 TMDB 地址, got %v", urls)
+	}
+	if urls[1] != "https://www.baidu.com" {
+		t.Fatalf("第二个探活目标应保持通用出网地址, got %v", urls)
+	}
+}
+
+func TestNetworkProbeFallsBackToOfficial(t *testing.T) {
+	for _, probe := range []func() string{nil, func() string { return "" }, func() string { return "   " }} {
+		urls := networkProbeURLs(probe)
+		if urls[0] != "https://api.themoviedb.org/3/configuration" {
+			t.Fatalf("未配置时应回退官方域名, got %v", urls)
+		}
+	}
+}
+
 func TestCheckQueueBacklog(t *testing.T) {
 	c := CheckQueue(func() (int64, time.Duration, error) { return 3, 7 * time.Hour, nil })
 	f := c(context.Background())

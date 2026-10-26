@@ -31,7 +31,10 @@ func CheckTargets(id, title string, warnOnly bool, targets []Target) Check {
 			f.Status, f.Severity, f.Detail = StatusSkipped, SevInfo, "未配置"
 			return f
 		}
-		type res struct{ name string; err error }
+		type res struct {
+			name string
+			err  error
+		}
 		results := make([]res, len(targets))
 		done := make(chan struct{})
 		go func() {
@@ -99,12 +102,16 @@ func CheckTargets(id, title string, warnOnly bool, targets []Target) Check {
 }
 
 // CheckNetwork 出网连通性（TMDB / 公共 DNS 解析，best-effort）。
-func CheckNetwork() Check {
+//
+// tmdbProbe 返回当前生效的 TMDB 探活地址（应与搜索/识别链路同一份配置）。
+// 从前这里写死官方 api.themoviedb.org：按 TMDB_API_DOMAIN 换成国内可达镜像的部署，
+// 搜索明明正常，体检却每次都判「出网受限」并把用户支去查代理/DNS（假红）。
+func CheckNetwork(tmdbProbe func() string) Check {
 	return func(ctx context.Context) Finding {
 		f := Finding{ID: "network", Severity: SevWarn, Title: "网络连通性"}
 		client := &http.Client{Timeout: 8 * time.Second}
 		var failed []string
-		for _, u := range []string{"https://api.themoviedb.org/3/configuration", "https://www.baidu.com"} {
+		for _, u := range networkProbeURLs(tmdbProbe) {
 			pctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 			req, _ := http.NewRequestWithContext(pctx, http.MethodGet, u, nil)
 			resp, err := client.Do(req)
@@ -127,6 +134,19 @@ func CheckNetwork() Check {
 		f.Status, f.Severity, f.Detail = StatusOK, SevInfo, "出网正常"
 		return f
 	}
+}
+
+// networkProbeURLs 体检探活目标：TMDB（跟搜索/识别同一份运行时配置）+ 通用出网。
+// tmdbProbe 为空或其返回空串时回退官方域名。
+func networkProbeURLs(tmdbProbe func() string) []string {
+	tmdbURL := ""
+	if tmdbProbe != nil {
+		tmdbURL = strings.TrimSpace(tmdbProbe())
+	}
+	if tmdbURL == "" {
+		tmdbURL = "https://api.themoviedb.org/3/configuration"
+	}
+	return []string{tmdbURL, "https://www.baidu.com"}
 }
 
 // CheckQueue 任务队列积压。pending 与 oldest 由调用方提供（当前只接 CloudTask 队列）。

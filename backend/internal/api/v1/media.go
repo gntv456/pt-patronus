@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -221,7 +222,7 @@ func (h *MediaHandler) Detail(c *gin.Context) {
 	}
 	res, err := h.mediaCh.Detail(c.Request.Context(), source, id)
 	if err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondMediaLookupErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -237,17 +238,28 @@ func (h *MediaHandler) Celebrity(c *gin.Context) {
 	}
 	res, err := h.mediaCh.Celebrity(c.Request.Context(), source, id)
 	if err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+		respondMediaLookupErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
+}
+
+// respondMediaLookupErr 媒体详情/演员简介的失败归类：源名不存在、源不支持该能力
+// 都是调用方参数问题（400 且带原因），不能折成 500「服务内部错误」。
+func respondMediaLookupErr(c *gin.Context, err error) {
+	if errors.Is(err, chain.ErrUnknownMediaSource) ||
+		errors.Is(err, chain.ErrCelebrityUnsupported) {
+		errcode.Respond(c, errcode.InvalidInput.WithDetail(err))
+		return
+	}
+	errcode.Respond(c, errcode.Internal.WithErr(err))
 }
 
 // NFO 生成 NFO。
 func (h *MediaHandler) NFO(c *gin.Context) {
 	var req nfoReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"nfo": h.mediaCh.NFO(&req.Info)})
@@ -275,7 +287,7 @@ func respondMediaConfigWriteErr(c *gin.Context, err error) {
 func (h *MediaHandler) SetQuality(c *gin.Context) {
 	var q chain.MediaQualityConfig
 	if err := c.ShouldBindJSON(&q); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if err := h.mediaCh.SaveQuality(q); err != nil {

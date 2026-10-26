@@ -66,6 +66,14 @@ func (c *MediaChain) SetMediaConfig(s MediaSettings) error {
 	return nil
 }
 
+// ErrUnknownMediaSource 调用方给了不存在的源名。这是 query 参数错误（400），
+// 不是服务端故障（500）——从前 Detail/Celebrity 一律按 Internal 回，
+// 界面只剩「服务内部错误」，AI 工具/插件也拿不到「源名写错了」这条线索。
+var ErrUnknownMediaSource = errors.New("未知媒体源")
+
+// ErrCelebrityUnsupported 该源没有演员简介能力（目前仅豆瓣实现）：同样是调用方选错了源。
+var ErrCelebrityUnsupported = errors.New("该媒体源不支持演员简介")
+
 // Detail 按源名 + source_id 取富详情（演职/推荐/时长/出品国等）。供「媒体详情页」用。
 func (c *MediaChain) Detail(ctx context.Context, source, id string) (*media.MediaInfo, error) {
 	for _, s := range c.provider.Sources() {
@@ -73,7 +81,7 @@ func (c *MediaChain) Detail(ctx context.Context, source, id string) (*media.Medi
 			return s.Detail(ctx, id)
 		}
 	}
-	return nil, fmt.Errorf("unknown media source %q", source)
+	return nil, fmt.Errorf("%w：%q", ErrUnknownMediaSource, source)
 }
 
 // CelebrityCapable 是可选源能力：按源内人员 id 返回演员简介（点 cast 头像拉取）。
@@ -88,10 +96,10 @@ func (c *MediaChain) Celebrity(ctx context.Context, source, personageID string) 
 			if cc, ok := s.(CelebrityCapable); ok {
 				return cc.Celebrity(ctx, personageID)
 			}
-			return nil, fmt.Errorf("source %q 不支持演员简介", source)
+			return nil, fmt.Errorf("%w（%s）", ErrCelebrityUnsupported, source)
 		}
 	}
-	return nil, fmt.Errorf("unknown media source %q", source)
+	return nil, fmt.Errorf("%w：%q", ErrUnknownMediaSource, source)
 }
 
 // Search 跨源搜索。命中（且未过期）缓存直接返回；否则**并发**逐源搜索、按 filter

@@ -80,13 +80,35 @@ func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {
 		lazyTargets("business.downloaders", "下载器连通", false, dlTargets),
 		lazyTargets("business.mediaservers", "媒体服务器连通", false, msTargets),
 		lazyTargets("business.clouddrives", "云盘连通", true, cloudTargets),
-		doctor.CheckNetwork(),
+		doctor.CheckNetwork(tmdbProbeURL(d)),
 		doctor.CheckQueue(func() (int64, time.Duration, error) {
 			if d.cloudTaskOp == nil {
 				return 0, 0, nil
 			}
 			return d.cloudTaskOp.PendingStats()
 		}),
+	}
+}
+
+// tmdbProbeURL 体检探活用当前生效的 TMDB 地址：与搜索/识别链路同一份设置
+// （SystemConfig 热更新优先、env 兜底），不再写死官方域名。
+func tmdbProbeURL(d runtimeDeps) func() string {
+	return func() string {
+		domain := ""
+		if d.cfg != nil {
+			domain = d.cfg.TMDBAPIDomain
+		}
+		if d.mediaCh != nil {
+			if p := d.mediaCh.Provider(); p != nil {
+				if s := p.LoadSettings(); s.TMDBAPIDomain != "" {
+					domain = s.TMDBAPIDomain
+				}
+			}
+		}
+		if domain == "" {
+			domain = "api.themoviedb.org"
+		}
+		return "https://" + domain + "/3/configuration"
 	}
 }
 

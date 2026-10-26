@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
@@ -295,19 +296,24 @@ func parseMediaWebhook(payload []byte) (title, event string) {
 
 // parsePlexForm 从 form-encoded body 提取 title/event（Plex webhook 常以表单发）。
 func parsePlexForm(body string) (title, event string) {
-	for _, kv := range strings.Split(body, "&") {
-		eq := strings.IndexByte(kv, '=')
-		if eq < 0 {
+	// 用 url.ParseQuery 而不是手工按 &/= 切：Plex 表单是 application/x-www-form-urlencoded，
+	// 空格是 '+'、方括号与中文是百分号编码。手工切会把标题显示成 "Foo+Bar" / "%E7%94%B5…"，
+	// 且 metadata%5Btitle%5D 这种键名根本匹配不上。
+	vals, err := url.ParseQuery(body)
+	if err != nil {
+		return "", ""
+	}
+	for k, vs := range vals {
+		if len(vs) == 0 {
 			continue
 		}
-		k, v := kv[:eq], kv[eq+1:]
 		switch {
 		case strings.HasSuffix(k, "[title]") || k == "metadata[title]":
 			if title == "" {
-				title = v
+				title = vs[0]
 			}
 		case k == "event":
-			event = v
+			event = vs[0]
 		}
 	}
 	return title, event

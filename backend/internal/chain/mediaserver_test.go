@@ -33,10 +33,14 @@ func TestParseMediaWebhook(t *testing.T) {
 		t.Errorf("plex json: title=%q event=%q", title, event)
 	}
 
-	// Plex form-encoded
+	// Plex form-encoded：空格是 '+'、中文/方括号百分号编码，必须解码后再展示。
 	title, event = parseMediaWebhook([]byte(`event=media.play&metadata[title]=Foo+Bar`))
-	if title != "Foo+Bar" || event != "media.play" {
-		t.Errorf("plex form: title=%q event=%q", title, event)
+	if title != "Foo Bar" || event != "media.play" {
+		t.Errorf("plex form: title=%q event=%q want Foo Bar", title, event)
+	}
+	title, _ = parseMediaWebhook([]byte(`event=media.play&metadata%5Btitle%5D=%E7%94%B5%E5%BD%B1`))
+	if title != "电影" {
+		t.Errorf("plex form 编码键/中文未解码: title=%q", title)
 	}
 
 	// 空载荷

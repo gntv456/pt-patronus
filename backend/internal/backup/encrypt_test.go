@@ -2,6 +2,7 @@ package backup
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -37,6 +38,45 @@ func TestDecryptWrongPassword(t *testing.T) {
 	}
 	if _, err := Decrypt(enc, "wrong"); !errors.Is(err, ErrBadPassword) {
 		t.Fatalf("want ErrBadPassword, got %v", err)
+	}
+}
+
+// 坏 IV 长度过去直接 panic（gcm.Open 对非 12 字节 nonce 会 panic），
+// Gin 兜底成 500 空响应；它也不是「口令错误」，必须按「文件损坏」归类。
+func TestDecryptMalformedIVIsCorruptNotPassword(t *testing.T) {
+	enc, err := Encrypt([]byte(`{"a":1}`), "pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env backupEncEnvelope
+	if err := json.Unmarshal(enc, &env); err != nil {
+		t.Fatal(err)
+	}
+	env.IV = base64.StdEncoding.EncodeToString([]byte("abc"))
+	blob, _ := json.Marshal(env)
+	if _, err := Decrypt(blob, "pw"); err == nil {
+		t.Fatal("坏 IV 应报错（且不能 panic）")
+	} else if errors.Is(err, ErrBadPassword) {
+		t.Fatalf("坏 IV 是文件损坏，不该判成口令错误: %v", err)
+	}
+	// 正控：原封包仍可正常解密
+	if _, err := Decrypt(enc, "pw"); err != nil {
+		t.Fatalf("原文应可解密: %v", err)
+	}
+}
+
+// 密文短于 GCM 认证标签：无论口令是什么都不可能解出 → 文件损坏。
+func TestDecryptShortCiphertextIsCorrupt(t *testing.T) {
+	enc, err := Encrypt([]byte(`{"a":1}`), "pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env backupEncEnvelope
+	_ = json.Unmarshal(enc, &env)
+	env.Data = base64.StdEncoding.EncodeToString([]byte("abcd"))
+	blob, _ := json.Marshal(env)
+	if _, err := Decrypt(blob, "pw"); err == nil || errors.Is(err, ErrBadPassword) {
+		t.Fatalf("过短密文应归文件损坏，got %v", err)
 	}
 }
 

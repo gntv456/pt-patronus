@@ -87,7 +87,10 @@ func (h *BackupHandler) Export(c *gin.Context) {
 func respondBackupDecryptErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, backup.ErrBadPassword):
-		errcode.Respond(c, errcode.BackupPasswordIncorrect)
+		// GCM 认证失败在密码学上分不清「口令错」与「密文被损坏」，文案必须同时给出
+		// 两条出路；只说「口令错误」时，文件坏掉（下载截断/误改）的用户会反复重试口令。
+		errcode.Respond(c, errcode.BackupPasswordIncorrect.WithDetail(
+			errors.New("解密失败：口令不正确，或备份文件已损坏。请先确认口令；若口令无误，请重新导出备份后再导入")))
 	case errors.Is(err, backup.ErrPasswordRequired):
 		errcode.Respond(c, errcode.BackupPasswordRequired)
 	default:
@@ -139,8 +142,9 @@ func (h *BackupHandler) Import(c *gin.Context) {
 	// 一条都没导入时不发「导入成功」通知：修复前空备份/选错文件也会留下一条成功记录。
 	if h.notice != nil && shouldAnnounceImport(res.Sites, res.Downloaders) {
 		body := fmt.Sprintf("已导入 %d 个站点、%d 个下载器", res.Sites, res.Downloaders)
-		if res.SitesSkipped > 0 || res.DownloadersFailed > 0 {
-			body += fmt.Sprintf("；跳过 %d 个站点、失败 %d 个下载器", res.SitesSkipped, res.DownloadersFailed)
+		if res.SitesSkipped > 0 || res.DownloadersSkipped > 0 || res.DownloadersFailed > 0 {
+			body += fmt.Sprintf("；跳过 %d 个站点、%d 个已存在的下载器、失败 %d 个下载器",
+				res.SitesSkipped, res.DownloadersSkipped, res.DownloadersFailed)
 		}
 		_ = h.notice.Notice(c.Request.Context(), notice.Input{
 			Source: notice.SourceBackupImport,
@@ -154,6 +158,7 @@ func (h *BackupHandler) Import(c *gin.Context) {
 		"imported_sites":       res.Sites,
 		"imported_downloaders": res.Downloaders,
 		"sites_skipped":        res.SitesSkipped,
+		"downloaders_skipped":  res.DownloadersSkipped,
 		"downloaders_failed":   res.DownloadersFailed,
 		"failures":             res.Failures,
 	})

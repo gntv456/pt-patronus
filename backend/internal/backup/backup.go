@@ -185,11 +185,13 @@ func (s *Service) ExportToFile(ctx context.Context, dir string) (string, error) 
 // 逐项失败过去被静默吞掉（只报成功数），用户无从察觉部分数据没恢复——明细随
 // API 响应/通知回前端展示。
 type ImportResult struct {
-	Sites             int      `json:"sites"`              // 成功导入的站点数
-	Downloaders       int      `json:"downloaders"`        // 成功导入的下载器数
-	SitesSkipped      int      `json:"sites_skipped"`      // 重复注册域/非法 URL 等被跳过的站点数
-	DownloadersFailed int      `json:"downloaders_failed"` // 创建失败的下载器数
-	Failures          []string `json:"failures,omitempty"` // 失败原因（人类可读，最多 maxImportFailures 条）
+	Sites        int `json:"sites"`         // 成功导入的站点数
+	Downloaders  int `json:"downloaders"`   // 成功导入的下载器数
+	SitesSkipped int `json:"sites_skipped"` // 重复注册域/非法 URL 等被跳过的站点数
+	// DownloadersSkipped：已存在（同类型+同 URL）而跳过的下载器数
+	DownloadersSkipped int      `json:"downloaders_skipped"`
+	DownloadersFailed  int      `json:"downloaders_failed"` // 创建失败的下载器数
+	Failures           []string `json:"failures,omitempty"` // 失败原因（人类可读，最多 maxImportFailures 条）
 }
 
 // maxImportFailures 响应/通知携带的失败明细上限（计数不受限）。
@@ -230,7 +232,24 @@ func (s *Service) Import(ctx context.Context, data []byte) (*ImportResult, error
 		return nil, err
 	}
 	res := &ImportResult{Sites: sites, SitesSkipped: len(siteIns) - sites}
+	// 下载器按「类型+URL」去重：重复导入同一份备份（恢复演练/多机同步）从前会把
+	// 同名同地址的下载器整份再建一遍（实测 2 条→4 条），下载器选择器里出现双胞胎。
+	// 站点有注册域去重，下载器此前一条判据都没有。
+	existing := map[string]bool{}
+	if list, err := s.dlOp.List(); err != nil {
+		slog.Warn("backup import: list downloaders failed, dedupe disabled",
+			"err", err)
+	} else {
+		for i := range list {
+			existing[downloaderIdentity(list[i].Type, list[i].URL)] = true
+		}
+	}
 	for _, de := range b.Downloaders {
+		key := downloaderIdentity(de.Type, de.URL)
+		if existing[key] {
+			res.DownloadersSkipped++
+			continue
+		}
 		if _, e := s.dlOp.Create(oper.DownloaderInput{
 			Name: de.Name, Type: de.Type, URL: de.URL, Username: de.Username,
 			Password: de.Password, IsDefault: de.IsDefault,
@@ -242,6 +261,7 @@ func (s *Service) Import(ctx context.Context, data []byte) (*ImportResult, error
 			}
 			continue
 		}
+		existing[key] = true // 同一份备份里重复条目也只建一次
 		res.Downloaders++
 	}
 	return res, nil
@@ -298,6 +318,13 @@ func (s *Service) matchDef(baseURL string) string {
 	}
 	id, _ := s.reg.MatchByURL(baseURL)
 	return id
+}
+
+// downloaderIdentity 下载器去重键：同一客户端类型 + 同一端点地址即视为同一个下载器。
+// 名称是用户可随意改的展示字段，不参与判等。
+func downloaderIdentity(typ, rawURL string) string {
+	return strings.ToLower(strings.TrimSpace(typ)) + "|" +
+		strings.TrimRight(strings.TrimSpace(rawURL), "/")
 }
 
 // firstOf 截断清单用于文案展示（完整条数已在错误里给出）。

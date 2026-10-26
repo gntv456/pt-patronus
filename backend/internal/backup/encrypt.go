@@ -99,6 +99,16 @@ func Decrypt(data []byte, password string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 这两档是「文件本身坏了」的确定判据，必须先于 GCM 校验：
+	//   - iv 长度不对时 gcm.Open 会直接 panic（实测坏 iv ⇒ 500 空响应），
+	//   - 密文短于认证标签时无论口令是什么都不可能解出。
+	// 它们都不该落到 ErrBadPassword（那会让用户拿着正确口令反复怀疑自己）。
+	if len(iv) != gcm.NonceSize() {
+		return nil, fmt.Errorf("bad iv: 长度 %d，应为 %d", len(iv), gcm.NonceSize())
+	}
+	if len(ct) < gcm.Overhead() {
+		return nil, fmt.Errorf("bad data: 密文长度 %d 小于认证标签 %d", len(ct), gcm.Overhead())
+	}
 	pt, err := gcm.Open(nil, iv, ct, nil)
 	if err != nil {
 		return nil, ErrBadPassword

@@ -125,7 +125,9 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
         return
       }
       const res = await backupApi.importOwn(data, password)
-      const skipped = (res.sites_skipped ?? 0) + (res.downloaders_failed ?? 0)
+      // downloaders_skipped：同类型+同地址的下载器已存在而跳过（重复导入不再翻倍）。
+      const skipped =
+        (res.sites_skipped ?? 0) + (res.downloaders_skipped ?? 0) + (res.downloaders_failed ?? 0)
       const msg = t('backup.importDone', {
         sites: res.imported_sites ?? 0,
         dlPart: res.imported_downloaders != null ? ' ' + t('backup.dlPart', { n: res.imported_downloaders }) : '',
@@ -146,7 +148,9 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
       }
     } catch (err) {
       const code = (err as { code?: string })?.code
-      if (code === 'backup_password_incorrect') ElMessage.error(t('backup.passwordIncorrect'))
+      // 后端对该码已带「口令错或文件损坏」的专属原因（specific），别用固定译文覆盖。
+      if (code === 'backup_password_incorrect')
+        ElMessage.error((err as Error).message || t('backup.passwordIncorrect'))
       else ElMessage.error(t('backup.importFailed') + (err as Error).message)
     } finally {
       importing.value = false

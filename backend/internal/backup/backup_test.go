@@ -32,6 +32,42 @@ func newSecretOps(t *testing.T) (*oper.SiteOper, *oper.DownloaderOper) {
 	return oper.NewSiteOper(db, c), oper.NewDownloaderOper(db, c)
 }
 
+// 同一份备份导入两次不能把下载器翻倍：站点有注册域去重，下载器从前一条判据都没有
+// （实测导入后 2 条→4 条同名同地址）。已存在的按「类型+URL」跳过并记账。
+func TestImportDownloadersIdempotent(t *testing.T) {
+	ctx := context.Background()
+	srcSiteOp, srcDlOp := newSecretOps(t)
+	if _, err := srcDlOp.Create(oper.DownloaderInput{
+		Name: "qb1", Type: "qb", URL: "http://qb:8080/", Username: "admin", Password: "pw",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := New(srcSiteOp, srcDlOp, nil).Export(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dstSiteOp, dstDlOp := newSecretOps(t)
+	dst := New(dstSiteOp, dstDlOp, nil)
+	first, err := dst.Import(ctx, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Downloaders != 1 || first.DownloadersSkipped != 0 {
+		t.Fatalf("首次导入应为 1 新建 0 跳过, got %+v", first)
+	}
+	second, err := dst.Import(ctx, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Downloaders != 0 || second.DownloadersSkipped != 1 {
+		t.Fatalf("重复导入应全部跳过, got %+v", second)
+	}
+	if list, err := dstDlOp.List(); err != nil || len(list) != 1 {
+		t.Fatalf("下载器应仍为 1 条, got len=%d err=%v", len(list), err)
+	}
+}
+
 // TestExportImportRoundTripSecrets 备份「导出→导入」必须完整保留全部凭据：
 // Passkey（辅种下载链接）、APIKey（MTeam API）、站点账号密码（财神等 API 登录）
 // 与下载器密码——曾全部被导出/导入静默丢弃，恢复后相关链路集体失效。

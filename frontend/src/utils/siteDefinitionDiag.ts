@@ -2,7 +2,7 @@
 import type { DefinitionDiagnostic } from '@/api/site'
 
 // 后端 kind 的权威清单：internal/site/definitions_diag.go 的 Diag* 常量。
-const KNOWN_KINDS = ['bad_regexp', 'unknown_key', 'duplicate_id', 'skipped_subdir']
+const KNOWN_KINDS = ['bad_regexp', 'unknown_key', 'duplicate_id', 'skipped_subdir', 'load_failed']
 
 // diagKindKey 把后端 kind 映射到 i18n 键。未知 kind 一律落 `other`，
 // 否则后端新增一类时界面会直接把键路径当文案显示出来。

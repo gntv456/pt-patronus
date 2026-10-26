@@ -6,6 +6,10 @@ import { streamSSE } from './sse'
 // retain the default 15s timeout.
 const checkinTimeout = 45_000
 const checkinAllTimeout = 5 * 60_000
+// 站点定义诊断端点。URL 提常量后，下面那条链折成三行时每行都在 80 列内；
+// 内联长 URL 会让 prettier 必须换行，而换出来的 .get<…>('<长 URL>') 那行仍超 80 列，
+// 会把本文件的超宽行计数从 15 抬到 16（棘轮只许减不许增）。
+const defDiagPath = '/sites/definition-diagnostics'
 
 export interface SiteDef {
   id: string
@@ -123,8 +127,13 @@ export const siteApi = {
   definitions: () => http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
   // 站点定义诊断（独立端点：只有几十条，不必重读 300+ 条定义）。
   // 读失败不在这里吞掉——交回调用方决定怎么出声（#292/#317 同族教训）。
+  // 这里刻意折成三行：本仓的门禁是「80 列只许减不许增」，比 prettier 的 printWidth 更严
+  // （整文件在 HEAD 就不过 prettier --check），收成一行会多出一个超宽行、把棘轮顶高。
   definitionDiagnostics: () =>
-    http.get<{ diagnostics?: DefinitionDiagnostic[] }>('/sites/definition-diagnostics').then((r) => r.data.diagnostics ?? []),  create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
+    http
+      .get<{ diagnostics?: DefinitionDiagnostic[] }>(defDiagPath)
+      .then((r) => r.data.diagnostics ?? []),
+  create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
   // 站点硬删不可恢复（凭据随之失），后端要求 confirm_risk 二次确认（UI 已有弹窗）。
   remove: (id: number) => http.delete(`/sites/${id}`, { data: { confirm_risk: true } }).then((r) => r.data),

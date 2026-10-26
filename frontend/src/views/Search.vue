@@ -62,6 +62,13 @@ async function search() {
     ElMessage.warning(t('search.emptyKeyword'))
     return
   }
+  if (scopeSiteCount.value === 0) {
+    // 真机实测的形状：一个启用站点都没有，点「搜索」照常开一条 SSE 流，
+    // 流立刻结束、表格空、页面一动不动——界面上只剩角标那句「将搜索 0 个站点」，
+    // 用户既不知道是没站点以为搜索坏了，也会反复点。这里直接说明下一步该去哪。
+    ElMessage.warning(t('search.noSitesInScope'))
+    return
+  }
   if (mode.value === 'torrent') {
     torrentAbort?.abort()
     const ctrl = new AbortController()

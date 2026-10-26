@@ -4,7 +4,13 @@ import zh from '@/i18n/locales/zh-CN'
 import en from '@/i18n/locales/en-US'
 
 // #331 站点定义诊断的展示层：kind 映射 + 「后端新增 kind 时不许把键路径当文案」+ locale 四件套齐全。
-const KINDS = ['bad_regexp', 'unknown_key', 'duplicate_id', 'skipped_subdir']
+const KINDS = [
+  'bad_regexp',
+  'unknown_key',
+  'duplicate_id',
+  'skipped_subdir',
+  'load_failed',
+]
 
 describe('siteDefinitionDiag', () => {
   it('已知 kind 映射到对应文案键', () => {
@@ -46,6 +52,12 @@ describe('siteDefinitionDiag', () => {
 
   it('后端 kind 常量与前端映射表同源（漂移就红：internal/site/definitions_diag.go）', () => {
     // 这条断言只钉前端侧清单；后端清单见 Diag* 常量，两边都要改。
-    expect(KINDS).toEqual(['bad_regexp', 'unknown_key', 'duplicate_id', 'skipped_subdir'])
+    expect(KINDS).toEqual([
+      'bad_regexp',
+      'unknown_key',
+      'duplicate_id',
+      'skipped_subdir',
+      'load_failed',
+    ])
   })
 })

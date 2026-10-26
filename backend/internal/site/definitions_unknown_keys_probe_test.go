@@ -81,13 +81,25 @@ func TestLoaderWiresUnknownKeyWarning(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("找不到 registry.go 的定义解析处")
 	}
-	window := reg[i:min(i+400, len(reg))]
-	if !strings.Contains(window, "warnUnknownDefinitionKeys(file, data)") {
-		t.Errorf("解析成功后必须跑未知键检测：%q", strings.TrimSpace(window))
+	// 旧判据是「从 Unmarshal 起取 400 字符窗口找调用点」——在同一段里插一条稍长的失败留痕
+	// 就会把它挤出窗口而假红（实测踩过）。改成按结构判：调用点必须还在同一个函数体内，且排在解析之后。
+	fnStart := strings.LastIndex(reg[:i], "\nfunc ")
+	relEnd := strings.Index(reg[fnStart+1:], "\nfunc ")
+	if fnStart < 0 || relEnd < 0 {
+		t.Fatalf("定位不到定义加载函数体（fnStart=%d relEnd=%d）", fnStart, relEnd)
 	}
-	if strings.Index(window, "warnUnknownDefinitionKeys") < strings.Index(window, "return fmt.Errorf(\"parse") {
-		// 语法错误那条 return 在前是允许的（解析失败谈不上未知键），这里只确认调用点在 Unmarshal 之后。
-		t.Log("注：warnUnknownDefinitionKeys 位于 parse 错误分支之后（预期）")
+	body := reg[fnStart : fnStart+1+relEnd]
+	call := strings.Index(body, "r.warnUnknownDefinitionKeys(file, data)")
+	parse := strings.Index(body, "if err := yaml.Unmarshal(data, &def)")
+	if call < 0 {
+		t.Errorf("未知键检测调用被摘掉了，或被挪出了加载函数体")
+	}
+	if call >= 0 && parse >= 0 && call < parse {
+		t.Errorf("未知键检测必须排在解析成功之后：call=%d parse=%d", call, parse)
+	}
+	// 一份坏定义只跳过这一份（读不出/解析失败都算），并把原因记进界面能读的账面。
+	if !strings.Contains(body, "DiagLoadFailed") || !strings.Contains(body, "continue") {
+		t.Errorf("解析失败必须跳过这一份并记 load_failed，而不是 return err 让整目录退回内置")
 	}
 
 	lint := readSiteSource(t, "definitions_lint.go")

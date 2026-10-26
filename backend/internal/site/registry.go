@@ -74,11 +74,21 @@ func (r *Registry) loadDefinitionsFS(fsys fs.FS, dir string) error {
 		}
 		data, err := fs.ReadFile(fsys, file)
 		if err != nil {
-			return err
+			// 读不出/解析失败过去 return err，app_setup 于是把整个外部目录
+			// 退回内置：其余自定义站点跟着没，账面零记录、界面显示一切正常。
+			slog.Warn("site definition unreadable; this one skipped",
+				"file", file, "err", err)
+			r.recordDiag(DefinitionDiagnostic{Kind: DiagLoadFailed, File: file,
+				Detail: "读不出来（仅这一份没生效）：" + err.Error()})
+			continue
 		}
 		var def SiteMetadata
 		if err := yaml.Unmarshal(data, &def); err != nil {
-			return fmt.Errorf("parse %s: %w", file, err)
+			slog.Warn("site definition failed to parse; this one skipped",
+				"file", file, "err", err)
+			r.recordDiag(DefinitionDiagnostic{Kind: DiagLoadFailed, File: file,
+				Detail: "解析失败（仅这一份没生效）：" + err.Error()})
+			continue
 		}
 		// 未知键不报错也不出声（整块配置静默蒸发），这里只逐条 Warn + 记账，不改加载判定。
 		r.warnUnknownDefinitionKeys(file, data)

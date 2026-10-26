@@ -70,7 +70,19 @@ var bindErrRe = regexp.MustCompile(
 // jsonFieldName 把结构体字段名折成客户端实际写的 JSON 名（BaseURL → base_url）。
 // validator 的错误文本只带结构体字段名，直接小写会编出一个不存在的字段
 // （"baseurl"），那比不说更坏：用户照着这个名字改请求，永远改不对。
+// commonInitialisms 全大写缩写（含复数）按整体小写折名：IDs→ids、URLs→urls。
+// 驼峰规则会把 IDs 拆成 i_ds（D 后面是小写 s），用户照着这个不存在的字段改永远改不对。
+var commonInitialisms = map[string]bool{
+	"id": true, "ids": true, "url": true, "urls": true, "api": true, "apis": true,
+	"ip": true, "ips": true, "uid": true, "uuid": true, "json": true, "sql": true,
+	"http": true, "https": true, "tls": true, "ssh": true, "dns": true,
+}
+
 func jsonFieldName(s string) string {
+	low := strings.ToLower(s)
+	if commonInitialisms[low] {
+		return low
+	}
 	runes := []rune(s)
 	var b strings.Builder
 	for i, r := range runes {

@@ -105,11 +105,20 @@ func TestJSONFieldNameMatchesJSONTags(t *testing.T) {
 		"VIPLevel": "vip_level",
 		"Name":     "name",
 		"LimitV":   "limit_v",
+		"IDs":      "ids",
+		"URLs":     "urls",
+		"UUID":     "uuid",
+		"IP":       "ip",
 	} {
 		if got := jsonFieldName(field); got != want {
 			t.Errorf("%s 应折成 %s，实得 %s", field, want, got)
 		}
 	}
+	// 缩写复数不能拆成 i_ds（实测订阅批量空 ids 的回包）。
+	if got := jsonFieldName("IDs"); got != "ids" {
+		t.Errorf("IDs 应折成 ids，实得 %s", got)
+	}
+
 	// 正控：朴素小写确实是错的（证明这条测试在防的东西真实存在）
 	if strings.ToLower("BaseURL") == "base_url" {
 		t.Error("小写对照本身失效（这条正控失去意义）")

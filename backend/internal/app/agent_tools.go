@@ -50,7 +50,7 @@ func registerAgentTools(
 	reg(mcp.Tool{Name: "site_freeleech", Description: "List current site-wide freeleech/promotions across all sites.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
 		results, err := siteCh.FreeleechAll(ctx, false)
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(results), nil
 	}})
@@ -77,7 +77,7 @@ func registerAgentTools(
 	reg(mcp.Tool{Name: "torrent_search", Description: "Search torrents across PT sites by keyword (read-only, does not download). Returns title/size/seeders/download_url.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"keyword": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"keyword"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		results, err := siteCh.SearchSites(ctx, argString(a, "keyword", ""), argString(a, "category", ""), nil)
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(results), nil
 	}})
@@ -94,14 +94,14 @@ func registerAgentTools(
 			Year: argInt(a, "year"), Resolution: argString(a, "resolution", ""), Status: "subscribed",
 		})
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(s), nil
 	}})
 	reg(mcp.Tool{Name: "subscribe_delete", Description: "Delete a subscription by id.", Risk: mcp.RiskDestructive, RiskNote: "删除媒体订阅及其搜索历史", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "integer"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		id := uint(argInt(a, "id"))
 		if err := subCh.Delete(id); err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(map[string]any{"deleted": id}), nil
 	}})
@@ -194,7 +194,7 @@ func registerAgentTools(
 			PublishTime: argString(a, "publish_time", ""),
 		})
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(r), nil
 	}})
@@ -209,13 +209,13 @@ func registerAgentTools(
 			PublishTime: argString(a, "publish_time", ""),
 		})
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(r), nil
 	}})
 	reg(mcp.Tool{Name: "filter_custom_rule_delete", Description: "按 id 删除一条自定义过滤规则。若被任一规则组引用则拒绝删除。", Risk: mcp.RiskDestructive, RiskNote: "删除自定义过滤规则（匹配行为立即改变）", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		if err := filterStore.DeleteCustomRule(argString(a, "id", "")); err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(map[string]any{"deleted": argString(a, "id", "")}), nil
 	}})
@@ -231,7 +231,7 @@ func registerAgentTools(
 			Category:   argString(a, "category", ""),
 		})
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(g), nil
 	}})
@@ -243,13 +243,13 @@ func registerAgentTools(
 			Category:   argString(a, "category", ""),
 		})
 		if err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(g), nil
 	}})
 	reg(mcp.Tool{Name: "filter_rule_group_delete", Description: "按 name 删除一个规则组，并清理搜索/订阅/洗版全局绑定中的悬空引用。", Risk: mcp.RiskDestructive, RiskNote: "删除规则组并级联清理全局绑定引用", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}}, "required": []string{"name"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		if err := filterStore.DeleteGroup(argString(a, "name", "")); err != nil {
-			return "", err
+			return "", mcpErr(err)
 		}
 		return mcpJSON(map[string]any{"deleted": argString(a, "name", "")}), nil
 	}})

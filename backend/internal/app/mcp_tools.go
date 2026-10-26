@@ -47,7 +47,7 @@ func registerHostMCPTools(srv *mcp.Server, siteOp *oper.SiteOper, siteCh *chain.
 		Handler: func(ctx context.Context, _ map[string]any) (string, error) {
 			subs, err := subCh.List()
 			if err != nil {
-				return "", err
+				return "", mcpErr(err)
 			}
 			return mcpJSON(subs), nil
 		},
@@ -61,7 +61,7 @@ func registerHostMCPTools(srv *mcp.Server, siteOp *oper.SiteOper, siteCh *chain.
 		Handler: func(ctx context.Context, _ map[string]any) (string, error) {
 			dls, err := dlOp.List()
 			if err != nil {
-				return "", err
+				return "", mcpErr(err)
 			}
 			return mcpJSON(dls), nil
 		},
@@ -90,7 +90,7 @@ func registerHostMCPTools(srv *mcp.Server, siteOp *oper.SiteOper, siteCh *chain.
 			}
 			results, err := siteCh.SearchSites(ctx, keyword, category, nil)
 			if err != nil {
-				return "", err
+				return "", mcpErr(err)
 			}
 			return mcpJSON(results), nil
 		},

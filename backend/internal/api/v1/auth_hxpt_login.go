@@ -93,7 +93,7 @@ func (h *AuthHandler) HxptLogin(c *gin.Context) {
 	}
 	var req hxptLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	// 应急兜底：好学 POST 链路坏掉时，运维设 HXPT_EMERGENCY_ADMIN 临时放行。
@@ -153,7 +153,7 @@ func (h *AuthHandler) HxptCookieLogin(c *gin.Context) {
 	}
 	var req hxptCookieLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.Cookie == "" {

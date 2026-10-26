@@ -1,12 +1,18 @@
 package auth
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
 )
+
+// ErrUserMissing：token 指向的账号已不在库里（删号、换数据目录、恢复备份）。
+// 调用方必须把它与「读不出来」分开：前者该让用户重新登录，后者不该把锅甩给会话。
+var ErrUserMissing = errors.New("token version: user row missing")
 
 // TokenVersionCache 缓存 uid→TokenVersion，避免 JWTAuth 每请求查库；登出/改绑时 Invalidate。
 // 多实例部署下 Invalidate 仅对本进程即时生效，其它实例最多滞后 TTL（默认 60s）；
@@ -39,6 +45,9 @@ func (c *TokenVersionCache) Get(uid uint) (uint, error) {
 
 	var u models.User
 	if err := c.db.Select("token_version").First(&u, uid).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, fmt.Errorf("%w: uid=%d", ErrUserMissing, uid)
+		}
 		return 0, err
 	}
 	c.mu.Lock()

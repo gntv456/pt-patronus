@@ -7,6 +7,24 @@ import (
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
+// loginEntryPaths 是「建立会话」的入口路径：这些路由上 JWTAuth 必须跳过 ptp_token
+// cookie 通道。理由与 /api/v1/ws 同一条（见 router.go 内注释）：cookie 是 httpOnly，
+// 用户在界面上既看不见也清不掉；一旦 TokenVersion 变了（重装、恢复备份、改绑、
+// 数据目录被清），残留的脏 cookie 会抢在登录之前判 401「登录态已更新，请重新登录」——
+// 那句话出现在用户**正在点登录**的时刻，等于把人锁在门外且界面里没有自救入口。
+//
+// 刻意不列 /auth/refresh（它的作用就是拿旧 token 换新的）与 /auth/status
+// （它该报「没登录」，而不是替用户断言会话不合法）。
+var loginEntryPaths = []string{
+	"/api/v1/auth/setup",
+	"/api/v1/auth/login",
+	"/api/v1/auth/demo-login",
+	"/api/v1/auth/activate",
+	"/api/v1/auth/hxpt/captcha",
+	"/api/v1/auth/hxpt/login",
+	"/api/v1/auth/hxpt/cookie-login",
+}
+
 // registerPublicRoutes 注册无需登录的公开路由（系统健康、鉴权登录、WebSocket、流媒体、MCP 等）。
 func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, sysH *v1.SystemHandler) {
 	api.GET("/system/health", sysH.Health)

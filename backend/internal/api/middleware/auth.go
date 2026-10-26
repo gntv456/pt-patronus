@@ -3,6 +3,8 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -11,6 +13,11 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 )
+
+// bearerOwnAuth 该路径的 Authorization: Bearer 由路由自己校验，JWT 中间件不得消费。
+func bearerOwnAuth(path string) bool {
+	return strings.TrimSuffix(path, "/") == "/api/v1/mcp"
+}
 
 // JWTAuth 校验凭证（优先级：X-API-Key > Authorization Bearer > ptp_token httpOnly cookie）
 // 并写入身份；无凭证的请求放行（公开路由），用 RequireAuth 强制鉴权。
@@ -47,7 +54,12 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, sk
 		}
 		token := ""
 		if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
-			token = strings.TrimPrefix(h, "Bearer ")
+			// MCP 的 Bearer 是插件配置里那枚配对 token，不是本服务的 JWT：
+			// 交给 mcp.Server 自己校验（常量时间比较）。这里若按 JWT 解析必然
+			// invalid_token，MCP 客户端按文档配好也永远连不上。
+			if !bearerOwnAuth(c.Request.URL.Path) {
+				token = strings.TrimPrefix(h, "Bearer ")
+			}
 		} else if !shouldSkipCookie(c.Request.URL.Path) {
 			if ck, err := c.Cookie("ptp_token"); err == nil && ck != "" {
 				token = ck
@@ -63,10 +75,26 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, sk
 			return
 		}
 		// TokenVersion 失效校验：与 User.TokenVersion 不符（登出/改绑后）即拒绝。
+		// 三种结局必须分开——过去把「读不出来」也判成「会话已更新」，用户白登一次
+		// 还要怀疑账号坏了，且服务端零留痕（拒绝的理由只存在于这句错话里）。
 		if tvCache != nil {
 			cur, err := tvCache.Get(claims.UserID)
-			if err != nil || cur != claims.TokenVersion {
+			switch {
+			case err == nil:
+				if cur != claims.TokenVersion {
+					errcode.Respond(c, errcode.TokenMismatch)
+					return
+				}
+			case errors.Is(err, auth.ErrUserMissing):
+				slog.Warn("auth rejected: token points at a missing user",
+					"uid", claims.UserID, "path", c.Request.URL.Path)
 				errcode.Respond(c, errcode.TokenMismatch)
+				return
+			default:
+				// 不把拒绝理由甩锅给会话：日志留真因，界面只说「稍后重试」。
+				slog.Warn("auth rejected: token version unreadable",
+					"uid", claims.UserID, "path", c.Request.URL.Path, "err", err)
+				errcode.Respond(c, errcode.Unavailable.WithErr(err))
 				return
 			}
 		}

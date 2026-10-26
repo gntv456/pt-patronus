@@ -56,7 +56,7 @@ type activateReq struct {
 func (h *AuthHandler) Activate(c *gin.Context) {
 	var req activateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if req.DeviceID == "" {
@@ -123,7 +123,7 @@ func (h *AuthHandler) VerifyVIP(c *gin.Context) {
 	}
 	var req verifyVIPReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	status := h.hxptAuth.Verify(c.Request.Context(), req.Cookie)
@@ -274,7 +274,7 @@ func (h *AuthHandler) SetOIDCConfig(c *gin.Context) {
 	}
 	var req oidcConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	cur := h.oidc.LoadSettings()

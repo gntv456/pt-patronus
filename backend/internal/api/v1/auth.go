@@ -188,7 +188,7 @@ func (h *AuthHandler) SetPreferences(c *gin.Context) {
 		Value string `json:"value" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		respondBindError(c, err)
 		return
 	}
 	if len(in.Value) > userPrefMaxValue {

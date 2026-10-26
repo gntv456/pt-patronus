@@ -7,7 +7,8 @@ describe('translateErrcode 对 specific 原因不覆盖', () => {
   const reason = '缺少必填项 platform'
 
   it('specific=true 时原样显示后端原因（en-US）', () => {
-    expect(translateErrcode('invalid_input', reason, 'en-US', true)).toBe(reason)
+    const got = translateErrcode('invalid_input', reason, 'en-US', true)
+    expect(got).toBe(reason)
   })
 
   it('没带 specific 时仍按码查固定译文（en-US 老行为不变）', () => {
@@ -17,7 +18,8 @@ describe('translateErrcode 对 specific 原因不覆盖', () => {
   })
 
   it('中文界面两种情况都回原文', () => {
-    expect(translateErrcode('invalid_input', reason, 'zh-CN', true)).toBe(reason)
+    const gotZh = translateErrcode('invalid_input', reason, 'zh-CN', true)
+    expect(gotZh).toBe(reason)
     expect(translateErrcode('invalid_input', reason, 'zh-CN')).toBe(reason)
   })
 

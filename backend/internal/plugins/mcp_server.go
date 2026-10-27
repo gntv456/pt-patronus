@@ -28,6 +28,22 @@ func ParseMCPSettings(cfg map[string]any) mcp.Settings {
 	}
 }
 
+// mcpEndpointURL 由对外基地址生成客户端接入 URL。base_url 的说明里给的示例是
+// 「完整地址 https://host:8088/api/v1/mcp」，但用户也常只填站点根/反代前缀；
+// 两种都要得到同一个可用 URL（从前一律再拼一遍 /api/v1/mcp，得到
+// /api/v1/mcp/api/v1/mcp——界面照着填就连不上）。
+func mcpEndpointURL(raw string) string {
+	base := strings.TrimSpace(raw)
+	if base == "" {
+		return "/api/v1/mcp"
+	}
+	base = strings.TrimRight(base, "/")
+	if strings.HasSuffix(base, "/api/v1/mcp") {
+		return base
+	}
+	return base + "/api/v1/mcp"
+}
+
 type mcpServerPlugin struct {
 	server *mcp.Server // 可空（仅 app.go 装配时注入，供 test/list action 用）
 }
@@ -86,12 +102,8 @@ func (p *mcpServerPlugin) ExecuteAction(ctx context.Context, rt Runtime, action 
 		}
 		return map[string]any{"tools": out}, nil
 	case "endpoint":
-		base := strings.TrimSpace(pluginString(rt.Config()["base_url"]))
-		if base == "" {
-			base = "/api/v1/mcp"
-		}
 		return map[string]any{
-			"endpoint":  strings.TrimRight(base, "/") + "/api/v1/mcp",
+			"endpoint":  mcpEndpointURL(pluginString(rt.Config()["base_url"])),
 			"transport": "streamable-http (POST JSON-RPC 2.0)",
 			"auth":      "Authorization: Bearer <token>",
 			"tools":     len(p.server.ToolList()),

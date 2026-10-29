@@ -182,20 +182,25 @@ func (h *AgentWSHub) HandleWS(c *gin.Context) {
 	if agent != nil {
 		ac.targetID = agent.TargetID
 	}
-	h.register(ac)
+	// 未鉴权连接不入表：FileClient 会把它当成可用连接发 RPC，且 hello 鉴权后的
+	// registerAuthed 会把这条预注册的连接当成「旧连接」关掉（连上即断）。
 	// 已通过 query secret 鉴权的连接才标在线；hello 体鉴权的连接等 readLoop 校验通过后再标，
 	// 避免未认证连接污染在线状态（安全审计 P1-3）。
 	if ac.authed {
+		h.register(ac)
 		_ = h.auth.TouchSeen(ac.agentID, true, "", "", c.ClientIP())
 	}
 
 	h.readLoop(ac) // 阻塞至断开
 
 	// 断开清理：标离线 + 灌 Metrics{Online:false} 走 Evaluate 触发离线告警（复用 notifyCooldown 防抖动）。
-	h.unregister(ac)
-	_ = h.auth.TouchSeen(ac.agentID, false, "", "", "")
-	if ac.targetID != 0 {
-		_ = h.ingest(context.Background(), ac.targetID, Metrics{Online: false})
+	// 仅当本连接仍是该 agent 的当前连接时才算「真的下线上报」：被新连接踢掉时
+	// 新连接已经在报数据，再标离线会让面板闪断并可能误发一次离线告警。
+	if h.unregister(ac) {
+		_ = h.auth.TouchSeen(ac.agentID, false, "", "", "")
+		if ac.targetID != 0 {
+			_ = h.ingest(context.Background(), ac.targetID, Metrics{Online: false})
+		}
 	}
 }
 
@@ -227,8 +232,7 @@ func (h *AgentWSHub) readLoop(ac *agentConn) {
 			ac.authed = true
 			ac.targetID = agent.TargetID
 			_ = h.auth.TouchSeen(ac.agentID, true, env.Version, "", "") // hello 鉴权通过，此刻才标在线
-			h.kickExisting(agent.ID)
-			h.register(ac) // hello 鉴权后才正式入表（HandleWS 里未 authed 的预注册会被 kick 覆盖）
+			h.registerAuthed(ac)
 		}
 		switch env.Type {
 		case "hello":

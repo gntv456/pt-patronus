@@ -326,12 +326,28 @@ func (h *AgentWSHub) register(ac *agentConn) {
 	h.conns[ac.agentID] = ac
 }
 
-func (h *AgentWSHub) unregister(ac *agentConn) {
+// registerAuthed 登记已鉴权连接并踢掉同 agent 的旧连接。
+// 换手与踢旧在同一把锁内完成：两个并发 hello 不会互相 kick 后留下一条未登记的活连接。
+func (h *AgentWSHub) registerAuthed(ac *agentConn) {
+	h.mu.Lock()
+	old := h.conns[ac.agentID]
+	h.conns[ac.agentID] = ac
+	h.mu.Unlock()
+	if old != nil && old != ac {
+		_ = old.conn.Close()
+	}
+}
+
+// unregister 从表中移除本连接；返回 true 表示它仍是该 agent 的当前连接。
+// 被新连接踢掉时返回 false——调用方不得再标离线/灌离线快照（新连接还活着）。
+func (h *AgentWSHub) unregister(ac *agentConn) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if cur, ok := h.conns[ac.agentID]; ok && cur == ac {
 		delete(h.conns, ac.agentID)
+		return true
 	}
+	return false
 }
 
 // kickExisting 踢掉同 agent 的旧连接（注册新连接前调用）。

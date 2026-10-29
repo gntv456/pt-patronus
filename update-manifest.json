@@ -12,7 +12,7 @@
     },
     "android": {
       "url": "",
-      "sha256": "8b9772356becc903fda01e10ea18603a04d212f660c824d3f100b27b1e3a1a82"
+      "sha256": "19ca44d8ada644cc85f4c39cfab60cabcadbf0dd6a5bafb549f0ea8321b7945f"
     },
     "ios": {
       "url": "",
@@ -20,11 +20,11 @@
     },
     "ohos": {
       "url": "",
-      "sha256": "e7e08de7f073692878ad3fd3e44befa20c53ba540eab3871438da380c60275e3"
+      "sha256": "efb38292fcdbbd32015e2f2043bc0ffe13989a64751d986b65e987f9a9adc210"
     },
     "windows": {
       "url": "",
-      "sha256": "9dc24f42bc8cac5dab0978c0588ce1487a70f4149afa5d312a52c4412c59bc01"
+      "sha256": "524465099b6a222794b7983e8d006c0b759c62a48e67415852bd09b7c91e23b6"
     },
     "agent-linux-amd64": {
       "url": "",

@@ -72,7 +72,7 @@
 4	backend/internal/api/v1/downloader_torrent_query.go
 3	backend/internal/api/v1/entertainment.go
 9	backend/internal/api/v1/entertainment_bet.go
-5	backend/internal/api/v1/entertainment_gobang.go
+4	backend/internal/api/v1/entertainment_gobang.go
 7	backend/internal/api/v1/entertainment_medals.go
 2	backend/internal/api/v1/err_text.go
 6	backend/internal/api/v1/filemanager.go
@@ -226,7 +226,7 @@
 5	backend/internal/chain/site_search.go
 32	backend/internal/chain/site_torrent.go
 8	backend/internal/chain/snapshot.go
-19	backend/internal/chain/subscribe.go
+18	backend/internal/chain/subscribe.go
 18	backend/internal/chain/subscribe_check.go
 4	backend/internal/chain/subscribe_defaults.go
 2	backend/internal/chain/subscribe_episode.go
@@ -304,7 +304,7 @@
 4	backend/internal/db/oper/notice.go
 4	backend/internal/db/oper/ops_config.go
 16	backend/internal/db/oper/plugin.go
-20	backend/internal/db/oper/plugin_market.go
+19	backend/internal/db/oper/plugin_market.go
 3	backend/internal/db/oper/poster.go
 3	backend/internal/db/oper/registration.go
 5	backend/internal/db/oper/rss.go
@@ -320,7 +320,7 @@
 2	backend/internal/dirwatch/config.go
 4	backend/internal/dirwatch/watcher.go
 7	backend/internal/doctor/checks.go
-9	backend/internal/doctor/checks_business.go
+8	backend/internal/doctor/checks_business.go
 1	backend/internal/doctor/models.go
 23	backend/internal/downloader/ar/advanced.go
 4	backend/internal/downloader/ar/client.go
@@ -482,7 +482,7 @@
 4	backend/internal/monitor/ssh_parse.go
 6	backend/internal/monitor/terminal.go
 2	backend/internal/monitor/types.go
-10	backend/internal/notice/service.go
+9	backend/internal/notice/service.go
 2	backend/internal/notification/apprise.go
 2	backend/internal/notification/bark.go
 1	backend/internal/notification/dingtalk.go
@@ -630,9 +630,9 @@
 5	backend/internal/site/schemas/aidoruonline.go
 1	backend/internal/site/schemas/announcement.go
 22	backend/internal/site/schemas/avistaz.go
-20	backend/internal/site/schemas/checkin.go
+19	backend/internal/site/schemas/checkin.go
 9	backend/internal/site/schemas/common.go
-29	backend/internal/site/schemas/flarum.go
+28	backend/internal/site/schemas/flarum.go
 15	backend/internal/site/schemas/fluxtorrent.go
 17	backend/internal/site/schemas/fluxtorrent_caps.go
 6	backend/internal/site/schemas/freeleech.go
@@ -703,7 +703,7 @@
 1	backend/internal/transfer/identifyshare.go
 1	backend/internal/transfer/identifywords.go
 3	backend/internal/transfer/link.go
-4	backend/internal/transfer/meta.go
+3	backend/internal/transfer/meta.go
 1	backend/internal/transfer/naming.go
 2	backend/internal/transfer/quality.go
 5	backend/internal/transfer/scrape.go
@@ -774,7 +774,7 @@
 1	frontend/src/api/entertainmentTypes.ts
 3	frontend/src/api/errcodeI18n.credUnreadable.test.ts
 2	frontend/src/api/errcodeI18n.opsTarget.test.ts
-138	frontend/src/api/errcodeI18n.ts
+137	frontend/src/api/errcodeI18n.ts
 21	frontend/src/api/errcode_i18n.test.ts
 7	frontend/src/api/filemanager.test.ts
 31	frontend/src/api/filemanager.ts
@@ -802,7 +802,7 @@
 4	frontend/src/api/recommend.test.ts
 4	frontend/src/api/recommend.ts
 6	frontend/src/api/reseed.ts
-5	frontend/src/api/rss.ts
+4	frontend/src/api/rss.ts
 3	frontend/src/api/savept.ts
 1	frontend/src/api/schedule.ts
 3	frontend/src/api/search.ts
@@ -969,7 +969,7 @@
 6	frontend/src/components/ops/OpsDockerOverview.vue
 18	frontend/src/components/ops/OpsDockerTables.vue
 3	frontend/src/components/ops/OpsDockerToolbar.vue
-16	frontend/src/components/ops/OpsMonitor.vue
+13	frontend/src/components/ops/OpsMonitor.vue
 38	frontend/src/components/ops/OpsProcess.vue
 28	frontend/src/components/ops/OpsSsh.vue
 23	frontend/src/components/ops/OpsTerminal.vue
@@ -1122,7 +1122,7 @@
 23	frontend/src/utils/savept.ts
 3	frontend/src/utils/siteDefSearch.test.ts
 5	frontend/src/utils/siteDefSearch.ts
-4	frontend/src/utils/siteDefinitionDiag.test.ts
+3	frontend/src/utils/siteDefinitionDiag.test.ts
 2	frontend/src/utils/siteDefinitionDiag.ts
 2	frontend/src/utils/siteError.test.ts
 2	frontend/src/utils/siteError.ts
@@ -1177,7 +1177,7 @@
 31	frontend/src/views/Recommend.vue
 9	frontend/src/views/Reseed.test.ts
 34	frontend/src/views/Reseed.vue
-12	frontend/src/views/Rss.test.ts
+11	frontend/src/views/Rss.test.ts
 36	frontend/src/views/Rss.vue
 3	frontend/src/views/Savept.stale.test.ts
 22	frontend/src/views/Savept.vue

@@ -7,7 +7,7 @@
   "publishedAt": "2026-10-29T12:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.23",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.25",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {
@@ -28,11 +28,11 @@
     },
     "agent-linux-amd64": {
       "url": "",
-      "sha256": "3c98df8a2bbc7bdb6993f0ad0cb4c96684f9cdd1323346274e30a2cfbf6c261e"
+      "sha256": "aa75fd4f33afe8071e217cfdce806af4733bb059c4b647fb2a3ffe39bc24fe45"
     },
     "agent-linux-arm64": {
       "url": "",
-      "sha256": "6886e525e9206b9ba85865d0098c24ed55b62f695ef8a330b06be29e333364f0"
+      "sha256": "2506657e7cdea45a0ab0d89cb91f2a56517e2832437fe8170b2c72f088f7178d"
     },
     "extension": {
       "sha256": "c3578fede15a8ee32ba59abdc6d841ecc2e67cf4a7e2274534cc9a5ca13363b2"

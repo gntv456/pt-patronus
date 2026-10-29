@@ -1,10 +1,10 @@
 {
-  "latestVersion": "1.03.24",
+  "latestVersion": "1.03.25",
   "minVersion": "0.60.00",
-  "releaseName": "门禁加固版",
-  "releaseNotes": "1.03.24：工程门禁体系加固与文件拆分。①行宽门禁——80 列棘轮上线（check_file_length.sh 双 baseline：行数 + 列宽，列宽按字符数计，中文行不按字节误报），CI 与 pre-push 同款拦截，登记文件只许减不许增。②pre-push 钩子——新增 gofmt 检查（未格式化 Go 文件直接拦）与行数/列宽门禁前置（vet/test 之前秒级反馈）。③文件拆分——cloud.go/servarr.go/site.go/errcode codes.go 四个超标文件按职责拆出 cloud_sign.go/servarr_convert.go/parse_helpers.go/codes_backup.go，行数门禁 NEW OFFENDER 清零。④其余为全仓积压的多轮修复内容（错误码收口、OIDC 流程、备份导入、站点凭据等），随本版一并发布。",
+  "releaseName": "Agent 链路修复版",
+  "releaseNotes": "1.03.25：Agent 连接链路与 MCP 可用性修复 + 全域文案中文化。①监控 Agent——0.3.2+ agent 的 hello 体鉴权不再连上即断（此前握手成功即被 Close，面板 online 恒 false、每秒重连），换手/断开不再闪断与误发离线告警。②MCP——/api/v1/mcp 的 Bearer 配对 token 不再被当 JWT 拦 401（此前 MCP 完全不可用）；接入地址归一，base_url 填完整地址不再拼成 /api/v1/mcp/api/v1/mcp；工具错误 13 处裸透传改统一出口。③站点凭据——CookieCloud 首次推送不再被云端 404 拦死、解密失败说人话；站点 Cookie 不再按目录重复存一份；登录入口跳过脏 cookie。④文案——逐通道通知错误中文化并脱敏（token 不外泄），日志保留底层原文；错误信封 specific 标记 + 绑定失败点名到字段（i_ds 修正）；RSS 推种失败不再静默。⑤其余——动漫「标题 - 12」绝对集数与 [fansub] 组名识别、加密封包损坏不 panic、备份重复导入幂等、Plex 回调标题解码、移动端诊断 load_failed 文案、扩展后台异常回包补齐。",
   "isForced": false,
-  "publishedAt": "2026-10-18T12:00:00+08:00",
+  "publishedAt": "2026-10-29T12:00:00+08:00",
   "targets": {
     "docker": {
       "image": "ghcr.io/gntv456/pt-patronus:1.03.23",

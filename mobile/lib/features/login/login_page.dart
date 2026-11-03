@@ -14,7 +14,8 @@ import 'hxpt_web_login_page.dart';
 part 'loginopsmixin.dart';
 part 'login_widgets.dart';
 
-/// 登录页：双模 —— 好学账号（验证码两步 + 2FA）/ Cookie 登录。
+/// 登录页：本地密码登录为主（好学站点关闭后的主路径，#issue）；
+/// 好学账号/Cookie 双模保留一版兼容（下版删除）。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
   @override
@@ -38,8 +39,7 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
   @override
   void initState() {
     super.initState();
-    // 首屏先保持安静：验证码依赖后端/上游站点，失败不应在用户选择登录方式前制造错误感。
-    Future.microtask(() => _fetchCaptcha(silent: true));
+    // 首屏先保持安静：验证码仅在切到好学旧 Tab 时按需拉（本地密码登录不需要）。
     Future.microtask(_fetchAuthStatus);
   }
 
@@ -95,32 +95,33 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'PT 守护神 · 好学 APP 专属',
+                      'PT 守护神 · 自托管 PT 管理面板',
                       style: TextStyle(color: context.dimText),
                     ),
-                    if (_oidcEnabled == false && _authSiteOn)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          '本服务面向好学 (hxpt.org) APP 专属 VIP 用户；请先在好学获得 VIP 身份后再登录。首个通过验证的用户将成为管理员。',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: context.dimText, fontSize: 11, height: 1.4),
-                        ),
-                      ),
                     const SizedBox(height: 20),
                     SegmentedButton<int>(
                       segments: const [
-                        ButtonSegment(value: 0, label: Text('好学账号')),
-                        ButtonSegment(value: 1, label: Text('Cookie 登录')),
+                        ButtonSegment(value: 2, label: Text('账号登录')),
+                        ButtonSegment(value: 0, label: Text('好学账号（旧）')),
+                        ButtonSegment(value: 1, label: Text('Cookie（旧）')),
                       ],
                       selected: {_tab},
                       onSelectionChanged: (s) => setState(() {
                         _tab = s.first;
                         _err = null;
+                        // 切到好学旧 Tab 才拉验证码（本地密码登录不需要）。
+                        if (_tab == 0 && _captcha == null) {
+                          Future.microtask(() => _fetchCaptcha(silent: true));
+                        }
                       }),
                     ),
                     const SizedBox(height: 16),
-                    if (_tab == 0) ..._accountFields() else ..._cookieFields(),
+                    if (_tab == 0)
+                      ..._accountFields()
+                    else if (_tab == 1)
+                      ..._cookieFields()
+                    else
+                      ..._localFields(),
                     if (_demoMode) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(

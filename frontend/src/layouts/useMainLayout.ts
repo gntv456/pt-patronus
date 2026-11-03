@@ -38,6 +38,8 @@ export function useMainLayout() {
   const mobileNavOpen = ref(false)
   const sidebarCollapsed = computed(() => collapsed.value && !isMobile.value)
   const paletteOpen = ref(false)
+  // 修改密码对话框（本地密码主路径，#<issue>）：菜单命令驱动显隐。
+  const passwordDialogOpen = ref(false)
   // 侧栏默认态偏好（跨浏览器同步）：服务端偏好到达/变化时应用到 collapsed；
   // 用户手动折叠/展开只改运行态（下次进入仍按默认态），符合「默认态」语义。
   const { prefs: uiPrefs } = useUiPrefs()
@@ -174,6 +176,7 @@ export function useMainLayout() {
   function onUserCommand(cmd: string) {
     if (cmd === 'theme') toggleTheme()
     else if (cmd === 'settings') router.push({ name: 'settings' })
+    else if (cmd === 'password') passwordDialogOpen.value = true
     else if (cmd === 'logout') logout()
   }
   function toggleNav() {
@@ -196,6 +199,7 @@ export function useMainLayout() {
     mobileNavOpen,
     sidebarCollapsed,
     paletteOpen,
+    passwordDialogOpen,
     navGroups,
     navDesc,
     favoriteItems,

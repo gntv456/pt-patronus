@@ -173,10 +173,11 @@ export default {
   },
 
   login: {
-    subtitle: 'PT 守护神 · 好学 APP 专属',
+    subtitle: 'PT 守护神 · 自托管 PT 管理面板',
+    localTab: '账号登录',
     tabs: {
-      account: '好学账号',
-      cookie: 'Cookie 登录',
+      account: '好学账号（旧）',
+      cookie: 'Cookie 登录（旧）',
     },
     boot: {
       checking: '正在检查后端服务',
@@ -184,7 +185,13 @@ export default {
       connected: '后端已连接',
       serviceErr: '无法连接后端服务，请确认 Docker/后端已启动',
       vipOn: '当前实例使用好学 VIP 准入，首个通过验证的用户会成为管理员。',
-      vipOff: '当前实例未开启好学准入限制。',
+      vipOff: '本地密码登录：首次登录自动创建账号（成为管理员）。',
+    },
+    localForm: {
+      username: '用户名',
+      password: '密码',
+      firstLoginHint: '首次登录自动创建账号；已有账号请用原密码登录',
+      passwordRule: '密码至少 8 位且需包含字母和数字',
     },
     form: {
       username: '好学用户名',
@@ -194,6 +201,17 @@ export default {
       challengeHint: '好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录',
       cookiePlaceholder: '粘贴好学 cookie（如 c_secure_uid=...; c_secure_pass=...），浏览器登录好学后 F12 复制',
       cookieHint: '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
+    },
+    err: {
+      fillLocal: '请填写用户名和密码',
+      localFailed: '登录失败',
+      captchaFailed: '取验证码失败（可改用 Cookie 登录）',
+      fillAccount: '请填写好学账号和密码',
+      twoStepFormat: '二级验证码应为 6 位数字',
+      fillCookie: '请粘贴好学 cookie',
+      cookieFormat: 'cookie 格式有误：应含「键=值」字段，请从浏览器完整复制整段 cookie',
+      loginFailed: '登录失败',
+      demoDisabled: '演示登录未启用',
     },
     submit: '登录',
     clickRefresh: '点击刷新',
@@ -4322,16 +4340,28 @@ export default {
     aiAssistant: 'AI 助手',
     switchTheme: '切换主题',
     settings: '设置',
+    changePassword: '修改密码',
     logout: '退出登录',
+  },
+
+  pwdDialog: {
+    title: '修改密码',
+    old: '当前密码',
+    new: '新密码',
+    confirm: '确认新密码',
+    submit: '保存',
+    cancel: '取消',
+    ok: '密码已更新',
+    err: {
+      fill: '请填写当前密码和新密码',
+      mismatch: '两次输入的新密码不一致',
+      failed: '修改失败',
+    },
   },
 
   wsDot: { online: '实时连接正常', offline: '实时连接已断开，自动重连中' },
 
   pcd: {
     title: '配置：{name}',
-  },
-
-  asb: {
-    vipBadge: '好学 VIP',
   },
 } as const

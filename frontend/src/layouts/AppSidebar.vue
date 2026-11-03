@@ -134,9 +134,7 @@ function noticeBadge(name: string): number {
         </template>
       </div>
     </nav>
-    <div class="sidebar-footer">
-      <span v-if="!sidebarCollapsed" class="vip-badge">{{ t('asb.vipBadge') }}</span>
-    </div>
+    <!-- 好学 VIP 徽标已随站点关闭移除（#<issue>） -->
   </aside>
 </template>
 

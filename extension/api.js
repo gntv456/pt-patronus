@@ -70,6 +70,24 @@ async function fetchJson(url, options) {
   return { resp, body }
 }
 
+// localLogin 本地密码登录（好学站点关闭后的主路径，#issue）：POST /auth/local/login
+// → {token, user}，并落库会话。凭据存本机供续期失效时静默重登。
+export async function localLogin(server, { username, password }) {
+  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/local/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  if (!resp.ok) {
+    const err = new Error(body.message || body.error || `HTTP ${resp.status}`)
+    err.status = resp.status
+    throw err
+  }
+  const user = body.user || {}
+  await saveSession({ hxptCookie: '', token: body.token, user, hxptCreds: { username, password } })
+  return { token: body.token, user }
+}
+
 // login 好学 Cookie 登录：POST /auth/hxpt/cookie-login → {token, user}，并落库会话。
 export async function login(server, hxptCookie) {
   const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/cookie-login`, {

@@ -1,7 +1,7 @@
 // 控制台页（选项页）：左侧导航整合全部工具页（站点数据 / Cookie 台账 / 下载任务 /
 // 收藏与历史 / TOTP 验证器 / 同步备份），账号登录与配置沿用原逻辑。
 // 各工具页逻辑就地实现（复用 dashboard/cookies/downloads/collection/totp 模块）。
-import { getConfig, saveConfig, api, login, loginByPassword, fetchCaptcha, clearSession, isConfigured } from './api.js'
+import { getConfig, saveConfig, api, localLogin, login, loginByPassword, fetchCaptcha, clearSession, isConfigured } from './api.js'
 import { readSecret, writeSecret, setSealsPin } from './secrets.js'
 import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieHeader } from './cookies.js'
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
@@ -546,18 +546,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // ================= 账号与登录 =================
-  let mode = 'account'
+  // 本地密码登录为主（好学站点关闭后的主路径，#issue）；好学账号/Cookie 保一版兼容。
+  let mode = 'local'
   const setTab = (m) => {
     mode = m
+    $('paneLocal').style.display = m === 'local' ? '' : 'none'
     $('paneAccount').style.display = m === 'account' ? '' : 'none'
     $('paneCookie').style.display = m === 'cookie' ? '' : 'none'
+    $('tabLocal').classList.toggle('on', m === 'local')
     $('tabAccount').classList.toggle('on', m === 'account')
     $('tabCookie').classList.toggle('on', m === 'cookie')
     if (m === 'account') loadCaptcha()
   }
+  $('tabLocal').onclick = () => setTab('local')
   $('tabAccount').onclick = () => setTab('account')
   $('tabCookie').onclick = () => setTab('cookie')
-  setTab('account')
+  setTab('local')
 
   let captcha = null
   async function loadCaptcha() {
@@ -730,7 +734,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await saveConfig({ server })
       let user
-      if (mode === 'cookie') {
+      if (mode === 'local') {
+        const username = $('localUser').value.trim()
+        const password = $('localPass').value
+        if (!username || !password) { feedback('请填写用户名和密码', 'err'); return }
+        ;({ user } = await localLogin(server, { username, password }))
+        $('localPass').value = ''
+      } else if (mode === 'cookie') {
         const cookie = $('hxptCookie').value.trim()
         if (!cookie) { feedback('请粘贴好学 Cookie', 'err'); return }
         ;({ user } = await login(server, cookie))

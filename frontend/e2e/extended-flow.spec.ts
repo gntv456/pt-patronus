@@ -1,10 +1,10 @@
 // 扩展链路 E2E（核心三链路之外的第二批）：订阅读删、i18n 切换持久化、登录失败/登出。
-// 全链路离线（与 core-flow 同口径）：登录走 HXPT_EMERGENCY_ADMIN；订阅数据经应用 API 造数。
+// 全链路离线（与 core-flow 同口径）：登录走本地密码（/auth/local/login）；订阅数据经应用 API 造数。
 //
 // 顺序约定：登录态用例（storageState）在前，登出用例最后——/auth/logout 会 bump
 // TokenVersion 使用户的全部 token 失效，若先执行会让 storageState 里的会话作废。
 import { expect, test } from '@playwright/test'
-import { E2E_EMERGENCY_PASSCODE } from '../playwright.config'
+import { E2E_LOCAL_PASSWORD, E2E_LOCAL_USER } from '../playwright.config'
 
 // 从已登录页读 localStorage token（core-flow 同款；本登录链路不种 cookie，
 // API 调用需显式 Authorization）。
@@ -60,19 +60,19 @@ test.describe('登录与会话', () => {
 
   test('登录失败：错误口令出现可见错误提示且不跳转', async ({ page }) => {
     await page.goto('/login')
-    await page.getByPlaceholder('好学用户名').fill('e2e-admin')
-    await page.getByPlaceholder('好学密码', { exact: false }).fill('wrong-passcode-000')
+    await page.getByPlaceholder('用户名').fill('e2e-admin')
+    await page.getByPlaceholder('密码', { exact: true }).fill('wrong-pass-000')
     await page.getByRole('button', { name: '登录', exact: true }).click()
-    // 应急通道校验失败 → 登录页内联错误（.err），仍停留在 /login
+    // 密码校验失败 → 登录页内联错误（.err），仍停留在 /login
     await expect(page.locator('.err').first()).toBeVisible({ timeout: 15_000 })
     await expect(page).toHaveURL(/\/login/)
   })
 
   test('登出：下拉菜单退出后回登录页且本地会话清除', async ({ page }) => {
-    // 正常登录（应急通道，口令与 auth.setup 同源）
+    // 正常登录（本地密码，与 auth.setup 同源）
     await page.goto('/login')
-    await page.getByPlaceholder('好学用户名').fill('e2e-admin')
-    await page.getByPlaceholder('好学密码', { exact: false }).fill(E2E_EMERGENCY_PASSCODE)
+    await page.getByPlaceholder('用户名').fill(E2E_LOCAL_USER)
+    await page.getByPlaceholder('密码', { exact: true }).fill(E2E_LOCAL_PASSWORD)
     await page.getByRole('button', { name: '登录', exact: true }).click()
     await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 15_000 })
     // 右上角用户菜单 → 退出登录

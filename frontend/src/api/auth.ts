@@ -4,6 +4,7 @@ export interface AuthStatus {
   activated: boolean
   authenticated: boolean
   auth_site_on: boolean
+  local_login?: boolean // 本地密码登录恒可用（好学站点关闭后的主路径）
   vip_verified: boolean
   demo_mode?: boolean
   oidc_enabled?: boolean // 管理员配置了 OIDC/SSO 且启用
@@ -59,6 +60,19 @@ export const authApi = {
   // JWT 滑动续期（后端复用旧 token 首发时间、绝对寿命钳制；同步刷新 httpOnly cookie）。
   // http 拦截器在 401 时先尝试一次续期再重放原请求（见 http.ts）。
   refresh: () => http.post<LoginResult>('/auth/refresh').then((r) => r.data),
+
+  // 本地密码登录（好学站点关闭后的主路径；首次登录自动建号，实例已有主人时拒绝第二账号）
+  localLogin: (username: string, password: string) =>
+    http
+      .post<LoginResult>('/auth/local/login', { username, password })
+      .then((r) => r.data),
+
+  // 修改本地密码（guarded；需校验旧密码）
+  changePassword: (oldPassword: string, newPassword: string) =>
+    http.post('/auth/local/password', {
+      old_password: oldPassword,
+      new_password: newPassword,
+    }),
 
   // 好学账号登录（两步：先 hxptCaptcha 取验证码，再 hxptLogin）
   hxptCaptcha: () => http.post<CaptchaChallenge>('/auth/hxpt/captcha').then((r) => r.data),

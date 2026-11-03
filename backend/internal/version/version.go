@@ -1,6 +1,6 @@
 // Package version 持有应用版本号（三端单一权威来源）。
 //
-// 当前版本 1.03.25。发布构建时可用 ldflags 覆盖：
+// 当前版本 1.03.26。发布构建时可用 ldflags 覆盖：
 //
 //	go build -ldflags "-X github.com/hxpt/ptpatronus/internal/version.Version=1.2.3" ./cmd/ptpatronus
 //
@@ -8,4 +8,4 @@
 package version
 
 // Version 是当前应用版本号。var 而非 const，以便 ldflags 在构建期注入。
-var Version = "1.03.25"
+var Version = "1.03.26"

@@ -37,6 +37,39 @@ extension on _LoginPageState {
   }
 
 
+  // 本地密码登录表单（好学站点关闭后的主路径，#<issue>）：用户名 + 密码，
+  // 首次登录自动建号。
+  List<Widget> _localFields() {
+    return [
+      TextField(
+        controller: _user,
+        decoration: const InputDecoration(labelText: '用户名'),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _pass,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: '密码'),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '首次登录自动创建账号（成为管理员）；已有账号请用原密码登录',
+        style: TextStyle(fontSize: 12, color: context.dimText),
+      ),
+      const SizedBox(height: 22),
+      FilledButton(
+        onPressed: _loading ? null : _localLogin,
+        child: _loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('登录'),
+      ),
+    ];
+  }
+
   List<Widget> _accountFields() {
     final needCap = _captcha?['need_captcha'] == true;
     return [

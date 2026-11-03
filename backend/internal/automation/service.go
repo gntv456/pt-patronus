@@ -13,9 +13,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/chain"
-	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
@@ -31,8 +29,6 @@ type Config struct {
 	RegistrationCron        string // 注册检测，默认 0 */6 * * *（每 6 小时）
 	HRWarnDeadlineHours     int    // H&R 临期告警阈值（剩余小时），默认 24
 	CheckinRecordRetainDays int    // 签到历史保留天数，默认 90（超期自动清理）
-	VIPRecheckCron          string // 好学 VIP 重验，默认 0 */6 * * *（每 6 小时）
-	VIPGraceDays            int    // VIP 宽限天数，默认 3
 
 	// 站点信息聚合（刷新缓存供前端读取；站免额外 WS 推送正在站免）
 	FreeleechCron    string // 默认 */30 * * * *
@@ -61,8 +57,6 @@ type Service struct {
 	cfg      Config
 	rootCtx  context.Context
 	hub      *ws.Hub                // 实时推送 H&R 告警（nil 则跳过）
-	hxptAuth auth.HxptAuthenticator // 好学 VIP 重验（nil 则跳过）
-	crypto   *security.Crypto       // 解密 HxptCookieEnc（VIP 重验用）
 	notice   *notice.Service        // 站内通知中心（站点掉线/站免/公告/新邮件；nil 跳过）
 	cfgOp    *oper.SystemConfigOper // diff baseline（公告 hash / 新邮件 seen ID；nil 跳过 diff）
 	assessCh *chain.AssessmentChain // 聚合快照复用 uid 跑考核（nil 则跳过 assessment）
@@ -80,7 +74,7 @@ func (s *Service) SetHxCardPush(fn func(ctx context.Context)) {
 func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteOper,
 	notif notifier, regCh *chain.RegistrationChain, keepSeed keepSeedRunner,
 	db *gorm.DB, cfg Config,
-	rootCtx context.Context, hub *ws.Hub, hxptAuth auth.HxptAuthenticator, crypto *security.Crypto,
+	rootCtx context.Context, hub *ws.Hub,
 	notice *notice.Service, cfgOp *oper.SystemConfigOper, assessCh *chain.AssessmentChain) *Service {
 
 	if cfg.StatsSyncCron == "" {
@@ -98,12 +92,6 @@ func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteO
 	if cfg.CheckinRecordRetainDays <= 0 {
 		cfg.CheckinRecordRetainDays = 90
 	}
-	if cfg.VIPRecheckCron == "" {
-		cfg.VIPRecheckCron = "0 */6 * * *"
-	}
-	if cfg.VIPGraceDays <= 0 {
-		cfg.VIPGraceDays = 3
-	}
 	if cfg.FreeleechCron == "" {
 		cfg.FreeleechCron = "*/30 * * * *"
 	}
@@ -120,7 +108,7 @@ func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteO
 		cfg.SnapshotCron = "7 */4 * * *" // 每 4h 错峰 7 分：降频与 session 保活的平衡
 	}
 	return &Service{sched: sched, siteCh: siteCh, siteOp: siteOp, notif: notif, regCh: regCh,
-		keepSeed: keepSeed, db: db, cfg: cfg, rootCtx: rootCtx, hub: hub, hxptAuth: hxptAuth, crypto: crypto,
+		keepSeed: keepSeed, db: db, cfg: cfg, rootCtx: rootCtx, hub: hub,
 		notice: notice, cfgOp: cfgOp, assessCh: assessCh}
 }
 
@@ -147,7 +135,6 @@ func (s *Service) Start() {
 	must("checkin-record-cleanup", "30 4 * * *", s.runCheckinCleanup) // 每天 4:30 清理超期签到记录
 	must("site-stat-cleanup", "40 4 * * *", s.runSiteStatCleanup)     // 每天 4:40 清理超期统计快照（错峰签到清理）
 	must("registration", s.cfg.RegistrationCron, s.runRegistration)
-	must("vip-recheck", s.cfg.VIPRecheckCron, s.runVIPRecheck)
 	if s.keepSeed != nil {
 		must("keepseed-reseed", s.cfg.KeepSeedCron, s.runKeepSeed)
 	}

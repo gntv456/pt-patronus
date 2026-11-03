@@ -4,10 +4,11 @@ import TaskIndicator from '@/components/TaskIndicator.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import WsStatusDot from '@/components/WsStatusDot.vue'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 import AppSidebar from '@/layouts/AppSidebar.vue'
 import { useI18n } from 'vue-i18n'
 import { useMainLayout } from '@/layouts/useMainLayout'
-import { Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { Key, Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
 const {
@@ -17,6 +18,7 @@ const {
   mobileNavOpen,
   sidebarCollapsed,
   paletteOpen,
+  passwordDialogOpen,
   noticeUnread,
   noticeUrgent,
   navGroups,
@@ -101,6 +103,10 @@ const {
               <el-dropdown-item command="settings"
                 ><el-icon><Setting /></el-icon>&nbsp;{{ t('ml.settings') }}</el-dropdown-item
               >
+              <el-dropdown-item command="password"
+                ><el-icon><Key /></el-icon
+                >&nbsp;{{ t('ml.changePassword') }}</el-dropdown-item
+              >
               <el-dropdown-item command="logout" divided
                 ><el-icon><SwitchButton /></el-icon>&nbsp;{{ t('ml.logout') }}</el-dropdown-item
               >
@@ -108,6 +114,8 @@ const {
           </template>
         </el-dropdown>
       </header>
+
+      <ChangePasswordDialog v-model="passwordDialogOpen" />
 
       <GlobalNoticeBar />
 

@@ -95,6 +95,7 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		"activated":     h.act != nil && h.act.AnyActivated(),
 		"authenticated": authed,
 		"auth_site_on":  h.hxptAuth != nil,
+		"local_login":   true, // 本地密码登录恒可用（好学站点关闭后的主路径，#<issue>）
 		"vip_verified":  verified,
 		"demo_mode":     h.demoMode,
 	}

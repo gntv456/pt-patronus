@@ -5,11 +5,12 @@ mixin LoginOpsMixin on State<LoginPage> {
   // 宿主提供的钩子。
   Future<void> _onLoginOk(Map<String, dynamic> res);
 
-  int _tab = 0; // 0=账号 1=cookie
+  int _tab = 2; // 0=好学账号(旧) 1=cookie(旧) 2=本地密码(主路径)
   bool _loading = false;
   bool _demoMode = false;
   bool _oidcEnabled = false;
-  bool _authSiteOn = false; // 后端是否开启好学 VIP 准入（用于登录页显示准入说明）
+  // ignore: unused_field — auth_site_on 语义随好学站点关闭退役（#issue），保留一版兼容
+  bool _authSiteOn = false;
   String _oidcName = 'OIDC / SSO';
   String? _err;
   // 账号登录
@@ -34,6 +35,33 @@ mixin LoginOpsMixin on State<LoginPage> {
             : 'OIDC / SSO';
       });
     } catch (_) {}
+  }
+
+  // 本地密码登录（好学站点关闭后的主路径，#<issue>）：首次登录自动建号。
+  Future<void> _localLogin() async {
+    if (_user.text.isEmpty || _pass.text.isEmpty) {
+      setState(() => _err = '请填写用户名和密码');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _err = null;
+    });
+    try {
+      final res = await ApiClient().post('/auth/local/login', {
+        'username': _user.text.trim(),
+        'password': _pass.text,
+      });
+      await _onLoginOk(res);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _err = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _err = '网络错误，请确认后端地址是否正确、后端服务是否已启动');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<bool> _fetchCaptcha({bool silent = false}) async {

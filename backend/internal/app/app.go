@@ -311,17 +311,16 @@ func New(cfg *config.Config) (*App, error) {
 	// 设置存 SystemConfig（密码 AES-GCM 加密）；独立 API /cookiecloud/* + 三端设置页。tick 软间隔（读 DB interval）。
 	cookieCloudCh := chain.NewCookieCloudChain(cfgOp, crypto, siteOp, registry, siteCh, hc)
 
-	// 后台自动化（7×24）
+	// 后台自动化（7×24）。好学 VIP 重验任务已随站点关闭退役（#<issue>）。
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
 		RegistrationCron:        cfg.RegistrationCron,
 		HRWarnDeadlineHours:     cfg.HRWarnDeadlineHours,
 		CheckinRecordRetainDays: cfg.CheckinRecordRetainDays,
-		VIPGraceDays:            cfg.VIPGraceDays,
 		KeepSeedCron:            cfg.KeepSeedCron,
 		SnapshotCron:            cfg.SnapshotCron,
 		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
-	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp, assessCh)
+	}, context.Background(), wsHub, noticeSvc, cfgOp, assessCh)
 	// 守护神名片：site-snapshot 末尾自动推送（详见 wireHxCard）。
 	wireHxCard(auto, hc, cfgOp, siteOp, crypto, database)
 	if !cfg.SafeMode {

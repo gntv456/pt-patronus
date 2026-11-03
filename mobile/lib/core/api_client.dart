@@ -256,14 +256,14 @@ class ApiClient {
       // 401：token 失效/已登出 → 全局清洗（清 token+user、断 WS、回登录页）
       if (r.statusCode == 401) _handle401();
       final code = body['code'] as String?;
-      // VIP 校验类 403：给专门引导文案（不去动 main.dart 的 401 会话回调，
-      // 只改善错误消息层，让用户知道该去 Web 端重新验证好学 VIP）。
+      // VIP 校验类 403：闸门已随好学站点关闭退役（#<issue>），这些码不再出现；
+      // 保留映射一版兼容旧后端，文案改为通用会话提示。
       String? vipMsg;
       if (r.statusCode == 403) {
         vipMsg = switch (code) {
-          'vip_expired' => '好学 VIP 已过期，请前往 Web 端重新验证',
-          'vip_not_verified' => '好学 VIP 未验证，请前往 Web 端完成验证',
-          'vip_unknown' => '好学 VIP 验证状态未知，请稍后重试或前往 Web 端重新验证',
+          'vip_expired' => '登录态已过期，请重新登录',
+          'vip_not_verified' => '登录态已过期，请重新登录',
+          'vip_unknown' => '登录态异常，请稍后重试或重新登录',
           _ => null,
         };
       }

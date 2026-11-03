@@ -19,6 +19,7 @@ declare module 'vue' {
     CbgSlotGame: typeof import('./src/components/CbgSlotGame.vue')['default']
     CbgWheelGame: typeof import('./src/components/CbgWheelGame.vue')['default']
     CelebrityDialog: typeof import('./src/components/CelebrityDialog.vue')['default']
+    ChangePasswordDialog: typeof import('./src/components/ChangePasswordDialog.vue')['default']
     City13DiceGame: typeof import('./src/components/City13DiceGame.vue')['default']
     City13WheelGame: typeof import('./src/components/City13WheelGame.vue')['default']
     CloudDialogs: typeof import('./src/components/cloud/CloudDialogs.vue')['default']

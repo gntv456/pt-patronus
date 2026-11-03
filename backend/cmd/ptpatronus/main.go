@@ -20,8 +20,9 @@ import (
 
 func main() {
 	// 离线应急子命令：reset-admin（好学登录链路坏掉时恢复管理员）。
+	// --password 变体：给实例主人设本地密码（好学站点关闭后的主登录入口，#<issue>）。
 	if len(os.Args) > 1 && os.Args[1] == "reset-admin" {
-		if err := runResetAdmin(); err != nil {
+		if err := runResetAdmin(os.Args[2:]); err != nil {
 			slog.Error("reset-admin failed", "err", err)
 			os.Exit(1)
 		}

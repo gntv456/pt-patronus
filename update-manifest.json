@@ -1,13 +1,13 @@
 {
-  "latestVersion": "1.03.25",
+  "latestVersion": "1.03.26",
   "minVersion": "0.60.00",
-  "releaseName": "Agent 链路修复版",
-  "releaseNotes": "1.03.25：Agent 连接链路与 MCP 可用性修复 + 全域文案中文化。①监控 Agent——0.3.2+ agent 的 hello 体鉴权不再连上即断（此前握手成功即被 Close，面板 online 恒 false、每秒重连），换手/断开不再闪断与误发离线告警。②MCP——/api/v1/mcp 的 Bearer 配对 token 不再被当 JWT 拦 401（此前 MCP 完全不可用）；接入地址归一，base_url 填完整地址不再拼成 /api/v1/mcp/api/v1/mcp；工具错误 13 处裸透传改统一出口。③站点凭据——CookieCloud 首次推送不再被云端 404 拦死、解密失败说人话；站点 Cookie 不再按目录重复存一份；登录入口跳过脏 cookie。④文案——逐通道通知错误中文化并脱敏（token 不外泄），日志保留底层原文；错误信封 specific 标记 + 绑定失败点名到字段（i_ds 修正）；RSS 推种失败不再静默。⑤其余——动漫「标题 - 12」绝对集数与 [fansub] 组名识别、加密封包损坏不 panic、备份重复导入幂等、Plex 回调标题解码、移动端诊断 load_failed 文案、扩展后台异常回包补齐。",
+  "releaseName": "本地密码登录版",
+  "releaseNotes": "1.03.26：好学站点关闭，登录方式切换为本地用户名密码。①升级注意——存量实例请先用 ptpatronus reset-admin --password <新密码> 给实例主人初始化密码，再到登录页用该账号登录（好学账号/Cookie 旧入口保留一版兼容）。②新登录——空库首次登录自动创建账号（首位登录者即管理员），实例已有主人时拒绝第二账号；密码至少 8 位且含字母数字（bcrypt 存储）；Web 顶栏用户菜单新增「修改密码」入口。③闸门——好学 VIP 准入（RequireVIP）移除，登录即完整授权，不再有 VIP 宽限期锁死风险；VIP 定期重验任务退役。④三端——Web/移动端/扩展登录页均新增「账号登录」主入口，好学双 Tab 降为旧入口；登录页错误文案补进中英 i18n，侧栏「好学 VIP」徽标移除。",
   "isForced": false,
-  "publishedAt": "2026-10-29T12:00:00+08:00",
+  "publishedAt": "2026-11-04T12:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.25",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.26",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {

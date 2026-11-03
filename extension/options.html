@@ -150,11 +150,22 @@
         <div class="panel-title">登录 <span class="tag-pill pill-dim" id="whoamiPill" style="display:none"></span></div>
 
         <div class="segmented" id="loginSeg">
-          <button id="tabAccount" class="on" type="button">好学账号</button>
-          <button id="tabCookie" type="button">Cookie 登录</button>
+          <button id="tabLocal" class="on" type="button">账号登录</button>
+          <button id="tabAccount" type="button">好学账号（旧）</button>
+          <button id="tabCookie" type="button">Cookie（旧）</button>
         </div>
 
-        <div id="paneAccount" style="margin-top:10px">
+        <div id="paneLocal" style="margin-top:10px">
+          <label for="localUser">用户名</label>
+          <input id="localUser" autocomplete="username" placeholder="用户名" />
+          <label for="localPass">密码</label>
+          <input id="localPass" type="password" autocomplete="current-password" placeholder="密码" />
+          <div class="hint" style="margin-top:6px">
+            首次登录自动创建账号（成为管理员）；凭据仅存本机。
+          </div>
+        </div>
+
+        <div id="paneAccount" style="display:none; margin-top:10px">
           <label for="accUser">好学用户名</label>
           <input id="accUser" autocomplete="username" placeholder="好学用户名" />
           <label for="accPass">好学密码</label>

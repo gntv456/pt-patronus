@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
@@ -11,16 +11,28 @@ const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 
-type Tab = 'account' | 'cookie'
-const tab = ref<Tab>('account')
+type Tab = 'local' | 'account' | 'cookie'
+const tab = ref<Tab>('local')
 const bootLoading = ref(false)
 const systemInfo = ref<SystemInfo | null>(null)
 const authStatus = ref<AuthStatus | null>(null)
 const serviceErr = ref('')
 
 // 登录表单与各登录方式抽出为 composable（useLoginAuth）。
-const { auth, loading, err, captcha, acc, cookieStr, fetchCaptcha, accountLogin, cookieLogin, demoLogin, oidcLogin } =
-  useLoginAuth()
+const {
+  auth,
+  loading,
+  err,
+  captcha,
+  acc,
+  cookieStr,
+  fetchCaptcha,
+  localLogin,
+  accountLogin,
+  cookieLogin,
+  demoLogin,
+  oidcLogin,
+} = useLoginAuth()
 
 function goDashboard() {
   router.push({ name: 'dashboard' })
@@ -48,7 +60,11 @@ onMounted(async () => {
     err.value = oidcFailText(oidcError)
     router.replace({ path: route.path, query: route.query }) // 抹掉 fragment，刷新不重播旧错误
   }
-  await Promise.all([loadBootStatus(), fetchCaptcha()])
+  // 验证码只在切到好学旧 Tab 时才拉（本地密码登录不需要）。
+  watch(tab, (v) => {
+    if (v === 'account' && !captcha.value) fetchCaptcha()
+  })
+  await loadBootStatus()
 })
 
 async function loadBootStatus() {
@@ -66,6 +82,9 @@ async function loadBootStatus() {
 }
 
 // 包装登录成功回调：跳转首页。
+function doLocalLogin() {
+  localLogin(goDashboard)
+}
 function doAccountLogin() {
   accountLogin(goDashboard)
 }
@@ -87,6 +106,7 @@ function doDemoLogin() {
       <p class="subtitle">{{ t('login.subtitle') }}</p>
 
       <div class="mode-tabs">
+        <button :class="{ active: tab === 'local' }" @click="tab = 'local'">{{ t('login.localTab') }}</button>
         <button :class="{ active: tab === 'account' }" @click="tab = 'account'">{{ t('login.tabs.account') }}</button>
         <button :class="{ active: tab === 'cookie' }" @click="tab = 'cookie'">{{ t('login.tabs.cookie') }}</button>
       </div>
@@ -109,8 +129,38 @@ function doDemoLogin() {
         </p>
       </div>
 
-      <!-- 好学账号登录 -->
-      <form v-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
+      <!-- 本地密码登录（好学站点关闭后的主路径，#<issue>） -->
+      <form v-if="tab === 'local'" class="form" @submit.prevent="doLocalLogin">
+        <el-input
+          v-model="acc.username"
+          :placeholder="t('login.localForm.username')"
+          size="large"
+          autocomplete="username"
+          class="field"
+        />
+        <el-input
+          v-model="acc.password"
+          type="password"
+          :placeholder="t('login.localForm.password')"
+          size="large"
+          show-password
+          autocomplete="current-password"
+          class="field"
+        />
+        <el-button
+          type="primary"
+          size="large"
+          native-type="submit"
+          class="submit"
+          :loading="loading"
+        >
+          {{ t('login.submit') }}
+        </el-button>
+        <p class="hint">{{ t('login.localForm.firstLoginHint') }}</p>
+      </form>
+
+      <!-- 好学账号登录（旧路径，保一版兼容） -->
+      <form v-else-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
         <el-input
           v-model="acc.username"
           :placeholder="t('login.form.username')"

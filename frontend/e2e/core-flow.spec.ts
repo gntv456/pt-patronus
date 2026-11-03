@@ -1,6 +1,6 @@
 // 核心链路 E2E：登录 → 站点列表 → 跨站搜索 → 下发下载器。
 // 全链路离线：
-//   - 登录走后端 HXPT_EMERGENCY_ADMIN 应急通道（不触真实好学站）
+//   - 登录走本地密码（/auth/local/login，好学站点关闭后的主路径，#<issue>）
 //   - qBittorrent 由 e2e/mock-qb.mjs 模拟（创建/测连/下发/任务列表全真实路径）
 //   - 搜索对无 cookie 站点走后端聚合容错路径（SSE 完成 + 失败站提示 = 链路通）
 import { expect, test } from '@playwright/test'

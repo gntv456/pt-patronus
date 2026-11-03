@@ -70,7 +70,7 @@ func TestRunKeepSeedFailureMustNotify(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			notif := &fakeNotifier{}
-			svc := New(nil, nil, nil, notif, nil, c.fake, nil, Config{}, context.Background(), nil, nil, nil, nil, nil, nil)
+			svc := New(nil, nil, nil, notif, nil, c.fake, nil, Config{}, context.Background(), nil, nil, nil, nil)
 			svc.runKeepSeed()
 			if len(notif.got) == 0 {
 				t.Errorf("%s 只写了日志、没有通知：用户在界面上看不到「自动辅种没跑/没加上」", c.name)
@@ -92,7 +92,7 @@ func TestRunKeepSeedFailureMustNotify(t *testing.T) {
 func TestRunKeepSeedSilentPathsKeepQuiet(t *testing.T) {
 	notif := &fakeNotifier{}
 	fk := &fakeKeepSeed{}
-	svc := New(nil, nil, nil, notif, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil, nil, nil)
+	svc := New(nil, nil, nil, notif, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil)
 	svc.runKeepSeed() // 无下载器启用
 	if len(notif.got) != 0 {
 		t.Errorf("零动作不许发通知（那是噪声），got %+v", notif.got)
@@ -100,7 +100,7 @@ func TestRunKeepSeedSilentPathsKeepQuiet(t *testing.T) {
 
 	notif2 := &fakeNotifier{}
 	fk2 := &fakeKeepSeed{settings: []models.CrossSeedSetting{{DownloaderID: 1, AutoReseed: true}}}
-	svc2 := New(nil, nil, nil, notif2, nil, fk2, nil, Config{}, context.Background(), nil, nil, nil, nil, nil, nil)
+	svc2 := New(nil, nil, nil, notif2, nil, fk2, nil, Config{}, context.Background(), nil, nil, nil, nil)
 	svc2.runKeepSeed() // 正常跑完
 	if len(notif2.got) != 0 {
 		t.Errorf("成功路径不许发通知，got %+v", notif2.got)
@@ -118,7 +118,7 @@ func TestRunKeepSeedSilentPathsKeepQuiet(t *testing.T) {
 func TestRunKeepSeedAggregatedFailureStillNotifies(t *testing.T) {
 	notif := &fakeNotifier{}
 	fk := &fakeKeepSeedFail{resolveErr: errors.New("下载器拒绝了这个种子")}
-	svc := New(nil, nil, nil, notif, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil, nil, nil)
+	svc := New(nil, nil, nil, notif, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil)
 	svc.runKeepSeed()
 	if len(notif.got) == 0 {
 		t.Fatal("逐条 add 失败后必须汇总播报（只写日志的话，界面看不出「开了自动辅种却什么都没加」）")

@@ -50,6 +50,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', token)
       if (user) localStorage.setItem('user', JSON.stringify(user))
     },
+    // 本地密码登录（好学站点关闭后的主路径）：首次登录自动建号。
+    async loginByLocal(username: string, password: string) {
+      const { token, user } = await authApi.localLogin(username, password)
+      this.onLoginSuccess(token, user)
+    },
     // 好学账号登录（POST takelogin + VIP 校验）
     async loginByHxpt(p: HxptLoginParams) {
       const { token, user } = await authApi.hxptLogin(p)

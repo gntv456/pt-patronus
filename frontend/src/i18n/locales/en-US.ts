@@ -173,10 +173,11 @@ export default {
   },
 
   login: {
-    subtitle: 'PT Patronus · hxpt APP exclusive',
+    subtitle: 'PT Patronus · self-hosted PT dashboard',
+    localTab: 'Sign in',
     tabs: {
-      account: 'Account',
-      cookie: 'Cookie Login',
+      account: 'hxpt Account (legacy)',
+      cookie: 'Cookie Login (legacy)',
     },
     boot: {
       checking: 'Checking backend service',
@@ -184,7 +185,14 @@ export default {
       connected: 'Backend connected',
       serviceErr: 'Cannot reach the backend. Make sure Docker/backend is running',
       vipOn: 'This instance enforces hxpt VIP access. The first verified user becomes admin.',
-      vipOff: 'This instance has no VIP access restriction.',
+      vipOff: 'Local password sign-in: first login creates the account.',
+    },
+    localForm: {
+      username: 'Username',
+      password: 'Password',
+      firstLoginHint:
+        'First sign-in creates the account; existing ones keep their password',
+      passwordRule: 'Password must be 8+ characters with letters and digits',
     },
     form: {
       username: 'hxpt username',
@@ -196,6 +204,18 @@ export default {
       cookiePlaceholder:
         'Paste hxpt cookie (e.g. c_secure_uid=...; c_secure_pass=...), copy from F12 after browser login',
       cookieHint: 'Most reliable path; covers 2FA / challenge-response accounts',
+    },
+    err: {
+      fillLocal: 'Please enter username and password',
+      localFailed: 'Sign-in failed',
+      captchaFailed: 'Failed to fetch captcha (try Cookie Login instead)',
+      fillAccount: 'Please enter hxpt account and password',
+      twoStepFormat: '2FA code must be 6 digits',
+      fillCookie: 'Please paste an hxpt cookie',
+      cookieFormat:
+        'Invalid cookie: expected "key=value"; copy the full string',
+      loginFailed: 'Sign-in failed',
+      demoDisabled: 'Demo sign-in is disabled',
     },
     submit: 'Sign in',
     clickRefresh: 'Click to refresh',
@@ -4360,16 +4380,28 @@ export default {
     aiAssistant: 'AI assistant',
     switchTheme: 'Switch theme',
     settings: 'Settings',
+    changePassword: 'Change password',
     logout: 'Log out',
+  },
+
+  pwdDialog: {
+    title: 'Change password',
+    old: 'Current password',
+    new: 'New password',
+    confirm: 'Confirm new password',
+    submit: 'Save',
+    cancel: 'Cancel',
+    ok: 'Password updated',
+    err: {
+      fill: 'Please enter current and new password',
+      mismatch: 'New passwords do not match',
+      failed: 'Failed to change password',
+    },
   },
 
   wsDot: { online: 'Live connection OK', offline: 'Live connection lost, auto-reconnecting' },
 
   pcd: {
     title: 'Config: {name}',
-  },
-
-  asb: {
-    vipBadge: 'Haoxue VIP',
   },
 } as const

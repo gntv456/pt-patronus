@@ -8,7 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 ///
 /// 下面的 `appVersion` 常量仅作 package_info 取值失败/未就绪时的同步兜底，应随 pubspec
 /// `version:` 同步维护；正常运行时 [getClientVersion] 读到的是真实安装版本。
-const String appVersion = '1.03.25';
+const String appVersion = '1.03.26';
 
 String? _cachedClientVersion;
 

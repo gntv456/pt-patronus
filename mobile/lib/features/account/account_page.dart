@@ -195,7 +195,7 @@ class _AccountPageState extends State<AccountPage> {
                       final name =
                           (u?['username'] as String?)?.isNotEmpty == true
                           ? (u!['username'] as String)
-                          : ((u?['hxpt_username'] as String?) ?? '好学用户');
+                          : ((u?['hxpt_username'] as String?) ?? '用户');
                       final isAdmin = u?['is_admin'] == true;
                       return Text(
                         isAdmin ? '管理员 · $name' : '已登录 · $name',

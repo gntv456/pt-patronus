@@ -40,6 +40,7 @@
 2	backend/internal/api/v1/assessment.go
 5	backend/internal/api/v1/auth.go
 17	backend/internal/api/v1/auth_hxpt_login.go
+5	backend/internal/api/v1/auth_local.go
 6	backend/internal/api/v1/auth_oidc.go
 5	backend/internal/api/v1/auth_oidc_flow.go
 6	backend/internal/api/v1/backup.go
@@ -153,10 +154,9 @@
 3	backend/internal/automation/keepseed.go
 3	backend/internal/automation/messages.go
 1	backend/internal/automation/registration.go
-16	backend/internal/automation/service.go
+14	backend/internal/automation/service.go
 10	backend/internal/automation/snapshot.go
 4	backend/internal/automation/stats.go
-2	backend/internal/automation/vip_recheck.go
 7	backend/internal/backup/backup.go
 1	backend/internal/backup/encrypt.go
 9	backend/internal/backup/ptd.go
@@ -828,6 +828,7 @@
 19	frontend/src/components/CbgSlotGame.vue
 21	frontend/src/components/CbgWheelGame.vue
 7	frontend/src/components/CelebrityDialog.vue
+8	frontend/src/components/ChangePasswordDialog.vue
 21	frontend/src/components/City13DiceGame.vue
 22	frontend/src/components/City13WheelGame.vue
 6	frontend/src/components/CommandPalette.vue
@@ -1045,7 +1046,7 @@
 1	frontend/src/composables/useInactiveSiteVisit.ts
 6	frontend/src/composables/useJggGame.ts
 2	frontend/src/composables/useLlmGateway.ts
-5	frontend/src/composables/useLoginAuth.ts
+4	frontend/src/composables/useLoginAuth.ts
 2	frontend/src/composables/useLogs.ts
 14	frontend/src/composables/useMedalSynthesis.ts
 5	frontend/src/composables/useMediaDetail.ts
@@ -1089,7 +1090,7 @@
 45	frontend/src/i18n/locales/zh-CN.ts
 4	frontend/src/i18n/localesConsistency.test.ts
 1	frontend/src/i18n/mergeWiring.test.ts
-12	frontend/src/layouts/AppSidebar.vue
+11	frontend/src/layouts/AppSidebar.vue
 9	frontend/src/layouts/MainLayout.vue
 34	frontend/src/layouts/navConfig.ts
 5	frontend/src/layouts/useMainLayout.ts
@@ -1357,7 +1358,6 @@
 4	mobile/lib/features/home/home_shell.dart
 1	mobile/lib/features/home/home_sidebar.dart
 3	mobile/lib/features/login/hxpt_web_login_page.dart
-2	mobile/lib/features/login/login_page.dart
 1	mobile/lib/features/login/loginopsmixin.dart
 2	mobile/lib/features/login/server_config_page.dart
 1	mobile/lib/features/medal_wall/medal_wall_widgets.dart

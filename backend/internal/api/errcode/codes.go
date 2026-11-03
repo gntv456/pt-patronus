@@ -38,17 +38,22 @@ var (
 	AuthTicketFailed       = New("auth_ticket_failed", "签发 ticket 失败", http.StatusInternalServerError)
 	AuthCaptchaFailed      = New("auth_captcha_failed", "取验证码失败", http.StatusBadGateway)
 	AuthBadCredentials     = New("auth_bad_credentials", "用户名/密码/验证码错误", http.StatusUnauthorized)
-	AuthCookieRequired     = New("auth_cookie_required", "cookie 必填", http.StatusBadRequest)
-	DemoDisabled           = New("demo_disabled", "演示登录未启用", http.StatusNotFound)
-	AuthUserRejected       = New("auth_user_rejected", "本实例已绑定首个登录账号，不再接受新账号登录", http.StatusForbidden)
-	APIKeyNoRefresh        = New("apikey_no_refresh", "API-Key 旁路无需续期", http.StatusBadRequest)
-	APIKeyNoLogout         = New("apikey_no_logout", "API-Key 旁路无需登出", http.StatusBadRequest)
-	InvalidKey             = New("invalid_key", "key 非法", http.StatusBadRequest)
-	ValueTooLarge          = New("value_too_large", "value 超过 64KB 上限", http.StatusBadRequest)
-	ValueInvalidJSON       = New("value_invalid_json", "value 必须为合法 JSON", http.StatusBadRequest)
-	VIPCheckDisabled       = New("vip_check_disabled", "VIP 校验未启用", http.StatusBadRequest)
-	OIDCNotConfigured      = New("oidc_not_configured", "OIDC 未装配", http.StatusServiceUnavailable)
-	OIDCStateMismatch      = New("oidc_state_mismatch", "OIDC state 校验失败", http.StatusForbidden)
+	// 本地密码登录（好学站点关闭后的主路径，#issue）专属错误。
+	AuthPasswordNotSet = New("auth_password_not_set",
+		"该账号未设置本地密码，请管理员用 reset-admin --password 初始化", http.StatusConflict)
+	AuthWeakPassword = New("auth_weak_password",
+		"密码至少 8 位且需包含字母和数字", http.StatusBadRequest)
+	AuthCookieRequired = New("auth_cookie_required", "cookie 必填", http.StatusBadRequest)
+	DemoDisabled       = New("demo_disabled", "演示登录未启用", http.StatusNotFound)
+	AuthUserRejected   = New("auth_user_rejected", "本实例已绑定首个登录账号，不再接受新账号登录", http.StatusForbidden)
+	APIKeyNoRefresh    = New("apikey_no_refresh", "API-Key 旁路无需续期", http.StatusBadRequest)
+	APIKeyNoLogout     = New("apikey_no_logout", "API-Key 旁路无需登出", http.StatusBadRequest)
+	InvalidKey         = New("invalid_key", "key 非法", http.StatusBadRequest)
+	ValueTooLarge      = New("value_too_large", "value 超过 64KB 上限", http.StatusBadRequest)
+	ValueInvalidJSON   = New("value_invalid_json", "value 必须为合法 JSON", http.StatusBadRequest)
+	VIPCheckDisabled   = New("vip_check_disabled", "VIP 校验未启用", http.StatusBadRequest)
+	OIDCNotConfigured  = New("oidc_not_configured", "OIDC 未装配", http.StatusServiceUnavailable)
+	OIDCStateMismatch  = New("oidc_state_mismatch", "OIDC state 校验失败", http.StatusForbidden)
 	// OIDC 发起/回调的两个真实失败处境，此前全被折进 invalid_input「请求参数有误」：
 	// 这两个端点一个只有浏览器带来的 cookie，一个只有 Provider 带来的 code/state，
 	// 用户手上没有任何「参数」可核 —— 说「参数有误」等于把「SSO 配坏了」说成「你传错了」。

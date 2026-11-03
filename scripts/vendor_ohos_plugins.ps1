@@ -49,7 +49,9 @@ foreach ($p in $ohosPlugins) {
     if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $dstRoot | Out-Null
     # robocopy 比 Copy-Item 快且保留结构；/E 全量 /NFL /NDL /NJH /NJS 静默
-    & robocopy $src $dst /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    # /XJ 跳过 junction/symlink（pub git 缓存里 ohos/oh_modules 是上次 ohpm
+    # install 留下的链接，跟进去复制会因链接目标权限失败 exit>=8）。
+    & robocopy $src $dst /E /XJ /NFL /NDL /NJH /NJS /NP | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "复制失败：$src -> $dst" }
     # hvigor 的受限模块解析无法从 vendored 位置 require '@ohos/hvigor-ohos-plugin'
     # （原版 hvigorfile 的裸 re-export 会 Script Error），统一改写成「从 hvigor

@@ -2,7 +2,7 @@
   "latestVersion": "1.03.26",
   "minVersion": "0.60.00",
   "releaseName": "本地密码登录版",
-  "releaseNotes": "1.03.26：好学站点关闭，登录方式切换为本地用户名密码。①升级注意——存量实例请先用 ptpatronus reset-admin --password <新密码> 给实例主人初始化密码，再到登录页用该账号登录（好学账号/Cookie 旧入口保留一版兼容）。②新登录——空库首次登录自动创建账号（首位登录者即管理员），实例已有主人时拒绝第二账号；密码至少 8 位且含字母数字（bcrypt 存储）；Web 顶栏用户菜单新增「修改密码」入口。③闸门——好学 VIP 准入（RequireVIP）移除，登录即完整授权，不再有 VIP 宽限期锁死风险；VIP 定期重验任务退役。④三端——Web/移动端/扩展登录页均新增「账号登录」主入口，好学双 Tab 降为旧入口；登录页错误文案补进中英 i18n，侧栏「好学 VIP」徽标移除。",
+  "releaseNotes": "1.03.26：好学站点关闭，登录方式切换为本地用户名密码。①升级注意——存量实例请先用 ptpatronus reset-admin --password <新密码> 给实例主人初始化密码，再到登录页用该账号登录（好学账号/Cookie 旧入口保留一版兼容）。②新登录——空库首次登录自动创建账号（首位登录者即管理员），实例已有主人时拒绝第二账号；密码至少 8 位且含字母数字（bcrypt 存储）；Web 顶栏用户菜单新增「修改密码」入口。③闸门——好学 VIP 准入（RequireVIP）移除，登录即完整授权，不再有 VIP 宽限期锁死风险；VIP 定期重验任务退役。④三端——Web/移动端/扩展登录页均新增「账号登录」主入口，好学双 Tab 降为旧入口；登录页错误文案补进中英 i18n，侧栏「好学 VIP」徽标移除。⑤鸿蒙 hap 本版未随发（构建机 symlink 权限维护中），下版恢复。",
   "isForced": false,
   "publishedAt": "2026-11-04T12:00:00+08:00",
   "targets": {
@@ -12,7 +12,7 @@
     },
     "android": {
       "url": "",
-      "sha256": "19ca44d8ada644cc85f4c39cfab60cabcadbf0dd6a5bafb549f0ea8321b7945f"
+      "sha256": "4ef5bedf2aca7bfedae9604e788a5bf25417f4ac8beae8855ec06d46cd555423"
     },
     "ios": {
       "url": "",
@@ -20,19 +20,19 @@
     },
     "ohos": {
       "url": "",
-      "sha256": "efb38292fcdbbd32015e2f2043bc0ffe13989a64751d986b65e987f9a9adc210"
+      "sha256": ""
     },
     "windows": {
       "url": "",
-      "sha256": "524465099b6a222794b7983e8d006c0b759c62a48e67415852bd09b7c91e23b6"
+      "sha256": "cddf57824eb37c6ca139ba5127040d2e20a1d93366bef6dcfd1faddbd416c792"
     },
     "agent-linux-amd64": {
       "url": "",
-      "sha256": "aa75fd4f33afe8071e217cfdce806af4733bb059c4b647fb2a3ffe39bc24fe45"
+      "sha256": "46bbaf48b5c28db5f610b698c2bd26c98e035a16aac7b89b2a535c6c9328cf73"
     },
     "agent-linux-arm64": {
       "url": "",
-      "sha256": "2506657e7cdea45a0ab0d89cb91f2a56517e2832437fe8170b2c72f088f7178d"
+      "sha256": "b4f99cd44451c7dacaa82e1b606fa73e4c7e2b520eaa7bdebedc515dad3c3922"
     },
     "extension": {
       "sha256": "c3578fede15a8ee32ba59abdc6d841ecc2e67cf4a7e2274534cc9a5ca13363b2"
@@ -40,11 +40,11 @@
     "macos": {},
     "server-linux-amd64": {
       "url": "",
-      "sha256": "0a7fea0a6e1e8075a43f52eb04f4232e21dd5bebab5e52ab0bb54d6a6bc0bf57"
+      "sha256": "0612a8c613a5a0d83703755d9e5cc688e9aeac7a36028e3d3f1032bcca11e7f3"
     },
     "server-linux-arm64": {
       "url": "",
-      "sha256": "e5c7c546bc06e409803cff46c9fcdb6bfde43d1b87cc9e444376c8b9c7dfec35"
+      "sha256": "393fdac10e5816c7b41ae6503918f2cb74955af8c81d6de6ad36feaf00cdd33c"
     }
   }
 }

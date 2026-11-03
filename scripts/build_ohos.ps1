@@ -170,10 +170,37 @@ try {
         # 5.1 把原 stderr 行包装成 ErrorRecord 顺管道传递时，flutter 工具
         # 的进度输出会触发 "Unhandled exception"（实测复现）；改用 cmd /c
         # 在子进程内合并输出、整体字符串数组返回，稳定。
-        if (-not $SkipPubGet) {
+                if (-not $SkipPubGet) {
             Write-Host '[构建] flutter pub get（ohos 依赖）'
             $pubOut = & cmd /c "`"$FlutterBat`" pub get 2>&1"
-            if ($LASTEXITCODE -ne 0) { throw "pub get 失败：`n$($pubOut -join "`n")" }
+            if ($LASTEXITCODE -ne 0) {
+                # ohos fork 旧工具在 windows/.plugin_symlinks 用真 symlink（无权限即
+                # ERROR_ACCESS_DENIED）。依赖已解析完；给全部 windows 插件建 junction
+                # 兜底后重试（链接已存在时工具跳过创建，实测存活）。
+                $linksDir = Join-Path $MobileDir ('windows' + [char]92 + 'flutter' + [char]92 + 'ephemeral' + [char]92 + '.plugin_symlinks')
+                New-Item -ItemType Directory -Force -Path $linksDir | Out-Null
+                $pj = Join-Path $MobileDir '.flutter-plugins-dependencies'
+                $pjObj = $null
+                if (Test-Path -LiteralPath $pj) { try { $pjObj = Get-Content -LiteralPath $pj -Raw | ConvertFrom-Json } catch {} }
+                $names = @(); if ($pjObj) { $names = @($pjObj.plugins.windows | ForEach-Object { $_.name }) }
+                $cache = Join-Path $env:LOCALAPPDATA ('Pub' + [char]92 + 'Cache' + [char]92 + 'hosted' + [char]92 + 'pub.dev')
+                foreach ($pkg in $names) {
+                    $dst = Join-Path $linksDir $pkg
+                    if (Test-Path -LiteralPath $dst) { continue }
+                    $src = $null
+                    if ($pjObj) { $src = (@($pjObj.plugins.windows) | Where-Object { $_.name -eq $pkg } | Select-Object -First 1).path }
+                    if (-not $src -or -not (Test-Path -LiteralPath $src)) {
+                        $src = (Get-ChildItem -LiteralPath $cache -Directory -Filter ($pkg + '-*') | Sort-Object Name -Descending | Select-Object -First 1).FullName
+                    }
+                    if ($src -and (Test-Path -LiteralPath $src)) {
+                        New-Item -ItemType Junction -Path $dst -Value $src | Out-Null
+                        Write-Host "[链接] junction $pkg（symlink 权限兜底）"
+                    }
+                }
+                Write-Host '[构建] flutter pub get 重试（junction 兜底）'
+                $pubOut = & cmd /c "`"$FlutterBat`" pub get 2>&1"
+                if ($LASTEXITCODE -ne 0) { throw "pub get 失败：`n$($pubOut -join "`n")" }
+            }
         }
 
         # vendor：pub 缓存里的插件 ohos/ 复制进项目 + 重写插件路径。
@@ -192,11 +219,58 @@ try {
         # 且 ohpm/hvigor 需在 PATH（hvigorw 装依赖时调用 ohpm）。
         $env:HOS_SDK_HOME = $HosSdkHome
         $env:DEVECO_SDK_HOME = $HosSdkHome
-        $env:PATH = "$OhpmBin;$env:PATH"
+        # ohpm --no-link wrapper 前置：普通用户会话无 symlink 权限时，ohpm install
+        # 的链接安装（.ohpm/.ohpm+... → plugins/*/ohos/oh_modules）会 EPERM 失败；
+        # wrapper 给所有 install 调用追加 --no-link（真拷贝），体积换可构建。
+        $ohpmWrapper = Join-Path $PSScriptRoot ('ohpm-nolink-wrapper' + [char]92 + 'ohpm.bat')
+        if (Test-Path -LiteralPath $ohpmWrapper) {
+            $env:PATH = "$OhpmBin;$(Split-Path -Parent $ohpmWrapper);$env:PATH"
+        } else {
+            $env:PATH = "$OhpmBin;$env:PATH"
+        }
         $configOut = & cmd /c "`"$FlutterBat`" config --ohos-sdk $HosSdkHome 2>&1"
         $buildStart = Get-Date
         $buildOut = & cmd /c "`"$FlutterBat`" build hap --release 2>&1"
         $buildExit = $LASTEXITCODE
+        if ($buildExit -ne 0) {
+            # ohos fork 旧版工具在 windows/.plugin_symlinks 用真 symlink，普通用户
+            # 无 SeCreateSymbolicLinkPrivilege 会 ERROR_ACCESS_DENIED（pub get 与
+            # build hap 内部的 regenerate 都会触发）。兜底：给 plugins JSON 里
+            # windows 段全部插件预创建 junction（链接已存在时工具跳过创建），
+            # 然后重试一次 build hap。
+            $linksDir = Join-Path $MobileDir ('windows' + [char]92 + 'flutter' + [char]92 + 'ephemeral' + [char]92 + '.plugin_symlinks')
+            New-Item -ItemType Directory -Force -Path $linksDir | Out-Null
+            $pluginsJsonPath = Join-Path $MobileDir '.flutter-plugins-dependencies'
+            $pluginsJson = $null
+            if (Test-Path -LiteralPath $pluginsJsonPath) {
+                try { $pluginsJson = Get-Content -LiteralPath $pluginsJsonPath -Raw | ConvertFrom-Json } catch {}
+            }
+            $winPlugins = @()
+            if ($pluginsJson) { $winPlugins = @($pluginsJson.plugins.windows | ForEach-Object { $_.name }) }
+            if ($winPlugins.Count -eq 0) { $winPlugins = @('file_picker') }
+            $cache = Join-Path $env:LOCALAPPDATA ('Pub' + [char]92 + 'Cache' + [char]92 + 'hosted' + [char]92 + 'pub.dev')
+            foreach ($pkg in $winPlugins) {
+                $dst = Join-Path $linksDir $pkg
+                if (Test-Path -LiteralPath $dst) { continue }
+                $src = $null
+                if ($pluginsJson) {
+                    $src = (@($pluginsJson.plugins.windows) | Where-Object { $_.name -eq $pkg } |
+                        Select-Object -First 1).path
+                }
+                if (-not $src -or -not (Test-Path -LiteralPath $src)) {
+                    $src = (Get-ChildItem -LiteralPath $cache -Directory -Filter ($pkg + '-*') |
+                        Sort-Object Name -Descending | Select-Object -First 1).FullName
+                }
+                if ($src -and (Test-Path -LiteralPath $src)) {
+                    New-Item -ItemType Junction -Path $dst -Value $src | Out-Null
+                    Write-Host "[链接] junction $pkg -> $src（symlink 权限兜底）"
+                }
+            }
+            Write-Host '[构建] flutter build hap 重试（junction 兜底）'
+            $buildStart = Get-Date
+            $buildOut = & cmd /c "`"$FlutterBat`" build hap --release 2>&1"
+            $buildExit = $LASTEXITCODE
+        }
 
         # 判定标准用「HAP 是否在本次构建窗口内新鲜产出」而非退出码：hvigor 成功
         # 末尾会打印「请配置调试签名」提示（正常流程），但 flutter.bat 经

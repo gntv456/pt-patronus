@@ -222,9 +222,14 @@ try {
         # ohpm --no-link wrapper 前置：普通用户会话无 symlink 权限时，ohpm install
         # 的链接安装（.ohpm/.ohpm+... → plugins/*/ohos/oh_modules）会 EPERM 失败；
         # wrapper 给所有 install 调用追加 --no-link（真拷贝），体积换可构建。
-        $ohpmWrapper = Join-Path $PSScriptRoot ('ohpm-nolink-wrapper' + [char]92 + 'ohpm.bat')
+        $ohpmWrapper = Join-Path $PSScriptRoot ('ohpm-nolink-wrapper' + [char]92 + 'ohpm.cmd')
         if (Test-Path -LiteralPath $ohpmWrapper) {
-            $env:PATH = "$OhpmBin;$(Split-Path -Parent $ohpmWrapper);$env:PATH"
+            # wrapper 目录必须在真 ohpm bin 之前：flutter 工具按 PATH 查 'ohpm'
+            # （命中 .bat/.cmd），前置真 bin 会让它绕过 wrapper。
+            $env:PATH = "$(Split-Path -Parent $ohpmWrapper);$OhpmBin;$env:PATH"
+            # hvigor-ohos-plugin 用 env ohpmBin 定位 ohpm（process.env.ohpmBin||'ohpm'），
+            # 指到 wrapper 绝对路径，内部 install 一律 --no-link（绕开 symlink EPERM）。
+            $env:ohpmBin = $ohpmWrapper
         } else {
             $env:PATH = "$OhpmBin;$env:PATH"
         }

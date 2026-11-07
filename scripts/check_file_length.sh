@@ -57,15 +57,19 @@ scan_cols() {
       | COLS="$COLS" python -c '
 import os, sys
 cols = int(os.environ["COLS"])
-for path in sys.stdin.read().split():
+# strip() 同时剥行尾 CR：Windows 管道下 stdin 行保留 CR，path 带尾 CR 会与
+# baseline key 不匹配（CI 上无此问题，本地 Git Bash 有；1.03.27 排查记录）。
+import sys as _s
+_w = _s.stdout.buffer.write  # Windows 文本模式 print 会补 CR，改二进制写 LF
+for path in (x.strip() for x in _s.stdin.read().split()):
     try:
         n = 0
         with open(path, encoding="utf-8", errors="replace") as f:
             for line in f:
-                if len(line.rstrip("\n")) > cols:
+                if len(line.rstrip("\r\n")) > cols:
                     n += 1
         if n:
-            print(f"{n}\t{path}")
+            _w(f"{n}\t{path}\n".encode())
     except OSError:
         pass
 '
@@ -75,9 +79,12 @@ for path in sys.stdin.read().split():
 run_lines_check() {
   [[ -f "$BASELINE" ]] || { echo "FATAL: 无 baseline,先跑 'bash scripts/check_file_length.sh init'"; exit 1; }
   declare -A BASE=()
+  # 读 baseline 前剥 CR 与 BOM：baseline 在 Windows 端可能被 CRLF 工具改写
+  # （1.03.27 CI 事故根因：read 保留 CR，key 带 CR 与 scan 输出不匹配 → 全量 NEW WIDE）。
   while IFS=$'\t' read -r lines path; do
+    path="${path%$'\r'}"
     [[ -n "$path" ]] && BASE["$path"]="$lines"
-  done < "$BASELINE"
+  done < <(sed '1s/^\xef\xbb\xbf//' "$BASELINE" | tr -d '\r')
 
   fail=0
   while IFS=$'\t' read -r lines path; do
@@ -99,12 +106,15 @@ run_lines_check() {
 run_cols_check() {
   [[ -f "$COLS_BASELINE" ]] || { echo "FATAL: 无列宽 baseline($COLS_BASELINE),先跑 'bash scripts/check_file_length.sh init'"; exit 1; }
   declare -A BASE=()
+  # 同 run_lines_check：剥 CR 与 BOM，防 Windows 端 CRLF 改写让 CI 全量 NEW WIDE。
   while IFS=$'\t' read -r cnt path; do
+    path="${path%$'\r'}"
     [[ -n "$path" ]] && BASE["$path"]="$cnt"
-  done < "$COLS_BASELINE"
+  done < <(sed '1s/^\xef\xbb\xbf//' "$COLS_BASELINE" | tr -d '\r')
 
   fail=0
   while IFS=$'\t' read -r cnt path; do
+    path="${path%$'\r'}"; cnt="${cnt%$'\r'}"
     [[ -n "$path" ]] || continue
     cap="${BASE[$path]:-}"
     if [[ -z "$cap" ]]; then

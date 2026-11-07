@@ -78,6 +78,8 @@ func (m *MTeam) mtRequest(ctx context.Context, baseURL, token, path string, body
 // GenDlToken 取 MTeam 签名下载 URL：multipart/form-data POST /api/torrent/genDlToken {id}，
 // 头 x-api-key。契约源 pt_mate mteam_adapter.genDlToken（data 为签名 URL 字符串）。
 // URL 有时效（签名），调用方应在「添加」时现取，勿提前入库缓存。
+// M-Team 兼容站（如 ColaPT，extra_param 里的 mtorrent.compat 面）不收 multipart，
+// 400 invalid_request——此时用 JSON 体 {"id":...} 兜底重试一次（实测 200）。
 func (m *MTeam) GenDlToken(ctx context.Context, baseURL, apiKey, torrentID string) (string, error) {
 	baseURL = mtAPIBase(baseURL) // 同 mtRequest：网页主机 → api.m-team.cc
 	var buf bytes.Buffer
@@ -91,6 +93,19 @@ func (m *MTeam) GenDlToken(ctx context.Context, baseURL, apiKey, torrentID strin
 		"x-api-key":    apiKey,
 		"Accept":       "application/json, text/plain, */*",
 	}, "", true)
+	if err == nil && (resp.StatusCode == 400 || resp.StatusCode == 415) {
+		// multipart 被拒（兼容站只认 JSON）：换 JSON 体重试一次
+		jb, jerr := json.Marshal(map[string]string{"id": torrentID})
+		if jerr == nil {
+			hdrs := map[string]string{
+				"Content-Type": "application/json",
+				"x-api-key":    apiKey,
+				"Accept":       "application/json, text/plain, */*",
+			}
+			u := joinURL(baseURL, "/api/torrent/genDlToken")
+			resp, err = m.hc.Do(ctx, "POST", u, jb, hdrs, "", true)
+		}
+	}
 	if err != nil {
 		return "", err
 	}
@@ -118,7 +133,10 @@ func (m *MTeam) GenDlToken(ctx context.Context, baseURL, apiKey, torrentID strin
 }
 
 // parseMTTorrent 把一条搜索结果映射为 site.Torrent。
-func parseMTTorrent(it map[string]any) site.Torrent {
+// webDetail 是种子 web 详情页前缀（站点定义 extra_param.web_detail，如 ColaPT 的
+// https://www.colapt.com/torrents/）；空则回退 M-Team 官方 kp.m-team.cc/detail/。
+// 深链尾部承载种子 id（seedetail 的 mtDetailIDRe 按 (\d+)/?$ 抽取），主机不参与解析。
+func parseMTTorrent(it map[string]any, webDetail string) site.Torrent {
 	status, _ := it["status"].(map[string]any)
 	id := fmt.Sprint(it["id"])
 	t := site.Torrent{
@@ -132,7 +150,10 @@ func parseMTTorrent(it map[string]any) site.Torrent {
 	// MTeam 无公开详情 HTML 页；合成 web 深链作 DetailURL（同时承载 id 供详情抓取解析 sn）。
 	// 首页/搜索结果点击可跳 MTeam web；后端详情端点从该 URL 抽 id 调 /api/torrent/detail。
 	if id != "" {
-		t.DetailURL = "https://kp.m-team.cc/detail/" + id
+		if webDetail == "" {
+			webDetail = "https://kp.m-team.cc/detail/"
+		}
+		t.DetailURL = webDetail + id
 	}
 	// FREE 判定：置顶(toppingLevel==1) 或 优惠(discount/promotionRule.discount==FREE)
 	if toInt64(getAny(status, "toppingLevel")) == 1 {

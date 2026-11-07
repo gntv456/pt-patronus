@@ -29,8 +29,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// newTestDepsWith 装配全栈依赖（内存 SQLite，无外部网络/调度）；fa 注入好学登录行为。
-func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
+// newTestDeps 装配全栈依赖（内存 SQLite，无外部网络/调度）。
+func newTestDeps(t *testing.T) *Deps {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/int.db"), &gorm.Config{})
 	if err != nil {
@@ -77,12 +77,11 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 
 	keepSeed := chain.NewKeepSeedChain(base, siteCh, iyuu.New(siteHC, ""), chain.NewManagerProvider(dlMgr), nil, siteOp, oper.NewSystemConfigOper(db), db, nil)
 	backupSvc := backup.New(siteOp, dlOp, registry)
-	hxpt := auth.NewHxptVIP(registry, "hxpt", "https://hxpt.org", 1, siteHC)
 	tvCache := auth.NewTokenVersionCache(db, time.Second*60)
 
 	return &Deps{
-		Cfg: cfg, DB: db, JWT: jwt, Act: act, HxptVIP: hxpt,
-		HxptAuth: fa, Crypto: crypto, TVCache: tvCache, VIPGraceDays: 3,
+		Cfg: cfg, DB: db, JWT: jwt, Act: act,
+		Crypto: crypto, TVCache: tvCache, VIPGraceDays: 3,
 		SiteOp: siteOp, SiteCh: siteCh, Reg: registry, SiteHC: siteHC,
 		DLOp: dlOp, DLCh: dlCh, DLMgr: dlMgr,
 		Notif: notifCh, NotifMgr: notifMgr,
@@ -91,28 +90,19 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 	}
 }
 
-// newTestDeps 默认用 VIP fake 装配。
-func newTestDeps(t *testing.T) *Deps { return newTestDepsWith(t, fakeHxptAuth{vip: true}) }
-
-// fakeHxptAuth 测试用 HxptAuthenticator：vip 字段控制是否判为 VIP（固定好学 UID 777），
-// 空 cookie 一律非通过。用于集成测试不触达真实好学。
-type fakeHxptAuth struct{ vip bool }
-
-func (fakeHxptAuth) FetchCaptcha(context.Context) (*site.CaptchaChallenge, error) {
-	return &site.CaptchaChallenge{}, nil
-}
-func (f fakeHxptAuth) Login(context.Context, site.LoginCredentials, *site.CaptchaChallenge, string, string) (*auth.LoginOutcome, error) {
-	return &auth.LoginOutcome{
-		Cookie:  "c_secure_uid=777",
-		HxptUID: "777",
-		VIP:     &auth.VIPStatus{Verified: f.vip, ID: "777", Level: "APP专属VIP", Username: "vipuser"},
-	}, nil
-}
-func (f fakeHxptAuth) Verify(_ context.Context, cookie string) *auth.VIPStatus {
-	if cookie == "" {
-		return &auth.VIPStatus{Verified: false, Message: "未提供 cookie"}
+// loginAsAdmin 集成测试取 token：空库首登本地密码建号即 admin（原 hxpt cookie-login 的等价替代）。
+func loginAsAdmin(t *testing.T, srv *httptest.Server) string {
+	t.Helper()
+	code, body := do(t, srv, "POST", "/api/v1/auth/local/login",
+		map[string]string{"username": "admin", "password": "password123"}, "")
+	if code != 200 {
+		t.Fatalf("local login = %d %v", code, body)
 	}
-	return &auth.VIPStatus{Verified: f.vip, ID: "777", Level: "APP专属VIP", Username: "vipuser", Message: "好学 VIP 验证通过"}
+	token, _ := body["token"].(string)
+	if token == "" {
+		t.Fatal("no token from login")
+	}
+	return token
 }
 
 func do(t *testing.T, srv *httptest.Server, method, path string, body any, token string) (int, map[string]any) {
@@ -159,11 +149,11 @@ func TestUserJourney(t *testing.T) {
 		map[string]string{"username": "admin", "password": "secret123"}, ""); code != 410 {
 		t.Fatalf("deprecated login = %d, want 410", code)
 	}
-	// 好学 Cookie 登录（fake：非空 cookie 即 VIP）→ 200 + token；首个好学 VIP 用户即 admin
-	code, body := do(t, srv, "POST", "/api/v1/auth/hxpt/cookie-login",
-		map[string]string{"cookie": "c_secure_uid=777"}, "")
+	// 本地密码登录（空库首登建号即 admin）→ 200 + token
+	code, body := do(t, srv, "POST", "/api/v1/auth/local/login",
+		map[string]string{"username": "admin", "password": "password123"}, "")
 	if code != 200 {
-		t.Fatalf("hxpt cookie login = %d %v", code, body)
+		t.Fatalf("local login = %d %v", code, body)
 	}
 	token, _ := body["token"].(string)
 	if token == "" {
@@ -208,12 +198,6 @@ func TestUserJourney(t *testing.T) {
 		t.Fatalf("after logout sites = %d, want 401", code)
 	}
 
-	// 好学 VIP 校验（公开端点，无定义 cookie → 结构化未通过）
-	if _, body := do(t, srv, "POST", "/api/v1/auth/verify-vip",
-		map[string]string{"cookie": ""}, ""); body["verified"] != false {
-		t.Errorf("verify-vip = %v", body)
-	}
-
 	// SPA 回退：根路径返回内嵌前端
 	if code, _ := do(t, srv, "GET", "/", nil, ""); code != 200 {
 		t.Errorf("spa root = %d", code)
@@ -222,34 +206,25 @@ func TestUserJourney(t *testing.T) {
 	_ = ctx
 }
 
-// TestNonVIPLoginBlocked 非 VIP 登录被拒（403 not_vip）。
-func TestNonVIPLoginBlocked(t *testing.T) {
-	deps := newTestDepsWith(t, fakeHxptAuth{vip: false})
-	srv := httptest.NewServer(Build(deps))
-	defer srv.Close()
-
-	code, body := do(t, srv, "POST", "/api/v1/auth/hxpt/cookie-login",
-		map[string]string{"cookie": "c_secure_uid=777"}, "")
-	if code != 403 {
-		t.Fatalf("non-vip cookie login = %d %v, want 403", code, body)
-	}
-}
-
-// TestAccountLoginSuccess 好学账号登录（fake VIP）→ 200 + token → 受保护资源在 VIP 宽限内放行。
-func TestAccountLoginSuccess(t *testing.T) {
+// TestLocalLoginPermission 本地密码登录权限边界（原 hxpt 账号登录用例的等价迁移）：
+// 非 admin 用户登录保持非 admin（不被升权），可访问普通路由、不能访问 admin 路由。
+func TestLocalLoginPermission(t *testing.T) {
 	deps := newTestDeps(t)
-	// P0-1 修复后：预置的非 admin 用户重登录保持非 admin（不再被升权）。
-	legacyUser := models.User{Username: "u", HxptUID: "777", IsAdmin: false}
-	if err := deps.DB.Create(&legacyUser).Error; err != nil {
+	hash, err := security.HashPassword("password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := models.User{Username: "u", PasswordHash: hash, HxptUID: "local:u", VipLevel: 1, IsAdmin: false}
+	if err := deps.DB.Create(&u).Error; err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(Build(deps))
 	defer srv.Close()
 
-	code, body := do(t, srv, "POST", "/api/v1/auth/hxpt/login",
-		map[string]any{"username": "u", "password": "p"}, "")
+	code, body := do(t, srv, "POST", "/api/v1/auth/local/login",
+		map[string]any{"username": "u", "password": "password123"}, "")
 	if code != 200 {
-		t.Fatalf("hxpt login = %d %v, want 200", code, body)
+		t.Fatalf("local login = %d %v, want 200", code, body)
 	}
 	token, _ := body["token"].(string)
 	if token == "" {
@@ -257,11 +232,11 @@ func TestAccountLoginSuccess(t *testing.T) {
 	}
 	user, _ := body["user"].(map[string]any)
 	if user["is_admin"] != false {
-		t.Fatalf("pre-existing non-admin user should stay non-admin after login, got is_admin = %v", user["is_admin"])
+		t.Fatalf("non-admin user should stay non-admin after login, got is_admin = %v", user["is_admin"])
 	}
-	// 非 admin 用户能访问普通 VIP 路由（sites）
+	// 非 admin 用户能访问普通路由（sites）
 	if code, _ := do(t, srv, "GET", "/api/v1/sites", nil, token); code != 200 {
-		t.Fatalf("sites after account login = %d, want 200", code)
+		t.Fatalf("sites after local login = %d, want 200", code)
 	}
 	// 非 admin 用户不能访问 admin 路由（backup/export）
 	if code, _ := do(t, srv, "GET", "/api/v1/backup/export", nil, token); code != 403 {

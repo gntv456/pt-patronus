@@ -34,6 +34,18 @@ func (c *SiteChain) credentialWithErr(s *models.Site, def *site.SiteMetadata) (s
 				return k, nil
 			}
 			return "", siteCredUnreadable(s.Name, "APIKey", errors.New("APIKey 解密失败"))
+		case "piggo":
+			// 猪猪：SRP 加密登录需 username+password（无 Cookie/passkey 通道）；打包 JSON
+			// 单串供适配器 parsePiggoCred 拆。
+			pwd, perr := c.sites.Password(s)
+			if perr != nil {
+				return "", siteCredUnreadable(s.Name, "密码", perr)
+			}
+			b, _ := json.Marshal(map[string]string{
+				"username": s.Username,
+				"password": pwd,
+			})
+			return string(b), nil
 		case "yemapt":
 			if k, err := c.sites.APIKey(s); err == nil && k != "" {
 				return k, nil

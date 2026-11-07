@@ -219,13 +219,3 @@ func TestMediaHandlerRecommendNilGraceful(t *testing.T) {
 		t.Errorf("results = %v, want empty array", m["results"])
 	}
 }
-
-func TestAuthHandlerHxptDisabled(t *testing.T) {
-	h := &AuthHandler{} // hxptAuth=nil → 登录服务未启用
-	r := gin.New()
-	r.GET("/captcha", h.HxptCaptcha)
-	rec := doReq(t, r, http.MethodGet, "/captcha", "")
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("code = %d, want 503", rec.Code)
-	}
-}

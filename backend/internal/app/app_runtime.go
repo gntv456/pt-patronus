@@ -72,8 +72,6 @@ type runtimeDeps struct {
 	fileOp         *oper.FileStorageOper
 	filterEng      *filter.Engine
 	filterStore    *filter.Store
-	hxpt           *auth.HxptVIP
-	hxptLogin      *auth.HxptLogin
 	j              *security.JWT
 	keepSeedCh     *chain.KeepSeedChain
 	mcpSrv         *mcp.Server
@@ -139,8 +137,6 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	fileOp := d.fileOp
 	filterEng := d.filterEng
 	filterStore := d.filterStore
-	hxpt := d.hxpt
-	hxptLogin := d.hxptLogin
 	j := d.j
 	keepSeedCh := d.keepSeedCh
 	mcpSrv := d.mcpSrv
@@ -326,7 +322,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,
-		HxptVIP: hxpt, HxptAuth: hxptLogin, Crypto: crypto, TVCache: tvCache, VIPGraceDays: cfg.VIPGraceDays,
+		Crypto: crypto, TVCache: tvCache, VIPGraceDays: cfg.VIPGraceDays,
 		Tickets: ticketStore,
 		OIDC:    oidcSvc,
 		SiteOp:  siteOp, SiteCh: siteCh, Reg: registry, SiteHC: hc,

@@ -165,3 +165,48 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	audit(c, "local_password", "ok")
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+// DemoLogin 为评审/演示实例提供低门槛入口。默认关闭，必须显式设置 DEMO_MODE=true。
+// 演示用户是普通 VIP 用户而非管理员，避免误触高破坏操作；生产实例不应开启。
+// （原随好学账号登录实现，改版下线后迁到本地登录文件——逻辑不变。）
+func (h *AuthHandler) DemoLogin(c *gin.Context) {
+	if !h.demoMode {
+		errcode.Respond(c, errcode.DemoDisabled)
+		return
+	}
+	now := time.Now()
+	var u models.User
+	err := h.db.Where("hxpt_uid = ?", "demo").First(&u).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		u = models.User{
+			Username: "demo", HxptUID: "demo", HxptUsername: "演示用户",
+			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: false,
+		}
+		if err := h.db.Create(&u).Error; err != nil {
+			dbFail(c, "demo_user_create", err)
+			return
+		}
+	case err != nil:
+		dbFail(c, "demo_user_lookup", err)
+		return
+	default:
+		u.VipLevel = 1
+		u.VipVerifiedAt = &now
+		u.HxptUsername = "演示用户"
+		u.IsAdmin = false
+		if err := h.db.Save(&u).Error; err != nil {
+			dbFail(c, "demo_user_save", err)
+			return
+		}
+	}
+	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin,
+		u.TokenVersion, u.VipLevel, now)
+	if err != nil {
+		errcode.Respond(c, errcode.AuthTokenFailed)
+		return
+	}
+	audit(c, "demo_login", "ok")
+	h.setAuthCookie(c, token)
+	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
+}

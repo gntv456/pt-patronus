@@ -7,7 +7,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
-	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/web"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -59,16 +58,8 @@ func Build(d *Deps) *gin.Engine {
 	}
 	engine.Use(middleware.NewRateLimiter(float64(globalRPS), globalRPS).Middleware())
 
-	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC,
+	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC,
 		strings.HasPrefix(d.Cfg.AppBaseURL, "https://"))
-	// OCR 验证码自动识别（SystemConfig 热更；未配置 = 人工输入，不影响登录链路）。
-	if d.CfgOp != nil {
-		cfgOp := d.CfgOp
-		authH.SetOCRConfig(func() ocr.Config {
-			get := func(k string) string { v, _ := cfgOp.Get(k); return v }
-			return ocr.Config{Endpoint: get("ocr.endpoint"), APIKey: get("ocr.api_key"), Mode: get("ocr.mode")}
-		})
-	}
 	sysH := v1.NewSystemHandler(d.Update, d.DB)
 	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron, d.Cfg.CookieKeepAliveCron)
 

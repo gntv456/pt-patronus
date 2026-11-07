@@ -1,0 +1,38 @@
+# ColaPT（可乐PT，colapt.com）站点定义 —— M-Team 兼容面（schema: mteam）
+#
+# 站点为自研引擎（Rust API + Vite SPA），对外提供 M-Team 协议兼容面（站内 scope
+# 叫 mtorrent.compat，key 前缀 rcapi_），API 主机与网页主机分离：
+#   - 网页：https://www.colapt.com/（SPA）
+#   - API：https://api.colapt.com（POST JSON + x-api-key 头，响应信封 {"code","data"}）
+# 对接文档见站内 Wiki「MoviePilot 接入可乐PT 配置指南」（MoviePilot 按
+# parser=mTorrent / schema=MTorrent 接入，同一兼容面）。
+#
+# 实测覆盖（2026-11-07，x-api-key 实测）：
+#   ✅ POST /api/torrent/search     搜索（seeders/discount 嵌在 status 对象，官方口径同形）
+#   ✅ POST /api/member/profile     用户资料（uploaded/downloaded/shareRate/bonus 字符串形态）
+#   ✅ POST /api/torrent/genDlToken 下载票（官方收 multipart，本站只收 JSON——适配器已加兜底）
+#   ❌ /api/tracker/*、/api/news/list、/api/system/promotion/rules、/api/torrent/detail
+#      （scope 未覆盖/未实现：做种统计/每小时魔力按 0 处理，公告与站免已在下方关闭）
+#
+# 接入步骤：
+#   1. 网页登录 → 「Key 管理 → API Key」创建，能力只勾「兼容面（MoviePilot）」
+#      （mtorrent.compat；发种面 torrent.upload 需另行开通资格，普通成员不可用）
+#   2. Web UI 添加站点 → 选「ColaPT」定义；BaseURL 保持 https://api.colapt.com
+#   3. apiKey：粘贴 rcapi_ 开头的 Key（只在创建时显示一次）到 api_key 字段
+#
+# extra_param.web_detail：搜索结果 DetailURL 的 web 前缀（详情页路由 /torrents/<id>），
+# 适配器内部使用，不会进请求体。mode 同馒头：选电影→movie、选剧集→tvshow。
+id: colapt
+name: ColaPT 可乐
+schema: mteam
+urls:
+  - https://api.colapt.com
+extra_param:
+  mode: normal
+  web_detail: "https://www.colapt.com/torrents/"
+# 兼容面未实现公告/站免端点（404/403），关闭避免每轮快照报错；
+# 单种促销（FREE）由搜索结果的 status.discount 正常下发，不受影响。
+announcement:
+  enabled: false
+freeleech:
+  enabled: false

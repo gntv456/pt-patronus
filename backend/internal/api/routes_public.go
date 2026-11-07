@@ -21,9 +21,6 @@ var loginEntryPaths = []string{
 	"/api/v1/auth/local/login",
 	"/api/v1/auth/demo-login",
 	"/api/v1/auth/activate",
-	"/api/v1/auth/hxpt/captcha",
-	"/api/v1/auth/hxpt/login",
-	"/api/v1/auth/hxpt/cookie-login",
 }
 
 // registerPublicRoutes 注册无需登录的公开路由（系统健康、鉴权登录、WebSocket、流媒体、MCP 等）。
@@ -40,17 +37,13 @@ func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, 
 	{
 		authRoutes.POST("/setup", authH.Setup)
 		authRoutes.POST("/login", authH.Login)
-		// 本地密码登录（好学站点关闭后的主路径，#<issue>）：与 hxpt 旧端点并存一版。
+		// 本地密码登录（好学站点关闭后的主路径，#<issue>）。
 		authRoutes.POST("/local/login", authH.LocalLogin)
-		authRoutes.POST("/hxpt/captcha", authH.HxptCaptcha)
-		authRoutes.POST("/hxpt/login", authH.HxptLogin)
-		authRoutes.POST("/hxpt/cookie-login", authH.HxptCookieLogin)
 		// JWT 滑动续期：JWTAuth 已验签（过期 token 到不了这），无需再进 guarded/限流收紧。
 		authRoutes.POST("/refresh", authH.Refresh)
 		authRoutes.POST("/demo-login", authH.DemoLogin)
 		authRoutes.POST("/activate", authH.Activate)
 		authRoutes.GET("/status", authH.Status)
-		authRoutes.POST("/verify-vip", authH.VerifyVIP)
 		// OIDC/SSO：start/callback 为公开 302（浏览器跳转）；config 为管理员配置。
 		authRoutes.GET("/oidc/start", authH.OIDCStart)
 		authRoutes.GET("/oidc/callback", authH.OIDCCallback)

@@ -3,26 +3,18 @@
 package app
 
 import (
-	"context"
-	"fmt"
 	"log/slog"
 
 	"gorm.io/gorm"
 
-	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	"github.com/hxpt/ptpatronus/internal/core/event"
-	"github.com/hxpt/ptpatronus/internal/core/security"
-	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
-	"github.com/hxpt/ptpatronus/internal/httpclient"
-	"github.com/hxpt/ptpatronus/internal/hxcard"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
-	"github.com/hxpt/ptpatronus/internal/version"
 )
 
 // wireSubtitleStack 字幕链装配：多源 Provider（ASSRT/OpenSubtitles API + SubHD/Zimuku 抓取）
@@ -118,27 +110,4 @@ func wireMCPAndBuiltinPlugins(pluginMgr *plugins.Manager, siteOp *oper.SiteOper,
 		slog.Warn("register douban chart plugin", "err", err)
 	}
 	return srv
-}
-
-// wireHxCard 构建守护神名片推送器并挂到自动化服务（site-snapshot 末尾自动推送；
-// 开启且密钥已配置时才真正发请求，失败仅记日志不阻断快照）。
-// 单用户系统：好学 cookie 取首个用户（未绑定返错，Push 内部跳过）。
-func wireHxCard(auto *automation.Service, hc *httpclient.Client, cfgOp *oper.SystemConfigOper,
-	siteOp *oper.SiteOper, crypto *security.Crypto, database *gorm.DB) {
-	card := hxcard.New(hc, cfgOp, siteOp, crypto, version.Version,
-		func() (string, error) {
-			var u models.User
-			if err := database.Select("id, hxpt_cookie_enc").First(&u).Error; err != nil {
-				return "", err
-			}
-			if u.HxptCookieEnc == "" {
-				return "", fmt.Errorf("未绑定好学账号")
-			}
-			return crypto.Decrypt(u.HxptCookieEnc)
-		}, database)
-	auto.SetHxCardPush(func(ctx context.Context) {
-		if err := card.Push(ctx); err != nil {
-			slog.Info("hxcard auto push skipped", "err", err)
-		}
-	})
 }

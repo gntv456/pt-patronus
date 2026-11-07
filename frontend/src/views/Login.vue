@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
@@ -11,28 +11,14 @@ const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 
-type Tab = 'local' | 'account' | 'cookie'
-const tab = ref<Tab>('local')
 const bootLoading = ref(false)
 const systemInfo = ref<SystemInfo | null>(null)
 const authStatus = ref<AuthStatus | null>(null)
 const serviceErr = ref('')
 
 // 登录表单与各登录方式抽出为 composable（useLoginAuth）。
-const {
-  auth,
-  loading,
-  err,
-  captcha,
-  acc,
-  cookieStr,
-  fetchCaptcha,
-  localLogin,
-  accountLogin,
-  cookieLogin,
-  demoLogin,
-  oidcLogin,
-} = useLoginAuth()
+// 旧好学账号/Cookie 登录 Tab 已随站点改版（FluxTorrent）下线删除。
+const { auth, loading, err, acc, localLogin, demoLogin, oidcLogin } = useLoginAuth()
 
 function goDashboard() {
   router.push({ name: 'dashboard' })
@@ -60,10 +46,6 @@ onMounted(async () => {
     err.value = oidcFailText(oidcError)
     router.replace({ path: route.path, query: route.query }) // 抹掉 fragment，刷新不重播旧错误
   }
-  // 验证码只在切到好学旧 Tab 时才拉（本地密码登录不需要）。
-  watch(tab, (v) => {
-    if (v === 'account' && !captcha.value) fetchCaptcha()
-  })
   await loadBootStatus()
 })
 
@@ -85,12 +67,6 @@ async function loadBootStatus() {
 function doLocalLogin() {
   localLogin(goDashboard)
 }
-function doAccountLogin() {
-  accountLogin(goDashboard)
-}
-function doCookieLogin() {
-  cookieLogin(goDashboard)
-}
 function doDemoLogin() {
   demoLogin(goDashboard)
 }
@@ -105,12 +81,6 @@ function doDemoLogin() {
       </div>
       <p class="subtitle">{{ t('login.subtitle') }}</p>
 
-      <div class="mode-tabs">
-        <button :class="{ active: tab === 'local' }" @click="tab = 'local'">{{ t('login.localTab') }}</button>
-        <button :class="{ active: tab === 'account' }" @click="tab = 'account'">{{ t('login.tabs.account') }}</button>
-        <button :class="{ active: tab === 'cookie' }" @click="tab = 'cookie'">{{ t('login.tabs.cookie') }}</button>
-      </div>
-
       <div class="boot-panel" :class="{ bad: serviceErr }">
         <div class="boot-row">
           <span class="dot" :class="{ ok: !serviceErr && !bootLoading, warn: bootLoading, bad: serviceErr }"></span>
@@ -124,13 +94,11 @@ function doDemoLogin() {
           <span class="boot-version">{{ systemInfo?.version || APP_VERSION }}</span>
         </div>
         <p v-if="serviceErr" class="boot-desc">{{ serviceErr }}</p>
-        <p v-else class="boot-desc">
-          {{ authStatus?.auth_site_on ? t('login.boot.vipOn') : t('login.boot.vipOff') }}
-        </p>
+        <p v-else class="boot-desc">{{ t('login.boot.localOn') }}</p>
       </div>
 
       <!-- 本地密码登录（好学站点关闭后的主路径，#<issue>） -->
-      <form v-if="tab === 'local'" class="form" @submit.prevent="doLocalLogin">
+      <form class="form" @submit.prevent="doLocalLogin">
         <el-input
           v-model="acc.username"
           :placeholder="t('login.localForm.username')"
@@ -157,70 +125,6 @@ function doDemoLogin() {
           {{ t('login.submit') }}
         </el-button>
         <p class="hint">{{ t('login.localForm.firstLoginHint') }}</p>
-      </form>
-
-      <!-- 好学账号登录（旧路径，保一版兼容） -->
-      <form v-else-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
-        <el-input
-          v-model="acc.username"
-          :placeholder="t('login.form.username')"
-          size="large"
-          autocomplete="username"
-          class="field"
-        />
-        <el-input
-          v-model="acc.password"
-          type="password"
-          :placeholder="t('login.form.password')"
-          size="large"
-          show-password
-          autocomplete="current-password"
-          class="field"
-        />
-        <el-input
-          v-model="acc.twoStep"
-          :placeholder="t('login.form.twoStep')"
-          size="large"
-          autocomplete="one-time-code"
-          class="field"
-        />
-        <div v-if="captcha?.need_captcha" class="captcha-row field">
-          <img
-            v-if="captcha?.image"
-            :src="captcha.image"
-            class="captcha-img"
-            :alt="t('login.form.captcha')"
-            @click="fetchCaptcha"
-            :title="t('login.clickRefresh')"
-          />
-          <el-input
-            v-model="acc.imagestring"
-            :placeholder="t('login.form.captcha')"
-            size="large"
-            autocomplete="off"
-            class="captcha-input"
-          />
-        </div>
-        <el-button type="primary" size="large" native-type="submit" class="submit" :loading="loading">
-          {{ t('login.submit') }}
-        </el-button>
-        <p v-if="captcha?.challenge_mode" class="hint">{{ t('login.form.challengeHint') }}</p>
-      </form>
-
-      <!-- Cookie 登录 -->
-      <form v-else class="form" @submit.prevent="doCookieLogin">
-        <el-input
-          v-model="cookieStr"
-          type="textarea"
-          :rows="5"
-          :placeholder="t('login.form.cookiePlaceholder')"
-          autocomplete="off"
-          class="field"
-        />
-        <el-button type="primary" size="large" native-type="submit" class="submit" :loading="loading">
-          {{ t('login.submit') }}
-        </el-button>
-        <p class="hint">{{ t('login.form.cookieHint') }}</p>
       </form>
 
       <p v-if="err" class="err">{{ err }}</p>

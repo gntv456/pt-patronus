@@ -79,6 +79,9 @@ func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base
 	// Rousi Pro（Bearer passkey API）
 	rousi := schemas.NewRousi(hc)
 	registry.RegisterAdapter(rousi)
+	// Piggo（猪猪，piggo.me：SRP 加密登录 + 全请求 HMAC 签名，见 schemas/piggo.go）
+	piggo := schemas.NewPiggo(hc)
+	registry.RegisterAdapter(piggo)
 	// FluxTorrent 建站系统（/compat JSON 兼容层 + Token 鉴权，见 schemas/fluxtorrent.go）
 	fluxtorrent := schemas.NewFluxTorrent(hc)
 	registry.RegisterAdapter(fluxtorrent)

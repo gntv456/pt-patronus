@@ -45,42 +45,10 @@ func approxF(t *testing.T, name string, got, want float64) {
 	}
 }
 
-// TestHxptUserInfo 好学 usercp(cute-top-profile) + userdetails(rowhead)。
-func TestHxptUserInfo(t *testing.T) {
-	def, ok := mustRegistry(t).Definition("hxpt")
-	if !ok {
-		t.Fatal("hxpt definition missing")
-	}
-	cp := loadFixture(t, "testdata/hxpt_usercp.html")
-
-	if uid := ExtractUID(cp); uid != "8" {
-		t.Errorf("uid: got %q want 8", uid)
-	}
-	u := ParseUserInfo(cp, def)
-	approxF(t, "uploaded(TiB)", float64(u.Uploaded)/tiB, 104.564)
-	approxF(t, "downloaded(TiB)", float64(u.Downloaded)/tiB, 2.839)
-	approxF(t, "ratio", u.Ratio, 36.832)
-	approxF(t, "bonus", u.Bonus, 79888500.6)
-	if u.Seeding != 27 {
-		t.Errorf("seeding: got %d want 27", u.Seeding)
-	}
-	if u.Leeching != 0 {
-		t.Errorf("leeching: got %d want 0", u.Leeching)
-	}
-
-	// 合并 userdetails 的 level/join_date（多页合并不应清零已得统计）
-	detail := loadFixture(t, "testdata/hxpt_userdetails.html")
-	ParseUserDetail(detail, def, u)
-	if u.Level != "维护开发员" {
-		t.Errorf("level: got %q want 维护开发员", u.Level)
-	}
-	if u.JoinDate != "2025-07-16" {
-		t.Errorf("join_date: got %q want 2025-07-16", u.JoinDate)
-	}
-	if u.Uploaded == 0 {
-		t.Error("multi-page merge zeroed uploaded")
-	}
-}
+// TestHxptUserInfo 已随好学改版下线：站点引擎从 NexusPHP 切到 FluxTorrent，
+// 用户信息改由 schemas/fluxtorrent.go 解析（见 fluxtorrent_test.go）；
+// 旧 usercp/userdetails 刮削选择器与本用例一并删除。fixture 保留供
+// 引擎回退/Parent 语义测试（TestEngineSelectorsFallback 等）使用。
 
 // TestCsptUserInfo 财神 usercp(Audiences menu-base-info，color_* display:none + SVG title) + userdetails(main_rowhead)。
 func TestCsptUserInfo(t *testing.T) {

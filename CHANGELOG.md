@@ -4,6 +4,53 @@
 - **升级注意**：标注需要用户干预（改配置/改挂载/重登）的破坏性变更
 - 完整历史 releaseNotes 见 `update-manifest.json` 各版本条目
 
+## 1.03.27（三站适配版，2026-11-08）
+
+### 新增站点：猪猪（piggo.me）
+- 站点已从 NexusPHP 改版为自研引擎（Laravel + Vite SPA），旧定义与刮削选择器作废，
+  重写为 schema: piggo（definitions/piggo.yaml），抓取全走 /v1/web JSON API
+- 新增 Piggo 适配器（schemas/piggo.go + piggo_srp.go）：
+  - SRP-6a 加密登录（RFC5054 2048-bit 群 + PBKDF2 21 万轮派生；失败自动回退明文登录）
+  - 全请求 HMAC-SHA256 签名（X-Spa-Nonce/X-Spa-Hmac，sign 每会话由 /auth/sign 下发）；
+    token 与设备指纹 visitorId 绑定，会话进程内缓存 12h、401 自动重登
+  - 搜索（含免费/全局促销识别与上传因子）/ 用户资料（格式化大小串解析）/ 下载
+    （POST download-link 换签名直链取 .torrent）三链路真机验证通过
+- 站点凭据使用「用户名 + 密码」（站点无 Cookie/passkey 通道）；chain 凭据打包与
+  .torrent 下载分流（site_torrent.go piggo 分支，sunnypt 同款 API 直连模式）
+- 注意：新账号首次使用需在网页端完成一次「Wiki 已读确认」，否则种子端点 403
+
+### 新增站点：ColaPT（colapt.com）
+- 新增站点定义 colapt.yaml：站点提供 M-Team 协议兼容面（api.colapt.com，
+  x-api-key 鉴权，rcapi_ 开放 API Key），复用 mteam 适配器
+- mteam 适配器兼容性扩展：
+  - 下载票 genDlToken 在 multipart 被拒（400/415）时自动改用 JSON 体重试
+    （ColaPT 兼容面只收 JSON，实测 200）
+  - 搜索结果 DetailURL 支持站点自定义 web 前缀（extra_param.web_detail，
+    ColaPT 详情页为 /torrents/<id>）；该参数不会进搜索请求体
+- 已实测：搜索（含 FREE 促销识别）/ 用户资料 / 下载票三链路全通；
+  兼容面未覆盖的端点（做种统计/每小时魔力/公告/站免）按定义关闭或降级为 0
+- 接入步骤见 definitions/colapt.yaml 头注释（站内「Key 管理 → API Key」
+  勾「兼容面（MoviePilot）」创建 rcapi_ Key，填入站点 API Key 即可）
+
+
+**升级注意**：好学站点已改版（NexusPHP → FluxTorrent 引擎）。站点抓取凭据
+需换新：网页端「我的 → API Token」签发 fxo_ 开放 API Token（180 天），
+到 PTPatronus 站点设置里更新 API Key 即可；旧站 cookie 对新站兼容层无效。
+
+### 好学改版适配
+- 好学站点定义切换到 FluxTorrent 适配器（`schema: fluxtorrent`）：搜索/
+  用户信息/下载/HR/做种/信箱全部走 `/api/v1/compat` JSON 兼容层，
+  `Authorization: Token <fxo_>` 鉴权（凭据打包解析见 schemas/fluxtorrent.go）
+- 旧站点登录链路随改版下线删除：`/auth/hxpt/{captcha,login,cookie-login}`
+  三端点、verifyAccess.php VIP 校验（新站无公开 VIP API）、演示登录原实现
+  迁至本地登录文件（行为不变）
+- 删除守护神名片（hxcard）：新站无 receive.php 接收端点，推送链路整体移除
+  （设置页「守护神名片」Tab、自动推送钩子、加密 cookie 读取）
+- Web 登录页移除「好学账号（旧）/Cookie（旧）」双 Tab；移动端同步移除
+  （含 APP 内浏览器取 cookie 页）；登录方式仅剩本地密码 / OIDC / 演示
+- 娱乐模块（大小游戏/卡牌等）暂未适配新站游戏系统（casino/farm 全新 API），
+  后续专项跟进
+
 ## 1.03.26（本地密码登录版，2026-11-04）
 
 **升级注意**：好学站点关闭后登录方式切换为本地用户名密码。存量实例首次升级

@@ -12,7 +12,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-
 // MTeam 是 M-Team（馒头）适配器：走 api.m-team.cc 的 JSON API，用 x-api-key 鉴权。
 // 与 NexusPHP（HTML 抓取）不同——所有数据来自 POST JSON 端点，无需选择器。
 // 契约来源：pt_mate-master/lib/services/api/mteam_adapter.dart（在用的实现）。
@@ -64,9 +63,11 @@ func (m *MTeam) Search(ctx context.Context, def *site.SiteMetadata, baseURL, tok
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		body["keyword"] = keyword
 	}
-	// 合并站点定义的额外参数；跳过 mode 键（已单独解析，避免把上面的映射又冲回 normal）。
+	// 合并站点定义的额外参数；跳过两类键：mode（已单独解析，避免把上面的映射又冲回
+	// normal）、web_detail（适配器内部用：搜索结果 DetailURL 的 web 前缀，非站点请求参数，
+	// 误入请求体会被 M-Team 兼容面按未知字段拒绝）。
 	for k, v := range def.ExtraParam {
-		if k == "mode" {
+		if k == "mode" || k == "web_detail" {
 			continue
 		}
 		body[k] = v
@@ -88,7 +89,7 @@ func (m *MTeam) Search(ctx context.Context, def *site.SiteMetadata, baseURL, tok
 	}
 	out := make([]site.Torrent, 0, len(pageData.Items))
 	for _, it := range pageData.Items {
-		out = append(out, parseMTTorrent(it))
+		out = append(out, parseMTTorrent(it, def.ExtraParam["web_detail"]))
 	}
 	return out, nil
 }

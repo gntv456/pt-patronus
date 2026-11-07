@@ -8,6 +8,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/site/schemas"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -39,6 +40,7 @@ type SiteChain struct {
 	hc           *httpclient.Client      // 站点 HTTP 客户端（FetchTorrentFile 下载种子用；SetHTTPClient 注入）
 	records      *oper.CheckinRecordOper // 签到历史落库（可选；未注入则不落库，测试用）
 	checkinGuard *spendGuard             // 签到 in-flight 去重（防双击/重放/cron 重叠重复签到）
+	piggo        *schemas.Piggo          // piggo 下载适配器（SetHTTPClient 时按需构造；dl 链路用）
 
 	// 站免/公告 per-site 缓存（站点是全局共享配置，故缓存按 siteID 而非 uid 分桶）。
 	flMu     sync.Mutex
@@ -118,6 +120,18 @@ func (c *SiteChain) siteLock(siteID uint) *sync.Mutex {
 		c.siteLocks[siteID] = lk
 	}
 	return lk
+}
+
+// piggoAdapter 惰性取 piggo 下载适配器（与注册表里的适配器同源 hc，避免另起炉灶）。
+func (c *SiteChain) piggoAdapter() *schemas.Piggo {
+	if c.piggo != nil {
+		return c.piggo
+	}
+	if c.hc == nil {
+		return nil
+	}
+	c.piggo = schemas.NewPiggo(c.hc)
+	return c.piggo
 }
 
 // SetHTTPClient 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用）。app 装配时调用；

@@ -13,7 +13,6 @@ const MediaSettings = defineAsyncComponent(() => import('@/views/MediaSettings.v
 const FilterRules = defineAsyncComponent(() => import('@/views/FilterRules.vue'))
 const Backup = defineAsyncComponent(() => import('@/views/Backup.vue'))
 const Doctor = defineAsyncComponent(() => import('@/views/Doctor.vue'))
-const HxCardPanel = defineAsyncComponent(() => import('@/components/settings/HxCardPanel.vue'))
 
 // —— 各分区配置：抽至组合式函数 + 子组件，父级仅保留路由与懒加载触发 ——
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
@@ -164,9 +163,6 @@ function onSectionChange(sec: string | number) {
           </el-tab-pane>
           <el-tab-pane :label="t('settings.connect.cookiecloud')" name="cookiecloud">
             <CookieCloudPanel />
-          </el-tab-pane>
-          <el-tab-pane :label="t('settings.connect.hxcard')" name="hxcard">
-            <HxCardPanel />
           </el-tab-pane>
           <el-tab-pane :label="t('settings.connect.ocr')" name="ocr" lazy>
             <OcrPanel />

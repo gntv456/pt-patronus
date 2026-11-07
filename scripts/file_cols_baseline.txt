@@ -23,7 +23,7 @@
 2	backend/internal/api/middleware/cors.go
 6	backend/internal/api/middleware/prommetrics.go
 2	backend/internal/api/middleware/ratelimit.go
-8	backend/internal/api/router.go
+7	backend/internal/api/router.go
 2	backend/internal/api/routes_downloaders.go
 2	backend/internal/api/routes_entertainment.go
 4	backend/internal/api/routes_guarded.go
@@ -38,10 +38,9 @@
 3	backend/internal/api/v1/agent_upgrade.go
 2	backend/internal/api/v1/aggregate.go
 2	backend/internal/api/v1/assessment.go
-5	backend/internal/api/v1/auth.go
-17	backend/internal/api/v1/auth_hxpt_login.go
+3	backend/internal/api/v1/auth.go
 5	backend/internal/api/v1/auth_local.go
-6	backend/internal/api/v1/auth_oidc.go
+5	backend/internal/api/v1/auth_oidc.go
 5	backend/internal/api/v1/auth_oidc_flow.go
 6	backend/internal/api/v1/backup.go
 3	backend/internal/api/v1/brushflow.go
@@ -81,7 +80,6 @@
 5	backend/internal/api/v1/filter_rule.go
 3	backend/internal/api/v1/freeleech.go
 4	backend/internal/api/v1/harem.go
-1	backend/internal/api/v1/hxcard.go
 3	backend/internal/api/v1/input_error.go
 7	backend/internal/api/v1/keepseed.go
 23	backend/internal/api/v1/llm_gateway.go
@@ -128,9 +126,9 @@
 62	backend/internal/app/agent_tools.go
 2	backend/internal/app/agent_tools_args.go
 82	backend/internal/app/agent_tools_ext.go
-35	backend/internal/app/app.go
+32	backend/internal/app/app.go
 12	backend/internal/app/app_cron.go
-23	backend/internal/app/app_runtime.go
+22	backend/internal/app/app_runtime.go
 20	backend/internal/app/app_setup.go
 2	backend/internal/app/app_tgbot.go
 2	backend/internal/app/doctor_business.go
@@ -142,11 +140,9 @@
 6	backend/internal/app/plugin_host_tools.go
 31	backend/internal/app/plugin_host_workflow.go
 1	backend/internal/app/plugin_media.go
-8	backend/internal/app/wire_extract.go
+6	backend/internal/app/wire_extract.go
 6	backend/internal/auth/activation.go
 1	backend/internal/auth/guard.go
-8	backend/internal/auth/hxpt_login.go
-10	backend/internal/auth/hxpt_vip.go
 12	backend/internal/auth/oidc.go
 3	backend/internal/auth/ticket.go
 6	backend/internal/automation/hr.go
@@ -225,6 +221,7 @@
 4	backend/internal/chain/site_request.go
 5	backend/internal/chain/site_search.go
 32	backend/internal/chain/site_torrent.go
+2	backend/internal/chain/site_torrent_piggo.go
 8	backend/internal/chain/snapshot.go
 18	backend/internal/chain/subscribe.go
 18	backend/internal/chain/subscribe_check.go
@@ -432,7 +429,6 @@
 9	backend/internal/httpclient/client_helpers.go
 1	backend/internal/httpclient/stream.go
 2	backend/internal/httpclient/utls_dial.go
-6	backend/internal/hxcard/hxcard.go
 4	backend/internal/iyuu/iyuu.go
 2	backend/internal/keepseed/keepseed.go
 12	backend/internal/llm/anthropic.go
@@ -655,6 +651,8 @@
 6	backend/internal/site/schemas/nexusphp_seeding.go
 6	backend/internal/site/schemas/nexusphp_uploads.go
 6	backend/internal/site/schemas/nexusphp_userinfo.go
+16	backend/internal/site/schemas/piggo.go
+15	backend/internal/site/schemas/piggo_srp.go
 11	backend/internal/site/schemas/pussytorrents.go
 13	backend/internal/site/schemas/rousi.go
 12	backend/internal/site/schemas/rousi_legacy.go
@@ -756,7 +754,7 @@
 11	frontend/src/api/agent.ts
 6	frontend/src/api/announcement.ts
 4	frontend/src/api/assessment.ts
-9	frontend/src/api/auth.ts
+5	frontend/src/api/auth.ts
 8	frontend/src/api/backup.test.ts
 6	frontend/src/api/backup.ts
 7	frontend/src/api/brushflow.ts
@@ -783,7 +781,6 @@
 4	frontend/src/api/harem.ts
 20	frontend/src/api/http.test.ts
 7	frontend/src/api/http.ts
-1	frontend/src/api/hxcard.ts
 2	frontend/src/api/llmGateway.ts
 1	frontend/src/api/logs.ts
 6	frontend/src/api/medal-wall.ts
@@ -993,7 +990,6 @@
 1	frontend/src/components/searchFilterConstants.ts
 24	frontend/src/components/settings/CookieCloudPanel.vue
 13	frontend/src/components/settings/GeneralPanel.vue
-8	frontend/src/components/settings/HxCardPanel.vue
 6	frontend/src/components/settings/LlmGatewayPanel.vue
 8	frontend/src/components/settings/LogsPanel.vue
 23	frontend/src/components/settings/NotificationChannelsMore.vue
@@ -1046,7 +1042,7 @@
 1	frontend/src/composables/useInactiveSiteVisit.ts
 6	frontend/src/composables/useJggGame.ts
 2	frontend/src/composables/useLlmGateway.ts
-4	frontend/src/composables/useLoginAuth.ts
+1	frontend/src/composables/useLoginAuth.ts
 2	frontend/src/composables/useLogs.ts
 14	frontend/src/composables/useMedalSynthesis.ts
 5	frontend/src/composables/useMediaDetail.ts
@@ -1086,8 +1082,8 @@
 2	frontend/src/i18n/cameraBridgeMerge.test.ts
 2	frontend/src/i18n/index.ts
 15	frontend/src/i18n/locales/cameraBridge.ts
-275	frontend/src/i18n/locales/en-US.ts
-45	frontend/src/i18n/locales/zh-CN.ts
+269	frontend/src/i18n/locales/en-US.ts
+43	frontend/src/i18n/locales/zh-CN.ts
 4	frontend/src/i18n/localesConsistency.test.ts
 1	frontend/src/i18n/mergeWiring.test.ts
 11	frontend/src/layouts/AppSidebar.vue
@@ -1096,7 +1092,7 @@
 5	frontend/src/layouts/useMainLayout.ts
 1	frontend/src/main.ts
 10	frontend/src/router/index.ts
-3	frontend/src/stores/auth.ts
+2	frontend/src/stores/auth.ts
 4	frontend/src/utils/agent-secret.ts
 1	frontend/src/utils/alertBox.ts
 1	frontend/src/utils/clipboard.ts
@@ -1153,7 +1149,7 @@
 22	frontend/src/views/Freeleech.vue
 29	frontend/src/views/Harem.vue
 6	frontend/src/views/Login.oidc.test.ts
-16	frontend/src/views/Login.vue
+9	frontend/src/views/Login.vue
 28	frontend/src/views/MedalWall.vue
 20	frontend/src/views/MediaDetail.vue
 19	frontend/src/views/MediaQuality.vue
@@ -1183,7 +1179,7 @@
 3	frontend/src/views/Savept.stale.test.ts
 22	frontend/src/views/Savept.vue
 14	frontend/src/views/Search.vue
-31	frontend/src/views/Settings.vue
+30	frontend/src/views/Settings.vue
 9	frontend/src/views/SiteDetail.test.ts
 31	frontend/src/views/SiteDetail.vue
 10	frontend/src/views/SiteRequests.vue
@@ -1357,8 +1353,6 @@
 1	mobile/lib/features/home/home_nav_panel.dart
 4	mobile/lib/features/home/home_shell.dart
 1	mobile/lib/features/home/home_sidebar.dart
-3	mobile/lib/features/login/hxpt_web_login_page.dart
-1	mobile/lib/features/login/loginopsmixin.dart
 2	mobile/lib/features/login/server_config_page.dart
 1	mobile/lib/features/medal_wall/medal_wall_widgets.dart
 1	mobile/lib/features/medal_wall/medalwallopsmixin.dart

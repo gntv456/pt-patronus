@@ -94,8 +94,8 @@ func (h *AuthHandler) Status(c *gin.Context) {
 	resp := gin.H{
 		"activated":     h.act != nil && h.act.AnyActivated(),
 		"authenticated": authed,
-		"auth_site_on":  h.hxptAuth != nil,
-		"local_login":   true, // 本地密码登录恒可用（好学站点关闭后的主路径，#<issue>）
+		"auth_site_on":  false, // 好学改版 FluxTorrent 后旧站点登录链路（验证码/VIP 校验）已下线
+		"local_login":   true,  // 本地密码登录恒可用（好学站点关闭后的主路径，#<issue>）
 		"vip_verified":  verified,
 		"demo_mode":     h.demoMode,
 	}
@@ -110,33 +110,6 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		resp["user"] = user
 	}
 	c.JSON(http.StatusOK, resp)
-}
-
-type verifyVIPReq struct {
-	Cookie string `json:"cookie" binding:"max=8192"`
-}
-
-// VerifyVIP 用好学 cookie 校验 APP 专属 VIP 身份（复用 HxptAuthenticator.Verify）。
-func (h *AuthHandler) VerifyVIP(c *gin.Context) {
-	if h.hxptAuth == nil {
-		errcode.Respond(c, errcode.VIPCheckDisabled)
-		return
-	}
-	var req verifyVIPReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		respondBindError(c, err)
-		return
-	}
-	status := h.hxptAuth.Verify(c.Request.Context(), req.Cookie)
-	audit(c, "verify_vip", boolStr(status.Verified), slog.String("level", status.Level))
-	c.JSON(http.StatusOK, status)
-}
-
-func boolStr(b bool) string {
-	if b {
-		return "ok"
-	}
-	return "fail"
 }
 
 // issueForOIDC 按 OIDC sub upsert User 并签发 JWT。OIDC 由管理员显式启用，视为可信身份：
@@ -193,15 +166,6 @@ func (h *AuthHandler) firstOIDCUser() (bool, error) {
 	return n == 0, nil
 }
 
-// firstHxptUser 报告是否尚无好学 VIP 绑定用户（首个 HXPT 用户成为 admin，与 firstOIDCUser 对称）。
-func (h *AuthHandler) firstHxptUser() (bool, error) {
-	uid, err := h.existingRealUserUID()
-	if err != nil {
-		return false, err
-	}
-	return uid == "", nil
-}
-
 // existingRealUserUID 返回已有的任一「真实」用户（好学/OIDC 绑定账号）的 hxpt_uid；
 // 无则返回 ""。demo 演示账号与 emergency:% 应急账号不计——demo 由 DemoMode 开关控制、
 // emergency 需 SECRET_KEY 派生口令，均非「第二个能自助注册的身份」。单用户硬限制
@@ -219,14 +183,6 @@ func (h *AuthHandler) existingRealUserUID() (string, error) {
 		return "", err
 	}
 	return u.HxptUID, nil
-}
-
-// maskUID 日志脱敏：UID 只留前 6 位 + 长度（防审计日志反推完整好学账号）。
-func maskUID(uid string) string {
-	if len(uid) <= 6 {
-		return uid
-	}
-	return uid[:6] + "…"
 }
 
 // ===== OIDC 配置（管理员） =====

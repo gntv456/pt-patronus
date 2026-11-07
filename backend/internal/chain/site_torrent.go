@@ -68,6 +68,14 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 		}
 		return c.fetchSunnyptTorrentFile(ctx, downloadURL, cred)
 	}
+	// piggo：下载走「签名会话 POST download-link 换直链」（同 sunnypt 的 API 直连模式）。
+	if def != nil && def.Schema == "piggo" {
+		cred, cerr := c.credentialWithErr(s, def)
+		if cerr != nil {
+			return nil, "", cerr
+		}
+		return c.fetchPiggoTorrentFile(ctx, downloadURL, cred)
+	}
 	// schema 分流：mteam/rousi 的 download URL 自带临时 token/passkey，下载器可直连；
 	// 且 mteam 用 cookie 下载反致错（对标 MP 注释「涉及解析地址的不使用Cookie下载种子，否则MT会出错」）。
 	if def != nil && (def.Schema == "mteam" || def.Schema == "rousi") {

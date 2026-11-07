@@ -17,10 +17,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// localEnv 复用 newAuthTestEnv 并挂本地登录路由（fake 传 nil：本地路径不碰好学）。
+// localEnv 复用 newAuthTestEnv（本地登录路由已挂）。
 func localEnv(t *testing.T) (*gin.Engine, *gorm.DB, *AuthHandler) {
-	r, db, _, h := newAuthTestEnv(t, nil, false)
-	r.POST("/auth/local/login", h.LocalLogin)
+	r, db, _, h := newAuthTestEnv(t, false)
 	return r, db, h
 }
 
@@ -90,10 +89,10 @@ func TestLocalLogin_WeakPasswordRejectedOnSignup(t *testing.T) {
 }
 
 func TestChangePassword_RequiresOldPassword(t *testing.T) {
-	r, _, j, h := newAuthTestEnv(t, nil, false)
+	r, _, j, h := newAuthTestEnv(t, false)
 	// 挂真实中间件链：JWTAuth（注入 uid）→ ChangePassword，对齐 guarded 语义。
+	// （/auth/local/login 已由 newAuthTestEnv 挂载，这里只补 guarded 的改密路由。）
 	tv := h.tvCache
-	r.POST("/auth/local/login", h.LocalLogin)
 	authed := r.Group("/auth/local", middleware.JWTAuth(j, "", tv))
 	authed.POST("/password", h.ChangePassword)
 	rec := postJSON(t, r, "/auth/local/login", `{"username":"owner","password":"abc12345"}`)

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestNexusPHPFetchPandaPTPiggoPlayLetPTCafeUserInfoFromMigratedDefinitions(t *testing.T) {
+func TestNexusPHPFetchPandaPTPlayLetPTCafeUserInfoFromMigratedDefinitions(t *testing.T) {
 	tests := []struct {
 		id           string
 		uid          string
@@ -39,22 +39,6 @@ func TestNexusPHPFetchPandaPTPiggoPlayLetPTCafeUserInfoFromMigratedDefinitions(t
 			seeding:      8,
 			seedingTiB:   2.25,
 			uploads:      3,
-		},
-		{
-			id:           "piggo",
-			uid:          "1002",
-			name:         "piggo-user",
-			level:        "猪仔",
-			joinDate:     "2023-03-04",
-			uploadedTiB:  3,
-			downloadGiB:  768,
-			ratio:        4.5,
-			bonusLabel:   "魔力",
-			bonus:        23456.75,
-			bonusPerHour: 32.25,
-			seeding:      9,
-			seedingTiB:   3.5,
-			uploads:      4,
 		},
 		{
 			id:           "playletpt",

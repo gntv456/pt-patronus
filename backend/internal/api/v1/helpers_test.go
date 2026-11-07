@@ -434,16 +434,6 @@ func TestParseMailbox(t *testing.T) {
 	}
 }
 
-func TestBoolStr(t *testing.T) {
-	t.Parallel()
-	if boolStr(true) != "ok" {
-		t.Error(`boolStr(true) want "ok"`)
-	}
-	if boolStr(false) != "fail" {
-		t.Error(`boolStr(false) want "fail"`)
-	}
-}
-
 func TestPluginAssetScope(t *testing.T) {
 	t.Parallel()
 	if got := pluginAssetScope("my-plugin"); got != "plugin-assets:my-plugin" {

@@ -108,12 +108,8 @@ func TestDownloaderAPIJourneyAgainstTransmissionStub(t *testing.T) {
 	server := httptest.NewServer(Build(deps))
 	defer server.Close()
 
-	code, body := do(t, server, http.MethodPost, "/api/v1/auth/hxpt/cookie-login", map[string]string{"cookie": "c_secure_uid=777"}, "")
-	if code != http.StatusOK {
-		t.Fatalf("login=%d %v", code, body)
-	}
-	token, _ := body["token"].(string)
-	code, body = do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
+	token := loginAsAdmin(t, server)
+	code, body := do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
 		"name": "tr-stub", "type": "tr", "url": transmissionServer.URL, "username": "user", "password": "pass",
 	}, token)
 	if code != http.StatusOK {
@@ -178,9 +174,8 @@ func TestTransmissionAuthenticationFailureIsReported(t *testing.T) {
 	server := httptest.NewServer(Build(deps))
 	defer server.Close()
 
-	_, body := do(t, server, http.MethodPost, "/api/v1/auth/hxpt/cookie-login", map[string]string{"cookie": "c_secure_uid=777"}, "")
-	token, _ := body["token"].(string)
-	_, body = do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
+	token := loginAsAdmin(t, server)
+	_, body := do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
 		"name": "tr-bad-auth", "type": "tr", "url": transmissionServer.URL, "username": "user", "password": "wrong",
 	}, token)
 	id := int(body["id"].(float64))
@@ -197,9 +192,8 @@ func TestTransmissionRecoversAfterTemporaryOutage(t *testing.T) {
 	server := httptest.NewServer(Build(deps))
 	defer server.Close()
 
-	_, body := do(t, server, http.MethodPost, "/api/v1/auth/hxpt/cookie-login", map[string]string{"cookie": "c_secure_uid=777"}, "")
-	token, _ := body["token"].(string)
-	_, body = do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
+	token := loginAsAdmin(t, server)
+	_, body := do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
 		"name": "tr-recovery", "type": "tr", "url": transmissionServer.URL, "username": "user", "password": "pass",
 	}, token)
 	id := int(body["id"].(float64))

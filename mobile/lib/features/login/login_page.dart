@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -9,13 +6,12 @@ import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../home/home_shell.dart';
 import 'server_config_page.dart';
-import 'hxpt_web_login_page.dart';
 
 part 'loginopsmixin.dart';
 part 'login_widgets.dart';
 
-/// 登录页：本地密码登录为主（好学站点关闭后的主路径，#issue）；
-/// 好学账号/Cookie 双模保留一版兼容（下版删除）。
+/// 登录页：本地密码登录为主（好学站点关闭后的主路径，#issue）。
+/// 旧好学账号/Cookie 双模已随站点改版（FluxTorrent）下线删除。
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
   @override
@@ -39,28 +35,13 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
   @override
   void initState() {
     super.initState();
-    // 首屏先保持安静：验证码仅在切到好学旧 Tab 时按需拉（本地密码登录不需要）。
     Future.microtask(_fetchAuthStatus);
-  }
-
-  Uint8List? get _captchaBytes {
-    final s = _captcha?['image'] as String?;
-    if (s == null || s.isEmpty) return null;
-    final b64 = s.contains(',') ? s.split(',').last : s;
-    try {
-      return base64Decode(b64);
-    } catch (_) {
-      return null;
-    }
   }
 
   @override
   void dispose() {
     _user.dispose();
     _pass.dispose();
-    _twoStep.dispose();
-    _imgStr.dispose();
-    _cookie.dispose();
     super.dispose();
   }
 
@@ -99,29 +80,7 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
                       style: TextStyle(color: context.dimText),
                     ),
                     const SizedBox(height: 20),
-                    SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 2, label: Text('账号登录')),
-                        ButtonSegment(value: 0, label: Text('好学账号（旧）')),
-                        ButtonSegment(value: 1, label: Text('Cookie（旧）')),
-                      ],
-                      selected: {_tab},
-                      onSelectionChanged: (s) => setState(() {
-                        _tab = s.first;
-                        _err = null;
-                        // 切到好学旧 Tab 才拉验证码（本地密码登录不需要）。
-                        if (_tab == 0 && _captcha == null) {
-                          Future.microtask(() => _fetchCaptcha(silent: true));
-                        }
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_tab == 0)
-                      ..._accountFields()
-                    else if (_tab == 1)
-                      ..._cookieFields()
-                    else
-                      ..._localFields(),
+                    ..._localFields(),
                     if (_demoMode) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
@@ -180,48 +139,4 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
     );
   }
 
-  List<Widget> _cookieFields() {
-    return [
-      TextField(
-        controller: _cookie,
-        maxLines: 5,
-        decoration: const InputDecoration(
-          labelText: '好学 cookie',
-          hintText: '浏览器登录好学后复制 cookie（c_secure_uid=...; c_secure_pass=...）',
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
-        style: TextStyle(fontSize: 12, color: context.dimText),
-      ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: () async {
-            // APP 内浏览器登录好学 → 自动取 cookie 回填，免手动 F12（手机端友好）
-            final cookie = await Navigator.of(context).push<String>(
-              MaterialPageRoute(builder: (_) => const HxptWebLoginPage()),
-            );
-            if (cookie != null && cookie.isNotEmpty && mounted) {
-              setState(() => _cookie.text = cookie);
-            }
-          },
-          icon: const Icon(Icons.open_in_browser, size: 18),
-          label: const Text('用浏览器登录好学（自动取 cookie）'),
-        ),
-      ),
-      const SizedBox(height: 14),
-      FilledButton(
-        onPressed: _loading ? null : _cookieLogin,
-        child: _loading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Text('登录'),
-      ),
-    ];
-  }
 }

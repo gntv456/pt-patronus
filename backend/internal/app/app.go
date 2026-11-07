@@ -26,7 +26,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
-	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
@@ -198,16 +197,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh, filterEng, cfgOp)
 
-	hxpt := auth.NewHxptVIP(registry, "hxpt", cfg.AuthSiteURL, cfg.AuthVIPLevel, hc)
-
 	// OIDC/SSO 服务（Authelia/Keycloak/Casdoor 等标准 OIDC；凭据落 SystemConfig auth.oidc）。
 	oidcSvc := auth.NewOIDCService(cfgOp)
 
-	// 好学登录服务：编排账号登录两步 + VIP 校验；每条登录用独立临时 client（独立 jar、不跟随重定向）
-	loginClientFactory := func() (site.LoginHTTPDoer, error) {
-		return httpclient.New(httpclient.Options{Timeout: 30 * time.Second, FollowRedirect: false})
-	}
-	hxptLogin := auth.NewHxptLogin(registry, "hxpt", cfg.AuthSiteURL, hxpt, loginClientFactory)
 	// TokenVersion 缓存（登出失效；当前按单实例设计）
 	tvCache := auth.NewTokenVersionCache(database, 60*time.Second)
 
@@ -321,8 +313,6 @@ func New(cfg *config.Config) (*App, error) {
 		SnapshotCron:            cfg.SnapshotCron,
 		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
 	}, context.Background(), wsHub, noticeSvc, cfgOp, assessCh)
-	// 守护神名片：site-snapshot 末尾自动推送（详见 wireHxCard）。
-	wireHxCard(auto, hc, cfgOp, siteOp, crypto, database)
 	if !cfg.SafeMode {
 		auto.Start()
 	}
@@ -363,8 +353,6 @@ func New(cfg *config.Config) (*App, error) {
 		fileOp:         fileOp,
 		filterEng:      filterEng,
 		filterStore:    filterStore,
-		hxpt:           hxpt,
-		hxptLogin:      hxptLogin,
 		j:              j,
 		keepSeedCh:     keepSeedCh,
 		mcpSrv:         mcpSrv,

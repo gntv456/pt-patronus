@@ -67,16 +67,24 @@ func TestMtSNFromDetailURL(t *testing.T) {
 }
 
 // 回归保护：parseMTTorrent 现在会设置 DetailURL（原版遗漏）。
+// webDetail 空 → 官方 kp.m-team.cc；站点定义 extra_param.web_detail → 站点自己的
+// web 详情前缀（如 ColaPT 的 /torrents/<id>，深链尾部 id 供 mtSNFromDetailURL 抽取）。
 func TestParseMTTorrentSetsDetailURL(t *testing.T) {
 	tor := parseMTTorrent(map[string]any{
 		"id":   "999",
 		"name": "X",
 		"size": 1024,
-	})
+	}, "")
 	if tor.DetailURL != "https://kp.m-team.cc/detail/999" {
 		t.Errorf("detail_url = %q", tor.DetailURL)
 	}
 	if tor.ID != "999" {
 		t.Errorf("id = %q", tor.ID)
+	}
+
+	custom := parseMTTorrent(map[string]any{"id": "16340", "name": "Y", "size": 2048},
+		"https://www.colapt.com/torrents/")
+	if custom.DetailURL != "https://www.colapt.com/torrents/16340" {
+		t.Errorf("custom detail_url = %q", custom.DetailURL)
 	}
 }

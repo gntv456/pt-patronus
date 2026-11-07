@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { authApi, type AuthStatus, type HxptUser, type HxptLoginParams } from '@/api/auth'
+import { authApi, type AuthStatus, type HxptUser } from '@/api/auth'
 
 interface AuthState {
   token: string
@@ -35,7 +35,7 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     authenticated: (s): boolean => !!s.token || s.cookieSession,
-    username: (s): string => s.user?.hxpt_username || s.user?.username || '',
+    username: (s): string => s.user?.username || '',
     isAdmin: (s): boolean => !!s.user?.is_admin,
     vipVerified: (s): boolean => !!s.user?.vip_level,
   },
@@ -53,16 +53,6 @@ export const useAuthStore = defineStore('auth', {
     // 本地密码登录（好学站点关闭后的主路径）：首次登录自动建号。
     async loginByLocal(username: string, password: string) {
       const { token, user } = await authApi.localLogin(username, password)
-      this.onLoginSuccess(token, user)
-    },
-    // 好学账号登录（POST takelogin + VIP 校验）
-    async loginByHxpt(p: HxptLoginParams) {
-      const { token, user } = await authApi.hxptLogin(p)
-      this.onLoginSuccess(token, user)
-    },
-    // 好学 Cookie 登录（最稳路径）
-    async loginByCookie(cookie: string) {
-      const { token, user } = await authApi.hxptCookieLogin(cookie)
       this.onLoginSuccess(token, user)
     },
     async loginDemo() {

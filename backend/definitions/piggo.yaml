@@ -1,264 +1,32 @@
-# piggo — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-
-categories:
-    - id: "912"
-      name: 有声-大众
-    - id: "408"
-      name: 音乐-大众
-    - id: "409"
-      name: 其他-大众
-    - id: "407"
-      name: 体育-大众
-    - id: "406"
-      name: MV-大众
-    - id: "403"
-      name: 综艺-大众
-    - id: "402"
-      name: 电视剧-大众
-    - id: "405"
-      name: 动漫-大众
-    - id: "404"
-      name: 纪录片-大众
-    - id: "401"
-      name: 电影-大众
-    - id: "907"
-      name: 纪录片-儿童
-    - id: "910"
-      name: 读书绘本-儿童
-    - id: "911"
-      name: 音乐-儿童
-    - id: "905"
-      name: 有声读物-儿童
-    - id: "909"
-      name: 儿童电影-儿童
-    - id: "908"
-      name: 儿童剧集-儿童
-description: 猪猪网
+# 猪猪（piggo.me）站点定义 —— 自研引擎（schema: piggo）
+#
+# 站点已从 NexusPHP 整体改版为 Laravel + Vite SPA 自研引擎（2026-11 验证），
+# 旧刮削选择器全部作废；现由 backend/internal/site/schemas/piggo.go 代码适配
+# /v1/web JSON API——本 YAML 不配置 selectors。
+#
+# 鉴权（站点无 Cookie/passkey 通道，只有账号密码）：
+#   1. 站点凭据填「用户名 + 密码」——适配器自动走 SRP-6a 加密登录
+#      （RFC5054 2048-bit 群 + PBKDF2 21 万轮派生，密码不以明文进请求体）
+#   2. 登录后 token 与设备指纹 visitorId 绑定，全部请求带 HMAC-SHA256 签名
+#      （X-Spa-Nonce/X-Spa-Hmac，sign 每会话由 /auth/sign 下发）——适配器内部处理
+#   3. 会话缓存在进程内存（12h 刷新；401 自动重登）
+#
+# ⚠ 新账号首次使用须在网页端完成一次「Wiki 已读确认」（/wiki/rules-general
+#   页点「确认已阅读」），否则种子端点全部 403 wiki_unread（站点强制闸门）。
+#
+# 实测端点（2026-11-07）：
+#   ✅ GET  /v1/web/torrents?page=&keyword=   搜索（promotion.label 免费/全局促销）
+#   ✅ GET  /v1/web/torrents/{id}             详情
+#   ✅ GET  /v1/web/me                        用户资料（stats.uploaded 为格式化串）
+#   ✅ POST /v1/web/torrents/{id}/download-link → 签名直链（GET 即 .torrent）
 id: piggo
-level_requirements:
-    - id: 1
-      name: 乳猪
-      privilege: 新用户的默认级别。无法直接发布种子，需添加候选后等待审核。
-    - id: 2
-      name: 烤乳猪
-      privilege: 限制功能，如发表、申请链接、上传字幕等。
-    - downloaded: 100GB
-      id: 3
-      interval: P4W
-      name: 猪仔
-      privilege: 可直接发布种子，可查看NFO文档、用户列表，请求续种，查看排行榜，查看他人种子历史（未设强隐私时），可删除自己上传的字幕。
-      ratio: 2
-      seeding_bonus: 40000
-    - downloaded: 300GB
-      id: 4
-      interval: P8W
-      name: 香猪
-      privilege: 香猪及以上封存账号后不会被删除。
-      ratio: 2.5
-      seeding_bonus: 80000
-    - downloaded: 500GB
-      id: 5
-      interval: P15W
-      name: 野猪
-      privilege: 得到一个永久邀请名额；可做种/下载/发布时选择匿名模式。
-      ratio: 3
-      seeding_bonus: 150000
-    - downloaded: 1TB
-      id: 6
-      interval: P25W
-      name: 猪王
-      privilege: 可以查看普通日志。
-      ratio: 3.5
-      seeding_bonus: 250000
-    - downloaded: 2TB
-      id: 7
-      interval: P40W
-      name: 猪妖
-      privilege: 得到两个永久邀请名额；可以查看其他用户评论、帖子历史。
-      ratio: 4
-      seeding_bonus: 400000
-    - downloaded: 3TB
-      id: 8
-      interval: P60W
-      name: 二师兄
-      privilege: 可以更新过期的外部信息，可以查看二师兄论坛。
-      ratio: 4.5
-      seeding_bonus: 600000
-    - downloaded: 4TB
-      id: 9
-      interval: P80W
-      name: 净坛使者
-      privilege: 得到三个邀请名额。
-      ratio: 5
-      seeding_bonus: 800000
-    - downloaded: 6TB
-      id: 10
-      interval: P100W
-      is_kept: true
-      name: 天蓬元帅
-      privilege: 得到五个邀请名额，天蓬元帅及以上账号永久保留。
-      ratio: 6
-      seeding_bonus: 1000000
-name: Piggo
-schema: nexusphp
-tags:
-    - 影视
-    - 综合
-    - 少儿
+name: 猪猪
+schema: piggo
 urls:
-    - https://piggo.me/
-user_info:
-    path: index.php
-    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
-    fields:
-        id:
-            attr: href
-            filters:
-                - name: queryparam
-                  args: id
-            selectors:
-                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
-                - "a[href*='userdetails.php'][class*='Name']:first"
-                - "a[href*='userdetails.php']:first"
-        name:
-            selectors:
-                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
-                - "a[href*='userdetails.php'][class*='Name']:first"
-                - "a[href*='userdetails.php']:first"
-        uploaded:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
-                - name: parse_size
-            selectors:
-                - "#info_block"
-                - ".medium"
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
-        downloaded:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
-                - name: parse_size
-            selectors:
-                - "#info_block"
-                - ".medium"
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
-        ratio:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
-                - name: replace
-                  args: 无限:::9999
-                - name: replace
-                  args: 無限:::9999
-                - name: replace
-                  args: Infinity:::9999
-                - name: replace
-                  args: Inf.:::9999
-            selectors:
-                - "#info_block"
-                - ".medium"
-                - "td.rowhead:contains('传输') + td"
-        seeding:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Current activity)[^0-9]{0,120}(\d+)'
-            selectors:
-                - "#info_block"
-                - ".medium"
-                - "#info_block img.arrowup:first"
-        bonus:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
-                - name: parse_number
-            selectors:
-                - "td.rowhead:contains('魔力') + td"
-                - "td.rowhead:contains('Karma Points') + td"
-                - "td.rowfollow:contains('魔力')"
-                - "#info_block"
-                - ".medium"
-    detail_fields:
-        uploaded:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
-                - name: parse_size
-            selectors:
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
-        downloaded:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
-                - name: parse_size
-            selectors:
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
-        ratio:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
-                - name: replace
-                  args: 无限:::9999
-                - name: replace
-                  args: 無限:::9999
-                - name: replace
-                  args: Infinity:::9999
-                - name: replace
-                  args: Inf.:::9999
-            selectors:
-                - "td.rowhead:contains('传输') + td"
-        level:
-            attr: title
-            selectors:
-                - "td.rowhead:contains('等级') + td > img"
-                - "td.rowhead:contains('等級') + td > img"
-                - "td.rowhead:contains('Class') + td > img"
-        join_date:
-            filters:
-                - name: regexp
-                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
-            selectors:
-                - "td.rowhead:contains('加入日期') + td"
-                - "td.rowhead:contains('Join'):contains('date') + td"
-        bonus:
-            filters:
-                - name: parse_number
-            selectors:
-                - "td.rowhead:contains('魔力') + td"
-                - "td.rowhead:contains('Karma Points') + td"
-                - "td.rowfollow:contains('魔力')"
-        seeding_size:
-            filters:
-                - name: parse_size
-            selectors:
-                - "td.rowhead:contains('当前做种') + td"
-                - "td.rowhead:contains('目前做種') + td"
-                - "td.rowhead:contains('Current Seeding') + td"
-                - "td.rowhead:contains('Seeding Size') + td"
-    pages:
-        - path: mybonus.php
-          fields:
-              bonus_per_hour:
-                  filters:
-                      - name: regexp
-                        args: '(?i)(?:能获取|能獲取|currently\s+getting)[^0-9]{0,60}([\d.,]+\.?\d*)'
-                      - name: parse_number
-                  selectors:
-                      - "td.text:contains('你当前每小时能获取')"
-                      - "div:contains('你当前每小时能获取')"
-                      - "td:contains('你当前每小时能获取')"
-                      - "td.text:contains('你當前每小時能獲取')"
-                      - "div:contains('你當前每小時能獲取')"
-                      - "td:contains('你當前每小時能獲取')"
-                      - "div:contains('currently getting')"
-                      - "td:contains('currently getting')"
-                      - "td[rowspan]"
+  - https://piggo.me
+# 公告/站免端点站点未开放（改版后无对应 API），关闭避免快照报错；
+# 单种促销（免费/全局首免）由搜索结果 promotion 正常下发，不受影响。
+announcement:
+  enabled: false
+freeleech:
+  enabled: false

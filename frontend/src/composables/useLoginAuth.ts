@@ -1,21 +1,18 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { authApi, type AuthStatus, type CaptchaChallenge } from '@/api/auth'
 
-// 登录页表单与各登录方式（本地密码/账号/Cookie/演示/OIDC）逻辑。
+// 登录页表单与各登录方式（本地密码/演示/OIDC）逻辑。
 // 抽出为 composable 收敛 Login.vue 脚本体积；ElMessage 依赖 unplugin-auto-import（如有）。
+// 旧好学站点账号/Cookie 登录已随站点改版（FluxTorrent，无验证码/verifyAccess 链路）下线删除。
 export function useLoginAuth() {
   const auth = useAuthStore()
   const { t } = useI18n()
 
   const loading = ref(false)
   const err = ref('')
-  const captcha = ref<CaptchaChallenge | null>(null)
-  // 账号登录
-  const acc = ref({ username: '', password: '', twoStep: '', imagestring: '' })
-  // Cookie 登录
-  const cookieStr = ref('')
+  // 本地密码登录
+  const acc = ref({ username: '', password: '' })
 
   // 本地密码登录（好学站点关闭后的主路径，#<issue>）。
   async function localLogin(onSuccess: () => void) {
@@ -30,74 +27,6 @@ export function useLoginAuth() {
       onSuccess()
     } catch (e: unknown) {
       err.value = msg(e) || t('login.err.localFailed')
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function fetchCaptcha() {
-    try {
-      captcha.value = await authApi.hxptCaptcha()
-      // OCR 服务端自动识别成功 → 预填验证码（用户可改；识别失败保持空人工输入）。
-      if (captcha.value?.need_captcha && captcha.value.ocr_text && !acc.value.imagestring) {
-        acc.value.imagestring = captcha.value.ocr_text
-      }
-    } catch (e: unknown) {
-      err.value = msg(e) || t('login.err.captchaFailed')
-    }
-  }
-
-  async function accountLogin(onSuccess: () => void) {
-    if (!acc.value.username || !acc.value.password) {
-      err.value = t('login.err.fillAccount')
-      return
-    }
-    if (acc.value.twoStep && !/^\d{6}$/.test(acc.value.twoStep.trim())) {
-      err.value = t('login.err.twoStepFormat')
-      return
-    }
-    loading.value = true
-    err.value = ''
-    try {
-      await auth.loginByHxpt({
-        username: acc.value.username,
-        password: acc.value.password,
-        two_step_code: acc.value.twoStep || undefined,
-        imagehash: captcha.value?.need_captcha ? captcha.value.imagehash : undefined,
-        imagestring: captcha.value?.need_captcha ? acc.value.imagestring : undefined,
-        extra_form: captcha.value?.extra_form,
-        challenge_mode: captcha.value?.challenge_mode || false,
-      })
-      onSuccess()
-    } catch (e: unknown) {
-      err.value = msg(e) || t('login.err.loginFailed')
-      // 凭据/验证码错（401）→ 刷新验证码
-      if ((e as { response?: { status?: number } })?.response?.status === 401) {
-        acc.value.imagestring = ''
-        await fetchCaptcha()
-      }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function cookieLogin(onSuccess: () => void) {
-    const c = cookieStr.value.trim()
-    if (!c) {
-      err.value = t('login.err.fillCookie')
-      return
-    }
-    if (!c.includes('=')) {
-      err.value = t('login.err.cookieFormat')
-      return
-    }
-    loading.value = true
-    err.value = ''
-    try {
-      await auth.loginByCookie(c)
-      onSuccess()
-    } catch (e: unknown) {
-      err.value = msg(e) || t('login.err.loginFailed')
     } finally {
       loading.value = false
     }
@@ -130,13 +59,8 @@ export function useLoginAuth() {
     auth,
     loading,
     err,
-    captcha,
     acc,
-    cookieStr,
-    fetchCaptcha,
     localLogin,
-    accountLogin,
-    cookieLogin,
     demoLogin,
     oidcLogin,
   }

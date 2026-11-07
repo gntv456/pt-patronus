@@ -59,13 +59,9 @@ func TestDownloaderAPIJourneyAgainstQBStub(t *testing.T) {
 	server := httptest.NewServer(Build(deps))
 	defer server.Close()
 
-	code, body := do(t, server, http.MethodPost, "/api/v1/auth/hxpt/cookie-login", map[string]string{"cookie": "c_secure_uid=777"}, "")
-	if code != http.StatusOK {
-		t.Fatalf("login=%d %v", code, body)
-	}
-	token, _ := body["token"].(string)
+	token := loginAsAdmin(t, server)
 
-	code, body = do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
+	code, body := do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{
 		"name": "qb-stub", "type": "qb", "url": qbServer.URL, "username": "u", "password": "p", "is_default": true,
 	}, token)
 	if code != http.StatusOK {
@@ -129,9 +125,8 @@ func TestDownloaderAPIConcurrentReadsAreThrottledSafely(t *testing.T) {
 	server := httptest.NewServer(Build(deps))
 	defer server.Close()
 
-	_, body := do(t, server, http.MethodPost, "/api/v1/auth/hxpt/cookie-login", map[string]string{"cookie": "c_secure_uid=777"}, "")
-	token, _ := body["token"].(string)
-	_, body = do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{"name": "qb", "type": "qb", "url": qbServer.URL}, token)
+	token := loginAsAdmin(t, server)
+	_, body := do(t, server, http.MethodPost, "/api/v1/downloaders", map[string]any{"name": "qb", "type": "qb", "url": qbServer.URL}, token)
 	id := int(body["id"].(float64))
 
 	var wg sync.WaitGroup

@@ -13,12 +13,7 @@ func TestOpsCenterRoutesAuth(t *testing.T) {
 	defer srv.Close()
 
 	// 登录获取 admin token
-	_, body := do(t, srv, "POST", "/api/v1/auth/hxpt/cookie-login",
-		map[string]string{"cookie": "c_secure_uid=777"}, "")
-	token, _ := body["token"].(string)
-	if token == "" {
-		t.Fatal("no token from login")
-	}
+	token := loginAsAdmin(t, srv)
 
 	t.Run("unauth blocked", func(t *testing.T) {
 		cases := []struct{ method, path string }{

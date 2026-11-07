@@ -19,7 +19,6 @@ func TestAuthCompatibilityAndNilDependencies(t *testing.T) {
 	r.POST("/login", h.Login)
 	r.POST("/logout", h.Logout)
 	r.POST("/activate", h.Activate)
-	r.POST("/verify", h.VerifyVIP)
 	r.GET("/status", h.Status)
 	r.GET("/oidc", h.GetOIDCConfig)
 	r.PUT("/oidc", h.SetOIDCConfig)
@@ -36,9 +35,6 @@ func TestAuthCompatibilityAndNilDependencies(t *testing.T) {
 	if rec := doReq(t, r, http.MethodPost, "/activate", `{}`); rec.Code != http.StatusBadRequest {
 		t.Fatalf("activate code = %d, want 400", rec.Code)
 	}
-	if rec := doReq(t, r, http.MethodPost, "/verify", `{}`); rec.Code != http.StatusBadRequest {
-		t.Fatalf("verify code = %d, want 400", rec.Code)
-	}
 	if rec := doReq(t, r, http.MethodGet, "/status", ""); rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want 200", rec.Code)
 	} else if bodyJSON(t, rec)["authenticated"] != false {
@@ -49,9 +45,6 @@ func TestAuthCompatibilityAndNilDependencies(t *testing.T) {
 	}
 	if rec := doReq(t, r, http.MethodPut, "/oidc", `{}`); rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("set oidc code = %d, want 503", rec.Code)
-	}
-	if boolStr(true) != "ok" || boolStr(false) != "fail" {
-		t.Fatal("boolStr returned unexpected values")
 	}
 }
 

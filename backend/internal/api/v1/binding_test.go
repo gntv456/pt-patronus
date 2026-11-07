@@ -171,10 +171,10 @@ func TestMaxHardenedBounds(t *testing.T) {
 		mustBind(t, v, settingReq{DownloaderID: 1, SavePath: strings.Repeat("x", 513)}, true)
 	})
 
-	t.Run("hxptLoginReq bounded", func(t *testing.T) {
-		mustBind(t, v, hxptLoginReq{Username: "u", Password: "p"}, false)
-		mustBind(t, v, hxptLoginReq{Username: strings.Repeat("u", 65)}, true)
-		mustBind(t, v, hxptLoginReq{Password: strings.Repeat("p", 129)}, true)
+	t.Run("localLoginReq bounded", func(t *testing.T) {
+		mustBind(t, v, localLoginReq{Username: "u", Password: "p"}, false)
+		mustBind(t, v, localLoginReq{Username: strings.Repeat("u", 65)}, true)
+		mustBind(t, v, localLoginReq{Password: strings.Repeat("p", 129)}, true)
 	})
 
 	t.Run("plugin slices dive,max", func(t *testing.T) {
@@ -204,8 +204,6 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 		mustBind(t, v, activateReq{Code: "c", DeviceID: "d"}, false)
 		mustBind(t, v, activateReq{Code: strings.Repeat("c", 129)}, true)
 		mustBind(t, v, activateReq{Code: "c", DeviceID: strings.Repeat("d", 65)}, true)
-		mustBind(t, v, verifyVIPReq{Cookie: "sid=1"}, false)
-		mustBind(t, v, verifyVIPReq{Cookie: strings.Repeat("c", 8193)}, true)
 	})
 
 	t.Run("site inspect/cookie bounded", func(t *testing.T) {
@@ -300,11 +298,6 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3600}, false)
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3601}, true)
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: -1}, true) // min=0
-	})
-
-	t.Run("hxptLoginReq.ExtraForm dive bounded (公开登录端点)", func(t *testing.T) {
-		mustBind(t, v, hxptLoginReq{Username: "u", Password: "p", ExtraForm: map[string]string{"a": "b"}}, false)
-		mustBind(t, v, hxptLoginReq{Username: "u", Password: "p", ExtraForm: map[string]string{"k": strings.Repeat("v", 513)}}, true)
 	})
 
 	t.Run("update.Manifest bounded (SetManifest admin)", func(t *testing.T) {

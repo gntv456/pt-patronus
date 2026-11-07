@@ -9,11 +9,9 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // PR-2 信封断言：认证域用户路径错误必须带 {code, message, error} 三字段，
@@ -43,59 +41,29 @@ func assertEnvelope(t *testing.T, rec *httptest.ResponseRecorder, wantCode strin
 	return body.Message
 }
 
-// TestEnvelope_AuthBadCredentials 凭据错误 → 401 + auth_bad_credentials 信封。
+// TestEnvelope_AuthBadCredentials 密码错 → 401 + auth_bad_credentials 信封
+// （原 hxpt 账号登录用例的等价迁移：本地登录错误口径一致）。
 func TestEnvelope_AuthBadCredentials(t *testing.T) {
-	fake := &fakeHxptAuth{loginErr: site.ErrLoginFailed}
-	r, _, _, _ := newAuthTestEnv(t, fake, false)
+	r, db, _, _ := newAuthTestEnv(t, false)
+	hash, err := security.HashPassword("rightpass123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Create(&models.User{Username: "alice", PasswordHash: hash, HxptUID: "local:alice"})
 
-	rec := postJSON(t, r, "/auth/login", `{"username":"x","password":"y"}`)
+	rec := postJSON(t, r, "/auth/local/login", `{"username":"alice","password":"wrongpass123"}`)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("应 401，got %d", rec.Code)
 	}
 	assertEnvelope(t, rec, "auth_bad_credentials")
 }
 
-// TestEnvelope_AuthCaptchaFailed 取验证码失败 → 502 + auth_captcha_failed，
-// 底层细节不进响应体（WithErr 只留日志链）。
-func TestEnvelope_AuthCaptchaFailed(t *testing.T) {
-	fake := &fakeHxptAuth{captchaErr: site.ErrLoginFailed}
-	r, _, _, _ := newAuthTestEnv(t, fake, false)
-
-	rec := getJSON(t, r, "/auth/captcha")
-	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("应 502，got %d", rec.Code)
-	}
-	msg := assertEnvelope(t, rec, "auth_captcha_failed")
-	if strings.Contains(msg, site.ErrLoginFailed.Error()) {
-		t.Fatalf("底层错误细节不应进 message: %q", msg)
-	}
-}
-
-// TestEnvelope_AuthCookieRequired cookie 登录缺参 → 400 + auth_cookie_required。
-func TestEnvelope_AuthCookieRequired(t *testing.T) {
-	r, _, _, _ := newAuthTestEnv(t, &fakeHxptAuth{}, false)
-
-	rec := postJSON(t, r, "/auth/cookie-login", `{"cookie":""}`)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("应 400，got %d", rec.Code)
-	}
-	assertEnvelope(t, rec, "auth_cookie_required")
-}
-
-// TestEnvelope_AuthServiceUnavailable 登录服务未装配（hxptAuth=nil）→ 503 + auth_service_unavailable。
-func TestEnvelope_AuthServiceUnavailable(t *testing.T) {
-	r, _, _, _ := newAuthTestEnv(t, nil, false)
-
-	rec := postJSON(t, r, "/auth/login", `{"username":"x","password":"y"}`)
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("应 503，got %d", rec.Code)
-	}
-	assertEnvelope(t, rec, "auth_service_unavailable")
-}
+// TestEnvelope_AuthCaptchaFailed / AuthCookieRequired / AuthServiceUnavailable
+// 已随旧站点登录链路（验证码/cookie 登录）下线删除。
 
 // TestEnvelope_DemoDisabled 演示登录未启用 → 404 + demo_disabled。
 func TestEnvelope_DemoDisabled(t *testing.T) {
-	r, _, _, _ := newAuthTestEnv(t, &fakeHxptAuth{}, false)
+	r, _, _, _ := newAuthTestEnv(t, false)
 
 	rec := postJSON(t, r, "/auth/demo-login", `{}`)
 	if rec.Code != http.StatusNotFound {

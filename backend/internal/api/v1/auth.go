@@ -13,7 +13,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
-	"github.com/hxpt/ptpatronus/internal/ocr"
 	"gorm.io/gorm"
 )
 
@@ -36,26 +35,23 @@ func dbFail(c *gin.Context, action string, err error) {
 	errcode.Respond(c, errcode.AuthServerBusy)
 }
 
-// AuthHandler 处理好学账号/Cookie 登录、登出与（legacy）激活码。
+// AuthHandler 处理本地密码登录、登出与（legacy）激活码。
 type AuthHandler struct {
 	db           *gorm.DB
 	jwt          *security.JWT
 	act          *auth.Activation        // legacy 激活码（不再作准入 gate，保留 Activate 端点）
-	hxptAuth     auth.HxptAuthenticator  // 好学登录 + VIP 校验
-	crypto       *security.Crypto        // 加密 HxptCookieEnc
 	tvCache      *auth.TokenVersionCache // 登出 invalidate
 	tickets      *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
 	demoMode     bool                    // 显式开启演示登录（默认关闭）
 	oidc         *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
-	ocrCfg       func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
 	secureCookie bool                    // 反代 TLS / APP_BASE_URL 为 https 时 cookie 加 Secure
 }
 
 // NewAuthHandler 构造。secureCookie 决定登录 cookie 是否带 Secure 属性。
 func NewAuthHandler(db *gorm.DB, jwt *security.JWT, act *auth.Activation,
-	hxptAuth auth.HxptAuthenticator, crypto *security.Crypto, tvCache *auth.TokenVersionCache,
-	tickets *auth.TicketStore, demoMode bool, oidc *auth.OIDCService, secureCookie bool) *AuthHandler {
-	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc, secureCookie: secureCookie}
+	tvCache *auth.TokenVersionCache, tickets *auth.TicketStore, demoMode bool,
+	oidc *auth.OIDCService, secureCookie bool) *AuthHandler {
+	return &AuthHandler{db: db, jwt: jwt, act: act, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc, secureCookie: secureCookie}
 }
 
 // setAuthCookie 登录成功时把 JWT 同时种进 httpOnly cookie（收权加固：
@@ -86,9 +82,6 @@ func (h *AuthHandler) clearAuthCookie(c *gin.Context) {
 	})
 }
 
-// SetOCRConfig 注入 OCR 配置读取器（app 装配期；nil=OCR 未启用）。
-func (h *AuthHandler) SetOCRConfig(f func() ocr.Config) { h.ocrCfg = f }
-
 // WsTicket 签发一次性 WS/RTSP ticket（guarded 内：header JWT 已校验，含 TokenVersion 失效校验）。
 // 客户端用返回的 ticket 以 ?ticket= 连 WS/RTSP，避免 JWT 落 URL。
 func (h *AuthHandler) WsTicket(c *gin.Context) {
@@ -105,9 +98,9 @@ func (h *AuthHandler) WsTicket(c *gin.Context) {
 	})
 }
 
-// ===== 好学账号登录（验证码两步） =====
+// ===== Token 续期 =====
 
-// HxptCaptcha 账号登录 Step A：取登录页验证码 / 探测模式。OCR 已配置时附带自动识别结果
+// Refresh 滑动续期当前 JWT（沿用首次签发时间钳绝对寿命）。
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	uid, _ := c.Get("uid")
 	id, _ := uid.(uint)

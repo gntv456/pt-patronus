@@ -174,18 +174,12 @@ export default {
 
   login: {
     subtitle: 'PT Patronus · self-hosted PT dashboard',
-    localTab: 'Sign in',
-    tabs: {
-      account: 'hxpt Account (legacy)',
-      cookie: 'Cookie Login (legacy)',
-    },
     boot: {
       checking: 'Checking backend service',
       unreachable: 'Backend unreachable',
       connected: 'Backend connected',
       serviceErr: 'Cannot reach the backend. Make sure Docker/backend is running',
-      vipOn: 'This instance enforces hxpt VIP access. The first verified user becomes admin.',
-      vipOff: 'Local password sign-in: first login creates the account.',
+      localOn: 'Local password sign-in: first login creates the account.',
     },
     localForm: {
       username: 'Username',
@@ -194,31 +188,12 @@ export default {
         'First sign-in creates the account; existing ones keep their password',
       passwordRule: 'Password must be 8+ characters with letters and digits',
     },
-    form: {
-      username: 'hxpt username',
-      password: 'hxpt password',
-      twoStep: '2FA code (only if enabled, 6 digits)',
-      captcha: 'Captcha',
-      challengeHint:
-        'hxpt has challenge-response auth enabled; the backend handles it. Just sign in — or use Cookie Login if it fails',
-      cookiePlaceholder:
-        'Paste hxpt cookie (e.g. c_secure_uid=...; c_secure_pass=...), copy from F12 after browser login',
-      cookieHint: 'Most reliable path; covers 2FA / challenge-response accounts',
-    },
     err: {
       fillLocal: 'Please enter username and password',
       localFailed: 'Sign-in failed',
-      captchaFailed: 'Failed to fetch captcha (try Cookie Login instead)',
-      fillAccount: 'Please enter hxpt account and password',
-      twoStepFormat: '2FA code must be 6 digits',
-      fillCookie: 'Please paste an hxpt cookie',
-      cookieFormat:
-        'Invalid cookie: expected "key=value"; copy the full string',
-      loginFailed: 'Sign-in failed',
       demoDisabled: 'Demo sign-in is disabled',
     },
     submit: 'Sign in',
-    clickRefresh: 'Click to refresh',
     demo: 'Browse demo',
     oidcSuffix: 'Sign in',
     deployHint:
@@ -242,7 +217,6 @@ export default {
       oidc: 'OIDC / SSO',
       llmgateway: 'AI Gateway',
       cookiecloud: 'CookieCloud',
-      hxcard: 'Patronus Card',
       ocr: 'OCR',
       servarr: 'Servarr Compat',
     },
@@ -2843,26 +2817,6 @@ export default {
     trendWindow: 'Trend covers only the latest {n} samples ({total} on this device)',
     trendWindowUnknown: 'Trend covers only the latest {n} samples (total unreadable)',
   },
-  hxcard: {
-    help: 'Push aggregated per-site stats (upload/download/seeding/bonus) from PTPatronus to your HXPT "PT Patronus" card, shown on your profile and avatar hover card.',
-    enable: 'Enable sync',
-    endpoint: 'Endpoint',
-    secret: 'Push secret',
-    secretConfigured: 'Configured (leave blank to keep, enter - to clear)',
-    secretPlaceholder: 'Enter the push secret issued by HXPT',
-    secretHint:
-      'The secret signs the request body via HMAC and stays on this device. Push authenticates with your HXPT login cookie; no site cookies or passwords are ever uploaded.',
-    preview: 'Preview data',
-    previewTitle: 'Aggregated data to push',
-    pushNow: 'Push now',
-    pushOk: 'Pushed to HXPT; check your profile page shortly',
-    pushFail: 'Push failed, check secret and network then retry',
-    siteCount: '{n} sites',
-    totalUp: 'Total upload',
-    totalDown: 'Total download',
-    totalSeed: 'Seeding size',
-    totalBonus: 'Total bonus',
-  },
   cc: {
     help: 'Install the CookieCloud browser extension with server/UUID/password; PTPatronus then pulls fresh cookies on a schedule and syncs them by domain: by default only stale local cookies are overwritten (or always), and matching built-in sites are added automatically. With hourly keep-alive this fixes short-lived sessions.',
     enable: 'Enable CookieCloud sync',
@@ -2918,7 +2872,6 @@ export default {
     noMounts: 'No mounts',
     envTab: 'Env ({n})',
     noEnv: 'No variables',
-    clickRefresh: 'Click refresh to view logs',
     openTerminal: 'Open terminal',
     execHint: 'Run commands inside the container (must be running)',
     rawTab: 'Raw config',

@@ -34,8 +34,6 @@ type Deps struct {
 	DB                 *gorm.DB
 	JWT                *security.JWT
 	Act                *auth.Activation
-	HxptVIP            *auth.HxptVIP
-	HxptAuth           auth.HxptAuthenticator
 	Crypto             *security.Crypto
 	TVCache            *auth.TokenVersionCache
 	Tickets            *auth.TicketStore

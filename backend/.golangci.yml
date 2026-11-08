@@ -1,36 +1,57 @@
-# golangci-lint 配置（收紧阻断门禁）。
+version: "2"
 run:
-  timeout: 5m
   tests: true
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-
-linters-settings:
-  errcheck:
-    # 这些方法的返回值按惯例忽略（HTTP 响应写入/刷新、流关闭、标准输出打印）。
-    exclude-functions:
-      - (net/http.ResponseWriter).Write
-      - (net/http.ResponseWriter).Flush
-      - (net/http.ResponseWriter).Header
-      - (io.Closer).Close
-      - (io.StringWriter).WriteString
-      - fmt.Fprint
-      - fmt.Fprintf
-      - fmt.Fprintln
-
+  settings:
+    # staticcheck（v2 含旧 gosimple）：关闭 QF*（quickfix 风格建议，非缺陷——
+    # De Morgan/嵌入字段选择器等 123 条重写建议不适合作为阻断门禁）与 SA#000
+    # 系列中的纯风格项；真实缺陷类（SA1012/SA9003 等）保持阻断。
+    staticcheck:
+      checks:
+        - all
+        - -QF*
+        # ST*（stylecheck 命名/大小写建议）：UrlRequired→URLRequired 等 22 条
+        # 均为导出 API/JSON 字段改名，破坏 wire 兼容，不作门禁项。
+        - -ST*
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - (net/http.ResponseWriter).Flush
+        - (net/http.ResponseWriter).Header
+        - (io.Closer).Close
+        - (io.StringWriter).WriteString
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # 测试代码的 setup/断言调用常忽略错误返回（如 op.Create / w.Write），不阻断。
-    - path: _test\.go
-      linters:
-        - errcheck
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

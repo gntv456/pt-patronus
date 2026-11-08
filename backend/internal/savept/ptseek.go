@@ -233,7 +233,7 @@ func mergeDetail(def *SiteDetail, p *ptseekSite) *SiteDetail {
 		d.Sources = make([]DetailSource, 0, len(p.Sources))
 		for _, s := range p.Sources {
 			if s.Name != "" {
-				d.Sources = append(d.Sources, DetailSource{Name: s.Name, URL: s.URL})
+				d.Sources = append(d.Sources, DetailSource(s)) // 同构字段直转（S1016）
 			}
 		}
 	}

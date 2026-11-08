@@ -35,7 +35,9 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
         with:
-          version: v1.62
+          # v2.15（go1.26 构建）：v1.62 由 go1.23 构建，遇到 go 1.26 目标直接拒载
+          # （can't load config: Go language version lower than targeted）。
+          version: v2.15.0
           working-directory: backend
           args: --timeout 5m
       - run: go test ./... -race -short -timeout 30m   # -short 跳过真实网络/子进程时序用例（race 放大下易超时 flaky），race 聚焦并发逻辑；30m 防 race 慢化卡死

@@ -115,7 +115,7 @@ func ApplyFilters(raw string, fs []Filter) string {
 				s = decoded
 			}
 		case "parse_number":
-			s = extractNumber(s)
+			s = extractNumberWithCNUnit(s)
 		case "bool", "parse_bool":
 			if parseBoolish(s) {
 				s = "true"

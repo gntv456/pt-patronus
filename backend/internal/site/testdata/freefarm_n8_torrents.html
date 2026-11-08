@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Farmm :: 种子 农场|Farmm-我们不是资源的创造者，只是优质资源的桥梁与守护者。 - Powered by NexusPHP</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+<link rel="stylesheet" href="styles/mediumfont.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="styles/sprites.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="pic/forum_pic/chs/forumsprites.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="styles/FreeFarm/theme.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="styles/FreeFarm/DomTT.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="styles/nexus.css?202510180110" type="text/css" />
+<link rel="stylesheet" href="?202510180110" type="text/css" />
+<link rel="stylesheet" href="ddlevelsfiles/new-base.css" type="text/css">
+<link rel="stylesheet" href="vendor/jquery-datetimepicker/jquery.datetimepicker.min.css" type="text/css">
+<style type="text/css">.btn-post-like {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 4px 10px 0 0;
+}</style>
+<style type="text/css">.post-reward-box {
+    padding: 15px 30px;
+}
+.post-reward-box .form-control-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 10px;
+}
+.post-reward-box .form-control-row .label{
+    width: 80px;
+}
+
+.post-reward-body-box {
+    margin-top: 80px;
+}
+.post-reward-body-box .post-reward-header {
+    margin: 15px 0 0;
+}
+.post-reward-body-box .post-reward-header .header-wrap {
+    font-weight: bold;
+    color: #ff5e52;
+    padding: 8px 0;
+    width: 30%;
+    background-color: #FFF4DD;
+}
+.post-reward-body-box td,th{
+   text-align: left;
+   padding: 4px 20px 4px 0;
+   border: 0;
+}
+.post-reward-body-box .post-reward-view-more {
+    padding: 10px 0;
+}
+.post-reward-body-box .post-reward-view-more a{
+    color: #5e9be0;
+}</style>
+<style type="text/css">.sticky-promotion-box {
+    padding: 15px 30px;
+    color: black;
+}
+.sticky-promotion-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 10px;
+}
+.sticky-promotion-box a {
+    color: black !important;
+}</style>
+<script type="text/javascript" src="js/curtain_imageresizer.js?202510180110"></script>
+<script type="text/javascript" src="js/ajaxbasic.js?202510180110"></script>
+<script type="text/javascript" src="js/common.js?202510180110"></script>
+<script type="text/javascript" src="js/domLib.js?202510180110"></script>
+<script type="text/javascript" src="js/domTT.js?202510180110"></script>
+<script type="text/javascript" src="js/domTT_drag.js?202510180110"></script>
+<script type="text/javascript" src="js/fadomatic.js?202510180110"></script>
+<script type="text/javascript" src="js/jquery-1.12.4.min.js?202510180110"></script>
+<script type="text/javascript">
+    jQuery.noConflict();
+    window.nexusLayerOptions = {
+        confirm: {btnAlign: 'c', title: 'Confirm', btn: ['OK', 'Cancel']},
+        alert: {btnAlign: 'c', title: 'Info', btn: ['OK', 'Cancel']}
+    }
+</script>
+<script type="text/javascript" src="vendor/layer-v3.5.1/layer/layer.js?202510180110"></script>
+<link rel="stylesheet" href="/theme-v8/v8.css?v=20261108v">
+<link rel="stylesheet" href="/theme-v8/v8-legacy.css?v=20261108v">
+<script>try{var t=localStorage.getItem('tey-theme-v8')||'dark';var m=location.search.match(/[?&]theme=(light|dark|auto)/);if(m)t=m[1];var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light');}catch(e){}</script>
+</head>
+<body class="n8 n8-pg-torrents">
+<div class="n8-ambient"></div>
+<div class="n8-grain"></div>
+
+<header class="n8-nav">
+  <div class="n8-nav-in">
+    <a class="n8-brand" href="index.php" title="Farmm">
+      <span class="n8-mark" aria-hidden="true"></span>
+      <span class="n8-name">Farmm<em>PRIVATE</em></span>
+    </a>
+    <nav class="n8-menu" id="n8-menu"><a class="n8-link" href="/index.php">首 页</a><a class="n8-link" href="/forums.php">论 坛</a><a class="n8-link active" href="/torrents.php">综 合</a><a class="n8-link" href="/special.php">儿 童</a><a class="n8-link" href="/viewrequests.php">求 种</a><a class="n8-link" href="/upload.php">发 布</a><div class="n8-anchor" id="n8-more"><button class="n8-link n8-more-btn" type="button" data-toggle>更多<svg class="n8-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9.5l6 6 6-6"/></svg></button><div class="n8-pop n8-pop-more"><div class="n8-mm-col"><div class="n8-mm-label">发布与资源</div><a href="https://pt.tey.cc/"><span>太 乙</span></a><a href="https://www.hdvision.cc/"><span>在线视频</span></a></div><div class="n8-mm-col"><div class="n8-mm-label">社区与服务</div></div></div></div></nav>
+    <form class="n8-search" action="torrents.php" method="get" role="search"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="text" name="search" value="" placeholder="搜索种子 / 片名 / 发布组" aria-label="搜索"><select name="search_area" class="n8-sarea" aria-label="搜索范围"><option value="0" selected>标题</option><option value="1">简介</option><option value="3">发布者</option><option value="4">IMDB链接</option></select><span class="n8-kbd">/</span></form>
+    <div class="n8-actions"><div class="n8-sw" role="group" aria-label="主题"><button type="button" data-t="light" title="浅色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2M12 19.4v2M2.6 12h2M19.4 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></svg></button><button type="button" data-t="dark" title="深色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg></button><button type="button" data-t="auto" title="跟随系统"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg></button></div><div class="n8-anchor"><button class="n8-ico" type="button" data-toggle title="消息中心" aria-label="消息中心"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M10.5 20a2 2 0 0 0 3 0"/></svg></button><div class="n8-pop n8-pop-notif"><div class="n8-pop-head"><span>消息中心</span><a href="messages.php">全部</a></div><a class="n8-mi" href="messages.php"><span class="n8-mi-ico a"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg></span><div><p>站内信 · 无未读</p><span>收件箱</span></div></a><a class="n8-mi" href="messages.php?action=viewmailbox&amp;box=-1"><span class="n8-mi-ico a"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v9H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/></svg></span><div><p>发件箱</p><span>已发送的消息</span></div></a></div></div><div class="n8-anchor"><button class="n8-av-btn" type="button" data-toggle aria-label="账号"><span class="n8-av">G</span><svg class="n8-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9.5l6 6 6-6"/></svg></button><div class="n8-pop n8-pop-acct"><div class="n8-acct-head"><span class="n8-av">G</span><div><p><span class="nowrap"><b>gntv</b></span></p><span>Power User · UID 10725</span></div></div><div class="n8-acct-list"><a href="usercp.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-9 9 9v9H3z"/><path d="M9 20v-6h6v6"/></svg><span>控制面板</span></a><a href="torrents.php?inclbookmarked=1&amp;allsec=1&amp;incldead=0"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.9l6-.8z"/></svg><span>我的收藏</span></a><a href="attendance.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.4 2.4 4.6-5"/></svg><span>签到得魔力</span></a><a href="mybonus.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 10h5"/></svg><span>魔力值 · 使用</span><em>BONUS</em></a><a href="task.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5h10M9.5 12h10M9.5 19h10"/><path d="M4 5l1.2 1.2L7.6 3.8M4 12l1.2 1.2L7.6 10.8M4 19l1.2 1.2L7.6 17.8"/></svg><span>任务中心</span></a><a href="medal.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15.2" r="5"/><path d="M8.8 10.6L6 3h12l-2.8 7.6"/></svg><span>勋章</span></a><a href="invite.php?id=10725"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4"/><path d="M3 20a6 6 0 0 1 12 0M18 8v6M15 11h6"/></svg><span>邀请</span></a><a href="myhr.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10M7 21h10"/><path d="M8.2 3v3.4c0 2 3.8 3.6 3.8 5.6s-3.8 3.6-3.8 5.6V21M15.8 3v3.4c0 2-3.8 3.6-3.8 5.6s3.8 3.6 3.8 5.6V21"/></svg><span>我的 H&amp;R</span></a><a href="claim.php?uid=10725"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h9.5l-1.5 3.2 6 0-1.5 4H5z"/></svg><span>认领</span></a><a href="friends.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.6"/><path d="M3.4 19a5.6 5.6 0 0 1 11.2 0M15 19a4.6 4.6 0 0 1 6-4"/></svg><span>好友</span></a><a href="getrss.php"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19.2v.1M5 12.6a6.6 6.6 0 0 1 6.6 6.6M5 6a13.2 13.2 0 0 1 13.2 13.2"/></svg><span>RSS 订阅</span></a><a href="/nexusphp"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></svg><span>管理系统</span><em>SYS</em></a></div><div class="n8-pop-foot"><a href="logout.php">退出登录</a></div></div></div><button class="n8-burger" type="button" aria-label="菜单" id="n8-burger"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
+  </div>
+  <div class="n8-sub"><div class="n8-sub-l"><span class="n8-sub-i"><i class="n8-live"></i><b>597</b> 在线</span><i class="n8-sep"></i><span>种子 <b>87,874</b></span><i class="n8-sep"></i><span>今日新增 <b>+127</b></span><i class="n8-sep"></i><span>同伴 <b>228,079</b></span><i class="n8-sep"></i><span>注册用户 <b>4,890</b></span></div><div class="n8-sub-r"><a class="n8-pill" href="viewrequests.php">求种</a><a class="n8-pill" href="forums.php">论坛</a></div></div>
+  <div class="n8-drawer" id="n8-drawer"><form class="n8-dsearch" action="torrents.php" method="get" role="search"><svg class="n8-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="text" name="search" placeholder="搜索种子 / 片名 / 发布组" aria-label="搜索"><select name="search_area" class="n8-sarea" aria-label="搜索范围"><option value="0" selected>标题</option><option value="1">简介</option><option value="3">发布者</option><option value="4">IMDB链接</option></select><button type="submit">搜索</button></form><div class="n8-drawer-theme"><span>主题</span><div class="n8-sw"><button type="button" data-t="light" title="浅色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2M12 19.4v2M2.6 12h2M19.4 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></svg></button><button type="button" data-t="dark" title="深色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg></button><button type="button" data-t="auto" title="跟随系统"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg></button></div></div><div class="n8-drawer-grid"><a href="/index.php">首 页</a><a href="/forums.php">论 坛</a><a href="/torrents.php">综 合</a><a href="/special.php">儿 童</a><a href="/viewrequests.php">求 种</a><a href="/upload.php">发 布</a><a href="https://pt.tey.cc/">太 乙</a><a href="https://www.hdvision.cc/">在线视频</a></div></div>
+</header>
+
+<main class="n8-wrap">
+<div class="n8-content" id="outer">
+<table width="97%" class="main" border="0" cellspacing="0" cellpadding="0"><tr><td class="embedded">                        <h2>热门</h2>
+                        <table width="100%" border="1" cellspacing="0" cellpadding="5"><tr><td class="text nowrap" align="center">
+                                    <a style="margin-right: 2px" href="details.php?id=126459&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;A Record of a Mortal\&#039;s Journey to Immortality 2020 S01E199 2160p WEB-DL HDR10 H265 10bit AAC-UBWEB &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;凡人修仙传：慕兰之战 | 总第199集 | 导演: 王裕仁 林宇昂 | 主演: 钱文青 李诗萌 青泯邑 宝木中阳 刘三木 [国语/中字] [4K版] | ARDTU&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_37457082.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=125346&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Resident Evil 2026 2160p iTunes WEB-DL HEVC 10bit HDR10+ DDP5.1 Atmos 3Audios-QHstudIo &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;生化危机：爆发夜 / 恶灵古堡：爆发夜 \&quot;浣熊市爆发，绝境求生\&quot; 【4K超高码率 | HDR10+ | 英语+杜比全景声·多规格音轨 | 内封(官方)简繁英字幕】【导演：扎克·克雷格 | 主演：奥斯汀·艾布拉姆斯 | 扎克·切利 | 卡莉·瑞斯 | 保罗·沃尔特·豪泽】QHstudIo小组作品&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://g.imgtg.com/uploads/5829/6ae86f56aa88a.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=123903&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Small Town Remedy S01E18 2026 2160p iQIYI WEB-DL H265 DDP5.1-ADWeb&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;小城良方 第18集 | 类型：剧情 | 主演：肖战 倪大红 姜妍 史彭元 菅纫姿 | 刘医生返乡记 / 飞刀 | ARDTU&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_36675942.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=116938&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Dark -S03 2017-2020 S01 2019 2160p WEBRip x265 DD 5.1 Atmos-FRDS&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;【暗黑/暗/暗黑世界/黑暗/黑暗世界】 全三季 全剧终 | 德语/中德字幕/官方简中字幕 Netflix出品 HEVC版本&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://img2.pixhost.cc/images/6017/775236165_ptnexus-poster-651196986.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=114614&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Make Zhonghe Great Again 2026 2160p WEB-DL H265 HDR AAC2.0-HHWEB&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;年会不能停！2 / 年会不能停2 / 年会不能停2！ | 4K HDR | 类型: 喜剧 | 导演: 董润年 | 主演: 张若昀/白客/高叶/大鹏/庄达菲 | ARDTU&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_36850814.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=113274&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Give You A Candy 2024 2160p WEB-DL H265 EDR AAC2.0-HHWEB&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;出入平安 / 前夜 | 4K 高码 | 类型: 剧情/家庭/灾难 | 导演: 刘江江 | 主演: 肖央/阿云嘎/古力娜扎/黄小蕾/王迅 | ARDTU&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_36459360.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=112153&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Keep Real 2026 1080p WEB-DL H264 AAC2.0-HHWEB&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;特立独行 / 乌合之众‎ | 1080p | 类型: 剧情/喜剧 | 导演: 邢文雄 | 主演: 白敬亭/魏翔/张国强/赵海燕/苏小玎 | ARDTU&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_36953973.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=111451&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Joy of Life 2019 S01 WEB-DL 2160p H.265 AAC-ADWeb&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;庆余年 第一季 全46集 4K 主演: 张若昀 / 李沁 / 陈道明 / 吴刚 / 李小冉&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://img2.doubanio.com/view/photo/l_ratio_poster/public/p2575362797.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=108961&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Renegade Immortal S01 2023 2160p TX WEB-DL H.265 AAC2.0-HHWEB&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;Renegade Immortal Season 1 / 仙逆 第1-24集 / 仙逆 第1季&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://doubaninfo.com/dbposter/doubaninfo_com_35679839.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=106835&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Intouchables 2011 BluRay 1080p x265 10bit MNHD-FRDS&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;【触不可及/逆转人生(台)】Top 250 #38 10bit HEVC版本&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://img9.doubanio.com/view/photo/l_ratio_poster/public/p1454261925.jpg" border="0" alt="poster" /></a></td></tr></table>
+                                                <h2>经典</h2>
+                        <table width="100%" border="1" cellspacing="0" cellpadding="5"><tr><td class="text nowrap" align="center">
+                                    <a style="margin-right: 2px" href="details.php?id=12451&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Kung Fu Hustle 2004 BluRay 1080p x265 10bit 2Audio MNHD-FRDS&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;【功夫】 周星驰作品 国粤双语 10bit HEVC版本&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="http://images.blu-ray.com/movies/covers/42_front.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=7213&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Lupin the Third second-TV BluRay 1080p AVC TrueHD 5.1 &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;鲁邦三世第二季&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://m.media-amazon.com/images/M/MV5BMmNmY2JlNWItNDM4Ni00ZDQyLTkzZjQtZTFlNDFmYWNmZjM1XkEyXkFqcGc@._V1_QL75_UX190_CR0,2,190,281_.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=7159&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;DouBan 2022.11 11 Top 250 BluRay 1080p x265.10bit MNHD-FRDS &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;FRDS 豆瓣电影 Top 250 10bit HEVC版本 *截至2022.11.11 小白牙整理*&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://i.loli.net/2021/11/09/iK3c2BpxYjtdswP.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=6701&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Stefanie Sun 2000-2022 Music Album Collection FLAC 分轨 16bit 44.1khz&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;孙燕姿 2000-2022 录音室专辑合集&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://s3.bmp.ovh/imgs/2022/09/26/31bac2bac7f35684.png" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=6486&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Rainie Yang 2005-2022 Music Album Collection FLAC 分轨 16bit 44.1khz&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;杨丞琳 2005-2022 录音室专辑合集&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://s3.uuu.ovh/imgs/2022/11/18/b43692b1e2a9ed67.png" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=6389&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Kenji Wu 2000-2022 Music Album Collection FLAC 分轨 16bit 44.1khz&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;吴克群 2000-2022 录音室专辑合集&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://s3.uuu.ovh/imgs/2022/11/18/cc544060ab697320.png" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=6288&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Christine Fan 2000-2022 Music Album Collection FLAC 分轨 16bit 44.1khz&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;范玮琪 2000-2022 录音室专辑合集&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://s3.bmp.ovh/imgs/2022/11/18/de3bccdf3b6496f3.png" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=6200&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;Breaking Bad S01-S05 2160p WEB-DL 5xRus Ukr Eng TrollUHD-ULTRAHDCLUB&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;绝命毒师全五季4录制版顶级片源&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://img9.doubanio.com/view/photo/l_ratio_poster/public/p2153214457.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=5912&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;DragonBall Z 1989-1995 1080p Blu-ray AVC TrueHD 5.1 &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;龙珠Z(美版)/Dragon Ball Z&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://m.media-amazon.com/images/M/MV5BN2VlNTdlMzQtYzE5OC00YmYwLTgyZTItYjEzMWY0ZDNjMTJhXkEyXkFqcGc@._V1_QL75_UY281_CR4,0,190,281_.jpg" border="0" alt="poster" /></a><a style="margin-right: 2px" href="details.php?id=5070&amp;hit=1" onmouseover="domTT_activate(this, event, 'content', '&lt;font class=\&#039;big\&#039;&gt;&lt;b&gt;DouBan 2021 11 11 Top 250 BluRay 1080p x265 10bit MNHD-FRDS &lt;b&gt;[&lt;font class=\&#039;free\&#039; &gt;免费&lt;/font&gt;]&lt;/b&gt;&lt;/b&gt;&lt;/font&gt;&lt;br /&gt;&lt;font class=\&#039;medium\&#039;&gt;FRDS 豆瓣电影 Top 250 10bit HEVC版本 *截至2021.11.11&lt;/font&gt;', 'trail', true, 'delay', 0,'lifetime',5000,'styleClass','niceTitle','maxWidth', 600);"><img width="101" height="140" src="https://i.loli.net/2021/11/09/wk5G4LSyrWTgRp6.png" border="0" alt="poster" /></a></td></tr></table>
+                        <form method="get" name="searchbox" action="?">
+	<table border="1" class="searchbox" cellspacing="0" cellpadding="5" width="100%">
+		<tbody>
+		<tr>
+		<td class="colhead" align="center" colspan="2"><a href="javascript: klappe_news('searchboxmain')"><img class="plus" src="pic/trans.gif" id="picsearchboxmain" alt="Show/Hide" />搜索箱</a></td>
+		</tr></tbody>
+		<tbody id="ksearchboxmain" style="display:none">
+		<tr>
+			<td class="rowfollow" align="left">
+<!--				<table>-->
+<!--					--><!--				</table>-->
+                <table><tr><td class="embedded" align="left">分类</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat401" name="cat401" value="1" />
+<a href="?cat=401"><img src="pic/cattrans.gif" class="" alt="Movies|电影" title="Movies|电影" style="background-image: url(pic/category/chd/scenetorrents/chs/Movies.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat402" name="cat402" value="1" />
+<a href="?cat=402"><img src="pic/cattrans.gif" class="" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat403" name="cat403" value="1" />
+<a href="?cat=403"><img src="pic/cattrans.gif" class="" alt="Documentaries|纪录片" title="Documentaries|纪录片" style="background-image: url(pic/category/chd/scenetorrents/chs/Documentaries.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat404" name="cat404" value="1" />
+<a href="?cat=404"><img src="pic/cattrans.gif" class="" alt="TV Shows|综艺" title="TV Shows|综艺" style="background-image: url(pic/category/chd/scenetorrents/chs/TVShows.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat405" name="cat405" value="1" />
+<a href="?cat=405"><img src="pic/cattrans.gif" class="" alt="Animations|动漫" title="Animations|动漫" style="background-image: url(pic/category/chd/scenetorrents/chs/Animations.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat406" name="cat406" value="1" />
+<a href="?cat=406"><img src="pic/cattrans.gif" class="" alt="Music Videos|音乐视频" title="Music Videos|音乐视频" style="background-image: url(pic/category/chd/scenetorrents/chs/MusicVideos.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat407" name="cat407" value="1" />
+<a href="?cat=407"><img src="pic/cattrans.gif" class="" alt="HQ Audio|无损音乐" title="HQ Audio|无损音乐" style="background-image: url(pic/category/chd/scenetorrents/chs/HQAudio.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat408" name="cat408" value="1" />
+<a href="?cat=408"><img src="pic/cattrans.gif" class="" alt="Sports|体育" title="Sports|体育" style="background-image: url(pic/category/chd/scenetorrents/chs/Sports.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat427" name="cat427" value="1" />
+<a href="?cat=427"><img src="pic/cattrans.gif" class="" alt="Education|学习教育" title="Education|学习教育" style="background-image: url(pic/category/chd/scenetorrents/chs/Education.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat412" name="cat412" value="1" />
+<a href="?cat=412"><img src="pic/cattrans.gif" class="" alt="book|书籍" title="book|书籍" style="background-image: url(pic/category/chd/scenetorrents/chs/book.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat411" name="cat411" value="1" />
+<a href="?cat=411"><img src="pic/cattrans.gif" class="" alt="Game|游戏" title="Game|游戏" style="background-image: url(pic/category/chd/scenetorrents/chs/Game.png)" /></a>
+</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat410" name="cat410" value="1" />
+<a href="?cat=410"><img src="pic/cattrans.gif" class="" alt="Resources|网络资源" title="Resources|网络资源" style="background-image: url(pic/category/chd/scenetorrents/chs/Resources.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat409" name="cat409" value="1" />
+<a href="?cat=409"><img src="pic/cattrans.gif" class="" alt="待定" title="待定" style="background-image: url(pic/category/chd/scenetorrents/chs/9.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input type="checkbox" id="cat428" name="cat428" value="1" />
+<a href="?cat=428"><img src="pic/cattrans.gif" class="" alt="Other|其他" title="Other|其他" style="background-image: url(pic/category/chd/scenetorrents/chs/Other.png)" /></a>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="cat_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('cat','cat_check','全选','全不选',-1,10)">
+</td></tr><tr><td class="embedded" align="left">地区</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source35" name="source35" value="1" /><a href="?source=35">内地 (China,CHN)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source36" name="source36" value="1" /><a href="?source=36">香港 (HKG,CHN)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source37" name="source37" value="1" /><a href="?source=37">台湾 (TWN,CHN)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source39" name="source39" value="1" /><a href="?source=39">韩国 (KOR)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source38" name="source38" value="1" /><a href="?source=38">欧美 (Western)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source40" name="source40" value="1" /><a href="?source=40">日本 (JPN)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source41" name="source41" value="1" /><a href="?source=41">印度 (IND)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source34" name="source34" value="1" /><a href="?source=34">泰国 (Th)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="source42" name="source42" value="1" /><a href="?source=42">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="source_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('source','source_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">教育</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing34" name="processing34" value="1" /><a href="?processing=34">一年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing35" name="processing35" value="1" /><a href="?processing=35">二年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing36" name="processing36" value="1" /><a href="?processing=36">三年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing37" name="processing37" value="1" /><a href="?processing=37">四年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing38" name="processing38" value="1" /><a href="?processing=38">五年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing39" name="processing39" value="1" /><a href="?processing=39">六年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing40" name="processing40" value="1" /><a href="?processing=40">七年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing41" name="processing41" value="1" /><a href="?processing=41">八年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing42" name="processing42" value="1" /><a href="?processing=42">九年级</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing43" name="processing43" value="1" /><a href="?processing=43">高一</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing44" name="processing44" value="1" /><a href="?processing=44">高二</a></label>
+</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing45" name="processing45" value="1" /><a href="?processing=45">高三</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="processing46" name="processing46" value="1" /><a href="?processing=46">大学</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="processing_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('processing','processing_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">分辨率</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard1" name="standard1" value="1" /><a href="?standard=1">8K/4320P</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard2" name="standard2" value="1" /><a href="?standard=2">4K/2160P</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard3" name="standard3" value="1" /><a href="?standard=3">1080P</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard4" name="standard4" value="1" /><a href="?standard=4">1440P</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard5" name="standard5" value="1" /><a href="?standard=5">1080I</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard6" name="standard6" value="1" /><a href="?standard=6">720P</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard7" name="standard7" value="1" /><a href="?standard=7">SD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="standard14" name="standard14" value="1" /><a href="?standard=14">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="standard_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('standard','standard_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">媒介</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium1" name="medium1" value="1" /><a href="?medium=1">UHD Blu-ray</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium2" name="medium2" value="1" /><a href="?medium=2">Blu-ray</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium3" name="medium3" value="1" /><a href="?medium=3">UHDTV</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium4" name="medium4" value="1" /><a href="?medium=4">IPTV</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium5" name="medium5" value="1" /><a href="?medium=5">Remux</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium6" name="medium6" value="1" /><a href="?medium=6">Encode</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium7" name="medium7" value="1" /><a href="?medium=7">HDTV</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium8" name="medium8" value="1" /><a href="?medium=8">DVDR</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium9" name="medium9" value="1" /><a href="?medium=9">CD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium10" name="medium10" value="1" /><a href="?medium=10">MiniBD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium11" name="medium11" value="1" /><a href="?medium=11">Track</a></label>
+</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium12" name="medium12" value="1" /><a href="?medium=12">WEB-DL</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium13" name="medium13" value="1" /><a href="?medium=13">SACD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium14" name="medium14" value="1" /><a href="?medium=14">HD DVD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium15" name="medium15" value="1" /><a href="?medium=15">3D Blu-ray</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="medium21" name="medium21" value="1" /><a href="?medium=21">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="medium_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('medium','medium_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">编码</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec1" name="codec1" value="1" /><a href="?codec=1">H.265/HEVC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec2" name="codec2" value="1" /><a href="?codec=2">H.264/AVC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec3" name="codec3" value="1" /><a href="?codec=3">X265</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec4" name="codec4" value="1" /><a href="?codec=4">X264</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec5" name="codec5" value="1" /><a href="?codec=5">HEVC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec6" name="codec6" value="1" /><a href="?codec=6">VC-1</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec7" name="codec7" value="1" /><a href="?codec=7">MPEG-4</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec8" name="codec8" value="1" /><a href="?codec=8">MPEG-2</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec9" name="codec9" value="1" /><a href="?codec=9">Xvid</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec10" name="codec10" value="1" /><a href="?codec=10">MVC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec11" name="codec11" value="1" /><a href="?codec=11">ProRes</a></label>
+</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec12" name="codec12" value="1" /><a href="?codec=12">VP8/9</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec13" name="codec13" value="1" /><a href="?codec=13">AV1</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="codec14" name="codec14" value="1" /><a href="?codec=14">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="codec_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('codec','codec_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">音频编码</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec10" name="audiocodec10" value="1" /><a href="?audiocodec=10">DTS-HDMA:X 7.1</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec22" name="audiocodec22" value="1" /><a href="?audiocodec=22">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec21" name="audiocodec21" value="1" /><a href="?audiocodec=21">OGG</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec17" name="audiocodec17" value="1" /><a href="?audiocodec=17">PCM</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec16" name="audiocodec16" value="1" /><a href="?audiocodec=16">DSD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec15" name="audiocodec15" value="1" /><a href="?audiocodec=15">APE</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec14" name="audiocodec14" value="1" /><a href="?audiocodec=14">DTS</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec13" name="audiocodec13" value="1" /><a href="?audiocodec=13">AAC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec12" name="audiocodec12" value="1" /><a href="?audiocodec=12">MP3</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec11" name="audiocodec11" value="1" /><a href="?audiocodec=11">WAV</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec1" name="audiocodec1" value="1" /><a href="?audiocodec=1">TrueHD Atmos	</a></label>
+</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec9" name="audiocodec9" value="1" /><a href="?audiocodec=9">FLAC</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec8" name="audiocodec8" value="1" /><a href="?audiocodec=8">OPUS</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec7" name="audiocodec7" value="1" /><a href="?audiocodec=7">LPCM</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec6" name="audiocodec6" value="1" /><a href="?audiocodec=6">DTS-X</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec5" name="audiocodec5" value="1" /><a href="?audiocodec=5">TrueHD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec4" name="audiocodec4" value="1" /><a href="?audiocodec=4">AC3|DD</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec3" name="audiocodec3" value="1" /><a href="?audiocodec=3">DTS-HD|HR</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="audiocodec2" name="audiocodec2" value="1" /><a href="?audiocodec=2">DTS-HD|MA</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="audiocodec_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('audiocodec','audiocodec_check','全选','全不选',-1,10)">
+</td></tr></tr><tr><td class="embedded" align="left">制作组</td></tr><tr><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="team15" name="team15" value="1" /><a href="?team=15">FFWEB</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <label><input type="checkbox" id="team14" name="team14" value="1" /><a href="?team=14">其它 (Other)</a></label>
+</td><td align="left" class="bottom" style="padding-bottom: 4px;padding-left: 0px">
+    <input name="team_check" value="全选" class="btn medium" type="button" onclick="javascript:SetChecked('team','team_check','全选','全不选',-1,10)">
+</td></tr></tr></table>			</td>
+
+			<td class="rowfollow" valign="middle">
+				<table>
+					<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<font class="medium">显示断种/活种？</font>
+						</td>
+				 	</tr>
+					<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<select class="med" name="incldead" style="width: 100px;">
+								<option value="0">包括断种</option>
+								<option value="1" selected="selected">活种 </option>
+								<option value="2">断种</option>
+							</select>
+						</td>
+				 	</tr>
+					<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<font class="medium">显示促销种子？</font>
+						</td>
+				 	</tr>
+				 	<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<select class="med" name="spstate" style="width: 100px;">
+								<option value="0">全部</option>
+<option value="1">普通</option><option value="2">免费</option><option value="3">2X</option><option value="4">2X免费</option><option value="5">50%</option><option value="6">2X 50%</option><option value="7">30%</option>							</select>
+						</td>
+					</tr>
+					<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<font class="medium">显示收藏？</font>
+						</td>
+				 	</tr>
+				 	<tr>
+						<td class="bottom" style="padding: 1px;padding-left: 10px">
+							<select class="med" name="inclbookmarked" style="width: 100px;">
+								<option value="0">全部</option>
+								<option value="1">仅收藏</option>
+								<option value="2">仅未收藏</option>
+							</select>
+						</td>
+					</tr>
+                                        <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px">
+                            <font class="medium">审核状态：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px">
+                            <select class="med" name="approval_status" style="width: 100px;">
+                                <option value="">全部</option>
+                                <option value="0">未审</option><option value="1">通过</option><option value="2">拒绝</option>                            </select>
+                        </td>
+                    </tr>
+                                        <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <font class="medium">体积范围(GB)：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <input type="number" min="1" name="size_begin" style="width: 62px" value=""/> ~ <input type="number" min="1" name="size_end" style="width: 62px" value=""/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <font class="medium">做种人数范围：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <input type="number" min="1" name="seeders_begin" style="width: 62px" value=""/> ~ <input type="number" min="1" name="seeders_end" style="width: 62px" value=""/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <font class="medium">下载人数范围：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <input type="number" min="1" name="leechers_begin" style="width: 62px" value=""/> ~ <input type="number" min="1" name="leechers_end" style="width: 62px" value=""/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <font class="medium">完成次数范围：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <input type="number" min="1" name="times_completed_begin" style="width: 62px" value=""/> ~ <input type="number" min="1" name="times_completed_end" style="width: 62px" value=""/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <font class="medium">发布时间范围：</font>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="bottom" style="padding: 1px;padding-left: 10px;white-space: nowrap">
+                            <input type="text" id="datetime-picker-added_begin" name="added_begin" value="" autocomplete="off" style="width: 62px"> ~ <input type="text" id="datetime-picker-added_end" name="added_end" value="" autocomplete="off" style="width: 62px">                        </td>
+                    </tr>
+
+				</table>
+			</td>
+		</tr>
+		</tbody>
+		<tbody>
+		<tr>
+			<td class="rowfollow" align="center">
+				<table>
+					<tr>
+						<td class="embedded">
+							搜索关键字:&nbsp;&nbsp;
+						</td>
+						<td class="embedded">
+							<table>
+								<tr>
+									<td class="embedded">
+										<input id="searchinput" name="search" type="text" value="" autocomplete="off" style="width: 200px" ondblclick="suggest(event.keyCode,this.value);" onkeyup="suggest(event.keyCode,this.value);" onkeypress="return noenter(event.keyCode);"/>
+										<script src="js/suggest.js" type="text/javascript"></script>
+										<div id="suggcontainer" style="text-align: left; width:100px;  display: none;">
+											<div id="suggestions" style="width:204px; border: 1px solid rgb(119, 119, 119); cursor: default; position: absolute; color: rgb(0,0,0); background-color: rgb(255, 255, 255);"></div>
+										</div>
+									</td>
+								</tr>
+							</table>
+						</td>
+						<td class="embedded">
+							&nbsp; 范围：
+							<select name="search_area">
+								<option value="0">标题</option>
+								<option value="1">简介</option>
+																<option value="3">发布者</option>
+								<option value="4">IMDb链接</option>
+							</select>
+
+							 匹配模式：
+							<select name="search_mode" style="width: 60px;">
+                                <option value="0" selected>与</option><option value="2">准确</option>							</select>
+
+													</td>
+					</tr>
+<tr><td class="embedded" colspan="3">&nbsp;&nbsp;<a href="?search=%E8%B0%B7%E9%9B%A8&amp;notnewword=1"><u>谷雨</u></a>&nbsp;&nbsp;<a href="?search=%E5%90%8E%E4%BC%9A%E5%8F%8B%E6%9C%9F&amp;notnewword=1"><u>后会友期</u></a>&nbsp;&nbsp;<a href="?search=%E5%85%AB%E4%BB%99&amp;notnewword=1"><u>八仙</u></a>&nbsp;&nbsp;<a href="?search=1080&amp;notnewword=1"><u>1080</u></a>&nbsp;&nbsp;<a href="?search=2001%E5%A4%AA%E7%A9%BA%E6%BC%AB%E6%B8%B8&amp;notnewword=1"><u>2001太空���游</u></a>&nbsp;&nbsp;<a href="?search=2026&amp;notnewword=1"><u>2026</u></a>&nbsp;&nbsp;<a href="?search=2160p&amp;notnewword=1"><u>2160p</u></a>&nbsp;&nbsp;<a href="?search=A%20Documentary%20on%20the%20Shadow%20Play%202018%20UNEXT&amp;notnewword=1"><u>A Documentary on the Shadow Play 2018 UNEXT</u></a>&nbsp;&nbsp;</td></tr><tr><td colspan="3" class="embedded" style="padding-top: 4px"><a href="?tag_id=3"><span style="background-color:#FF8C00;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="官方发布的资源！">官方</span></a><a href="?tag_id=12"><span style="background-color:#2f0fe3ba;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="">连载</span></a><a href="?tag_id=10"><span style="background-color:#DB7093;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="各类合集，如刘德华电影合集，电视剧1-2-3部合集！">完结</span></a><a href="?tag_id=1"><span style="background-color:#FF0000;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="站内资源禁止转到他站的资源！">禁转</span></a><a href="?tag_id=2"><span style="background-color:#FF1493;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="只允许全网首发资源！">首发</span></a><a href="?tag_id=4"><span style="background-color:#BDB76B;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="DIY标签！">DIY</span></a><a href="?tag_id=5"><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span></a><a href="?tag_id=6"><span style="background-color:#48D1CC;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含中字资源！">中字</span></a><a href="?tag_id=7"><span style="background-color:#00BFFF;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="HDR">HDR</span></a><a href="?tag_id=8"><span style="background-color:#4682B4;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="">短剧</span></a><a href="?tag_id=11"><span style="background-color:#006c54;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="3D资源标签！">3D</span></a><a href="?tag_id=9"><span style="background-color:#8B4513;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="站内零魔力标签！">零魔</span></a></td></tr>
+				</table>
+			</td>
+			<td class="rowfollow" align="center">
+				<input type="submit" class="btn" value="给我搜" />
+			</td>
+		</tr>
+		</tbody>
+	</table>
+	</form>
+<p align="center" class='nexus-pagination'><font class="gray"><b title="Alt+Pageup">&lt;&lt;&nbsp;上一页</b></font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=1"><b title="Alt+Pagedown">下一页&nbsp;&gt;&gt;</b></a><br /><font class="gray"><b>1&nbsp;-&nbsp;100</b></font> | <a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=1"><b>101&nbsp;-&nbsp;200</b></a> | <a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=2"><b>201&nbsp;-&nbsp;300</b></a> | ... | <a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=875"><b>87501&nbsp;-&nbsp;87600</b></a> | <a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=876"><b>87601&nbsp;-&nbsp;87700</b></a> | <a href="?inclbookmarked=0&amp;incldead=1&amp;spstate=0&amp;page=877"><b>87701&nbsp;-&nbsp;87711</b></a></p>
+<table class="torrents" cellspacing="0" cellpadding="5" width="100%">
+<tr>
+<td class="colhead" style="padding: 0px">类型</td>
+<td class="colhead"><a href="?sort=1&amp;type=asc">标题</a></td>
+<td class="colhead"><a href="?sort=3&amp;type=desc"><img class="comments" src="pic/trans.gif" alt="comments" title="评论数" /></a></td>
+
+<td class="colhead"><a href="?sort=4&amp;type=desc"><img class="time" src="pic/trans.gif" alt="time" title="存活时间" /></a></td>
+<td class="colhead"><a href="?sort=5&amp;type=desc"><img class="size" src="pic/trans.gif" alt="size" title="大小" /></a></td>
+<td class="colhead"><a href="?sort=7&amp;type=desc"><img class="seeders" src="pic/trans.gif" alt="seeders" title="种子数" /></a></td>
+<td class="colhead"><a href="?sort=8&amp;type=desc"><img class="leechers" src="pic/trans.gif" alt="leechers" title="下载数" /></a></td>
+<td class="colhead"><a href="?sort=6&amp;type=desc"><img class="snatched" src="pic/trans.gif" alt="snatched" title="完成数" /></a></td>
+<td class="colhead"><a href="?sort=9&amp;type=desc">发布者</a></td>
+</tr>
+<tr style="background-color: #f05b7261">
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr style="background-color: #f05b7261"><td class="embedded" style='padding-left: 5px'>&nbsp;<span title="置顶促销"><svg t="1654506315555" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="15064" width="16" height="16"><path d="M554.62 810.68h-85.31c-11.782 0-21.344-9.562-21.344-21.376V478.296c0-11.782 9.562-21.328 21.344-21.328h85.31c11.782 0 21.344 9.546 21.344 21.328v311.008c-0.002 11.814-9.564 21.376-21.344 21.376z" fill="#F6BB42" p-id="15065"></path><path d="M639.962 703.996H383.968c-35.282 0-64 28.686-64 63.998v42.686c0 35.25 28.718 64 64 64h255.996c35.28 0 63.996-28.75 63.996-64v-42.686c-0.002-35.312-28.718-63.998-63.998-63.998z" fill="#FFCE54" p-id="15066"></path><path d="M746.616 767.994H277.314c-11.782 0-21.342 9.56-21.342 21.31v213.372c0 11.75 9.562 21.312 21.342 21.312h469.302c11.782 0 21.344-9.562 21.344-21.312V789.304c-0.002-11.75-9.564-21.31-21.344-21.31z" fill="#434A54" p-id="15067"></path><path d="M758.022 448a21.344 21.344 0 0 1-19.75-13.28c-4.438-10.906 0.782-23.36 11.718-27.812 82.436-33.594 135.684-96.732 158.278-187.652 11.594-46.67 11.812-89.326 10.688-112.576h-129.684c-11.782 0-21.312-9.562-21.312-21.342 0-11.782 9.532-21.328 21.312-21.328h149.34c10.656 0 19.656 7.844 21.124 18.376 0.406 2.766 9.188 68.28-9.688 145.684-25.468 104.186-89.062 179.684-183.964 218.354a21.38 21.38 0 0 1-8.062 1.576zM265.97 448c-2.688 0-5.406-0.5-8.046-1.578-94.904-38.67-158.512-114.168-183.964-218.354-18.89-77.404-10.094-142.918-9.704-145.684a21.328 21.328 0 0 1 21.124-18.376h149.34c11.782 0 21.328 9.546 21.328 21.328 0 11.78-9.546 21.342-21.328 21.342H105.036c-1.124 23.234-0.89 65.89 10.704 112.576 22.578 90.92 75.826 154.058 158.278 187.652 10.922 4.454 16.156 16.906 11.718 27.812-3.376 8.268-11.36 13.282-19.766 13.282z" fill="#F6BB42" p-id="15068"></path><path d="M661.304 917.302H362.64c-11.782 0-21.328-9.532-21.328-21.31 0-11.782 9.546-21.312 21.328-21.312h298.666a21.3 21.3 0 0 1 21.312 21.312 21.3 21.3 0 0 1-21.314 21.31zM789.302 0.012h-554.66c-11.782 0-21.328 9.546-21.328 21.328v277.336c0 79.78 31.062 154.778 87.466 211.184 56.406 56.388 131.418 87.452 211.184 87.452 79.78 0 154.778-31.062 211.182-87.452 56.406-56.406 87.468-131.404 87.468-211.184V21.338c0.002-11.78-9.53-21.326-21.312-21.326z" fill="#FFCE54" p-id="15069"></path><path d="M789.302 0.012h-42.688c11.782 0 21.344 9.546 21.344 21.328v277.336c0 79.78-31.062 154.778-87.466 211.184-51.374 51.326-118.124 81.702-189.856 86.702 7.062 0.5 14.172 0.75 21.328 0.75 79.78 0 154.778-31.062 211.182-87.452 56.406-56.406 87.468-131.404 87.468-211.184V21.338c0.002-11.78-9.53-21.326-21.312-21.326z" fill="#FFFFFF" opacity=".2" p-id="15070"></path><path d="M668.18 238.896a21.336 21.336 0 0 0-17.218-14.516l-82.842-12.032-37.016-75.06a21.334 21.334 0 1 0-38.262 0l-37.046 75.06-82.826 12.032a21.348 21.348 0 0 0-17.218 14.516 21.38 21.38 0 0 0 5.406 21.876l59.936 58.42-14.156 82.482c-1.376 8 1.922 16.094 8.484 20.876a21.38 21.38 0 0 0 22.468 1.624l74.078-38.954 74.092 38.954a21.12 21.12 0 0 0 9.906 2.438c4.438 0 8.844-1.376 12.532-4.062a21.314 21.314 0 0 0 8.5-20.876l-14.156-82.482 59.936-58.42a21.384 21.384 0 0 0 5.402-21.876z" fill="#ED5564" p-id="15071"></path></svg></span>&nbsp;<a title="This City Never Sleeps 2026 S01E06 1080p HMV WEB-DL AAC2.0 H.264-DepWeb"  href="details.php?id=121607&amp;hit=1"><b>This City Never Sleeps 2026 S01E06 1080p HMV WEB-DL AAC2.0 H.264-DepWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-08 21:57:28&quot;&gt;8时16分钟&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-08 21:57:28">8时16分钟</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span>&nbsp;<span style="font-weight: bold;color: orangered">[奖励魔力：100]</span><br /><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span>[璀璨之城 第1季 第6集 | 类型：剧情 家庭 | 主演：张智霖 吴卓羲 高海宁 | [内嵌繁中]]</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span data-imdbid="tt39443161">N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=121607"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark0"  href="javascript: bookmark(121607,0);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=121607&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-10-19 22:10:10">19天<br />15时</span></td><td class="rowfollow">2.45<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=121607&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=121607&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow"><a href="viewsnatches.php?id=121607"><b>12</b></a></td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr style="background-color: #00ae9d7d">
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=401"><img src="pic/cattrans.gif" alt="Movies|电影" title="Movies|电影" style="background-image: url(pic/category/chd/scenetorrents/chs/Movies.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr style="background-color: #00ae9d7d"><td class="embedded" style='padding-left: 5px'><img class="sticky" src="pic/trans.gif" alt="Sticky" title="一级置顶" />&nbsp;<img class="sticky" src="pic/trans.gif" alt="Sticky" title="一级置顶" />&nbsp;<a title="Tampopo 1985 CC BluRay 1080p x264 FLAC 1.0-CMCT"  href="details.php?id=38742&amp;hit=1"><b>Tampopo 1985 CC BluRay 1080p x264 FLAC 1.0-CMCT</b></a><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br /><span style="background-color:#48D1CC;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含中字资源！">中字</span>蒲公英/Dandelion/Tampopo [CC收藏版] [日语] [简繁中字]</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span data-imdbid="tt0092048">7.9</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span data-doubanid="1294009">8.4</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=38742"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark1"  href="javascript: bookmark(38742,1);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=38742&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2025-07-02 14:27:28">1年<br />4月</span></td><td class="rowfollow">9.07<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=38742&amp;hit=1&amp;dllist=1#seeders">31</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><a href="viewsnatches.php?id=38742"><b>328</b></a></td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="War of Thorns S01E04 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb"  href="details.php?id=126777&amp;hit=1"><b>War of Thorns S01E04 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb</b></a><b> (<font class='new'>新</font>)</b> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:38:31&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:38:31">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br /><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span>玫瑰战争/玫瑰戰爭 | 2026 | 第1季第4集 | 2160p HDRVi 60FPS | 中国香港 中国大陆 | 剧情 | 钟澍佳 | 杨茜尧 陈豪</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126777"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark2"  href="javascript: bookmark(126777,2);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126777&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:38:31">2分钟</span></td><td class="rowfollow">4.46<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126777&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126777&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="Tigers Sniff the Rose S01E29 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb"  href="details.php?id=126776&amp;hit=1"><b>Tigers Sniff the Rose S01E29 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:37:38&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:37:38">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />尚公主 | 2026 | 第1季第29集 | 2160p HDRVi 60FPS | 中国大陆 | 剧情 爱情 古装 | 秦榛 | 孟子义 李昀锐</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126776"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark3"  href="javascript: bookmark(126776,3);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126776&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:37:38">3分钟</span></td><td class="rowfollow">4.89<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126776&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126776&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="Lets Go S01 2026 2160p TX WEB-DL H265 HDR HFR DDP2.0-HHWEB"  href="details.php?id=126775&amp;hit=1"><b>Lets Go S01 2026 2160p TX WEB-DL H265 HDR HFR DDP2.0-HHWEB</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:35:29&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:35:29">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br /><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span><span style="background-color:#48D1CC;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含中字资源！">中字</span><span style="background-color:#00BFFF;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="HDR">HDR</span>走马上任 / 小五当官之走马上任 | 第16集 | 4K HDR | 类型: 剧情/喜剧 | 导演: 成红/赵大牛 | 主演: 王小利/蒋依杉/葛珊珊/程野/赵本山 | ARDTU</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span data-imdbid="tt34423706">N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span data-doubanid="36942992">N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126775"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark4"  href="javascript: bookmark(126775,4);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126775&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:35:29">5分钟</span></td><td class="rowfollow">3.17<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126775&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126775&amp;hit=1&amp;dllist=1#leechers">1</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="War of Thorns S01E05 1080p TX WEB-DL AAC2.0 H.264-MWeb"  href="details.php?id=126774&amp;hit=1"><b>War of Thorns S01E05 1080p TX WEB-DL AAC2.0 H.264-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:34:38&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:34:38">6天23时</span></font><img src="pic/misc/seed-box.png" style="vertical-align: bottom; height: 16px; margin-left: 4px" title="SeedBox" /><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br /><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span>玫瑰战争/玫瑰戰爭 | 2026 | 第1季第5集 | 1080p SDR | 中国香港 中国大陆 | 剧情 | 钟澍佳 | 杨茜尧 陈豪</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126774"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark5"  href="javascript: bookmark(126774,5);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126774&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:34:38">6分钟</span></td><td class="rowfollow">386.68<br />MB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126774&amp;hit=1&amp;dllist=1#seeders">3</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126774&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow"><a href="viewsnatches.php?id=126774"><b>2</b></a></td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=403"><img src="pic/cattrans.gif" alt="Documentaries|纪录片" title="Documentaries|纪录片" style="background-image: url(pic/category/chd/scenetorrents/chs/Documentaries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="A Green Trip S03E03 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb"  href="details.php?id=126773&amp;hit=1"><b>A Green Trip S03E03 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:34:04&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:34:04">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />一路前行 第三季 | 2026 | 第3季第3集 | 2160p HDRVi 50FPS | 中国大陆 | 纪录片 | 胡歌 陈龙</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126773"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark6"  href="javascript: bookmark(126773,6);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126773&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:34:04">6分钟</span></td><td class="rowfollow">4.40<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126773&amp;hit=1&amp;dllist=1#seeders"><font color="#550000">1</font></a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126773&amp;hit=1&amp;dllist=1#leechers">4</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=405"><img src="pic/cattrans.gif" alt="Animations|动漫" title="Animations|动漫" style="background-image: url(pic/category/chd/scenetorrents/chs/Animations.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="Magic Repo Man Dumped by My Party Ill Cash In with a Cute Support Fairy to Become the Strongest S01E06 1080p LINETV WEB-DL AAC2.0 H.264-MWeb"  href="details.php?id=126772&amp;hit=1"><b>Magic Repo Man Dumped by My Party Ill Cash In with a Cute Support Fairy to Become the Strongest S01E06 1080p LINETV WEB-DL AAC2.0 H.264-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:31:13&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:31:13">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />借出去的魔力要用【分期还款】强制收回/貸した魔力は【リボ払い】で強制徴収 | 2026 | 第1季第6集 | 1080p SDR | 日本 | 动画 奇幻 冒险 | 球野贵裕 | 川岛零士 加藤英美里</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126772"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark7"  href="javascript: bookmark(126772,7);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126772&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:31:13">9分钟</span></td><td class="rowfollow">640.33<br />MB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126772&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126772&amp;hit=1&amp;dllist=1#leechers">1</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="War of Thorns S01E04 2160p TX WEB-DL AAC2.0 H.265-MWeb"  href="details.php?id=126771&amp;hit=1"><b>War of Thorns S01E04 2160p TX WEB-DL AAC2.0 H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:30:33&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:30:33">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br /><span style="background-color:#3CB371;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含国语音轨资源！">国语</span>玫瑰战争/玫瑰戰爭 | 2026 | 第1季第4集 | 2160p SDR | 中国香港 中国大陆 | 剧情 | 钟澍佳 | 杨茜尧 陈豪</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126771"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark8"  href="javascript: bookmark(126771,8);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126771&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:30:33">10分钟</span></td><td class="rowfollow">981.43<br />MB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126771&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126771&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="The Great Long March S01E53 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb"  href="details.php?id=126770&amp;hit=1"><b>The Great Long March S01E53 2160p TX WEB-DL AAC2.0 HDR HFR H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:29:45&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:29:45">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />伟大的长征 | 2026 | 第1季第53集 | 2160p HDRVi 60FPS | 中国大陆 | 剧情 历史 战争 | 张永新 | 于和伟 曹磊</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126770"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark9"  href="javascript: bookmark(126770,9);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126770&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:29:45">11分钟</span></td><td class="rowfollow">4.73<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126770&amp;hit=1&amp;dllist=1#seeders"><font color="#550000">1</font></a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126770&amp;hit=1&amp;dllist=1#leechers">4</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="Beach Boys 1997 S01 Complete 1080p NF WEB-DL H264 AAC-UBWEB"  href="details.php?id=126769&amp;hit=1"><b>Beach Boys 1997 S01 Complete 1080p NF WEB-DL H264 AAC-UBWEB</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:29:14&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:29:14">6天23时</span></font><img src="pic/misc/seed-box.png" style="vertical-align: bottom; height: 16px; margin-left: 4px" title="SeedBox" /><span style="margin-left: 6px" title="未审"><svg t="1655184824967" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="34118" width="16" height="16"><path d="M450.267 772.245l0 92.511 92.511 0 0-92.511L450.267 772.245zM689.448 452.28c13.538-24.367 20.311-50.991 20.311-79.875 0-49.938-19.261-92.516-57.765-127.713-38.517-35.197-90.114-52.8-154.797-52.8-61.077 0-110.191 16.4-147.342 49.188-37.16 32.798-59.497 80.032-67.014 141.703l83.486 9.927c7.218-46.025 22.41-79.875 45.576-101.533 23.166-21.665 52.047-32.494 86.647-32.494 35.802 0 66.038 11.957 90.711 35.874 24.667 23.92 37.01 51.675 37.01 83.266 0 17.451-4.222 33.55-12.642 48.284-8.425 14.747-26.698 34.526-54.83 59.346s-47.607 43.701-58.442 56.637c-14.741 17.754-25.424 35.354-32.037 52.797-9.028 23.172-13.537 50.701-13.537 82.584 0 5.418 0.146 13.539 0.45 24.374l78.069 0c0.599-32.495 2.855-55.966 6.772-70.4 3.903-14.44 9.926-27.229 18.047-38.363 8.127-11.123 25.425-28.43 51.901-51.895C649.43 506.288 675.908 476.656 689.448 452.28L689.448 452.28z" p-id="34119" fill="#e78d0f"></path></svg></span><br /><span style="background-color:#DB7093;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="各类合集，如刘德华电影合集，电视剧1-2-3部合集！">完结</span><span style="background-color:#48D1CC;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含中字资源！">中字</span>沙滩男孩/沙滩小子/海灘男孩 | 全12集 | 导演: 石阪理江子 | 主演: 反町隆史 竹野内丰 广末凉子 稻森泉 [日语/中英日字幕]</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span data-imdbid="tt0237953">N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126769"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark10"  href="javascript: bookmark(126769,10);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126769&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:29:14">11分钟</span></td><td class="rowfollow">19.27<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126769&amp;hit=1&amp;dllist=1#seeders"><font color="#220000">1</font></a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126769&amp;hit=1&amp;dllist=1#leechers">3</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><span class="nowrap"><a  href="https://pt.0ff.cc/userdetails.php?id=12091" class='PowerUser_Name'><b>noway2004</b></a></span></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=403"><img src="pic/cattrans.gif" alt="Documentaries|纪录片" title="Documentaries|纪录片" style="background-image: url(pic/category/chd/scenetorrents/chs/Documentaries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="A Green Trip S03E03 1080p TX WEB-DL AAC2.0 H.264-MWeb"  href="details.php?id=126768&amp;hit=1"><b>A Green Trip S03E03 1080p TX WEB-DL AAC2.0 H.264-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:28:56&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:28:56">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />一路前行 第三季 | 2026 | 第3季第3集 | 1080p SDR | 中国大陆 | 纪录片 | 胡歌 陈龙</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126768"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark11"  href="javascript: bookmark(126768,11);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126768&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:28:56">11分钟</span></td><td class="rowfollow">820.58<br />MB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126768&amp;hit=1&amp;dllist=1#seeders"><font color="#220000">1</font></a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126768&amp;hit=1&amp;dllist=1#leechers">3</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="I Live Alone S01E672 1080p friDay WEB-DL AAC2.0 H.264-MWeb"  href="details.php?id=126767&amp;hit=1"><b>I Live Alone S01E672 1080p friDay WEB-DL AAC2.0 H.264-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:23:59&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:23:59">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />我独自生活 2023/나혼자산다 2023 | 2023 | 韩国 | 真人秀 | 김영진 허항 강지희 박수빈 | 金大浩 旗安84 | 第1季第672集</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126767"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark12"  href="javascript: bookmark(126767,12);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126767&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:23:59">16分钟</span></td><td class="rowfollow">6.05<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126767&amp;hit=1&amp;dllist=1#seeders"><font color="#220000">1</font></a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126767&amp;hit=1&amp;dllist=1#leechers">3</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=402"><img src="pic/cattrans.gif" alt="TV Series|电视剧" title="TV Series|电视剧" style="background-image: url(pic/category/chd/scenetorrents/chs/TVSeries.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="Tigers Sniff the Rose S01E30 2160p TX WEB-DL AAC2.0 H.265-MWeb"  href="details.php?id=126766&amp;hit=1"><b>Tigers Sniff the Rose S01E30 2160p TX WEB-DL AAC2.0 H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:19:03&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:19:03">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />尚公主 | 2026 | 第1季第30集 | 2160p SDR | 中国大陆 | 剧情 爱情 古装 | 秦榛 | 孟子义 李昀锐</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126766"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark13"  href="javascript: bookmark(126766,13);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126766&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:19:03">21分钟</span></td><td class="rowfollow">1.11<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126766&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126766&amp;hit=1&amp;dllist=1#leechers">2</a></b></td>
+<td class="rowfollow"><a href="viewsnatches.php?id=126766"><b>1</b></a></td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=405"><img src="pic/cattrans.gif" alt="Animations|动漫" title="Animations|动漫" style="background-image: url(pic/category/chd/scenetorrents/chs/Animations.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="God Of Martial Arts S09E14 2160p iQIYI WEB-DL AAC2.0 H.265-MWeb"  href="details.php?id=126765&amp;hit=1"><b>God Of Martial Arts S09E14 2160p iQIYI WEB-DL AAC2.0 H.265-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:16:02&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:16:02">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.084012-107.035271-0.243705-0.292446z" fill="#1afa29" p-id="16226"></path></svg></span><br />绝世武神 第九季 | 2026 | 第9季第14集 | 2160p SDR | 中国大陆 | 动画 冒险</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/douban2.png" alt="douban" title="douban" style="max-width: 16px;max-height: 16px"/><span>N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126765"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark14"  href="javascript: bookmark(126765,14);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126765&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:16:02">24分钟</span></td><td class="rowfollow">340.04<br />MB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126765&amp;hit=1&amp;dllist=1#seeders">2</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126765&amp;hit=1&amp;dllist=1#leechers">1</a></b></td>
+<td class="rowfollow"><a href="viewsnatches.php?id=126765"><b>2</b></a></td>
+<td class="rowfollow"><i>匿名</i></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=401"><img src="pic/cattrans.gif" alt="Movies|电影" title="Movies|电影" style="background-image: url(pic/category/chd/scenetorrents/chs/Movies.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="The Uprising 2026 1080p Blu-ray AVC Atmos TrueHD 7.1-DIY@UBits"  href="details.php?id=126764&amp;hit=1"><b>The Uprising 2026 1080p Blu-ray AVC Atmos TrueHD 7.1-DIY@UBits</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:13:28&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:13:28">6天23时</span></font><img src="pic/misc/seed-box.png" style="vertical-align: bottom; height: 16px; margin-left: 4px" title="SeedBox" /><span style="margin-left: 6px" title="未审"><svg t="1655184824967" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="34118" width="16" height="16"><path d="M450.267 772.245l0 92.511 92.511 0 0-92.511L450.267 772.245zM689.448 452.28c13.538-24.367 20.311-50.991 20.311-79.875 0-49.938-19.261-92.516-57.765-127.713-38.517-35.197-90.114-52.8-154.797-52.8-61.077 0-110.191 16.4-147.342 49.188-37.16 32.798-59.497 80.032-67.014 141.703l83.486 9.927c7.218-46.025 22.41-79.875 45.576-101.533 23.166-21.665 52.047-32.494 86.647-32.494 35.802 0 66.038 11.957 90.711 35.874 24.667 23.92 37.01 51.675 37.01 83.266 0 17.451-4.222 33.55-12.642 48.284-8.425 14.747-26.698 34.526-54.83 59.346s-47.607 43.701-58.442 56.637c-14.741 17.754-25.424 35.354-32.037 52.797-9.028 23.172-13.537 50.701-13.537 82.584 0 5.418 0.146 13.539 0.45 24.374l78.069 0c0.599-32.495 2.855-55.966 6.772-70.4 3.903-14.44 9.926-27.229 18.047-38.363 8.127-11.123 25.425-28.43 51.901-51.895C649.43 506.288 675.908 476.656 689.448 452.28L689.448 452.28z" p-id="34119" fill="#e78d0f"></path></svg></span><br /><span style="background-color:#BDB76B;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="DIY标签！">DIY</span><span style="background-color:#48D1CC;color:#ffffff;border-radius:3px;font-size:14px;margin:0 6px 0 0;padding:1px 5px" title="内含中字资源！">中字</span>起义 蓝光原盘 DIY 简体/繁体/简英双语/繁英双语 BDJ菜单修改 新增按钮</td><td class="embedded" style="text-align: right; width: 40px;padding: 4px"><div style="display: flex;flex-direction: column"><div style="display: flex;align-content: center;justify-content: space-between;padding: 2px 0"><img src="pic/imdb2.png" alt="imdb" title="imdb" style="max-width: 16px;max-height: 16px"/><span data-imdbid="tt36983905">N/A</span></div></div></td><td width="20" class="embedded" style="text-align: right;padding-right: 5px" valign="middle"><a href="download.php?id=126764"><img class="download" src="pic/trans.gif" style='padding-bottom: 2px;' alt="download" title="下载本种" /></a><br /><a id="bookmark15"  href="javascript: bookmark(126764,15);" ><img class="delbookmark" src="pic/trans.gif" alt="Unbookmarked" title="收藏" /></a></td>
+</tr></table></td><td class="rowfollow"><a href="comment.php?action=add&amp;pid=126764&amp;type=torrent" title="添加评论">0</a></td><td class="rowfollow nowrap"><span title="2026-11-08 13:13:28">27分钟</span></td><td class="rowfollow">44.64<br />GB</td><td class="rowfollow" align="center"><b><a href="details.php?id=126764&amp;hit=1&amp;dllist=1#seeders">1</a></b></td>
+<td class="rowfollow"><b><a href="details.php?id=126764&amp;hit=1&amp;dllist=1#leechers">1</a></b></td>
+<td class="rowfollow">0</td>
+<td class="rowfollow"><span class="nowrap"><a  href="https://pt.0ff.cc/userdetails.php?id=12091" class='PowerUser_Name'><b>noway2004</b></a></span></td>
+</tr>
+<tr>
+<td class="rowfollow nowrap" valign="middle" style='padding: 0px'><a href="?cat=405"><img src="pic/cattrans.gif" alt="Animations|动漫" title="Animations|动漫" style="background-image: url(pic/category/chd/scenetorrents/chs/Animations.png);" /></a></td>
+<td class="rowfollow" width="100%" align="left" style='padding: 0px'><table class="torrentname" width="100%"><tr><td class="embedded" style='padding-left: 5px'><a title="God Of Martial Arts S09E14 1080p iQIYI WEB-DL AAC2.0 H.264-MWeb"  href="details.php?id=126763&amp;hit=1"><b>God Of Martial Arts S09E14 1080p iQIYI WEB-DL AAC2.0 H.264-MWeb</b></a> <img class="pro_free" src="pic/trans.gif" alt="Free"  onmouseover="domTT_activate(this, event, 'content', '&lt;b&gt;&lt;font class=&quot;free&quot;&gt;免费&lt;/font&gt;&lt;/b&gt;剩余时间：&lt;b&gt;&lt;span title=&quot;2026-11-15 13:11:07&quot;&gt;6天23时&lt;/span&gt;&lt;/b&gt;', 'trail', false, 'delay',500,'lifetime',3000,'fade','both','styleClass','niceTitle', 'fadeMax',87, 'maxWidth', 300);" /> <font color='#0000FF'>剩余时间：<span title="2026-11-15 13:11:07">6天23时</span></font><span style="margin-left: 6px" title="通过"><svg t="1655145688503" class="icon" viewBox="0 0 1413 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="16225" width="16" height="16"><path d="M1381.807797 107.47394L1274.675044 0.438669 465.281736 809.880718l-322.665524-322.714266L35.434718 594.152982l430.041982 430.041982 107.08

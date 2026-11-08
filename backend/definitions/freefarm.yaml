@@ -1,5 +1,8 @@
-# freefarm — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# freefarm（自由农场 / Farmm，pt.0ff.cc）—— schema: nexusphp。
+# 2026-11-08 改版适配：首页换 n8 主题，旧 info_block 消失，用户统计改走
+# .n8-deck-grid .n8-cell 卡片（<span>标签</span><b>值</b>）；搜索列表
+# table.torrents 与 userdetails/mybonus 的 rowhead 表未变，沿用默认/旧选择器。
+# 魔力值等大数以「102.2万」中文数量级显示——parse_number 已支持万/亿后缀乘算。
 
 aka:
     - FreeFarm
@@ -105,65 +108,42 @@ user_info:
                 - name: queryparam
                   args: id
             selectors:
-                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
-                - "a[href*='userdetails.php'][class*='Name']:first"
-                - "a[href*='userdetails.php']:first"
+                - ".n8-hero a[href*='userdetails.php?id=']:first"
         name:
             selectors:
-                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
-                - "a[href*='userdetails.php'][class*='Name']:first"
-                - "a[href*='userdetails.php']:first"
+                - ".n8-hero a[href*='userdetails.php?id=']:first"
         uploaded:
             filters:
-                - name: regexp
-                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
                 - name: parse_size
             selectors:
-                - "#info_block"
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
+                - ".n8-deck-grid .n8-cell:contains('上传') b"
         downloaded:
             filters:
-                - name: regexp
-                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
                 - name: parse_size
             selectors:
-                - "#info_block"
-                - "td.rowhead:contains('传输') + td"
-                - "td.rowhead:contains('傳送') + td"
-                - "td.rowhead:contains('Transfers') + td"
+                - ".n8-deck-grid .n8-cell:contains('下载') b"
         ratio:
             filters:
-                - name: regexp
-                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
-                - name: replace
-                  args: 无限:::9999
-                - name: replace
-                  args: 無限:::9999
-                - name: replace
-                  args: Infinity:::9999
-                - name: replace
-                  args: Inf.:::9999
-            selectors:
-                - "#info_block"
-                - "td.rowhead:contains('传输') + td"
-        seeding:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Current activity)[^0-9]{0,120}(\d+)'
-            selectors:
-                - "#info_block"
-        bonus:
-            filters:
-                - name: regexp
-                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
                 - name: parse_number
             selectors:
-                - "td.rowhead:contains('魔力值') + td"
-                - "td.rowhead:contains('Karma Points') + td"
-                - "td.rowfollow:contains('魔力值')"
-                - "#info_block"
+                - ".n8-deck-grid .n8-cell:contains('分享率') b"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - ".n8-deck-grid .n8-cell:contains('魔力值') b"
+        seeding:
+            selectors:
+                - ".n8-deck-grid .n8-cell:contains('当前活动')"
+            filters:
+                - name: regexp
+                  args: '↑(\d+)'
+        leeching:
+            selectors:
+                - ".n8-deck-grid .n8-cell:contains('当前活动')"
+            filters:
+                - name: regexp
+                  args: '↓(\d+)'
     detail_fields:
         uploaded:
             filters:

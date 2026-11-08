@@ -13,6 +13,9 @@ gh repo view gntv456/ptpatronus-sites --json name -q .name >/dev/null 2>&1 || {
 
 gh repo clone gntv456/ptpatronus-sites "$WORK/sites" -- --depth 1
 cp "$ROOT"/backend/definitions/*.yaml "$WORK/sites/"
+# 裸环境无 git 身份时内嵌（sites 仓提交统一走发布身份）
+export GIT_AUTHOR_NAME="pt-patronus" GIT_AUTHOR_EMAIL="pt-patronus@users.noreply.github.com"
+export GIT_COMMITTER_NAME="pt-patronus" GIT_COMMITTER_EMAIL="pt-patronus@users.noreply.github.com"
 cd "$WORK/sites"
 if git status --porcelain | grep -q .; then
   git add -A

@@ -23,6 +23,38 @@ func extractNumber(s string) string {
 	return strings.ReplaceAll(m, ",", "")
 }
 
+// cnUnitMult 中文数量级后缀 → 乘数（n8 等新主题把大数格式化成 "102.2万"，
+// 万/亿是显示单位而非文字——parse_number 丢后缀就丢数量级，故在此补偿）。
+var cnUnitMult = map[rune]float64{
+	'万': 1e4,
+	'億': 1e8,
+	'亿': 1e8,
+}
+
+// extractNumberWithCNUnit 抽取首个数字串并按紧随的中文数量级后缀乘算
+// （"102.2万" → 1022000；无后缀行为与 extractNumber 一致）。
+// 只认数字后**紧邻**的万/亿（中间隔了别的字就不算数量级，防误乘）。
+func extractNumberWithCNUnit(s string) string {
+	loc := numRe.FindStringIndex(s)
+	if loc == nil {
+		return ""
+	}
+	num := strings.ReplaceAll(s[loc[0]:loc[1]], ",", "")
+	rest := strings.TrimLeft(s[loc[1]:], " ")
+	if len(rest) > 0 {
+		for _, r := range rest {
+			if mult, ok := cnUnitMult[r]; ok {
+				if f, err := strconv.ParseFloat(num, 64); err == nil {
+					return strconv.FormatFloat(f*mult, 'f', -1, 64)
+				}
+				break
+			}
+			break // 第一个非空白字符不是数量级后缀即停
+		}
+	}
+	return num
+}
+
 // ToInt 把字符串解析为 int（失败返回 0）。
 
 func ToInt(s string) int {

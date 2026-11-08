@@ -27,14 +27,16 @@ func loadSiteDefinitions(
 	if err := registry.LoadDefinitionsFS(bundledDefinitions.FS, "."); err != nil {
 		slog.Warn("load bundled site definitions failed", "err", err)
 	} else {
-		slog.Info("loaded bundled site definitions", "count", len(registry.Definitions()))
+		slog.Info("loaded bundled site definitions",
+			"count", len(registry.Definitions()))
 	}
 
 	// 远端定义源缓存（DATA_DIR/site-definitions）：上次同步的产物在启动期即生效，
 	// 不必等下一个 cron 周期。带版本门控（min_app_version 高于本版的定义跳过）。
 	if dataDir != "" {
 		cacheDir := filepath.Join(dataDir, "site-definitions")
-		err := registry.LoadDefinitionsFSVersioned(os.DirFS(cacheDir), ".", appVersion)
+		err := registry.LoadDefinitionsFSVersioned(
+			os.DirFS(cacheDir), ".", appVersion)
 		if err == nil {
 			slog.Info("loaded remote-cached site definitions",
 				"dir", cacheDir, "total", len(registry.Definitions()))
@@ -47,13 +49,16 @@ func loadSiteDefinitions(
 	if err := registry.LoadDefinitionsFSVersioned(
 		os.DirFS(defsDir), ".", appVersion); err != nil {
 		if !externalExplicit && errors.Is(err, os.ErrNotExist) {
-			slog.Info("external site definitions directory not found; using bundled definitions", "dir", defsDir, "count", len(registry.Definitions()))
+			slog.Info("external defs dir not found; using bundled",
+				"dir", defsDir, "count", len(registry.Definitions()))
 			return
 		}
-		slog.Warn("load external site definitions failed; using bundled definitions", "dir", defsDir, "err", err)
+		slog.Warn("load external site definitions failed; bundled kept",
+			"dir", defsDir, "err", err)
 		return
 	}
-	slog.Info("loaded external site definitions", "dir", defsDir, "total", len(registry.Definitions()))
+	slog.Info("loaded external site definitions",
+		"dir", defsDir, "total", len(registry.Definitions()))
 }
 
 // wireSiteSync 构造站点定义远端源 Syncer 并挂 cron（每 6h）+ 包级 Default

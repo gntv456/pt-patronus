@@ -22,7 +22,8 @@ func TestStartupLintsSiteFilterPatterns(t *testing.T) {
 	}
 	c := strings.Join(code, "\n")
 
-	i := strings.Index(c, "loadSiteDefinitions(registry, defsDir, defsDirExplicit)")
+	// 调用行折行后判据用函数名（签名带版本门控/数据目录参数，单行放不下）。
+	i := strings.Index(c, "loadSiteDefinitions(registry,")
 	if i < 0 {
 		t.Fatalf("找不到 loadSiteDefinitions 调用点（判据成了空的）")
 	}

@@ -174,27 +174,32 @@ type SiteMetadata struct {
 	// SearchCategories 是「按媒体类型搜索」的每站分类映射：键 movie/tv/music → 该站 cat ID 列表。
 	// 命中时 NexusPHP 搜索 URL 追加 cat[]=<id>（精准服务端过滤）。未配置则不发 cat[]，
 	// 由 chain 层 FilterByCategory 兜底（按行分类文本丢弃明显异类，多为音乐）。
-	SearchCategories  map[string][]string `yaml:"search_categories"`
-	Selectors         SiteSelectors       `yaml:"selectors"`
-	UserInfo          UserInfoDef         `yaml:"user_info"`
-	HR                HRDef               `yaml:"hr"`
-	Freeleech         FreeleechDef        `yaml:"freeleech"`
-	Announcement      AnnouncementDef     `yaml:"announcement"`
-	Harem             HaremDef            `yaml:"harem"`
-	Medal             MedalDef            `yaml:"medal"`
-	Messages          MessageDef          `yaml:"messages"`
-	Checkin           CheckinDef          `yaml:"checkin"`
-	Detail            DetailDef           `yaml:"detail"`
-	NoLogin           NoLoginDef          `yaml:"no_login"`
-	Login             LoginDef            `yaml:"login"`
-	Categories        []CategoryDef       `yaml:"categories"`
-	AKA               []string            `yaml:"aka,omitempty"`
-	Description       string              `yaml:"description,omitempty"`
-	Tags              []string            `yaml:"tags,omitempty"`
-	TimezoneOffset    string              `yaml:"timezone_offset,omitempty"`
-	LegacyURLs        []string            `yaml:"legacy_urls,omitempty"`
-	Dead              bool                `yaml:"dead,omitempty"`
-	LevelRequirements []LevelRequirement  `yaml:"level_requirements,omitempty"`
+	SearchCategories map[string][]string `yaml:"search_categories"`
+	Selectors        SiteSelectors       `yaml:"selectors"`
+	UserInfo         UserInfoDef         `yaml:"user_info"`
+	HR               HRDef               `yaml:"hr"`
+	Freeleech        FreeleechDef        `yaml:"freeleech"`
+	Announcement     AnnouncementDef     `yaml:"announcement"`
+	Harem            HaremDef            `yaml:"harem"`
+	Medal            MedalDef            `yaml:"medal"`
+	Messages         MessageDef          `yaml:"messages"`
+	Checkin          CheckinDef          `yaml:"checkin"`
+	Detail           DetailDef           `yaml:"detail"`
+	NoLogin          NoLoginDef          `yaml:"no_login"`
+	Login            LoginDef            `yaml:"login"`
+	Categories       []CategoryDef       `yaml:"categories"`
+	AKA              []string            `yaml:"aka,omitempty"`
+	Description      string              `yaml:"description,omitempty"`
+	Tags             []string            `yaml:"tags,omitempty"`
+	TimezoneOffset   string              `yaml:"timezone_offset,omitempty"`
+	LegacyURLs       []string            `yaml:"legacy_urls,omitempty"`
+	Dead             bool                `yaml:"dead,omitempty"`
+	// MinAppVersion 声明本定义依赖的最低程序版本（如 "1.03.28"——通常因使用了
+	// 新 schema 或新 selector 能力）。远端定义源分发的定义带此字段时，加载期
+	// 与当前版本比较，不满足则跳过并记诊断（UI 提示「需要升级」而不是抓取报错）。
+	// 内置（随版本发布）的定义不写此字段——同版本发布天然满足。
+	MinAppVersion     string             `yaml:"min_app_version,omitempty"`
+	LevelRequirements []LevelRequirement `yaml:"level_requirements,omitempty"`
 }
 
 // LevelRequirement 描述站点等级体系的一级（移植自 PT-depiler levelRequirements，纯数据）。

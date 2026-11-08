@@ -6,6 +6,17 @@
 
 ## 1.03.27（三站适配版，2026-11-08）
 
+### 站点定义远端源（站点适配不再绑发版）
+- 新增官方站点定义仓库 `gntv456/ptpatronus-sites`：适配一个新站 = 提交一份
+  YAML（同 schema 站点），实例每 6 小时自动拉取并热加载，**无需升级程序**
+- 手动同步入口：`POST /api/v1/sites/definitions/sync`（管理员）——加站不用等
+- 定义加载叠加顺序：内置（随版本发布）→ 远端缓存（DATA_DIR/site-definitions，
+  自动热更）→ DEFINITIONS_DIR（用户手动挂载的私有定义）；同 ID 后者覆盖
+- 定义新增 `min_app_version` 字段：用到新 schema/能力的定义标注最低版本，
+  旧程序加载期跳过并在诊断面板提示「需要升级」，而不是抓取报错
+- 失败保底：远端拉取失败保留上次缓存（离线可用）；tarball 20MB/单文件 1MB
+  大小上限；落地整目录原子替换
+
 ### 新增站点：猪猪（piggo.me）
 - 站点已从 NexusPHP 改版为自研引擎（Laravel + Vite SPA），旧定义与刮削选择器作废，
   重写为 schema: piggo（definitions/piggo.yaml），抓取全走 /v1/web JSON API

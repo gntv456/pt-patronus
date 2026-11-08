@@ -74,7 +74,7 @@ func New(cfg *config.Config) (*App, error) {
 	// 这两种自托管布置被永久拦死，而提示里也不说这个开关存在。
 	notification.SetAllowPrivateTargets(cfg.AllowPrivateSites)
 
-	registry, bus, base, mteam := newSiteInfra(hc)
+	registry, bus, base, mteam := newSiteInfra(hc, cfg.DataDir)
 
 	siteOp := oper.NewSiteOper(database, crypto)
 	cfgOp := oper.NewSystemConfigOper(database)

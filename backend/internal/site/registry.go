@@ -8,12 +8,17 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
 // Registry 管理站点定义（definitions/*.yaml）与平台适配器（Schema）的映射。
+// mu 保护 defs/diag：远端定义源热加载（sitedefs 包）在运行期整体替换 defs，
+// 与抓取链路的并发读（Definition/Definitions/MatchByURL）共存；adapters 仅
+// 装配期写，读多写少一并纳入锁内保持口径单一。
 type Registry struct {
+	mu       sync.RWMutex
 	defs     map[string]*SiteMetadata
 	adapters map[string]Adapter
 	diag     definitionDiagnostics
@@ -48,7 +53,38 @@ func (r *Registry) LoadDefinitionsFS(fsys fs.FS, dir string) error {
 	return r.loadDefinitionsFS(fsys, dir)
 }
 
+// LoadDefinitionsFSVersioned 带版本门控的加载：min_app_version 高于 appVersion
+// 的定义跳过并记升级诊断。远端定义源/外部目录启动加载用；内置 embed 定义无门控。
+func (r *Registry) LoadDefinitionsFSVersioned(
+	fsys fs.FS, dir, appVersion string,
+) error {
+	if dir == "" {
+		dir = "."
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.loadDefinitionsLocked(fsys, dir, appVersion)
+}
+
 func (r *Registry) loadDefinitionsFS(fsys fs.FS, dir string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.loadDefinitionsLocked(fsys, dir, "")
+}
+
+// loadDefinitionsFSLocked 带版本门控的加载（调用方持锁）；热加载用。
+func (r *Registry) loadDefinitionsFSLocked(
+	fsys fs.FS, dir, appVersion string,
+) error {
+	return r.loadDefinitionsLocked(fsys, dir, appVersion)
+}
+
+// loadDefinitionsLocked 载入一个目录到 defs（调用方持写锁）。appVersion 非空时
+// 对带 min_app_version 的定义做门控：当前版本不满足的定义跳过并记升级诊断
+// （远端定义源分发的新站可能依赖新 schema；抓取报错不如加载期一句话说清）。
+func (r *Registry) loadDefinitionsLocked(
+	fsys fs.FS, dir, appVersion string,
+) error {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return fmt.Errorf("read definitions dir: %w", err)
@@ -103,21 +139,64 @@ func (r *Registry) loadDefinitionsFS(fsys fs.FS, dir string) error {
 			r.recordDiag(DefinitionDiagnostic{Kind: DiagDuplicateID, Site: def.ID, File: file,
 				Detail: "与 " + prevFile + " 用了同一个站点 id，先加载那份整个不生效"})
 		}
+		if def.MinAppVersion != "" &&
+			!VersionSatisfiesMin(appVersion, def.MinAppVersion) {
+			slog.Warn("site definition requires newer app; skipped", "site", def.ID,
+				"file", file, "min_app_version", def.MinAppVersion)
+			r.recordDiag(DefinitionDiagnostic{
+				Kind: DiagUpgradeRequired, Site: def.ID, File: file,
+				Detail: "需要程序 ≥ " + def.MinAppVersion +
+					"（当前 " + appVersion + "），请升级后重试同步",
+			})
+			continue
+		}
 		seen[def.ID] = file
 		r.defs[def.ID] = &def
 	}
 	return nil
 }
 
+// ReloadDefinitions 热加载：按序载入 dirs（后加载者覆盖同 ID）到临时表，
+// 全部成功后原子替换 defs——远端定义源同步完成后调用，抓取链路无锁顿。
+// appVersion 用于 min_app_version 门控；diag 随新表整体换（每次重载是全新账本）。
+// 任一目录读失败即整体失败（保留旧 defs，不影响在跑抓取）。
+func (r *Registry) ReloadDefinitions(appVersion string, dirs ...string) error {
+	tmp := NewRegistry()
+	tmp.adapters = r.adapters
+	for _, dir := range dirs {
+		if strings.TrimSpace(dir) == "" {
+			continue
+		}
+		tmp.mu.Lock()
+		err := tmp.loadDefinitionsLocked(os.DirFS(dir), ".", appVersion)
+		tmp.mu.Unlock()
+		if err != nil {
+			return fmt.Errorf("reload %s: %w", dir, err)
+		}
+	}
+	r.mu.Lock()
+	r.defs = tmp.defs
+	// diag 自带锁不能整值拷贝：搬切片（新账本整体替换，语义不变）。
+	r.diag.mu.Lock()
+	r.diag.items = tmp.diag.items
+	r.diag.mu.Unlock()
+	r.mu.Unlock()
+	return nil
+}
+
 // AddDefinition 直接注入一个定义（便于测试）。
 func (r *Registry) AddDefinition(def *SiteMetadata) {
 	if def != nil && def.ID != "" {
+		r.mu.Lock()
 		r.defs[def.ID] = def
+		r.mu.Unlock()
 	}
 }
 
 // Definition 取站点定义。
 func (r *Registry) Definition(id string) (*SiteMetadata, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	d, ok := r.defs[id]
 	return d, ok
 }
@@ -130,6 +209,8 @@ func (r *Registry) AdapterFor(schema string) (Adapter, bool) {
 
 // Definitions 返回全部定义。
 func (r *Registry) Definitions() []*SiteMetadata {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]*SiteMetadata, 0, len(r.defs))
 	for _, d := range r.defs {
 		out = append(out, d)
@@ -140,6 +221,8 @@ func (r *Registry) Definitions() []*SiteMetadata {
 // ActiveDefinitions 返回未标记 Dead 的定义。死站（Dead=true）保留信息可展示，
 // 但不参与活跃抓取（搜索/用户资料/HR 等）；chain 层用此方法过滤。死站过滤的完整闭环随 M2 落地。
 func (r *Registry) ActiveDefinitions() []*SiteMetadata {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]*SiteMetadata, 0, len(r.defs))
 	for _, d := range r.defs {
 		if !d.Dead {
@@ -159,6 +242,8 @@ func (r *Registry) MatchByURL(rawURL string) (string, bool) {
 	if host == "" {
 		return "", false
 	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	for _, def := range r.defs {
 		for _, u := range def.URLs {
 			if matchHost(u) == host {

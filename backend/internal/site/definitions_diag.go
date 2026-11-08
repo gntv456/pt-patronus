@@ -17,7 +17,11 @@ const (
 	DiagUnknownKey    = "unknown_key"    // 顶层/嵌套键名结构体不认识 ⇒ 那块配置整个不生效
 	DiagDuplicateID   = "duplicate_id"   // 同目录两个文件同 id ⇒ 前者被后者静默顶掉
 	DiagBadRegexp     = "bad_regexp"     // regexp 族 pattern 编不出来 ⇒ 那条规则永远提不出值
-	DiagLoadFailed    = "load_failed"    // 这一份定义读不出/解析失败 ⇒ 整个不生效（其余文件继续加载）
+	// load_failed：这一份定义读不出/解析失败 ⇒ 整个不生效（其余文件继续加载）。
+	DiagLoadFailed = "load_failed"
+	// upgrade_required：定义（远端源新站）要求的程序版本高于当前——跳过加载并
+	// 提示升级，而不是放它进表后抓取报错。
+	DiagUpgradeRequired = "upgrade_required"
 )
 
 // DefinitionDiagnostic 是一条可展示的配置失效记录。Detail 用人话，Site/File 用于定位。

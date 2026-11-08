@@ -1,9 +1,13 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
+	"github.com/hxpt/ptpatronus/internal/sitedefs"
 )
 
 // registerSiteRoutes 注册站点相关路由：站点 CRUD/搜索/签到 + 免费促销/公告/后宫/考核/勋章/私信聚合。
@@ -13,6 +17,23 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 	{
 		sites.GET("", siteH.List)
 		sites.GET("/definitions", siteH.Definitions)
+		// 站点定义远端源手动同步（cron 每 6h 自动跑；此口给「加站不用等」）。
+		// Syncer 由 app 装配期经 sitedefs.Wire 挂到包级 Default（避免 v1→app 环）；
+		// nil（safe-mode/未装配）返回 503。
+		sites.POST("/definitions/sync", middleware.RequireAdmin(),
+			func(c *gin.Context) {
+				syncer := sitedefs.Default()
+				if syncer == nil {
+					errcode.Respond(c, errcode.AuthServiceUnavailable)
+					return
+				}
+				n, err := syncer.Sync(c.Request.Context())
+				if err != nil {
+					errcode.Respond(c, errcode.SaveFailed.WithErr(err))
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"ok": true, "definitions": n})
+			})
 		// 站点定义诊断（四类「配置被静默忽略」）：界面要能读到，否则用户只看得到「抓不到东西」。
 		sites.GET("/definition-diagnostics", siteH.DefinitionDiagnostics)
 		sites.POST("/inspect", siteH.Inspect)

@@ -318,6 +318,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	}
 
 	registerCronJobs(sched, cfg, brushCh, contractCh, traktCh, cookieCloudCh, rssCh, wfRunOp, monOp, noticeOp, saveptSvc, notifCh, noticeSvc, medalCh, subCh, transferCh, cloudCh, oper.NewRssItemOper(database), oper.NewPluginOper(database), backupSvc)
+	wireSiteSync(sched, cfgOp, hc, registry, cfg.DataDir)
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,

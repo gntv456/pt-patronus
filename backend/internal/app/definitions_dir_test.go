@@ -65,7 +65,7 @@ func TestDefaultDefinitionsDirPrefersWorkingDefinitions(t *testing.T) {
 func TestLoadSiteDefinitionsUsesBundledDefinitions(t *testing.T) {
 	reg := site.NewRegistry()
 
-	loadSiteDefinitions(reg, filepath.Join(t.TempDir(), "missing"), false)
+	loadSiteDefinitions(reg, filepath.Join(t.TempDir(), "missing"), false, "", "")
 
 	def, ok := reg.Definition("pthome")
 	if !ok {
@@ -90,7 +90,7 @@ urls:
 	}
 	reg := site.NewRegistry()
 
-	loadSiteDefinitions(reg, dir, true)
+	loadSiteDefinitions(reg, dir, true, "", "")
 
 	def, ok := reg.Definition("pthome")
 	if !ok {

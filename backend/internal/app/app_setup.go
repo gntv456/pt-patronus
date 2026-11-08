@@ -1,12 +1,9 @@
 package app
 
 import (
-	"errors"
 	"log/slog"
 	"os"
-	"strings"
 
-	bundledDefinitions "github.com/hxpt/ptpatronus/definitions"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/module"
@@ -20,6 +17,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
 	"github.com/hxpt/ptpatronus/internal/site/schemas"
+	"github.com/hxpt/ptpatronus/internal/version"
 	"github.com/hxpt/ptpatronus/internal/workflow"
 	"github.com/hxpt/ptpatronus/internal/workflow/nodes"
 
@@ -44,15 +42,21 @@ func wireOCRConfig(registry *site.Registry, cfgOp *oper.SystemConfigOper) {
 }
 
 // newSiteInfra 构造站点基础设施：注册全部 schema 适配器到 registry，挂载到 module 总线，
-// 返回 registry / event bus / chain.Base / mteam 适配器。hc 为站点抓取 HTTP 客户端。
-func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base, *schemas.MTeam) {
+// 返回 registry / event bus / chain.Base / mteam 适配器与生效的外部定义目录（供远端
+// 定义源 Syncer 叠加热加载）。hc 为站点抓取 HTTP 客户端。
+func newSiteInfra(hc *httpclient.Client, cfgDataDir string) (
+	*site.Registry, *event.Bus, chain.Base, *schemas.MTeam,
+) {
 	registry := site.NewRegistry()
 	defsDir := os.Getenv("DEFINITIONS_DIR")
 	defsDirExplicit := defsDir != ""
 	if defsDir == "" {
 		defsDir = defaultDefinitionsDir()
 	}
-	loadSiteDefinitions(registry, defsDir, defsDirExplicit)
+	// 外部目录带版本门控：远端同步下来的新站若声明了更高的 min_app_version，
+	// 旧程序跳过并记「需要升级」诊断，而不是加载后抓取报错。
+	loadSiteDefinitions(registry, defsDir, defsDirExplicit,
+		version.Version, cfgDataDir)
 	warnBrokenSiteFilterPatterns(registry)
 	nexus := schemas.NewNexusPHP(hc)
 	registry.RegisterAdapter(nexus)
@@ -257,27 +261,6 @@ func defaultDefinitionsDir() string {
 		}
 	}
 	return "./definitions"
-}
-
-func loadSiteDefinitions(registry *site.Registry, defsDir string, externalExplicit bool) {
-	if err := registry.LoadDefinitionsFS(bundledDefinitions.FS, "."); err != nil {
-		slog.Warn("load bundled site definitions failed", "err", err)
-	} else {
-		slog.Info("loaded bundled site definitions", "count", len(registry.Definitions()))
-	}
-
-	if strings.TrimSpace(defsDir) == "" {
-		return
-	}
-	if err := registry.LoadDefinitions(defsDir); err != nil {
-		if !externalExplicit && errors.Is(err, os.ErrNotExist) {
-			slog.Info("external site definitions directory not found; using bundled definitions", "dir", defsDir, "count", len(registry.Definitions()))
-			return
-		}
-		slog.Warn("load external site definitions failed; using bundled definitions", "dir", defsDir, "err", err)
-		return
-	}
-	slog.Info("loaded external site definitions", "dir", defsDir, "total", len(registry.Definitions()))
 }
 
 // warnBrokenSiteFilterPatterns 启动期体检抓取规则里的正则：写错（如 RE2 不支持的 (?=…)）

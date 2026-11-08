@@ -33,10 +33,9 @@ jobs:
       - run: go mod download
       - run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
+        # v9（lint v2 需 action v7+；v1.62 是 go1.23 构建，对 go1.26 目标拒载配置）
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          # v2.15（go1.26 构建）：v1.62 由 go1.23 构建，遇到 go 1.26 目标直接拒载
-          # （can't load config: Go language version lower than targeted）。
           version: v2.15.0
           working-directory: backend
           args: --timeout 5m

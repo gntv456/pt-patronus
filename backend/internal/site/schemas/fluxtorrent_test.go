@@ -1,6 +1,7 @@
 package schemas
 
 import (
+	"regexp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -354,6 +355,8 @@ func TestFluxTorrentFetchSeedingList(t *testing.T) {
 	}
 }
 
+var msgDateRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$`)
+
 func TestFluxTorrentFetchMessages(t *testing.T) {
 	srv := fluxCapServer(t, `{}`, `{}`,
 		`{"id":9,"from":"系统","subject":"欢迎","body":"欢迎入驻","created_at":1704067200,"read_at":null,"unread":true}`)
@@ -371,7 +374,9 @@ func TestFluxTorrentFetchMessages(t *testing.T) {
 	if m.ID != 9 || m.Sender != "系统" || m.Title != "欢迎" || m.Content != "欢迎入驻" {
 		t.Fatalf("message = %+v", m)
 	}
-	if m.IsRead || m.Date != "2024-01-01 08:00" {
+	// 日期由 time.Unix 本地时区格式化（对齐站内展示口径）：断言形状而非绝对时刻，
+	// 否则 UTC CI（00:00）与 +8 本地（08:00）各挂一边。
+	if m.IsRead || !msgDateRe.MatchString(m.Date) {
 		t.Fatalf("read/date = %v %q", m.IsRead, m.Date)
 	}
 	// 非收件箱信箱返回空（FluxTorrent 只有收件箱概念）

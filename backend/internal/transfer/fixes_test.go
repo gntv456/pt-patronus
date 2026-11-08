@@ -174,6 +174,13 @@ func TestMove_IdempotentWhenSourceUnlinkFails(t *testing.T) {
 	if err := os.Chmod(tmp, 0o500); err != nil {
 		t.Fatal(err)
 	}
+	// CI tmpfs（如 GitHub runner 的 /tmp）可能忽略目录写位限制：验证 chmod 真生效，
+	// 未生效则本测的「unlink 失败」前置不成立，跳过而非误报。
+	if probe := os.WriteFile(filepath.Join(tmp, ".w"), []byte("x"), 0o644); probe == nil {
+		_ = os.Remove(filepath.Join(tmp, ".w"))
+		_ = os.Chmod(tmp, 0o755)
+		t.Skip("目录写权限限制未生效（tmpfs/ACL 环境），跳过 unlink 失败路径测试")
+	}
 	err := (LinkOps{}).Move(src, dst)
 	// 多数 OS 下删除受目录写权限限制；若恰好放行则跳过断言。
 	if err != nil {

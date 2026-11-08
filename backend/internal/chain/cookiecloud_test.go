@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"sync"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -21,10 +22,22 @@ import (
 )
 
 // memStore 是 ccStore 的内存实现（无 DB 单测用）。
-type memStore struct{ m map[string]string }
+// memStore 加锁：CookieCloudChain.triggerSync 的后台 goroutine 会异步 Set
+// （recordSyncResult→saveSettings），与后续测试的读/写并发——CI race 检测器
+// 抓到的跨测试 DATA RACE 根源（1.03.27 CI 排查）。
+type memStore struct {
+	mu sync.Mutex
+	m  map[string]string
+}
 
-func (s *memStore) Get(k string) (string, error) { return s.m[k], nil }
+func (s *memStore) Get(k string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.m[k], nil
+}
 func (s *memStore) Set(k, v string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.m == nil {
 		s.m = map[string]string{}
 	}

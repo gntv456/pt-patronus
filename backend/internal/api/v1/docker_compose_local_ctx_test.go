@@ -82,7 +82,23 @@ func assertRespondedOK(t *testing.T, w *httptest.ResponseRecorder) {
 // TestLocalComposeUpSurvivesClientCancel #212 的执行级红证：`docker compose up -d` 是分钟级
 // 多步动作，请求上下文被客户端取消时 CLI 会被 SIGKILL 在半路，留下建了一半的容器与网络，
 // 界面却报失败。从前这条只有「代码里写了 detachedAction」的推断——handler 没有能抓住 ctx 的缝。
+// skipIfComposeDirUnwritable CI 沙箱（GitHub runner）没有 /app 写权限，
+// writeComposeFile 在替身缝之前就失败（compose_write_failed: mkdir /app:
+// permission denied），测不到目标行为——环境不配合时跳过，本地/容器内照跑。
+func skipIfComposeDirUnwritable(t *testing.T) {
+	t.Helper()
+	probe := filepath.Join(localComposeDir, ".probe")
+	if err := os.MkdirAll(localComposeDir, 0o755); err != nil {
+		t.Skipf("compose 目录不可建（%v），CI 沙箱跳过", err)
+	}
+	if err := os.WriteFile(probe, []byte("x"), 0o644); err != nil {
+		t.Skipf("compose 目录不可写（%v），CI 沙箱跳过", err)
+	}
+	_ = os.Remove(probe)
+}
+
 func TestLocalComposeUpSurvivesClientCancel(t *testing.T) {
+	skipIfComposeDirUnwritable(t)
 	p, h, c, w := newComposeCall(`{"content":"services:\n  app:\n    image: nginx\n","name":"ptdemo"}`)
 	h.ComposeUp(c)
 	assertActionDetached(t, p, "up")
@@ -91,6 +107,7 @@ func TestLocalComposeUpSurvivesClientCancel(t *testing.T) {
 
 // TestLocalComposeDownSurvivesClientCancel down 会停删容器与网络：被掐在半路最脏。
 func TestLocalComposeDownSurvivesClientCancel(t *testing.T) {
+	skipIfComposeDirUnwritable(t)
 	p, h, c, w := newComposeCall(`{"content":"services:\n  app:\n    image: nginx\n","name":"ptdemo","confirm_risk":true}`)
 	h.ComposeDown(c)
 	assertActionDetached(t, p, "down")

@@ -35,6 +35,9 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=tag
+            # semver 去 v 版本号（1.03.27）：update-manifest 的 docker.image 用无 v 口径，
+            # 双 tag 并推保证两种写法都能 pull（1.03.27 版用户 pull 404 事故复盘）。
+            type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
       # 计算注入镜像的版本号：tag 触发取 tag 名(去 v)，否则 dev-<sha>
       - id: ver

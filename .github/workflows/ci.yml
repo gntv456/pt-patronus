@@ -36,6 +36,7 @@ jobs:
         uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
         with:
           version: v1.62
+          working-directory: backend
           args: --timeout 5m
       - run: go test ./... -race -short -timeout 30m   # -short 跳过真实网络/子进程时序用例（race 放大下易超时 flaky），race 聚焦并发逻辑；30m 防 race 慢化卡死
       - name: Enforce targeted coverage floors

@@ -85,7 +85,7 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 	// 2. 连 docker.sock（裸 TCP，用于 hijack）
 	sockConn, err := dialDockerSocket(h.local)
 	if err != nil {
-		browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[连接 docker.sock 失败: "+err.Error()+"]\r\n"))
+		_ = browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[连接 docker.sock 失败: "+err.Error()+"]\r\n"))
 		return
 	}
 	defer sockConn.Close()
@@ -93,14 +93,14 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 	// 3. 创建 exec 实例
 	execID, err := createExec(sockConn, name, cmd)
 	if err != nil {
-		browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[创建 exec 失败: "+err.Error()+"]\r\n"))
+		_ = browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[创建 exec 失败: "+err.Error()+"]\r\n"))
 		return
 	}
 
 	// 4. 发 start 请求（hijack：发 HTTP 请求头后，连接变成双向流）
 	leftover, err := startExecHijack(sockConn, execID, cols, rows)
 	if err != nil {
-		browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[启动 exec 失败: "+err.Error()+"]\r\n"))
+		_ = browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[启动 exec 失败: "+err.Error()+"]\r\n"))
 		return
 	}
 	// 消费响应头时读到的初始 TTY 输出（shell banner 等）补发给浏览器，避免首帧丢失。
@@ -118,7 +118,7 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 		for {
 			n, err := sockConn.Read(buf)
 			if n > 0 {
-				browserWS.WriteMessage(websocket.BinaryMessage, buf[:n])
+				_ = browserWS.WriteMessage(websocket.BinaryMessage, buf[:n])
 			}
 			if err != nil {
 				return
@@ -135,7 +135,7 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 				return
 			}
 			if mt == websocket.TextMessage || mt == websocket.BinaryMessage {
-				sockConn.Write(msg)
+				_, _ = sockConn.Write(msg)
 			}
 		}
 	}()
@@ -203,8 +203,8 @@ func startExecHijack(conn net.Conn, execID string, cols, rows int) ([]byte, erro
 
 // consumeHTTPHeaders 读取并丢弃 HTTP 响应头（到第一个 \r\n\r\n），返回头之后同批读到的数据。
 func consumeHTTPHeaders(conn net.Conn) []byte {
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	defer conn.SetReadDeadline(time.Time{})
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 	buf := make([]byte, 4096)
 	total := 0
 	for total < len(buf) {
@@ -222,8 +222,8 @@ func consumeHTTPHeaders(conn net.Conn) []byte {
 
 // readHTTPResponse 读取完整 HTTP 响应 body（用于 createExec 的 JSON 响应）。
 func readHTTPResponse(conn net.Conn) (string, error) {
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-	defer conn.SetReadDeadline(time.Time{})
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 	var full []byte
 	buf := make([]byte, 4096)
 	headerEnd := -1
@@ -245,7 +245,7 @@ func readHTTPResponse(conn net.Conn) (string, error) {
 					headers := string(full[:idx])
 					for _, line := range strings.Split(headers, "\r\n") {
 						if strings.HasPrefix(strings.ToLower(line), "content-length:") {
-							fmt.Sscanf(line, "Content-Length: %d", &contentLength)
+							_, _ = fmt.Sscanf(line, "Content-Length: %d", &contentLength)
 						}
 					}
 				}

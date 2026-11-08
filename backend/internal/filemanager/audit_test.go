@@ -1,4 +1,4 @@
-﻿package filemanager
+package filemanager
 
 import (
 	"archive/zip"
@@ -96,9 +96,9 @@ func TestSanitizeNewNameStripsPath(t *testing.T) {
 		input, want string
 	}{
 		{"newname.txt", "newname.txt"},
-		{"subdir/file.txt", "file.txt"},   // Base 钳制，静默丢 subdir
-		{"../escape", "escape"},           // Base 钳制
-		{"  spaces  ", "spaces"},          // TrimSpace
+		{"subdir/file.txt", "file.txt"}, // Base 钳制，静默丢 subdir
+		{"../escape", "escape"},         // Base 钳制
+		{"  spaces  ", "spaces"},        // TrimSpace
 	}
 	for _, c := range cases {
 		got, err := sanitizeNewName(c.input)

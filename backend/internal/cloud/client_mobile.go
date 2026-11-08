@@ -33,9 +33,9 @@ func (c *clientMobile) authHeader() map[string]string {
 // rawCMItem 移动云盘条目。ID 兼容数字/字符串双形态（历史接口字符串 id），
 // 故用 any 接收再归一。
 type rawCMItem struct {
-	IDRaw   any    `json:"id"`
-	Catalog bool   `json:"isCatalog"`
-	Name    string `json:"name"`
+	IDRaw   any         `json:"id"`
+	Catalog bool        `json:"isCatalog"`
+	Name    string      `json:"name"`
 	Size    json.Number `json:"size"` // 历史接口可能返回字符串数字，json.Number 兼容
 }
 

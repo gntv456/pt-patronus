@@ -52,12 +52,12 @@ func escapeSegments(segs []string) string {
 
 // rawODItem Graph driveItem。
 type rawODItem struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Size    int64  `json:"size"`
-	Folder  *struct{} `json:"folder"`
-	File    *struct{} `json:"file"`
-	Parent  *struct {
+	ID     string    `json:"id"`
+	Name   string    `json:"name"`
+	Size   int64     `json:"size"`
+	Folder *struct{} `json:"folder"`
+	File   *struct{} `json:"file"`
+	Parent *struct {
 		Path string `json:"path"`
 	} `json:"parentReference"`
 	DownloadURL string `json:"@microsoft.graph.downloadUrl"`

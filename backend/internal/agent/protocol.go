@@ -49,7 +49,7 @@ type Command struct {
 	Content   string `json:"content,omitempty"`   // op=writefile
 	Mode      uint32 `json:"mode,omitempty"`      // op=chmod
 	Recursive bool   `json:"recursive,omitempty"` // op=chmod
-	Checksum  string `json:"checksum,omitempty"` // op=upgrade：期望 sha256
+	Checksum  string `json:"checksum,omitempty"`  // op=upgrade：期望 sha256
 }
 
 // Response agent→server 小操作响应（JSON 对齐 filemanager.Response）。
@@ -57,8 +57,8 @@ type Response struct {
 	OK      bool      `json:"ok"`
 	Err     string    `json:"err,omitempty"`
 	Entries []Entry   `json:"entries"`           // op=list
-	Content string    `json:"content,omitempty"`  // op=readfile
-	Size    int64     `json:"size,omitempty"`     // op=dirsize
+	Content string    `json:"content,omitempty"` // op=readfile
+	Size    int64     `json:"size,omitempty"`    // op=dirsize
 	ModTime time.Time `json:"mod_time,omitempty"`
 }
 

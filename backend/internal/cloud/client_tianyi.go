@@ -71,9 +71,9 @@ func (c *clientTianyi) rawList(ctx context.Context, parentID string) ([]rawTYIte
 			return nil, fmt.Errorf("tianyi list: HTTP %d", resp.StatusCode)
 		}
 		var body struct {
-			ResCode   int         `json:"res_code"`
+			ResCode    int `json:"res_code"`
 			FileListAO struct {
-				FileList []rawTYItem `json:"fileList"`
+				FileList   []rawTYItem `json:"fileList"`
 				FolderList []rawTYItem `json:"folderList"`
 			} `json:"fileListAO"`
 			// 旧接口形态：顶层 fileArray

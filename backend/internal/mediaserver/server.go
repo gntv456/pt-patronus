@@ -115,6 +115,7 @@ func NewClient(s Server, hc *httpclient.Client) (Client, error) {
 //   - 绿影视（UGOS）：{url}/index.php/emby （Emby 兼容插件路径）
 //   - 飞牛影视（FNOS）：{url}/index.php/emby （fnOS 官方 Emby 兼容网关）
 //   - 极空间极影视：{url}/emby （极影视内建 Emby 兼容 API）
+//
 // 用户在 UI 填服务根 URL 即可，此处自动补兼容前缀（已带前缀则不重复补）。
 func compatAPIRoot(s Server) string {
 	u := apiRoot(s)

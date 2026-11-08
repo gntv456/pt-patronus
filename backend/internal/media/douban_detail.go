@@ -75,9 +75,7 @@ func (d *Douban) Trending(ctx context.Context, category string, page int) ([]Med
 		if gs, cs, ds := parseCardSubtitle(it.CardSubtitle); len(gs) > 0 {
 			mi.Genres = gs
 			mi.Countries = cs
-			for _, n := range ds {
-				mi.Directors = append(mi.Directors, n)
-			}
+			mi.Directors = append(mi.Directors, ds...)
 		}
 		out = append(out, mi)
 	}

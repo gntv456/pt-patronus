@@ -220,7 +220,7 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 		return
 	}
 	// 白名单 action
-	subArgs := []string{}
+	var subArgs []string
 	switch in.Action {
 	case "up":
 		subArgs = []string{"up", "-d"}

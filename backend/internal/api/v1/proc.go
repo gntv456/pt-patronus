@@ -109,7 +109,8 @@ func (h *ProcHandler) Connections(c *gin.Context) {
 	var wrapper struct {
 		Endpoints json.RawMessage `json:"endpoints"`
 	}
-	if json.Unmarshal([]byte(result.Stdout), &wrapper); len(wrapper.Endpoints) > 0 {
+	_ = json.Unmarshal([]byte(result.Stdout), &wrapper) // 顶层形状探测，失败走 else 分支
+	if len(wrapper.Endpoints) > 0 {
 		_ = json.Unmarshal(wrapper.Endpoints, &ssJSON)
 	} else {
 		_ = json.Unmarshal([]byte(result.Stdout), &ssJSON)

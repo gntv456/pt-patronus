@@ -216,10 +216,8 @@ func RunDirSync(t DirSyncTask) *DirSyncResult {
 					res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", e.Name(), err))
 					res.Skipped++
 				} else if ok {
+					// move 模式源文件已在 MoveTo 内删；copy+delete_src 的删除由 MoveTo 调用方处理
 					res.Synced++
-					if t.Mode == "move" || t.DeleteSrc {
-						// move 内部已删；copy+delete_src 在此删
-					}
 				} else {
 					res.Skipped++
 				}

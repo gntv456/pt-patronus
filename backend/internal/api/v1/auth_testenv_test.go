@@ -65,12 +65,3 @@ func postJSON(
 }
 
 // getJSON 发 GET（无鉴权头）。
-func getJSON(
-	t *testing.T, r *gin.Engine, path string,
-) *httptest.ResponseRecorder {
-	t.Helper()
-	req, _ := http.NewRequest(http.MethodGet, path, nil)
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-	return rec
-}

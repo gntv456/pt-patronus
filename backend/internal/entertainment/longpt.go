@@ -295,4 +295,3 @@ func (LongPTWheelGame) History(ctx context.Context, hc *httpclient.Client, baseU
 	}
 	return parseLongPTRecords(data)
 }
-

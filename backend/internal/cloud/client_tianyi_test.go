@@ -53,7 +53,7 @@ func TestTianyiResolveNotFound(t *testing.T) {
 
 func TestTianyiTestAndQuota(t *testing.T) {
 	hc := &fakeTYHC{responses: map[string]string{
-		"listFiles":        `{"res_code":0,"fileListAO":{"folderList":[],"fileList":[]}}`,
+		"listFiles":       `{"res_code":0,"fileListAO":{"folderList":[],"fileList":[]}}`,
 		"getUserDiskInfo": `{"res_code":0,"disk":{"totalSize":1099511627776,"usedSize":4096}}`,
 	}}
 	c := &clientTianyi{drive: Drive{Token: "t"}, hc: hc}

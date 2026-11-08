@@ -52,7 +52,7 @@ func TestMobileListErrCode(t *testing.T) {
 
 func TestMobileQuota(t *testing.T) {
 	hc := &fakeCMHC{responses: map[string]string{
-		"queryContentList":    `{"code":0,"data":{"list":[]}}`,
+		"queryContentList":  `{"code":0,"data":{"list":[]}}`,
 		"queryUserDiskInfo": `{"code":0,"data":{"totalCapacity":"536870912000","usedCapacity":"2048"}}`,
 	}}
 	c := &clientMobile{drive: Drive{Token: "t"}, hc: hc}
@@ -67,7 +67,7 @@ func TestMobileQuota(t *testing.T) {
 
 func TestMobileDownloadURL(t *testing.T) {
 	hc := &fakeCMHC{responses: map[string]string{
-		"queryContentList":     `{"code":0,"data":{"list":[{"id":"f2","isCatalog":false,"name":"a.mkv","size":"1"}]}}`,
+		"queryContentList":   `{"code":0,"data":{"list":[{"id":"f2","isCatalog":false,"name":"a.mkv","size":"1"}]}}`,
 		"getFileDownloadUrl": `{"code":0,"data":{"downloadUrl":"https://dl.caiyun.cn/x"}}`,
 	}}
 	c := &clientMobile{drive: Drive{Token: "t"}, hc: hc}

@@ -56,9 +56,9 @@ func (c *clientBaidu) rawList(ctx context.Context, dir string) ([]rawBaiduItem, 
 			return nil, fmt.Errorf("baidu list: HTTP %d", resp.StatusCode)
 		}
 		var body struct {
-			Errno  int           `json:"errno"`
+			Errno  int            `json:"errno"`
 			List   []rawBaiduItem `json:"list"`
-			Guides []struct{}    `json:"guides"`
+			Guides []struct{}     `json:"guides"`
 		}
 		if err := json.Unmarshal(resp.Body, &body); err != nil {
 			return nil, fmt.Errorf("baidu list parse: %w", err)
@@ -110,10 +110,10 @@ func (c *clientBaidu) Test(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("baidu test: HTTP %d（检查 accessToken / scope）", resp.StatusCode)
 	}
 	var body struct {
-		Errno    int    `json:"errno"`
+		Errno     int    `json:"errno"`
 		BaiduName string `json:"baidu_name"`
-		Total    int64  `json:"total"`
-		Used     int64  `json:"used"`
+		Total     int64  `json:"total"`
+		Used      int64  `json:"used"`
 	}
 	if err := json.Unmarshal(resp.Body, &body); err != nil {
 		return "", fmt.Errorf("baidu test parse: %w", err)

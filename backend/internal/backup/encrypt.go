@@ -12,7 +12,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -146,4 +145,3 @@ func newGCM(key []byte) (cipher.AEAD, error) {
 }
 
 // 恒定时间比较（预留：未来加口令校验字段用）。
-func ctEqual(a, b []byte) bool { return subtle.ConstantTimeCompare(a, b) == 1 }

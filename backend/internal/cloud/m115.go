@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -117,17 +116,16 @@ func pkcs7Unpad(data []byte) ([]byte, error) {
 
 // trimHexPrefix 去掉服务端偶尔带的 "04:" / "0x" 前缀形态。
 func trimHexPrefix(s string) string {
-	if len(s) > 3 && (s[:3] == "04:" ) { return s[3:] }
-	if len(s) > 2 && s[:2] == "0x" { return s[2:] }
+	if len(s) > 3 && (s[:3] == "04:") {
+		return s[3:]
+	}
+	if len(s) > 2 && s[:2] == "0x" {
+		return s[2:]
+	}
 	return s
 }
 
 // m115EncodeUInt32 LE 写 4 字节（部分契约里 data 前缀长度字段；保留工具）。
-func m115EncodeUInt32(v uint32) []byte {
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, v)
-	return b
-}
 
 // m115Sum 共享秘密 → sha256（测试对拍双端派生用）。
 func m115Sum(shared []byte) [32]byte {

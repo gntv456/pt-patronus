@@ -24,8 +24,6 @@ import (
 // 21点动作机走各自动作。ddz/poker/zjh/sports/stock/chest 为对战/复杂玩法不接。
 type HdvideoBase struct{}
 
-func (HdvideoBase) gameID() string { return "" }
-
 // hdvPostForm POST form 到 /games/<game>/ 并解析 JSON。
 func hdvPostForm(ctx context.Context, hc *httpclient.Client, baseURL, game, cookie, form string) (map[string]any, error) {
 	u := joinPath(baseURL, "games/"+game+"/")

@@ -204,4 +204,3 @@ func (r *Rousi) fetchPeerGoUser(ctx context.Context, baseURL, credential string)
 	}
 	return u, nil, true
 }
-

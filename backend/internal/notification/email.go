@@ -3,11 +3,11 @@ package notification
 import (
 	"context"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"net"
 	"net/smtp"
 	"strconv"
 	"strings"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 type Email struct {

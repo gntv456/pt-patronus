@@ -277,4 +277,3 @@ func (p *externalHTTPPlugin) shutdown(path string) error {
 	}
 	return nil
 }
-

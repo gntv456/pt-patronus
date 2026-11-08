@@ -175,4 +175,3 @@ func isSubpath(root, target string) bool {
 	}
 	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
 }
-

@@ -266,12 +266,16 @@ func (c *clientAliyunOpen) Quota(ctx context.Context) (*Quota, error) {
 
 // MkdirP 逐级建目录（POST /adrive/v1.0/openFile/create type=folder）。
 func (c *clientAliyunOpen) MkdirP(ctx context.Context, dir string) (string, error) {
-	driveID, parentID, err := c.resolveParent(ctx, dir)
-	if err != nil {
+	// 成功路径只需 parentID（dir 已存在，直接返回其 id）；失败路径才需要 driveID
+	// 逐级补建——resolveParent 的 driveID 返回值在成功分支未被消费，不接（ineffassign）。
+	_, parentID, perr := c.resolveParent(ctx, dir)
+	var driveID string
+	if perr != nil {
 		// 父目录缺失：逐级补建（resolveParent 报错则从根重建路径）
-		driveID, err = c.driveID(ctx)
-		if err != nil {
-			return "", err
+		var derr error
+		driveID, derr = c.driveID(ctx)
+		if derr != nil {
+			return "", derr
 		}
 		parentID = "root"
 		for _, seg := range splitSegments(dir) {

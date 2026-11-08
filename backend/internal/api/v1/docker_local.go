@@ -78,10 +78,8 @@ func (c *DockerLocalClient) Probe() (string, error) {
 		if err != nil {
 			return c.host, fmt.Errorf("socket 文件不存在：%s（容器是否挂载了 /var/run/docker.sock？%s）", c.host, unixSockHint)
 		}
-		// socket 文件存在但无读写权限
-		if info.Mode()&0o666 == 0 {
-			// 进一步尝试连接确认（权限位不准时仍可能可连）
-		}
+		// socket 文件存在但无读写权限（权限位不准时仍可能可连，交由下方连接实测判定）
+		_ = info
 	}
 	if _, err := c.get(context.Background(), "/version", nil); err != nil {
 		return c.host, fmt.Errorf("socket 连接失败：%s（权限不足或 Docker 服务未运行）：%v（%s）", c.host, err, unixSockHint)

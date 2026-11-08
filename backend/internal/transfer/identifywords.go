@@ -9,7 +9,6 @@ package transfer
 import (
 	"encoding/json"
 	"strings"
-	"sync"
 )
 
 // IdentifyWord 单条识别词。Kind:
@@ -26,11 +25,7 @@ type IdentifyWord struct {
 const identifyWordsKey = "transfer.identify_words"
 
 // replacerCache 词表编译缓存（词表变更换版本失效）。
-var (
-	replMu    sync.RWMutex
-	replVer   string
-	replCache *strings.Replacer
-)
+var ()
 
 // LoadIdentifyWords 读词表（解析失败回空表，绝不阻断整理）。
 func LoadIdentifyWords(kv KVStore) []IdentifyWord {
@@ -77,26 +72,3 @@ func ApplyIdentifyWords(ws []IdentifyWord, name string) string {
 }
 
 // identifyReplacer 编译缓存版（整理高频路径用）：版本不一致时重编。
-func identifyReplacer(kv KVStore, ws []IdentifyWord, ver string) func(string) string {
-	replMu.RLock()
-	if replVer == ver && replCache != nil {
-		r := replCache
-		replMu.RUnlock()
-		return r.Replace
-	}
-	replMu.RUnlock()
-
-	pairs := make([]string, 0, len(ws)*2)
-	for _, w := range ws {
-		if w.From == "" {
-			continue
-		}
-		pairs = append(pairs, w.From, w.To)
-	}
-	r := strings.NewReplacer(pairs...)
-
-	replMu.Lock()
-	replVer, replCache = ver, r
-	replMu.Unlock()
-	return r.Replace
-}

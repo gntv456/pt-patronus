@@ -16,16 +16,16 @@ import (
 
 // SiteRequest 一条求种请求。
 type SiteRequest struct {
-	ID          string    `json:"id"`           // 站内请求 id
-	Title       string    `json:"title"`        // 求种标题/描述
-	Category    string    `json:"category"`     // 分类（电影/剧集/…，尽力解析）
-	Comments    int       `json:"comments"`     // 评论数
-	Votes       int       `json:"votes"`        // 票数（填写者意愿强度）
-	Filled      bool      `json:"filled"`       // 已满足
-	CreatedBy   string    `json:"created_by"`   // 发起人
-	TimeAdded   string    `json:"time_added"`   // 原始时间文本（相对/绝对，未归一）
-	DetailURL   string    `json:"detail_url"`   // 详情页（相对路径）
-	FetchedAt   time.Time `json:"fetched_at"`
+	ID        string    `json:"id"`         // 站内请求 id
+	Title     string    `json:"title"`      // 求种标题/描述
+	Category  string    `json:"category"`   // 分类（电影/剧集/…，尽力解析）
+	Comments  int       `json:"comments"`   // 评论数
+	Votes     int       `json:"votes"`      // 票数（填写者意愿强度）
+	Filled    bool      `json:"filled"`     // 已满足
+	CreatedBy string    `json:"created_by"` // 发起人
+	TimeAdded string    `json:"time_added"` // 原始时间文本（相对/绝对，未归一）
+	DetailURL string    `json:"detail_url"` // 详情页（相对路径）
+	FetchedAt time.Time `json:"fetched_at"`
 }
 
 // RequestCapable 可选求种列表能力（type-assert 判断，不膨胀主 Adapter）。

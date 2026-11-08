@@ -1,6 +1,5 @@
 package media
 
-
 import (
 	"context"
 	"regexp"
@@ -113,4 +112,3 @@ func doubanType(t string) MediaType {
 	}
 	return ""
 }
-

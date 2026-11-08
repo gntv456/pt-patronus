@@ -74,7 +74,7 @@ func TestDeviceCodeFlow(t *testing.T) {
 	doer := &authFakeDoer{responses: []string{
 		`{"uid":123,"time":456,"qrcode":"https://qrcode.115.com/xyz","sign":"s1"}`,
 	}}
-	code, verifier, err := StartDeviceCode115(nil, doer, "app-1")
+	code, verifier, err := StartDeviceCode115(context.TODO(), doer, "app-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,13 +88,13 @@ func TestDeviceCodeFlow(t *testing.T) {
 
 	// 状态=2（已扫待确认）
 	doer.responses = []string{`{"status":2,"msg":"scan"}`}
-	ok, st, _, err := PollDeviceCode115(nil, doer, code, verifier)
+	ok, st, _, err := PollDeviceCode115(context.TODO(), doer, code, verifier)
 	if err != nil || ok || st != 2 {
 		t.Fatalf("poll status=2: ok=%v st=%d err=%v", ok, st, err)
 	}
 	// 状态=3 → 换 token
 	doer.responses = []string{`{"status":3,"msg":"ok"}`, `{"access_token":"at9","refresh_token":"rt9","expires_in":3600}`}
-	ok, st, tp, err := PollDeviceCode115(nil, doer, code, verifier)
+	ok, st, tp, err := PollDeviceCode115(context.TODO(), doer, code, verifier)
 	if err != nil || !ok || tp.AccessToken != "at9" || tp.RefreshToken != "rt9" {
 		t.Fatalf("poll confirmed: ok=%v tp=%+v err=%v", ok, tp, err)
 	}
@@ -106,7 +106,7 @@ func TestRefresh115Open(t *testing.T) {
 	doer := &authFakeDoer{responses: []string{
 		`{"access_token":"new-at","refresh_token":"new-rt","expires_in":7776000}`,
 	}}
-	tp, err := Refresh115Open(nil, doer, "old-rt")
+	tp, err := Refresh115Open(context.TODO(), doer, "old-rt")
 	if err != nil || tp.AccessToken != "new-at" || tp.RefreshToken != "new-rt" {
 		t.Fatalf("refresh: %+v err=%v", tp, err)
 	}
@@ -121,7 +121,7 @@ func Test115OpenBearerAndRefresh(t *testing.T) {
 	var written TokenPair
 	c.onTokenRefresh = func(tp TokenPair) { written = tp }
 	c.hc = &authFakeDoer{responses: []string{`{"access_token":"a2","refresh_token":"r2"}`}}
-	if err := c.tryRefresh(nil); err != nil {
+	if err := c.tryRefresh(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
 	if c.bearer() != "a2" || written.AccessToken != "a2" {
@@ -129,7 +129,7 @@ func Test115OpenBearerAndRefresh(t *testing.T) {
 	}
 	// 无 refresh_token 报错
 	c2 := &client115Open{drive: Drive{Token: "plain"}}
-	if err := c2.tryRefresh(nil); err == nil {
+	if err := c2.tryRefresh(context.TODO()); err == nil {
 		t.Error("plain token without refresh should error")
 	}
 }

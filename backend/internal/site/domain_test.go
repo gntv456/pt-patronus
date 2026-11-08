@@ -13,9 +13,9 @@ func TestRegisteredDomain(t *testing.T) {
 		"https://hxpt.org":              "hxpt.org",
 		"https://www.hxpt.org/":         "hxpt.org", // 子域 / trailing-slash 不影响注册域（去重依据）
 		"https://kp.m-team.cc":          "m-team.cc",
-		"https://m-team.cc":             "m-team.cc", // 同注册域不同子域 → 同一站点
-		"https://hxpt.org:8080":         "hxpt.org",  // 带端口先剥端口，端口变体不得绕过同域判定
-		"hxpt.org:8080":                 "hxpt.org",  // 裸 host 带端口同理
+		"https://m-team.cc":             "m-team.cc",   // 同注册域不同子域 → 同一站点
+		"https://hxpt.org:8080":         "hxpt.org",    // 带端口先剥端口，端口变体不得绕过同域判定
+		"hxpt.org:8080":                 "hxpt.org",    // 裸 host 带端口同理
 		"https://[2001:db8::1]:8080/x":  "2001:db8::1", // IPv6 剥端口后无公共后缀 → 回退小写裸 host
 	}
 	for in, want := range cases {

@@ -76,7 +76,7 @@ func TestBaiduTestAndQuota(t *testing.T) {
 
 func TestBaiduDownloadURL(t *testing.T) {
 	hc := &fakeBDHC{responses: map[string]string{
-		"method=list":          `{"errno":0,"list":[{"fs_id":222,"path":"/影视/a.mkv","server_filename":"a.mkv","isdir":0,"size":1}]}`,
+		"method=list":           `{"errno":0,"list":[{"fs_id":222,"path":"/影视/a.mkv","server_filename":"a.mkv","isdir":0,"size":1}]}`,
 		"method=locatedownload": `{"errno":0,"list":[{"dlink":"https://d.pcs.baidu.com/file/xxx"}]}`,
 	}}
 	c := &clientBaidu{drive: Drive{Token: "t"}, hc: hc}

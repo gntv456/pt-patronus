@@ -25,12 +25,6 @@ const quarkUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (K
 const quarkOSSUA = "aliyun-sdk-js/6.6.1 Chrome/98.0.4758.80 on Windows 10 64-bit"
 
 // quarkHeaders 夸克 API 请求头（Referer/UA 为硬契约，缺失会被拒）。
-func quarkHeaders() map[string]string {
-	return map[string]string{
-		"Referer": "https://pan.quark.cn/",
-		"UA":      quarkUA,
-	}
-}
 
 // quarkUploadPre 预创建响应。
 type quarkUploadPre struct {

@@ -6,13 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
-	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // openaiProvider 兼容 OpenAI / DeepSeek / Qwen / Ollama / one-api 中转等。

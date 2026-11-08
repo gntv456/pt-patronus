@@ -16,7 +16,7 @@ func TestCrabFastThreePlayAndBetValidation(t *testing.T) {
 			"code": 0, "message": "查询成功",
 			"data": map[string]any{
 				"history": []any{}, "next": []any{"2026-09-01 21:15:00"},
-				"amount":  map[string]any{"totalBetAmount": nil, "totalWinningAmount": 120.5},
+				"amount": map[string]any{"totalBetAmount": nil, "totalWinningAmount": 120.5},
 			},
 		})
 	}))

@@ -163,4 +163,3 @@ func resolveWorkDir(dir, workDir string) string {
 	}
 	return filepath.Join(dir, workDir)
 }
-

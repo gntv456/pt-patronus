@@ -16,7 +16,7 @@ type Manifest struct {
 	MinVersion    string            `json:"minVersion,omitempty" binding:"max=32"`      // 低于此版本强制更新(真·强制阻断)
 	ReleaseName   string            `json:"releaseName,omitempty" binding:"max=128"`    // 版本标题
 	ReleaseNotes  string            `json:"releaseNotes,omitempty" binding:"max=10000"` // 更新日志(markdown)
-	Signature     string            `json:"signature,omitempty" binding:"max=256"`     // ed25519 签名（base64）；验证 manifest 真实性
+	Signature     string            `json:"signature,omitempty" binding:"max=256"`      // ed25519 签名（base64）；验证 manifest 真实性
 	IsForced      bool              `json:"isForced,omitempty"`                         // 强制更新标志(软强制：提示不可忽略)
 	PublishedAt   time.Time         `json:"publishedAt,omitempty"`
 	Targets       map[string]Target `json:"targets" binding:"dive"` // key 见 Platform 常量

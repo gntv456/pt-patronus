@@ -1,4 +1,4 @@
-﻿package nodes
+package nodes
 
 import (
 	"context"

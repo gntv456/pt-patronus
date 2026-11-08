@@ -276,8 +276,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 		return agentSvc.Run(ctx, convID, text), nil
 	}
 	clear := func(chatKey string) { sessions.clear(chatKey) }
-	var startTgBot func()
-	startTgBot = func() {
+	startTgBot := func() {
 		tgMu.Lock()
 		defer tgMu.Unlock()
 		if tgCancel != nil {

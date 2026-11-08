@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -109,7 +110,7 @@ func TestImportTreeStrm(t *testing.T) {
 		"tree": tree, "base": "/媒体库", "output_dir": out, "template": "{direct}{cloudpath}",
 	})
 	task := &models.CloudTask{DriveID: 9, Kind: "import_tree", Payload: string(payload)}
-	if err := ch.ImportTreeStrm(nil, task); err != nil {
+	if err := ch.ImportTreeStrm(context.TODO(), task); err != nil {
 		t.Fatal(err)
 	}
 	// 两个媒体文件 → 两份 .strm
@@ -148,7 +149,7 @@ func TestImportTreeStrmFailuresNotSilent(t *testing.T) {
 		"output_dir": "relative/not-absolute",
 	})
 	task := &models.CloudTask{DriveID: 9, Kind: "import_tree", Payload: string(payload)}
-	if err := ch.ImportTreeStrm(nil, task); err == nil {
+	if err := ch.ImportTreeStrm(context.TODO(), task); err == nil {
 		t.Fatal("全行失败必须返回错误（否则任务静默 success，用户以为已导入）")
 	}
 }
@@ -162,7 +163,7 @@ func TestImportTreeStrmNoMediaNoFail(t *testing.T) {
 		"output_dir": "relative/not-absolute", // 无媒体行 → 不会触到该路径
 	})
 	task := &models.CloudTask{DriveID: 9, Kind: "import_tree", Payload: string(payload)}
-	if err := ch.ImportTreeStrm(nil, task); err != nil {
+	if err := ch.ImportTreeStrm(context.TODO(), task); err != nil {
 		t.Fatalf("无媒体行不应报错: %v", err)
 	}
 }

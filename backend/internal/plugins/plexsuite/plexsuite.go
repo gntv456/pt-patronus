@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // Settings 是 plex-suite 插件的配置视图（由插件 config map 解析）。

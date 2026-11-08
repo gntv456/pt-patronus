@@ -1,6 +1,5 @@
 package media
 
-
 import (
 	"context"
 	"crypto/hmac"

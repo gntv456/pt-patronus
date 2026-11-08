@@ -197,4 +197,3 @@ func (p *externalHTTPPlugin) ExecuteAction(ctx context.Context, rt Runtime, acti
 	}
 	return res.Output, nil
 }
-

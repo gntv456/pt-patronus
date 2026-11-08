@@ -29,9 +29,9 @@ type FriendTradeOption struct {
 	Key         string `json:"key"`
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
-	Stage       string `json:"stage,omitempty"`      // 工作阶段（early/mid/late…）
-	Income      string `json:"income,omitempty"`    // 预期产出
-	Unlocked    bool   `json:"unlocked"`            // 是否解锁（属性门槛）
+	Stage       string `json:"stage,omitempty"`       // 工作阶段（early/mid/late…）
+	Income      string `json:"income,omitempty"`      // 预期产出
+	Unlocked    bool   `json:"unlocked"`              // 是否解锁（属性门槛）
 	UnlockText  string `json:"unlock_text,omitempty"` // 未解锁原因
 }
 
@@ -53,10 +53,10 @@ type FriendTradeFeed struct {
 
 // FriendTradeState 好友买卖全景快照（PANDA friendTradeInitOrHome data 聚合）。
 type FriendTradeState struct {
-	MeUID     string `json:"me_uid"`
-	MeName    string `json:"me_name"`
-	Balance   string `json:"balance,omitempty"` // 站点魔力（页面 mybonus，非该接口字段则空）
-	Currency  string `json:"currency,omitempty"`
+	MeUID    string `json:"me_uid"`
+	MeName   string `json:"me_name"`
+	Balance  string `json:"balance,omitempty"` // 站点魔力（页面 mybonus，非该接口字段则空）
+	Currency string `json:"currency,omitempty"`
 	// 身价与归属
 	ProfilePrice string `json:"profile_price"`
 	OwnerName    string `json:"owner_name,omitempty"` // 空=自由身
@@ -87,13 +87,13 @@ type FriendTradeable interface {
 
 // FishingFish 图鉴一条（codex 项）。
 type FishingFish struct {
-	Code         int    `json:"code"`
-	Name         string `json:"name"`
-	Rarity       string `json:"rarity"`        // common/uncommon/rare/...
-	RarityLabel  string `json:"rarity_label"`  // 普通/不常见/…
-	TimeSlot     int    `json:"time_slot"`     // 出没时段（5=全天?）
-	Discovered   bool   `json:"discovered"`
-	Quantity     int    `json:"quantity"`
+	Code        int    `json:"code"`
+	Name        string `json:"name"`
+	Rarity      string `json:"rarity"`       // common/uncommon/rare/...
+	RarityLabel string `json:"rarity_label"` // 普通/不常见/…
+	TimeSlot    int    `json:"time_slot"`    // 出没时段（5=全天?）
+	Discovered  bool   `json:"discovered"`
+	Quantity    int    `json:"quantity"`
 }
 
 // FishingLure 鱼饵明细（config.lures + inventory.lures 持有量）。
@@ -101,10 +101,10 @@ type FishingLure struct {
 	Key         string  `json:"key"`
 	Name        string  `json:"name"`
 	Icon        string  `json:"icon,omitempty"`
-	Price       float64 `json:"price"`              // 单价（魔力）
+	Price       float64 `json:"price"` // 单价（魔力）
 	Description string  `json:"description,omitempty"`
-	Owned       int     `json:"owned"`              // 持有数量
-	Selected    bool    `json:"selected"`           // 当前是否挂饵
+	Owned       int     `json:"owned"`    // 持有数量
+	Selected    bool    `json:"selected"` // 当前是否挂饵
 }
 
 // FishingRod 鱼竿明细（config.rods + inventory.rods 解锁态）。

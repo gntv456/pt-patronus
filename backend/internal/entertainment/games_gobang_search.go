@@ -60,7 +60,6 @@ type gobangSearchCtx struct {
 	cutoff   bool
 	tt       map[uint64]gobangTTEntry
 	killers  [][2]int
-	pv       [][2]int
 }
 
 type gobangTTEntry struct {

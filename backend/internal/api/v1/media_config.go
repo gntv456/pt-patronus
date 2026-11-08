@@ -85,4 +85,3 @@ func (h *MediaHandler) SetConfig(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
-

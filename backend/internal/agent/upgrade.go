@@ -63,12 +63,16 @@ func (a *agentConn) cmdUpgrade(env Envelope) {
 	}
 	// 原子替换
 	if err := os.Rename(tmp, exe); err != nil {
-		// 回退
-		os.Rename(backup, exe)
+		// 回退（失败只能放弃：进程即将返回错误，写日志留痕）
+		if rerr := os.Rename(backup, exe); rerr != nil {
+			fmt.Printf("agent upgrade rollback failed: %v\n", rerr)
+		}
 		_ = a.writeResp(env.ID, false, "替换失败: "+err.Error(), nil)
 		return
 	}
-	os.Chmod(exe, 0o755)
+	if cerr := os.Chmod(exe, 0o755); cerr != nil {
+		fmt.Printf("agent upgrade chmod failed: %v\n", cerr)
+	}
 	// 备份保留一个，下次成功升级会被 Remove 覆盖
 
 	_ = a.writeResp(env.ID, true, "", nil)

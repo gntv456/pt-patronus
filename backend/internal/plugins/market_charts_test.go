@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -155,7 +156,7 @@ func TestManagerMarketOperUnavailable(t *testing.T) {
 	if err := m.ReorderPluginInstances("x", []uint{1}); err == nil {
 		t.Fatal("reorder without oper must error")
 	}
-	charts, err := m.MarketCharts(nil)
+	charts, err := m.MarketCharts(context.TODO())
 	if err != nil || charts == nil || len(charts.Disciples) != 0 {
 		t.Fatalf("charts without oper should be empty view: %+v %v", charts, err)
 	}

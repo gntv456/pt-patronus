@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -129,10 +128,6 @@ func sha1HMAC(key, data string) string {
 func b64(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
 
 // sha256Hex SHA-256 十六进制（保留给后续夸克 hash 字段如需）。
-func sha256Hex(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
-}
 
 // mimeOf 按扩展名给上传 Content-Type（网盘契约普遍要求显式 MIME）。
 func mimeOf(name string) string {

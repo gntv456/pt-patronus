@@ -1,6 +1,7 @@
-﻿package nodes
+package nodes
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hxpt/ptpatronus/internal/workflow"
@@ -53,7 +54,7 @@ func TestMathDivFloatPrecision(t *testing.T) {
 		"result_var": "result",
 	}
 	node := NewMathNode()
-	err := node.Execute(nil, params, ecx)
+	err := node.Execute(context.TODO(), params, ecx)
 	if err != nil {
 		t.Fatalf("MathNode div: %v", err)
 	}
@@ -73,7 +74,7 @@ func TestSwitchNodeMalformedRules(t *testing.T) {
 		"rules":          "high,count,gt,10\nlow,count,ge,3", // 正确格式
 		"default_branch": "low",
 	}
-	err := node.Execute(nil, params, ecx)
+	err := node.Execute(context.TODO(), params, ecx)
 	if err != nil {
 		t.Fatalf("SwitchNode: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestSSHCommandNodeNilRunner(t *testing.T) {
 		"output_var":  "out",
 		"timeout_sec": float64(30),
 	}
-	err := node.Execute(nil, params, ecx)
+	err := node.Execute(context.TODO(), params, ecx)
 	if err == nil {
 		t.Fatal("nil runner 应返回错误")
 	}

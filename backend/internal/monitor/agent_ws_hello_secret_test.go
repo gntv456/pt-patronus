@@ -18,7 +18,7 @@ import (
 // fakeAgentAuthSecret 模拟真实 Authenticate：空 secret 一律失败（真实实现走 bcrypt），
 // 只有 "good" 通过。用来覆盖 0.3.2+ agent 把 secret 放在 hello 消息体的路径。
 type fakeAgentAuthSecret struct {
-	mu     sync.Mutex
+	mu      sync.Mutex
 	touches []bool
 }
 

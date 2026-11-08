@@ -65,12 +65,6 @@ func fmtBytes(b int64) string {
 }
 
 // min 返回两个整数中的较小值。
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // stripDockerLogHeader 剥离 Docker multiplexed 日志流的 8 字节头部。
 func stripDockerLogHeader(raw []byte) string {

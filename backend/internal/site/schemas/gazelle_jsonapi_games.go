@@ -191,7 +191,6 @@ func gazelleGamesCategory(group gazelleGamesGroup, tor gazelleGamesTorrent) stri
 	return fmt.Sprint(tor.CategoryID)
 }
 
-
 // FetchUserInfo 两阶段：action=index（id/基础统计）+ action=user&id=N（joinDate/seeding/uploads，best-effort）。
 func (g *GazelleJSONAPI) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.UserInfo, error) {

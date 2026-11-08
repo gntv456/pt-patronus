@@ -1,7 +1,6 @@
 package site
 
 import (
-	"math"
 	"testing"
 )
 
@@ -18,7 +17,7 @@ func FuzzParseBytes(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, s string) {
 		got := ParseBytes(s)
-		if got < 0 || math.IsInf(float64(got), 0) {
+		if got < 0 {
 			t.Fatalf("ParseBytes(%q) = %d, want finite >= 0", s, got)
 		}
 	})

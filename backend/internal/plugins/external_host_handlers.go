@@ -15,7 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 func (h *externalHostServer) handleLog(w http.ResponseWriter, r *http.Request, rt Runtime) {
 	var in struct {
 		Level   string         `json:"level"`
@@ -238,4 +237,3 @@ func (w *pluginOutputWriter) logLine(line []byte) {
 		rt.Log(w.level, w.eventName, msg, nil)
 	}
 }
-

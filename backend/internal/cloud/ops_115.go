@@ -231,18 +231,25 @@ func (c *client115) Upload(ctx context.Context, dst string, src *LocalSource) er
 	pr, pw := io.Pipe()
 	mw := multipart.NewWriter(pw)
 	go func() {
-		var err error
-		defer pw.CloseWithError(err)
-		for _, fd := range fields {
-			if err = mw.WriteField(fd.k, fd.v); err != nil {
-				return
+		// 失败即关 pipe（错误传给读端）；成功路径 Close 收尾。
+		// 注意 defer CloseWithError(err) 求值的是注册时的零值，这里改为显式收尾
+		// （#lint ineffassign：原「err 赋值后仅在 nil 分支读」形态也一并消除）。
+		cerr := func() error {
+			for _, fd := range fields {
+				if err := mw.WriteField(fd.k, fd.v); err != nil {
+					return err
+				}
 			}
-		}
-		var w io.Writer
-		if w, err = mw.CreateFormFile("file", pathBase(src.Path)); err == nil {
-			_, err = io.Copy(w, f)
-		}
-		_ = mw.Close()
+			w, werr := mw.CreateFormFile("file", pathBase(src.Path))
+			if werr != nil {
+				return werr
+			}
+			if _, err := io.Copy(w, f); err != nil {
+				return err
+			}
+			return mw.Close()
+		}()
+		pw.CloseWithError(cerr)
 	}()
 	_, err = streamHTTP(ctx, "POST", "https://"+init.Bucket+".oss-cn-shenzhen.aliyuncs.com",
 		pr, -1, map[string]string{

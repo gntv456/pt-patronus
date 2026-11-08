@@ -5,19 +5,19 @@ import "time"
 
 // Site — PT 站点配置。
 type Site struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	Name          string    `gorm:"size:64;not null" json:"name"`
-	Platform      string    `gorm:"size:32;index" json:"platform"` // nexusphp | mteam | unit3d | gazelle | tnode | rousi
-	Definition    string    `gorm:"size:64" json:"definition"`     // 引用 definitions/*.yaml 的 id
-	BaseURL       string    `gorm:"size:255" json:"base_url"`
-	CookieEnc     string    `gorm:"type:text" json:"-"` // AES-GCM 加密
-	APIKeyEnc     string    `gorm:"type:text" json:"-"` // MTeam 等 API key（加密）
-	PasskeyEnc    string    `gorm:"type:text" json:"-"`
-	Username      string    `gorm:"size:64" json:"username"` // 站点账号（财神等 API 登录用）
-	PasswordEnc   string    `gorm:"type:text" json:"-"`      // 站点密码（AES-GCM 加密）
-	IsActive      bool      `gorm:"default:true" json:"is_active"`
-	LimitInterval int       `gorm:"default:0" json:"limit_interval"` // 抓取限流（秒）
-	Priority      int       `gorm:"default:0" json:"priority"`
+	ID            uint   `gorm:"primaryKey" json:"id"`
+	Name          string `gorm:"size:64;not null" json:"name"`
+	Platform      string `gorm:"size:32;index" json:"platform"` // nexusphp | mteam | unit3d | gazelle | tnode | rousi
+	Definition    string `gorm:"size:64" json:"definition"`     // 引用 definitions/*.yaml 的 id
+	BaseURL       string `gorm:"size:255" json:"base_url"`
+	CookieEnc     string `gorm:"type:text" json:"-"` // AES-GCM 加密
+	APIKeyEnc     string `gorm:"type:text" json:"-"` // MTeam 等 API key（加密）
+	PasskeyEnc    string `gorm:"type:text" json:"-"`
+	Username      string `gorm:"size:64" json:"username"` // 站点账号（财神等 API 登录用）
+	PasswordEnc   string `gorm:"type:text" json:"-"`      // 站点密码（AES-GCM 加密）
+	IsActive      bool   `gorm:"default:true" json:"is_active"`
+	LimitInterval int    `gorm:"default:0" json:"limit_interval"` // 抓取限流（秒）
+	Priority      int    `gorm:"default:0" json:"priority"`
 	// 注册域（eTLD+1 小写）存储列 + 唯一索引：兜底 Create 的应用层 check-then-act
 	// 去重在并发（CookieCloud 自动建站 vs 手工添加）下的竞态窗口（四轮 P2 修复）。
 	// 解析不出域名的行存 NULL 绕过唯一约束（迁移 v3 对历史空行同样置 NULL）。

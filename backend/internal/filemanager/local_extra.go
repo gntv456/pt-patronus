@@ -1,4 +1,4 @@
-﻿package filemanager
+package filemanager
 
 import (
 	"archive/tar"
@@ -357,4 +357,3 @@ func untarGzTo(src, dst string) error {
 	}
 	return nil
 }
-

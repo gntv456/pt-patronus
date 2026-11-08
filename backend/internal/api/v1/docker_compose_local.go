@@ -54,18 +54,6 @@ func detachedAction(req context.Context) context.Context {
 
 // runComposeCLI 执行 docker compose 命令，返回合并输出。
 // workDir 是 compose 文件所在目录。
-func (h *LocalComposeHandler) runComposeCLI(ctx context.Context, action, workDir, projectName string) (string, error) {
-	args := []string{"compose"}
-	if projectName != "" {
-		args = append(args, "-p", projectName)
-	}
-	args = append(args, action)
-	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Dir = workDir
-	// 通过 socket 连 daemon（不用宿主机 docker daemon 的默认 socket 路径可能不同）
-	cmd.Env = append(os.Environ(), "DOCKER_HOST=unix:///var/run/docker.sock")
-	return h.runCompose(ctx, cmd)
-}
 
 // ComposeUp 执行 docker compose up -d（粘贴内容模式）。
 func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {

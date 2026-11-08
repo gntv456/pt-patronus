@@ -23,7 +23,7 @@ type Command struct {
 	Content   string `json:"content,omitempty"`   // op=writefile：文件内容（小文件 ≤10MB）
 	Mode      uint32 `json:"mode,omitempty"`      // op=chmod：八进制权限位
 	Recursive bool   `json:"recursive,omitempty"` // op=chmod：是否递归
-	Checksum string `json:"checksum,omitempty"` // op=upgrade：期望 sha256（校验下载完整性）
+	Checksum  string `json:"checksum,omitempty"`  // op=upgrade：期望 sha256（校验下载完整性）
 }
 
 // Response agent→server 小操作响应（list/mkdir/delete）。
@@ -31,8 +31,8 @@ type Response struct {
 	OK      bool      `json:"ok"`
 	Err     string    `json:"err,omitempty"`
 	Entries []Entry   `json:"entries"`           // op=list
-	Content string    `json:"content,omitempty"`  // op=readfile：文件内容
-	Size    int64     `json:"size,omitempty"`     // op=dirsize：目录大小
+	Content string    `json:"content,omitempty"` // op=readfile：文件内容
+	Size    int64     `json:"size,omitempty"`    // op=dirsize：目录大小
 	ModTime time.Time `json:"mod_time,omitempty"`
 }
 

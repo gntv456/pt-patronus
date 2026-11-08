@@ -179,7 +179,7 @@ func (a *agentConn) cmdDirSize(env Envelope) {
 	}
 	var total int64
 	if info.IsDir() {
-		filepath.Walk(filepath.FromSlash(full), func(_ string, fi os.FileInfo, werr error) error {
+		_ = filepath.Walk(filepath.FromSlash(full), func(_ string, fi os.FileInfo, werr error) error {
 			if werr != nil {
 				return werr
 			}

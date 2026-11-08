@@ -10,7 +10,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
-
 // Engine 编排多站喊话：站点派发 → 逐条 Send → 奖励副作用 → PollFeedback → 失败重试 → 通知。
 // 由 plugins 层 group-chat-zone 的 ExecuteAction/Schedule 触发。
 type Engine struct {

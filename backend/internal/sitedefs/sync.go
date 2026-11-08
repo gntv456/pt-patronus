@@ -45,7 +45,8 @@ const (
 )
 
 // DefaultRemoteURL 官方站点定义仓库 tarball 地址（gntv456/ptpatronus-sites@main）。
-const DefaultRemoteURL = "https://github.com/gntv456/ptpatronus-sites/archive/refs/heads/main.tar.gz"
+const DefaultRemoteURL = "https://github.com/gntv456/ptpatronus-sites" +
+	"/archive/refs/heads/main.tar.gz"
 
 // Syncer 持有远端定义同步的全部依赖（app 装配期构造一次）。
 type Syncer struct {
@@ -61,22 +62,28 @@ type Syncer struct {
 // NewSyncer 构造。remoteURLGetter 每次调用时读最新配置（SystemConfig 热更）。
 // 内部自建带 FollowRedirect 的下载 client（GitHub archive 302 跳
 // objects.githubusercontent.com；共享站点抓取 client 不带重定向）。
-func NewSyncer(hc *httpclient.Client, registry *site.Registry, dataDir, appVersion string,
-	extraDirs []string, remoteURLGetter func() string) *Syncer {
-	dl, err := httpclient.New(httpclient.Options{Timeout: httpTimeout, FollowRedirect: true})
+func NewSyncer(hc *httpclient.Client, registry *site.Registry,
+	dataDir, appVersion string, extraDirs []string, remoteURLGetter func() string,
+) *Syncer {
+	dl, err := httpclient.New(httpclient.Options{
+		Timeout: httpTimeout, FollowRedirect: true, // archive 302 跳对象存储
+	})
 	if err != nil {
-		slog.Error("sitedefs download client init failed; sync will fall back to shared client", "err", err)
+		slog.Error("sitedefs dl client init failed; fall back", "err", err)
 	}
-	return &Syncer{hc: hc, dlClient: dl, registry: registry, dataDir: dataDir, appVer: appVersion,
+	return &Syncer{hc: hc, dlClient: dl, registry: registry,
+		dataDir: dataDir, appVer: appVersion,
 		extraDirs: extraDirs, remoteURL: remoteURLGetter}
 }
 
 // CacheDir 远端定义缓存目录（启动加载与热加载共用此路径）。
-func (s *Syncer) CacheDir() string { return filepath.Join(s.dataDir, cacheDirName) }
+func (s *Syncer) CacheDir() string {
+	return filepath.Join(s.dataDir, cacheDirName)
+}
 
-// Sync 拉取远端定义并热加载。返回本次生效的定义数（诊断细节在 registry.diag）。
+// Sync 拉取远端定义并热加载。返回当前注册表定义总数（诊断在 registry.diag）。
 // 语义：下载/解包失败 → 返回错误（保留上次缓存）；新表为空 → 视为远端异常，
-// 保留旧缓存不热加载（防止误清空把所有远端站抹掉）。
+// 保留旧缓存不热加载（防误清空把所有远端站抹掉）。
 func (s *Syncer) Sync(ctx context.Context) (int, error) {
 	url := strings.TrimSpace(s.remoteURL())
 	if url == "" {
@@ -101,7 +108,8 @@ func (s *Syncer) Sync(ctx context.Context) (int, error) {
 	for id, def := range defs {
 		// 原始 YAML 原样落地（零损失：远端文件里的注释/未知键都保留）。
 		name := sanitizeFileName(id) + ".yaml"
-		if err := os.WriteFile(filepath.Join(tmpDir, name), def.raw, 0o644); err != nil {
+		dst := filepath.Join(tmpDir, name)
+		if err := os.WriteFile(dst, def.raw, 0o644); err != nil {
 			return 0, err
 		}
 	}
@@ -132,8 +140,10 @@ func (s *Syncer) Sync(ctx context.Context) (int, error) {
 }
 
 // fetchRemote 下载 tarball 并解包出全部合法定义。
-// key = 定义 id（解析后），value = 原始 YAML（保留未识别键，落地回写零损失）。
-func (s *Syncer) fetchRemote(ctx context.Context, url string) (map[string]remoteDef, error) {
+// 返回 id→原始 YAML（未识别键原样保留，落地回写零损失）。
+func (s *Syncer) fetchRemote(
+	ctx context.Context, url string,
+) (map[string]remoteDef, error) {
 	ctx, cancel := context.WithTimeout(ctx, httpTimeout)
 	defer cancel()
 	// 独立 client 开 FollowRedirect：GitHub archive 会 302 到
@@ -142,7 +152,8 @@ func (s *Syncer) fetchRemote(ctx context.Context, url string) (map[string]remote
 	if s.dlClient != nil {
 		dlClient = s.dlClient
 	}
-	resp, err := dlClient.Get(ctx, url, "", false)
+	resp, err := dlClient.Get(ctx, url, "", false) // tarball 直取（302 由 dlClient 跟随）
+
 	if err != nil {
 		return nil, fmt.Errorf("download: %w", err)
 	}
@@ -150,7 +161,8 @@ func (s *Syncer) fetchRemote(ctx context.Context, url string) (map[string]remote
 		return nil, fmt.Errorf("download %s: status %d", url, resp.StatusCode)
 	}
 	if len(resp.Body) > maxTarballBytes {
-		return nil, fmt.Errorf("tarball %d bytes exceeds limit %d", len(resp.Body), maxTarballBytes)
+		return nil, fmt.Errorf("tarball %d bytes over limit %d",
+			len(resp.Body), maxTarballBytes)
 	}
 	return parseTarball(resp.Body)
 }
@@ -187,7 +199,7 @@ func parseTarball(body []byte) (map[string]remoteDef, error) {
 		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
 			continue
 		}
-		// GitHub tarball 顶层是 <repo>-<ref>/ 前缀；取首个目录名统一剥掉。
+		// GitHub tarball 顶层是 <repo>-<ref>/ 前缀；统一剥掉再判顶层。
 		parts := strings.SplitN(name, "/", 2)
 		if len(parts) != 2 {
 			continue
@@ -209,10 +221,14 @@ func parseTarball(body []byte) (map[string]remoteDef, error) {
 		var meta struct {
 			ID string `yaml:"id"`
 		}
-		if err := yaml.Unmarshal(raw, &meta); err != nil || strings.TrimSpace(meta.ID) == "" {
+		if err := yaml.Unmarshal(raw, &meta); err != nil {
 			continue
 		}
-		out[strings.TrimSpace(meta.ID)] = remoteDef{id: strings.TrimSpace(meta.ID), raw: raw}
+		id := strings.TrimSpace(meta.ID)
+		if id == "" {
+			continue
+		}
+		out[id] = remoteDef{id: id, raw: raw}
 	}
 	return out, nil
 }

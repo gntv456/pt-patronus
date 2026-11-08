@@ -293,7 +293,7 @@ func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, er
 		// 不因本地 ctx 取消而停），goroutine 与 session 句柄长期残留——每次 RunCommandNow
 		// 超时都会泄漏一个。Signal(SIGKILL) 触发 Run 返回错误，goroutine 才能退出。
 		_ = sess.Signal(ssh.SIGKILL) //nolint:errcheck // 取消路径的清理动作，错误不可恢复
-		<-done //nolint:errcheck // 等收尾的同步点，Run 的错误在取消路径无意义
+		<-done                       //nolint:errcheck // 等收尾的同步点，Run 的错误在取消路径无意义
 		return stdout.String(), stderr.String(), ctx.Err()
 	}
 }
@@ -334,7 +334,7 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 		// Signal 路径，Close 会向远端发 EOF/关闭 channel，Wait 才能收尾）。
 		// 不等 done 会导致 defer sess.Close 与 Wait 竞争 + goroutine 泄漏。
 		_ = sess.Close() //nolint:errcheck // 取消路径的清理动作，错误不可恢复
-		<-done //nolint:errcheck // 等收尾的同步点，Wait 的错误在取消路径无意义
+		<-done           //nolint:errcheck // 等收尾的同步点，Wait 的错误在取消路径无意义
 		return ctx.Err()
 	}
 

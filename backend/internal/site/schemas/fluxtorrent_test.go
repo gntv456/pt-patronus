@@ -1,11 +1,11 @@
 package schemas
 
 import (
-	"regexp"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"

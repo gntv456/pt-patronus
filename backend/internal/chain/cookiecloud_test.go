@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"sync"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -9,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 

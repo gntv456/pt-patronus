@@ -44,7 +44,12 @@ func (f *fakeAdapter) Search(ctx context.Context, _ *site.SiteMetadata, _, _, _,
 			return nil, ctx.Err()
 		}
 	}
-	return f.torrents, f.err
+	// 拷贝返回：SearchSites 并发打 ts[i].SiteID/SitePriority 到同一下标集合，
+	// 共享底层数组会构成 DATA RACE（1.03.27 CI race 实锤）；生产适配器每次
+	// 构造新切片，替身对齐该语义。
+	out := make([]site.Torrent, len(f.torrents))
+	copy(out, f.torrents)
+	return out, f.err
 }
 func (f *fakeAdapter) FetchUserInfo(_ context.Context, _ *site.SiteMetadata, baseURL, _ string) (*site.UserInfo, error) {
 	if f.panicUserinfoHost != "" && strings.Contains(baseURL, f.panicUserinfoHost) {

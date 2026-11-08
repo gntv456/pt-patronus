@@ -168,6 +168,13 @@ func TestMove_IdempotentWhenSourceUnlinkFails(t *testing.T) {
 	src := filepath.Join(tmp, "src.bin")
 	dst := filepath.Join(tmp, "dst.bin")
 	_ = os.WriteFile(src, []byte("DATA"), 0o644)
+	// dst 预置完整副本（对应生产时序：copyFile 已落地，随后目录权限才变化）。
+	// 不预建的话 Linux 上 copyFile 的 O_CREATE 直接被 0500 目录拒掉（permission
+	// denied），走不到「删源失败→幂等成功」分支；Windows 上 rename 对只读目录
+	// 仍成功，旧断言碰巧过——按注释本意修（1.03.27 CI 排查）。
+	if err := os.WriteFile(dst, []byte("DATA"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	// 用 chmod 0500 让父目录不可写 → os.Remove(src) 失败；copyFile 已成功 → dst 完整。
 	// 注意：恢复权限以保证后续清理。
 	t.Cleanup(func() { _ = os.Chmod(tmp, 0o755) })

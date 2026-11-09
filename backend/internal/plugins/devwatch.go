@@ -59,8 +59,11 @@ func (m *Manager) stopDevWatcher() {
 }
 
 func (m *Manager) devWatchLoop(ctx context.Context, root string, interval time.Duration) {
-	previous := scanDevWatchRoot(root)
-	// 首扫已有目录立即建基线（无需等第一个 tick）；首个变更在下一个 tick 生效。
+	// 基线在调用方 goroutine 里同步取（EnableDevWatcher 时刻视为「无插件」）：
+	// 若在 watcher goroutine 里首扫，慢调度下扫描可能晚于用户刚建的目录，
+	// 该目录进基线后永远不触发「新增」分支（Windows CI 慢机必现）。
+	// 第一个 tick 发现的目录都会走 LoadExternalDir，幂等（同 ID replace 重载）。
+	previous := map[string]devWatchSnapshot{}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

@@ -41,15 +41,13 @@ func extractNumberWithCNUnit(s string) string {
 	}
 	num := strings.ReplaceAll(s[loc[0]:loc[1]], ",", "")
 	rest := strings.TrimLeft(s[loc[1]:], " ")
-	if len(rest) > 0 {
-		for _, r := range rest {
-			if mult, ok := cnUnitMult[r]; ok {
-				if f, err := strconv.ParseFloat(num, 64); err == nil {
-					return strconv.FormatFloat(f*mult, 'f', -1, 64)
-				}
-				break
+	// 只看第一个非空白字符：是数量级后缀才乘算，否则原样返回
+	// （中间隔了别的字就不算数量级，防误乘；n8 主题 "102.2万" 场景）。
+	if runes := []rune(rest); len(runes) > 0 {
+		if mult, ok := cnUnitMult[runes[0]]; ok {
+			if f, err := strconv.ParseFloat(num, 64); err == nil {
+				return strconv.FormatFloat(f*mult, 'f', -1, 64)
 			}
-			break // 第一个非空白字符不是数量级后缀即停
 		}
 	}
 	return num

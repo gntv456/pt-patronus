@@ -74,7 +74,9 @@ func (r *Registry) loadDefinitionsFS(fsys fs.FS, dir string) error {
 	return r.loadDefinitionsLocked(fsys, dir, "")
 }
 
-// loadDefinitionsFSLocked 带版本门控的加载（调用方持锁）；热加载用。
+// loadDefinitionsFSLocked 带版本门控的加载（调用方持锁）；保留给
+// sitedefs 热加载链路扩展用（当前 ReloadDefinitions 走临时表整体替换）。
+// nolint:unused
 func (r *Registry) loadDefinitionsFSLocked(
 	fsys fs.FS, dir, appVersion string,
 ) error {

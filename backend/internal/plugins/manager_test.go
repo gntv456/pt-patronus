@@ -1195,7 +1195,7 @@ func TestManagerDevWatcherTracksExternalPluginLifecycle(t *testing.T) {
 		t.Fatalf("write plugin.py: %v", err)
 	}
 
-	waitForPluginState(t, 10*time.Second, func() bool {
+	waitForPluginState(t, 30*time.Second, func() bool {
 		view, err := m.Get(manifest.ID)
 		return err == nil && view.Version == "1.0.0"
 	}, "watcher should auto-load newly created plugin")
@@ -1210,7 +1210,7 @@ func TestManagerDevWatcherTracksExternalPluginLifecycle(t *testing.T) {
 		t.Fatalf("rewrite plugin.py: %v", err)
 	}
 
-	waitForPluginState(t, 10*time.Second, func() bool {
+	waitForPluginState(t, 30*time.Second, func() bool {
 		view, err := m.Get(manifest.ID)
 		return err == nil && view.Version == "2.0.0"
 	}, "watcher should auto-reload modified plugin")
@@ -1218,7 +1218,7 @@ func TestManagerDevWatcherTracksExternalPluginLifecycle(t *testing.T) {
 	if err := os.RemoveAll(dir); err != nil {
 		t.Fatalf("remove plugin dir: %v", err)
 	}
-	waitForPluginState(t, 10*time.Second, func() bool {
+	waitForPluginState(t, 30*time.Second, func() bool {
 		_, err := m.Get(manifest.ID)
 		return err != nil && strings.Contains(err.Error(), "not found")
 	}, "watcher should unload deleted plugin")

@@ -60,6 +60,7 @@ func (m *Manager) stopDevWatcher() {
 
 func (m *Manager) devWatchLoop(ctx context.Context, root string, interval time.Duration) {
 	previous := scanDevWatchRoot(root)
+	// 首扫已有目录立即建基线（无需等第一个 tick）；首个变更在下一个 tick 生效。
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

@@ -1,4 +1,4 @@
-.PHONY: help dev-backend dev-frontend dev-mobile test test-backend test-frontend test-mobile image clean embed hooks
+.PHONY: help dev-backend dev-frontend dev-mobile test test-backend test-frontend test-mobile image clean embed hooks perf perf-check perf-baseline-init gen-site-index analyze lint-ep
 
 help:
 	@echo "PTPatronus 开发/构建命令"
@@ -10,6 +10,9 @@ help:
 	@echo "  make up             docker compose 启动"
 	@echo "  make embed-preview  把前端产物拷进后端 web/dist 便于本地 go run 验证内嵌"
 	@echo "  make hooks          启用 .githooks（pre-push 对改动的后端包跑 go vet+test，旁路 --no-verify）"
+	@echo "  make perf           采集性能基线（可选 PERF_URL=http://127.0.0.1:8088）"
+	@echo "  make perf-check     性能棘轮门禁"
+	@echo "  make perf-baseline-init  把本次采集固化为新基线"
 
 dev-backend:
 	cd backend && DEFINITIONS_DIR=./definitions go run ./cmd/ptpatronus
@@ -50,6 +53,26 @@ embed-preview:
 	cp -r frontend/dist backend/internal/web/dist
 	@echo "前端产物已拷入 backend/internal/web/dist，可 go run 验证内嵌 Web UI"
 	@bash scripts/check-no-gpl-assets.sh
+
+# 性能门禁（棘轮）：见 docs/perf-baseline.md
+perf:
+	node scripts/collect-perf.mjs --url $(or $(PERF_URL),http://127.0.0.1:8088)
+
+perf-check:
+	node scripts/check_perf.mjs
+
+analyze:
+	node scripts/analyze-bundle.mjs
+
+lint-ep:
+	node scripts/check-no-new-ep.mjs
+
+# 阶段 4：重新生成编译期站点索引（definitions/*.yaml 变更后跑）
+gen-site-index:
+	node scripts/gen-site-index.mjs
+
+perf-baseline-init:
+	node scripts/check_perf.mjs --init
 
 clean:
 	rm -rf backend/bin backend/data data frontend/dist

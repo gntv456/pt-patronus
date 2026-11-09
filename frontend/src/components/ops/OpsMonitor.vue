@@ -5,6 +5,7 @@ import { systemApi, type SystemMetrics } from '@/api/system'
 import { humanTempName } from '@/components/monitor/useDeviceDetail'
 import { fmtNumOr } from '@/utils/format'
 import GlassIcon from '@/components/GlassIcon.vue'
+import { registerPolling } from '@/composables/usePolling'
 
 const { t } = useI18n()
 const metrics = ref<SystemMetrics>({})
@@ -12,7 +13,7 @@ const loading = ref(false)
 const error = ref('')
 const history = ref<SystemMetrics[]>([])
 const maxHistory = 60
-let timer: number | undefined
+let stopPolling: (() => void) | undefined
 
 const cpuHistory = computed(() => history.value.map((m) => m.cpu_usage ?? 0))
 const memHistory = computed(() => history.value.map((m) => m.mem_usage ?? 0))
@@ -81,12 +82,10 @@ function sparkline(data: number[], max = 100): string {
 }
 
 onMounted(() => {
-  refresh()
-  timer = window.setInterval(refresh, 3000)
+  // 统一调度器（阶段 1）：3s 轮询合并进单一 tick，页面隐藏自动暂停、切回补一次
+  stopPolling = registerPolling(refresh, 3000, { immediate: true, runOnShow: true })
 })
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
-})
+onBeforeUnmount(() => stopPolling?.())
 </script>
 
 <template>
@@ -205,7 +204,8 @@ onBeforeUnmount(() => {
               :style="{ width: disk.usage + '%' }"
             />
           </div>
-          <span class="disk-pct" :class="{ danger: disk.usage > 90 }">{{ disk.usage.toFixed(1) }}%</span>
+          <span class="disk-pct" :class="{ danger: disk.usage > 90 }"
+            >{{ disk.usage.toFixed(1) }}%</span>
         </div>
       </div>
     </div>

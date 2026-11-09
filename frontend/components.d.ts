@@ -215,6 +215,7 @@ declare module 'vue' {
     TrackersDialog: typeof import('./src/components/downloader/TrackersDialog.vue')['default']
     TransferConfigDialog: typeof import('./src/components/transfer/TransferConfigDialog.vue')['default']
     TransferMoreDialogs: typeof import('./src/components/transfer/TransferMoreDialogs.vue')['default']
+    VirtualList: typeof import('./src/components/common/VirtualList.vue')['default']
     WorkflowNode: typeof import('./src/components/workflow/WorkflowNode.vue')['default']
     WsStatusDot: typeof import('./src/components/WsStatusDot.vue')['default']
   }

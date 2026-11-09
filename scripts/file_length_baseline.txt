@@ -7,7 +7,7 @@
 470	backend/internal/cloud/strm.go
 408	backend/internal/db/oper/site.go
 558	backend/internal/entertainment/games_gobang_mcts.go
-474	backend/internal/entertainment/games_gobang_search.go
+473	backend/internal/entertainment/games_gobang_search.go
 804	backend/internal/entertainment/games_hdblue_gobang_ai.go
 436	backend/internal/site/schemas/piggo.go
 511	frontend/src/api/entertainmentTypes.ts

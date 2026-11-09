@@ -55,7 +55,7 @@
 14	backend/internal/api/v1/disk_actions.go
 2	backend/internal/api/v1/disk_types.go
 13	backend/internal/api/v1/docker.go
-6	backend/internal/api/v1/docker_compose_local.go
+5	backend/internal/api/v1/docker_compose_local.go
 8	backend/internal/api/v1/docker_compose_scan.go
 7	backend/internal/api/v1/docker_container_create.go
 1	backend/internal/api/v1/docker_create_handler.go
@@ -99,7 +99,7 @@
 7	backend/internal/api/v1/plugin.go
 14	backend/internal/api/v1/plugin_install.go
 4	backend/internal/api/v1/plugin_market.go
-2	backend/internal/api/v1/proc.go
+1	backend/internal/api/v1/proc.go
 2	backend/internal/api/v1/proc_actions.go
 2	backend/internal/api/v1/registration.go
 6	backend/internal/api/v1/rss.go
@@ -129,7 +129,7 @@
 32	backend/internal/app/app.go
 12	backend/internal/app/app_cron.go
 22	backend/internal/app/app_runtime.go
-20	backend/internal/app/app_setup.go
+14	backend/internal/app/app_setup.go
 2	backend/internal/app/app_tgbot.go
 2	backend/internal/app/doctor_business.go
 1	backend/internal/app/mcp_system_info.go
@@ -266,6 +266,7 @@
 10	backend/internal/cookiecloud/cookiecloud.go
 2	backend/internal/cookiecloud/server.go
 20	backend/internal/core/config/config.go
+1	backend/internal/core/event/async.go
 4	backend/internal/core/event/event.go
 1	backend/internal/core/module/module.go
 2	backend/internal/core/security/crypto.go
@@ -699,7 +700,6 @@
 12	backend/internal/transfer/engine.go
 11	backend/internal/transfer/engine_organize.go
 1	backend/internal/transfer/identifyshare.go
-1	backend/internal/transfer/identifywords.go
 3	backend/internal/transfer/link.go
 3	backend/internal/transfer/meta.go
 1	backend/internal/transfer/naming.go
@@ -733,6 +733,7 @@
 6	backend/internal/workflow/nodes/siteops.go
 4	backend/internal/workflow/nodes/util.go
 50	backend/internal/workflow/templates.go
+1	backend/internal/ws/batch.go
 8	backend/internal/ws/broadcaster.go
 6	backend/internal/ws/broadcaster_diff.go
 3	backend/tools/convert-definitions.go
@@ -882,6 +883,8 @@
 4	frontend/src/components/cloud/CloudRecordsTab.test.ts
 22	frontend/src/components/cloud/CloudRecordsTab.vue
 13	frontend/src/components/cloud/CloudRulesTab.vue
+9	frontend/src/components/common/VirtualList.vue
+3	frontend/src/components/common/virtualListRange.ts
 2	frontend/src/components/dashboard/DashboardAICard.forbidden.test.ts
 8	frontend/src/components/dashboard/DashboardAICard.vue
 6	frontend/src/components/dashboard/DashboardAutomationCard.test.ts
@@ -901,7 +904,7 @@
 8	frontend/src/components/dashboard/DashboardWidgets.vue
 4	frontend/src/components/dashboard/DashboardWorkbench.test.ts
 27	frontend/src/components/dashboard/DashboardWorkbench.vue
-3	frontend/src/components/dashboard/Sparkline.vue
+2	frontend/src/components/dashboard/Sparkline.vue
 11	frontend/src/components/downloader/AddTorrentPanel.vue
 4	frontend/src/components/downloader/FilesDialog.vue
 1	frontend/src/components/downloader/StatsBar.vue
@@ -1053,6 +1056,8 @@
 4	frontend/src/composables/useNotices.ts
 28	frontend/src/composables/useNotification.ts
 1	frontend/src/composables/useOidc.ts
+2	frontend/src/composables/usePerfMode.ts
+7	frontend/src/composables/usePolling.ts
 10	frontend/src/composables/useSaveptCelebration.ts
 7	frontend/src/composables/useSaveptFilters.ts
 4	frontend/src/composables/useSchedule.ts
@@ -1075,7 +1080,6 @@
 6	frontend/src/composables/useWorkflowEditor.ts
 3	frontend/src/composables/useWorkflowEditorRun.ts
 5	frontend/src/composables/useWs.test.ts
-9	frontend/src/composables/useWs.ts
 3	frontend/src/data/composeTemplates.ts
 22	frontend/src/data/dockerTemplates.ts
 1	frontend/src/env.d.ts

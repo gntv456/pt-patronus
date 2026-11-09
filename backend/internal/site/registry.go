@@ -1,3 +1,5 @@
+//go:generate node ../../../scripts/gen-site-index.mjs
+
 package site
 
 import (
@@ -241,6 +243,19 @@ func (r *Registry) MatchByURL(rawURL string) (string, bool) {
 	host := matchHost(rawURL)
 	if host == "" {
 		return "", false
+	}
+	// 阶段 4 快速路径：编译期生成的 host→ID 索引做 O(1) 命中，避免遍历 307 个定义。
+	// 仅当该定义确实已加载时才返回，远端热加载/测试构造的 Registry 自动回退到下方遍历。
+	// PTP_SITE_FASTPATH=0 可秒级关闭。
+	if siteIndexEnabled() {
+		if id, ok := BuiltinDefinitionHosts[host]; ok {
+			r.mu.RLock()
+			_, loaded := r.defs[id]
+			r.mu.RUnlock()
+			if loaded {
+				return id, true
+			}
+		}
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()

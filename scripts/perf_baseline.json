@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "updated": "2026-11-09",
+  "note": "棘轮基线：指标只许变好不许变坏。采集 5 个固定场景，CI 复现波动容差 10%。baseline 为 null 时只做阈值检查。",
+  "tolerance": 0.1,
+  "lowerIsBetter": [
+    "lcp_ms",
+    "inp_p75_ms",
+    "frame_p95_ms",
+    "long_tasks",
+    "first_js_gzip_kb",
+    "main_chunk_gzip_kb",
+    "ws_broadcast_p99_ms",
+    "dashboard_p99_ms",
+    "steady_memory_mb"
+  ],
+  "higherIsBetter": [
+    "lighthouse"
+  ],
+  "thresholds": {
+    "lcp_ms": 2500,
+    "inp_p75_ms": 200,
+    "frame_p95_ms": 20,
+    "long_tasks": 0,
+    "first_js_gzip_kb": 300,
+    "main_chunk_gzip_kb": 150,
+    "lighthouse": 90,
+    "ws_broadcast_p99_ms": 5,
+    "dashboard_p99_ms": 100,
+    "steady_memory_mb": 150
+  },
+  "scenarios": [
+    {
+      "id": "cold-start",
+      "name": "冷启动首屏",
+      "steps": "清空缓存访问 /，记录 LCP / 首屏 JS / 长任务"
+    },
+    {
+      "id": "dashboard-range",
+      "name": "仪表盘 7/30/90 天切换",
+      "steps": "切换区间，记录 INP P75"
+    },
+    {
+      "id": "torrent-scroll",
+      "name": "1000 条种子列表滚动",
+      "steps": "匀速滚动列表，记录帧时间 P95"
+    },
+    {
+      "id": "ws-burst",
+      "name": "WS 高频推送 1000 msg/s",
+      "steps": "压测推送，记录主线程长任务数"
+    },
+    {
+      "id": "terminal-camera",
+      "name": "摄像头/终端面板打开",
+      "steps": "打开面板，记录稳态内存与帧时间"
+    }
+  ],
+  "baseline": {
+    "inp_p75_ms": 40,
+    "frame_p95_ms": 16.8,
+    "first_js_gzip_kb": 154.3,
+    "main_chunk_gzip_kb": 65,
+    "ws_broadcast_p99_ms": 1,
+    "dashboard_p99_ms": 5.3,
+    "steady_memory_mb": 3.8
+  },
+  "baselineSource": "2026-11-08T23:24:32.105Z"
+}

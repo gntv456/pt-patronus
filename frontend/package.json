@@ -1,7 +1,7 @@
 {
   "name": "ptpatronus-frontend",
   "private": true,
-  "version": "1.03.27",
+  "version": "1.03.28",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,8 @@
     "lint": "eslint src",
     "test": "vitest run",
     "test:watch": "vitest",
+    "analyze": "node ../scripts/analyze-bundle.mjs",
+    "lint:ep": "node ../scripts/check-no-new-ep.mjs",
     "e2e": "playwright test",
     "postinstall": "node scripts/patch-deps.mjs",
     "format": "prettier --write \"src/**/*.{ts,vue,css}\"",

@@ -1,0 +1,25 @@
+{
+  "note": "存量 views 静态引入 element-plus 清单；只许减不许增",
+  "files": [
+    "frontend/src/views/Announcements.vue",
+    "frontend/src/views/Assessment.vue",
+    "frontend/src/views/Backup.vue",
+    "frontend/src/views/BrushFlow.vue",
+    "frontend/src/views/Cloud.vue",
+    "frontend/src/views/Contract.vue",
+    "frontend/src/views/Doctor.vue",
+    "frontend/src/views/Freeleech.vue",
+    "frontend/src/views/Harem.vue",
+    "frontend/src/views/MedalWall.vue",
+    "frontend/src/views/MediaQuality.vue",
+    "frontend/src/views/MediaServer.vue",
+    "frontend/src/views/Messages.vue",
+    "frontend/src/views/Notices.vue",
+    "frontend/src/views/PluginView.vue",
+    "frontend/src/views/Recommend.vue",
+    "frontend/src/views/SiteRequests.vue",
+    "frontend/src/views/Subtitle.vue",
+    "frontend/src/views/Trakt.vue",
+    "frontend/src/views/WorkflowEditor.vue"
+  ]
+}

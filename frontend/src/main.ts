@@ -6,6 +6,7 @@ import { i18n, i18nBoot } from './i18n'
 import { showErrorOverlay } from './utils/errorOverlay'
 import { startTokenRefresher } from './api/http'
 import { useUiPrefs } from './composables/useUiPrefs'
+import { usePerfMode } from './composables/usePerfMode'
 import { a11yButton } from './directives/a11yButton'
 import './styles/glass.css'
 import './styles/dialog.css'
@@ -50,17 +51,12 @@ window.addEventListener('unhandledrejection', (e) => {
   showErrorOverlay(e.reason, '未处理的 Promise 错误')
 })
 
-// 玻璃性能降级：低端设备（CPU/RAM 低）或手动开启（localStorage['perf-glass-flat']='1'）时，
-// 给 body 加 glass-reduced 类，关闭全站 backdrop-filter（GPU 合成性能杀手，187 处卡片层叠掉帧）。
-// 对齐移动端 glassReduced；系统「减少透明度」偏好由 glass.css @media 自动处理。
+// 玻璃性能降级（阶段 1）：默认关闭全站 backdrop-filter（187 处 blur 是 GPU 合成杀手）。
+// 低端机 / perf-glass-flat=1 强制降级；用户可置 perf-glass-full=1 或调 setGlassBlur(true) 恢复。
+// 系统「减少透明度」偏好仍由 glass.css @media 自动处理。
 {
-  const nav = navigator as Navigator & { deviceMemory?: number }
-  const lowEnd =
-    (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4) ||
-    (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4)
-  if (lowEnd || localStorage.getItem('perf-glass-flat') === '1') {
-    document.body.classList.add('glass-reduced')
-  }
+  const { applyGlassMode } = usePerfMode()
+  applyGlassMode()
 }
 
 // 界面偏好（主题色/风格/壁纸/遮罩/卡片样式）：挂载前应用到 body，避免首帧闪烁。

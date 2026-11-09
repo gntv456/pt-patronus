@@ -5,13 +5,14 @@
 import { useI18n } from 'vue-i18n'
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { registerPolling } from '@/composables/usePolling'
 
 const router = useRouter()
 
 // ---- TOTP 两步验证码 ----
 const totpSecret = ref('')
 const totpCodes = ref<{ account: string; code: string; second: number }[]>([])
-let totpTimer: ReturnType<typeof setInterval> | undefined
+let stopTotpPolling: (() => void) | undefined
 
 function base32Decode(s: string): Uint8Array {
   const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
@@ -58,7 +59,10 @@ async function refreshTotp() {
     return
   }
   const counter = Math.floor(Date.now() / 1000 / 30)
-  const [cur, next] = await Promise.all([totpAt(secret, counter), totpAt(secret, counter + 1)])
+  const [cur, next] = await Promise.all([
+    totpAt(secret, counter),
+    totpAt(secret, counter + 1),
+  ])
   const second = 30 - (Math.floor(Date.now() / 1000) % 30)
   totpCodes.value = [
     { account: t('dqt.current'), code: cur, second },
@@ -69,11 +73,11 @@ async function refreshTotp() {
 function startTotp() {
   stopTotp()
   void refreshTotp()
-  totpTimer = setInterval(() => void refreshTotp(), 1000)
+  stopTotpPolling = registerPolling(() => void refreshTotp(), 1000, { runOnShow: true })
 }
 function stopTotp() {
-  if (totpTimer) clearInterval(totpTimer)
-  totpTimer = undefined
+  stopTotpPolling?.()
+  stopTotpPolling = undefined
 }
 onUnmounted(stopTotp)
 

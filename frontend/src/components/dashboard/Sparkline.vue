@@ -1,47 +1,97 @@
 <script setup lang="ts">
-// 零依赖迷你折线（sparkline）：嵌进仪表盘指标卡，紧凑展示该指标近 N 天趋势形态。
-// viewBox 100×36 + preserveAspectRatio="none" 横向自适应卡片宽度，
-// 折线用 vector-effect="non-scaling-stroke" 保持 2px 描边不被拉伸变粗；
-// 下方渐变面积 + hover 列热区出 tooltip（HTML 百分比定位，与容器宽度无关）。
-// 延续项目零依赖画图哲学，不引入 ECharts。
-import { ref, computed } from 'vue'
+// Canvas 版迷你折线（阶段 1）：替换 SVG path + gradient defs + hover line，
+// 单个 <canvas> 完成绘制，减少 DOM 节点与 <defs> id 冲突。API 与原 SVG 版完全一致。
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { fmtBytes } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-
 type Unit = 'bytes' | 'count' | 'ratio'
-
 const props = withDefaults(
   defineProps<{
-    values: number[]
-    color: string
-    unit?: Unit
-    days?: string[] // 对应日期（长度需 == values.length），用于 tooltip；缺省则不出 tooltip
+    values: number[]; color: string; unit?: Unit; days?: string[]
   }>(),
   { unit: 'count', days: () => [] },
 )
 
-const VB_W = 100
-const VB_H = 36
-const PAD = 4
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const wrapRef = ref<HTMLElement | null>(null)
 const hoverIdx = ref<number | null>(null)
+let ro: ResizeObserver | null = null
 
 const geom = computed(() => {
-  const v = props.values
-  const n = v.length
+  const n = props.values.length
   if (!n) return null
+  return { n, xOf: (i: number) => (n === 1 ? 50 : (i / (n - 1)) * 100) }
+})
+
+function resolveColor(c: string): string {
+  if (c.startsWith('var(')) {
+    const name = c.slice(4, -1).trim()
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    return v || '#6c5ce7'
+  }
+  return c
+}
+
+function draw() {
+  const cv = canvasRef.value
+  if (!cv) return
+  const rect = cv.getBoundingClientRect()
+  const w = Math.max(1, Math.round(rect.width))
+  const h = Math.max(1, Math.round(rect.height))
+  const dpr = window.devicePixelRatio || 1
+  cv.width = Math.round(w * dpr)
+  cv.height = Math.round(h * dpr)
+  const ctx = cv.getContext('2d')
+  if (!ctx) return
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, w, h)
+  const v = props.values
+  if (!v.length) return
   let lo = Math.min(...v)
   let hi = Math.max(...v)
-  if (hi <= lo) hi = lo + 1 // 全平线时撑开一档，避免贴顶/贴底看不见
+  if (hi <= lo) hi = lo + 1
   const span = hi - lo
-  const yOf = (val: number) => VB_H - PAD - ((val - lo) / span) * (VB_H - 2 * PAD)
-  const xOf = (i: number) => (n === 1 ? VB_W / 2 : (i / (n - 1)) * VB_W)
-  const pts = v.map((val, i) => ({ x: xOf(i), y: yOf(val) }))
-  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
-  const area = `${line} L ${pts[n - 1].x.toFixed(2)} ${VB_H} L ${pts[0].x.toFixed(2)} ${VB_H} Z`
-  return { n, xOf, line, area }
-})
+  const pad = 4
+  const xOf = (i: number) => (v.length === 1 ? w / 2 : (i / (v.length - 1)) * w)
+  const yOf = (val: number) => h - pad - ((val - lo) / span) * (h - 2 * pad)
+  const color = resolveColor(props.color)
+  // 面积渐变（用 globalAlpha 兼容 hex / rgb / CSS 变量，无需解析颜色格式）
+  const grad = ctx.createLinearGradient(0, 0, 0, h)
+  grad.addColorStop(0, color)
+  grad.addColorStop(1, 'transparent')
+  ctx.globalAlpha = 0.3
+  ctx.fillStyle = grad
+  ctx.beginPath()
+  ctx.moveTo(xOf(0), yOf(v[0]))
+  v.forEach((val, i) => { if (i) ctx.lineTo(xOf(i), yOf(val)) })
+  ctx.lineTo(xOf(v.length - 1), h)
+  ctx.lineTo(xOf(0), h)
+  ctx.closePath()
+  ctx.fill()
+  ctx.globalAlpha = 1
+  // 折线
+  ctx.beginPath()
+  ctx.moveTo(xOf(0), yOf(v[0]))
+  v.forEach((val, i) => { if (i) ctx.lineTo(xOf(i), yOf(val)) })
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  // hover 竖线
+  if (hoverIdx.value !== null && v[hoverIdx.value] !== undefined) {
+    ctx.beginPath()
+    ctx.moveTo(xOf(hoverIdx.value), 0)
+    ctx.lineTo(xOf(hoverIdx.value), h)
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([3, 3])
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+}
 
 function fmtVal(v: number): string {
   if (props.unit === 'bytes') return fmtBytes(v)
@@ -50,10 +100,9 @@ function fmtVal(v: number): string {
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k`
   return Math.round(v).toString()
 }
-
-// 唯一化渐变 id：同色多实例会共享同一 <defs>，用 color + 随机后缀避免 document 级 id 冲突。
-const gradId = `sg-${props.color.replace('#', '')}`
-
+function fmtDay(d: string): string {
+  return d && d.length >= 10 ? d.slice(5) : d
+}
 const tipLeft = computed(() => {
   if (hoverIdx.value === null || !geom.value) return '0%'
   return `${geom.value.xOf(hoverIdx.value).toFixed(2)}%`
@@ -62,66 +111,33 @@ const tipEdge = computed(() => {
   if (hoverIdx.value === null || !geom.value) return false
   return geom.value.xOf(hoverIdx.value) > 82
 })
-function fmtDay(d: string): string {
-  return d && d.length >= 10 ? d.slice(5) : d
-}
+
+watch(
+  [() => props.values, () => props.color, hoverIdx],
+  () => void nextTick(draw),
+  { deep: true, flush: 'post' },
+)
+onMounted(() => {
+  draw()
+  if (typeof ResizeObserver !== 'undefined' && wrapRef.value) {
+    ro = new ResizeObserver(() => draw())
+    ro.observe(wrapRef.value)
+  }
+})
+onBeforeUnmount(() => ro?.disconnect())
 </script>
 
 <template>
-  <div class="spark" @mouseleave="hoverIdx = null">
-    <svg
-      v-if="geom"
-      :viewBox="`0 0 ${VB_W} ${VB_H}`"
-      preserveAspectRatio="none"
-      class="spark-svg"
-      role="img"
-      :aria-label="t('spark.trend')"
-    >
-      <defs>
-        <linearGradient :id="gradId" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" :stop-color="color" stop-opacity="0.32" />
-          <stop offset="100%" :stop-color="color" stop-opacity="0.02" />
-        </linearGradient>
-      </defs>
-      <path :d="geom.area" :fill="`url(#${gradId})`" />
-      <path
-        :d="geom.line"
-        fill="none"
-        :stroke="color"
-        stroke-width="2"
-        stroke-linejoin="round"
-        stroke-linecap="round"
-        vector-effect="non-scaling-stroke"
-      />
-      <line
-        v-if="hoverIdx !== null"
-        :x1="geom.xOf(hoverIdx)"
-        :x2="geom.xOf(hoverIdx)"
-        :y1="0"
-        :y2="VB_H"
-        class="hover-line"
-        vector-effect="non-scaling-stroke"
-      />
-    </svg>
+  <div ref="wrapRef" class="spark" @mouseleave="hoverIdx = null">
+    <canvas v-if="geom" ref="canvasRef" class="spark-svg" role="img"
+      :aria-label="t('spark.trend')" />
     <div v-else class="spark-empty text-muted">—</div>
-
-    <!-- 列热区：HTML 百分比定位，宽度随容器自适应；仅当提供了 days 才启用 hover -->
     <div v-if="geom && days.length === geom.n" class="hot">
-      <div
-        v-for="(d, i) in days"
-        :key="i"
-        class="hot-col"
-        :style="{ width: `${100 / geom.n}%` }"
-        @mouseenter="hoverIdx = i"
-      />
+      <div v-for="(d, i) in days" :key="i" class="hot-col"
+        :style="{ width: `${100 / geom.n}%` }" @mouseenter="hoverIdx = i" />
     </div>
-
-    <div
-      v-if="hoverIdx !== null && values[hoverIdx] !== undefined"
-      class="tip"
-      :class="{ edge: tipEdge }"
-      :style="{ left: tipLeft }"
-    >
+    <div v-if="hoverIdx !== null && values[hoverIdx] !== undefined" class="tip"
+      :class="{ edge: tipEdge }" :style="{ left: tipLeft }">
       <span class="tip-day">{{ fmtDay(days[hoverIdx] || '') }}</span>
       <b :style="{ color }">{{ fmtVal(values[hoverIdx]) }}</b>
     </div>
@@ -129,63 +145,18 @@ function fmtDay(d: string): string {
 </template>
 
 <style scoped>
-.spark {
-  position: relative;
-  height: 38px;
-  margin-top: 10px;
-}
-.spark-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-}
-.spark-empty {
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--fs-md);
-}
-.hover-line {
-  stroke: rgba(255, 255, 255, 0.28);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.hot {
-  position: absolute;
-  inset: 0;
-  display: flex;
-}
-.hot-col {
-  height: 100%;
-}
-
-.tip {
-  position: absolute;
-  top: -4px;
-  transform: translateX(-50%);
-  z-index: 5;
-  padding: 3px 7px;
-  white-space: nowrap;
-  background: rgba(20, 22, 38, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xs);
-  box-shadow: var(--shadow-md);
-  font-size: var(--fs-2xs);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  pointer-events: none;
-}
-.tip.edge {
-  transform: translateX(-90%);
-}
-.tip-day {
-  color: var(--text-muted);
-}
-.tip b {
-  font-weight: 600;
-}
+.spark { position: relative; height: 38px; margin-top: 10px; }
+.spark-svg { width: 100%; height: 100%; display: block; }
+.spark-empty { height: 38px; display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-md); }
+.hot { position: absolute; inset: 0; display: flex; }
+.hot-col { height: 100%; }
+.tip { position: absolute; top: -4px; transform: translateX(-50%); z-index: 5;
+  padding: 3px 7px; white-space: nowrap; background: rgba(20,22,38,.96);
+  border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-md); font-size: var(--fs-2xs); display: flex;
+  align-items: center; gap: var(--sp-1); pointer-events: none; }
+.tip.edge { transform: translateX(-90%); }
+.tip-day { color: var(--text-muted); }
+.tip b { font-weight: 600; }
 </style>

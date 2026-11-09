@@ -1,4 +1,4 @@
-import { ref, readonly } from 'vue'
+import { ref, shallowRef, readonly } from 'vue'
 import type { Torrent } from '@/api/downloader'
 import type { Notice } from '@/api/notice'
 import { authApi } from '@/api/auth'
@@ -42,8 +42,10 @@ export interface TorrentDiff {
 const connected = ref(false)
 const hrAlerts = ref<HRAlert[]>([])
 const cookieAlerts = ref<string[]>([])
-const torrents = ref<TorrentSnapshot[]>([])
-const notices = ref<Notice[]>([]) // 通知中心：WS 实时推送的最新通知（前置，最新在前）
+// shallowRef：每帧整体替换快照，避免 ref 深层代理把上千个 torrent 对象逐个包成 Proxy（每帧开销）。
+// 全仓无 torrents/notices 的原地写入（已 grep 验证），故浅层响应式安全。
+const torrents = shallowRef<TorrentSnapshot[]>([])
+const notices = shallowRef<Notice[]>([]) // 通知中心：WS 实时推送的最新通知（前置，最新在前）
 // 长任务进度（W4 任务中心）：kind → 最新进度帧。finished 帧短暂保留后清除（顶栏指示器消费）。
 export interface TaskProgress {
   kind: string
@@ -52,7 +54,7 @@ export interface TaskProgress {
   site?: string
   finished: boolean
 }
-const taskProgress = ref<Record<string, TaskProgress>>({})
+const taskProgress = shallowRef<Record<string, TaskProgress>>({})
 const taskTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 
 let ws: WebSocket | null = null
@@ -64,7 +66,37 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let lastSeq = 0 // 最近一次 torrents_full/diff 的 seq
 let dirty = false // 丢帧标记：true 时暂停 apply，等下个 torrents_full 重同步
 
+// ── 帧合并（阶段 1）：同一 rAF 内的多帧 WS 消息只触发一轮响应式更新 ──
+// 高频推送时避免「一帧消息 → 一次组件树重算」。队列按序执行，
+// 故 applyDiff 读到的始终是上一帧 apply 之后的最新快照（不会丢增量）。
+const frameQueue: Array<() => void> = []
+let rafId: number | null = null
+const raf: (cb: FrameRequestCallback) => number =
+  typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame
+    : (cb) => setTimeout(() => cb(performance.now()), 16) as unknown as number
+const cancelRaf: (id: number) => void =
+  typeof cancelAnimationFrame === 'function'
+    ? cancelAnimationFrame
+    : (id) => clearTimeout(id)
+
+function scheduleApply(apply: () => void) {
+  frameQueue.push(apply)
+  if (rafId === null) rafId = raf(flushFrames)
+}
+
+function flushFrames() {
+  rafId = null
+  // 快照后清空：flush 期间新入队的更新留到下一帧，避免长任务越积越长
+  const batch = frameQueue.splice(0, frameQueue.length)
+  for (const apply of batch) apply()
+}
 function clearState() {
+  frameQueue.length = 0
+  if (rafId !== null) {
+    cancelRaf(rafId)
+    rafId = null
+  }
   hrAlerts.value = []
   cookieAlerts.value = []
   torrents.value = []
@@ -76,14 +108,19 @@ function clearState() {
 }
 
 // applyDiff 把一轮增量合并到当前快照，返回新数组（触发 Vue 响应式）。纯函数，便于单测。
-export function applyDiff(cur: TorrentSnapshot[], diff: TorrentDiff): TorrentSnapshot[] {
+export function applyDiff(
+  cur: TorrentSnapshot[],
+  diff: TorrentDiff,
+): TorrentSnapshot[] {
   // 只克隆本轮有变更的下载器快照，未命中的复用原引用（避免每轮 WS 推送全量浅拷贝 + torrents 重建）。
-  // cur 已在 onMessage 的 torrents/torrents_full 路径归一过 torrents（null → []），此处无需再处理。
+  // cur 已在 onMessage 的 torrents/torrents_full 路径归一过 torrents（null → []），
+  // 此处无需再处理。
   // added 路径仍需归一：diff.added 来自后端 torrents_diff 帧，出错下载器的 torrents 可能为 null。
   const byId = new Map<number, TorrentSnapshot>()
   for (const s of cur) byId.set(s.downloader_id, s)
   for (const id of diff.removed ?? []) byId.delete(id)
-  for (const s of diff.added ?? []) byId.set(s.downloader_id, { ...s, torrents: [...(s.torrents ?? [])] })
+  for (const s of diff.added ?? [])
+    byId.set(s.downloader_id, { ...s, torrents: [...(s.torrents ?? [])] })
   for (const dd of diff.changed ?? []) {
     const prev = byId.get(dd.downloader_id)
     if (!prev) continue
@@ -104,16 +141,26 @@ export function applyDiff(cur: TorrentSnapshot[], diff: TorrentDiff): TorrentSna
 
 function onMessage(raw: MessageEvent) {
   try {
-    const j = JSON.parse(raw.data as string) as { type?: string; seq?: number; data?: unknown }
+    const j = JSON.parse(raw.data as string) as {
+      type?: string; seq?: number; data?: unknown
+    }
     const list = Array.isArray(j.data) ? j.data : []
     switch (j.type) {
       case 'torrents': // legacy 全量（未协商增量的旧前端，或后端回落）
-        torrents.value = (list as TorrentSnapshot[]).map((s) => ({ ...s, torrents: s.torrents ?? [] }))
+        scheduleApply(() => {
+          torrents.value = (list as TorrentSnapshot[]).map(
+            (s) => ({ ...s, torrents: s.torrents ?? [] }),
+          )
+        })
         lastSeq = 0
         dirty = false
         break
       case 'torrents_full': // inc 首帧 / 周期重同步
-        torrents.value = (list as TorrentSnapshot[]).map((s) => ({ ...s, torrents: s.torrents ?? [] }))
+        scheduleApply(() => {
+          torrents.value = (list as TorrentSnapshot[]).map(
+            (s) => ({ ...s, torrents: s.torrents ?? [] }),
+          )
+        })
         lastSeq = j.seq ?? 0
         dirty = false
         break
@@ -122,37 +169,44 @@ function onMessage(raw: MessageEvent) {
         if (dirty) break // 丢帧中：等下个 full 重同步
         const seq = j.seq ?? 0
         if (seq !== lastSeq + 1) {
-          // 不连号=丢帧（慢消费者丢一帧 diff 即触发）。后端 full 重同步间隔 30 帧
-          // （≈60s）太长——丢帧后主动请求重同步：携带 lastSeq 重连一次即可拿到
-          // 带当前 seq 的 torrents_full 首帧（Serve 语义），把卡死窗口从 60s 收敛到一次 RTT。
           dirty = true
           requestResync()
           break
         }
         lastSeq = seq
-        torrents.value = applyDiff(torrents.value, (j.data ?? {}) as TorrentDiff)
+        const diff = (j.data ?? {}) as TorrentDiff
+        scheduleApply(() => {
+          if (dirty) return // flush 时已被标记丢帧：跳过本轮增量
+          torrents.value = applyDiff(torrents.value, diff)
+        })
         break
       }
       case 'hr-alert':
-        hrAlerts.value = list as HRAlert[]
+        scheduleApply(() => { hrAlerts.value = list as HRAlert[] })
         break
       case 'cookie-alert':
-        cookieAlerts.value = list as string[]
+        scheduleApply(() => { cookieAlerts.value = list as string[] })
         break
       case 'notice':
-        if (j.data) notices.value = [j.data as Notice, ...notices.value].slice(0, 200)
+        if (j.data) {
+          const n = j.data as Notice
+          scheduleApply(() => {
+            notices.value = [n, ...notices.value].slice(0, 200)
+          })
+        }
         break
       case 'task-progress': {
-        // 进度帧更新对应 kind；finished 后保留 2.5s（让用户看到走满）再清指示器。
         const tp = j.data as TaskProgress
         if (!tp?.kind) break
-        taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+        scheduleApply(() => {
+          taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+        })
         if (taskTimers[tp.kind]) clearTimeout(taskTimers[tp.kind])
         if (tp.finished) {
           taskTimers[tp.kind] = setTimeout(() => {
             const next = { ...taskProgress.value }
             delete next[tp.kind]
-            taskProgress.value = next
+            scheduleApply(() => { taskProgress.value = next })
           }, 2500)
         }
         break
@@ -219,7 +273,8 @@ async function connect() {
   // await 期间若已 disconnect（stopped 被置 true），放弃本次连接，避免登出后又连上。
   if (stopped) return
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${proto}://${location.host}/api/v1/ws?ticket=${encodeURIComponent(ticket)}&proto=inc`
+  const q = encodeURIComponent(ticket)
+  const url = `${proto}://${location.host}/api/v1/ws?ticket=${q}&proto=inc`
   try {
     ws = new WebSocket(url)
     retry = 0
@@ -267,13 +322,15 @@ export function useWs() {
     taskProgress: readonly(taskProgress),
     /** 前端本地长任务（如 dashboard 逐站循环）镜像进度进来：与后端 WS 帧同构。 */
     mirrorTaskProgress(tp: TaskProgress) {
-      taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+      scheduleApply(() => {
+        taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+      })
       if (taskTimers[tp.kind]) clearTimeout(taskTimers[tp.kind])
       if (tp.finished) {
         taskTimers[tp.kind] = setTimeout(() => {
           const next = { ...taskProgress.value }
           delete next[tp.kind]
-          taskProgress.value = next
+          scheduleApply(() => { taskProgress.value = next })
         }, 2500)
       }
     },

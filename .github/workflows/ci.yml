@@ -80,6 +80,12 @@ jobs:
       - run: npm run typecheck   # vue-tsc 严格类型检查（vite build 用 esbuild 擦除类型，单独跑 typecheck 才能抓类型错误）
       - run: npx eslint src      # i18n 防回潮门禁：已迁移页面禁止硬编码中文（eslint.config.mjs 的 I18N_DONE 列表）
       - run: npm run build
+      # 阻断式首屏体积预算：build 后立刻扫 dist 的入口 chunk（无需浏览器/后端），
+      # 与 scripts/perf_baseline.json 的阈值 + 棘轮基线比对，回归直接 fail。
+      - name: Perf budget (blocking)
+        run: |
+          node ../scripts/collect-perf.mjs --static-only --out ../perf-results.json
+          node ../scripts/check_perf.mjs --results ../perf-results.json
       # 摄像头预览的 jessibuca 解码器是 GPL-3.0，绝不能进分发产物。
       # vite 会把 public/ 原样拷进 dist，故本地残留即会被带出去（.dockerignore 拦不住，
       # 因为构建发生在容器内、用的是已 COPY 的工作区内容）。这里做最终断言。
@@ -237,3 +243,18 @@ jobs:
       - name: npm audit (frontend)
         working-directory: frontend
         run: npm audit --audit-level=high || echo "::warning::frontend has high/critical vulnerable deps, see log above"
+
+  perf-gate:
+    name: Performance Ratchet Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: '20' }
+      # 阻断式棘轮：基线已由 make perf-baseline-init 固化（scripts/perf_baseline.json）。
+      # 本 job 无构建产物时 check_perf 会 SKIP（不算失败）；真正的体积预算在 frontend job 的 build 后执行。
+      - name: Perf ratchet check
+        run: node scripts/check_perf.mjs
+      - name: No new Element Plus in views
+        run: node scripts/check-no-new-ep.mjs

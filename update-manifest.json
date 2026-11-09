@@ -1,13 +1,13 @@
 {
-  "latestVersion": "1.03.27",
+  "latestVersion": "1.03.28",
   "minVersion": "0.60.00",
-  "releaseName": "三站适配版",
-  "releaseNotes": "1.03.27：好学改版适配 + 新增 ColaPT / 猪猪两站。①好学——站点引擎迁移 FluxTorrent，站点定义切 compat JSON 兼容层（凭据请换网页端「我的 → API Token」签发的 fxo_ Token）；旧站点登录链路（验证码/cookie 登录/VIP 校验）与守护神名片随旧接口下线删除，登录仅剩本地密码/OIDC/演示。②ColaPT（colapt.com）——站点提供 M-Team 协议兼容面，新增 colapt.yaml（rcapi_ API Key 接入）；下载票 JSON 兜底与详情链接前缀可配已进 mteam 适配器。③猪猪（piggo.me）——站点改版自研引擎，重写为 piggo schema：SRP-6a 加密登录 + 全请求 HMAC 签名（站点凭据填用户名+密码，自动登录）；搜索/资料/下载三链路真机验证通过；新账号需先在网页端完成一次「Wiki 已读确认」。",
+  "releaseName": "性能重构版",
+  "releaseNotes": "1.03.28：全栈性能与流畅度重构（阶段 0-4 落地）。①前端——玻璃效果默认降级为静态渐变（设置可开回模糊，重交互提速约 4 倍）；WS 推送按帧合批，千级种子更新不再逐条重算组件树；迷你趋势图 SVG 改 Canvas 绘制；轮询统一调度（页面隐藏自动暂停、切回补跑）；首屏 JS 从 557KB 压到 154KB（-72%）。②后端——事件发布去同步等待（PublishAsync）、WS 广播批量合并锁（P99≈1ms，PTP_WS_BATCH=0 可回退）；站点识别预生成索引快速路径（PTP_SITE_FASTPATH=0 可回退）。③门禁——新增性能棘轮门禁（首屏体积/主 chunk/帧时间/INP/WS 广播 P99 等 7 项）与「新页面禁用 Element Plus」棘轮。④换框架评估——SolidJS 试点实测劣于 Vue 132%，判 NO-GO 不换框架。详见 docs/perf-refactor-plan.md。",
   "isForced": false,
-  "publishedAt": "2026-11-08T12:00:00+08:00",
+  "publishedAt": "2026-11-09T12:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.27",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.28",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {

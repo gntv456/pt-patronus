@@ -50,7 +50,9 @@ touch "$known_hosts"
 
 ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> "$known_hosts" 2>/dev/null || true
 
-remote_dir="${DEPLOY_DIR%/}/${version}"
+# 双斜杠前缀防 MSYS/Git-Bash 路径改写：单斜杠 /root/... 会被 scp 当相对路径
+# 改写成 C:/Program Files/Git/root/...（2026-11-10 1.03.28 上传事故实测）。
+remote_dir="//${DEPLOY_DIR%/}/${version}"
 ssh_opts=(
   -i "$key_file"
   -p "$DEPLOY_PORT"

@@ -24,13 +24,15 @@ services:
       # 配置全部保留，无需导出导入、无需跑 CLI；起来后用原用户名 + 该密码登录。
       # 其余（数据库 SQLite、cron、限流…）全用后端默认，不用写。
       APP_ENV: release
-      # 可选：compose 预设账号 / 升级自动迁移（按实例状态自动判断）：
-      #   · 空库 → 启动即建管理员，堵住「首登谁先访问谁拿 admin」抢注窗口
-      #   · 存量账号无本地密码 → 原地补密码，User.ID 不变，配置数据全部保留
+      # 管理员账号（⚠ 建议显式配置，别依赖「首登即 admin」抢注窗口）：
+      #   · 空库 + 配 ADMIN_PASSWORD → 启动即建管理员（堵住首登抢 admin）
+      #   · 存量账号无本地密码 → 原地补密码，User.ID 不变，站点/下载器/订阅等配置全保留
       #   · 已有本地密码 → 忽略，绝不覆盖用户在 UI 改过的密码
       # ⚠ 账号引导需 ≥1.03.29 镜像；1.03.28 及更早版本会静默忽略这几个变量。
-      # ADMIN_USERNAME: admin
-      # ADMIN_PASSWORD: 'Abcd12345678'        # ≥8 位含字母数字；docker inspect 可见，勿提交进仓库
+      # 部署前务必把下面密码改成你自己的强密码（≥8 位含字母数字）；明文会被 docker inspect 看到，
+      # 生产环境推荐改用 ADMIN_PASSWORD_FILE + Docker secrets（见下方注释）。
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: 'ChangeMe_StrongPass123!'   # ← 改成你自己的；勿提交真实密码进仓库
       # ADMIN_PASSWORD_FILE: /run/secrets/ptp_admin_pw   # 推荐：优先于明文，配合 Docker secrets
       #   用 _FILE 时记得把该 secrets 文件挂进容器 volumes（文件内容即密码，权限 600）。
       # 高级（按需取消注释）：

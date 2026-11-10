@@ -12,7 +12,7 @@
     },
     "android": {
       "url": "",
-      "sha256": "19541d7554a027e35ee3774f43639b23471cdbd635a2a854202d2035ab194d09"
+      "sha256": "dfc05473c004a7ef03be578eff525438576bdc87a1102cf2b189fca36002e8e3"
     },
     "ios": {
       "url": "",
@@ -24,15 +24,15 @@
     },
     "windows": {
       "url": "",
-      "sha256": "0b940d8212e59f2d18e641c47666644da4205ba779bcb528ecbc6fb274f029a5"
+      "sha256": "7903959fcc5f727dbb29f16548a93df5d459e177c971b1965d722b5fd85f7b80"
     },
     "agent-linux-amd64": {
       "url": "",
-      "sha256": "16b19aa46a995ea439ccbda4cb9eeb7465d641ee4459b15a3706f092e4dc045f"
+      "sha256": "a21101f7ae3b405d6ced2799b968b60af483dcd4238111112a46d1a7981b499f"
     },
     "agent-linux-arm64": {
       "url": "",
-      "sha256": "e6800372f5dd2686f2a19488b8d8f2f59b2e3cfda95978e332f9e6923f02f21b"
+      "sha256": "f8c5e8fd79d9d9d3753529d68f8f1a3ab8b253100023d9ecbad52fcf488b1fd2"
     },
     "extension": {
       "sha256": "c3578fede15a8ee32ba59abdc6d841ecc2e67cf4a7e2274534cc9a5ca13363b2"

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # Sync the canonical dev-tool assets from the closed host repo into this public package.
 # Canonical source of truth: backend/tools/pluginctl.py + backend/tools/plugin-manifest.schema.json.
 # Run before `python -m build` / publishing.

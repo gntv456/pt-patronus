@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # Bootstrap the PTPatronus plugin dev tool WITHOUT pip — fetches pluginctl.py + the manifest
 # schema into the current dir (or $1). For environments without PyPI access.
 #

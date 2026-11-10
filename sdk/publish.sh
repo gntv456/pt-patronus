@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # Build the public Plugin Development Kit artifacts. Does NOT upload (needs registry creds).
 # Run on a machine with: Python 3.8+, `build` + `wheel` + `twine` (pip install build wheel twine),
 # Node + npm, and TypeScript installed (npm install in sdk/typescript).

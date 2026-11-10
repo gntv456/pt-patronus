@@ -1,4 +1,4 @@
-// 敏感凭据密封存储（secrets at rest）：好学账号密码 / WebDAV / CookieCloud 密码。
+// 敏感凭据密封存储（secrets at rest）：本地账号密码 / WebDAV / CookieCloud 密码。
 // 复用 TOTP/凭据库同款加密栈（PBKDF2-SHA256 ×310k → AES-256-GCM），但密钥来源两档：
 //   - 有 PIN（用户在凭据库设过 ptp_secrets_pin）：与凭据库同 PIN 派生，解锁即互通；
 //   - 无 PIN：用本机设备密钥（chrome.storage.local.ptp_device_key，首次随机生成、

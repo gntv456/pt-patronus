@@ -6,7 +6,7 @@ services:
     # 版本锁定（收权加固）：默认锁定具体版本号（与 update-manifest 的 docker.image 一致），
     # 升级 = 改这里的版本号再 up -d——可精确回滚（改回旧版本号即可），不会被 latest 漂移。
     # 想跟随最新版：把 tag 改成 latest 并保留 pull_policy: always（失去回滚锚点，自担）。
-    image: ghcr.io/gntv456/pt-patronus:1.03.19
+    image: ghcr.io/gntv456/pt-patronus:1.03.29
     container_name: ptpatronus
     restart: unless-stopped
     # 锁定版本时不需要 always 拉取；改用 latest 跟随时再取消注释：
@@ -18,8 +18,21 @@ services:
       # 设置 → 调度频率 会显示当前生效时区与下次执行时间。
       TZ: ${TZ:-Asia/Shanghai}
       # APP_ENV 必填：触发 release 模式 + 密钥自动生成 + 生产安全限制。
-      # 其余（好学站 www.hxpt.org、数据库 SQLite、cron、限流…）全用后端默认，不用写。
+      # 账号为本地用户名密码：空库首次登录自动建号并成为管理员，无需任何外部 VIP 站点配置。
+      # 从旧版（好学 VIP 账号）升级：保持 ./data 卷不动，设下面的 ADMIN_PASSWORD 后重启即可。
+      # 后端给存量账号原地补本地密码（不改 User.ID、不新建账号），站点/下载器/订阅等
+      # 配置全部保留，无需导出导入、无需跑 CLI；起来后用原用户名 + 该密码登录。
+      # 其余（数据库 SQLite、cron、限流…）全用后端默认，不用写。
       APP_ENV: release
+      # 可选：compose 预设账号 / 升级自动迁移（按实例状态自动判断）：
+      #   · 空库 → 启动即建管理员，堵住「首登谁先访问谁拿 admin」抢注窗口
+      #   · 存量账号无本地密码 → 原地补密码，User.ID 不变，配置数据全部保留
+      #   · 已有本地密码 → 忽略，绝不覆盖用户在 UI 改过的密码
+      # ⚠ 账号引导需 ≥1.03.29 镜像；1.03.28 及更早版本会静默忽略这几个变量。
+      # ADMIN_USERNAME: admin
+      # ADMIN_PASSWORD: 'Abcd12345678'        # ≥8 位含字母数字；docker inspect 可见，勿提交进仓库
+      # ADMIN_PASSWORD_FILE: /run/secrets/ptp_admin_pw   # 推荐：优先于明文，配合 Docker secrets
+      #   用 _FILE 时记得把该 secrets 文件挂进容器 volumes（文件内容即密码，权限 600）。
       # 高级（按需取消注释）：
       # CORS_ALLOWED_ORIGINS: https://你的域名   # 反代/公网时收敛 CORS
       # TRUSTED_PROXIES: 172.16.0.0/12          # 反代后填其 CIDR

@@ -81,7 +81,7 @@ func newTestDeps(t *testing.T) *Deps {
 
 	return &Deps{
 		Cfg: cfg, DB: db, JWT: jwt, Act: act,
-		Crypto: crypto, TVCache: tvCache, VIPGraceDays: 3,
+		Crypto: crypto, TVCache: tvCache,
 		SiteOp: siteOp, SiteCh: siteCh, Reg: registry, SiteHC: siteHC,
 		DLOp: dlOp, DLCh: dlCh, DLMgr: dlMgr,
 		Notif: notifCh, NotifMgr: notifMgr,

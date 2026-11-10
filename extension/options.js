@@ -1,7 +1,7 @@
 // 控制台页（选项页）：左侧导航整合全部工具页（站点数据 / Cookie 台账 / 下载任务 /
 // 收藏与历史 / TOTP 验证器 / 同步备份），账号登录与配置沿用原逻辑。
 // 各工具页逻辑就地实现（复用 dashboard/cookies/downloads/collection/totp 模块）。
-import { getConfig, saveConfig, api, localLogin, login, loginByPassword, fetchCaptcha, clearSession, isConfigured } from './api.js'
+import { getConfig, saveConfig, api, localLogin, clearSession, isConfigured } from './api.js'
 import { readSecret, writeSecret, setSealsPin } from './secrets.js'
 import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieHeader } from './cookies.js'
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 同一口径（内容脚本拿不到 credentials.js 时才需要后台拼文案；设置页是扩展自身页面，
   // 可以直接 import）。原文带出来是因为那是用户唯一的线索，不做二次加工。
   function credUnreachableMsg(raw) {
-    const why = String(raw || ').trim()
+    const why = String(raw || '').trim()
     return why
       ? `没能从服务器取到凭据库（可能没登录或网络不通）：${why}。请检查登录状态后重试`
       : '没能从服务器取到凭据库（可能没登录或网络不通）：请检查登录状态后重试'
@@ -135,11 +135,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('credUnlockBtn').textContent = '请设置 PIN'
       setTimeout(() => { $('credUnlockBtn').textContent = '解锁 / 设定' }, 1500)
       return
+    }
     // #388 本轮这一枚开关：置位表示「压根没走到 PIN 校验」（库在服务器上、此刻取不到）。
     // 空串 = 正常路径，最后那句「PIN 错误」才有资格出现。
     let vaultUnreachable = ''
-    try {
-    }
     try {
       // 明文库存量迁移：空 PIN 语义只在「库里还是明文」这一次迁移时成立。
       // server 模式下明文库可能只在服务器上（openVault 取回），本地迁移路径不变。
@@ -163,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         credUnlocked = true
         credPin = pin
         await persistCreds() // 立即用新 PIN 重加密落盘
-        // 同步把 secrets（好学密码/WebDAV/CookieCloud）换到同一 PIN 密封。
+        // 同步把 secrets（本地账号密码/WebDAV/CookieCloud）换到同一 PIN 密封。
         try { await setSealsPin(pin) } catch { /* 密封换口令失败不阻断 */ }
         const hint = $('credPlainHint')
         if (hint) hint.style.display = 'none'
@@ -181,7 +180,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('credUnlockBtn').textContent = vaultUnreachable
         ? credUnreachableMsg(vaultUnreachable)
         : 'PIN 错误'
-      $('credUnlockBtn').textContent = 'PIN 错误'
       setTimeout(() => { $('credUnlockBtn').textContent = '解锁 / 设定' }, 1500)
     }
   })
@@ -546,40 +544,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // ================= 账号与登录 =================
-  // 本地密码登录为主（好学站点关闭后的主路径，#issue）；好学账号/Cookie 保一版兼容。
-  let mode = 'local'
-  const setTab = (m) => {
-    mode = m
-    $('paneLocal').style.display = m === 'local' ? '' : 'none'
-    $('paneAccount').style.display = m === 'account' ? '' : 'none'
-    $('paneCookie').style.display = m === 'cookie' ? '' : 'none'
-    $('tabLocal').classList.toggle('on', m === 'local')
-    $('tabAccount').classList.toggle('on', m === 'account')
-    $('tabCookie').classList.toggle('on', m === 'cookie')
-    if (m === 'account') loadCaptcha()
-  }
-  $('tabLocal').onclick = () => setTab('local')
-  $('tabAccount').onclick = () => setTab('account')
-  $('tabCookie').onclick = () => setTab('cookie')
-  setTab('local')
-
-  let captcha = null
-  async function loadCaptcha() {
-    const server = $('server').value.trim()
-    if (!server) return
-    try {
-      captcha = await fetchCaptcha(server)
-      if (captcha && captcha.need_captcha) {
-        $('captchaRow').style.display = 'flex'
-        $('captchaImg').src = captcha.image || ''
-        if (captcha.ocr_text && !$('captchaText').value) $('captchaText').value = captcha.ocr_text
-      } else {
-        $('captchaRow').style.display = 'none'
-      }
-    } catch { /* 取验证码失败不 block 表单——提交时后端会给明确错误 */ }
-  }
-  $('captchaImg').onclick = () => { $('captchaText').value = ''; loadCaptcha() }
-  $('server').onchange = () => { if (mode === 'account') loadCaptcha() }
+  // 本地密码登录为唯一入口（好学账号/Cookie 端点已随站点关闭删除）。
+  $('paneLocal').style.display = ''
+  $('tabLocal').classList.add('on')
 
   const showSession = (user, renewable) => {
     if (user) {
@@ -587,7 +554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const admin = user.is_admin ? ' · 管理员' : ''
       $('whoami').innerHTML = `已登录：<b>${esc(who)}</b>${admin}${renewable ? ' · 令牌自动续期' : ''}`
       const pill = $('whoamiPill')
-      pill.textContent = user.is_admin ? '管理员' : 'VIP'
+      pill.textContent = user.is_admin ? '管理员' : '用户'
       pill.className = `tag-pill ${user.is_admin ? 'pill-ok' : 'pill-info'}`
       pill.style.display = ''
       $('logout').style.display = ''
@@ -597,7 +564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('logout').style.display = 'none'
     }
   }
-  showSession(cfg.user, !!(cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
+  showSession(cfg.user, !!(cfg.token || (cfg.hxptCreds && cfg.hxptCreds.username)))
 
   // ================= 站点范围管理（黑名单模型：默认全站可用） =================
   // 黑名单模型依赖全站 optional host 权限——这里给一个一键授予按钮
@@ -728,40 +695,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('test').onclick = async () => {
     const server = $('server').value.trim()
     if (!server) { feedback('请先填服务器地址', 'err'); return }
+    const username = $('localUser').value.trim()
+    const password = $('localPass').value
+    if (!username || !password) { feedback('请填写用户名和密码', 'err'); return }
     const btn = $('test')
     btn.disabled = true
     btn.textContent = '登录中…'
     try {
       await saveConfig({ server })
-      let user
-      if (mode === 'local') {
-        const username = $('localUser').value.trim()
-        const password = $('localPass').value
-        if (!username || !password) { feedback('请填写用户名和密码', 'err'); return }
-        ;({ user } = await localLogin(server, { username, password }))
-        $('localPass').value = ''
-      } else if (mode === 'cookie') {
-        const cookie = $('hxptCookie').value.trim()
-        if (!cookie) { feedback('请粘贴好学 Cookie', 'err'); return }
-        ;({ user } = await login(server, cookie))
-        $('hxptCookie').value = ''
-      } else {
-        const username = $('accUser').value.trim()
-        const password = $('accPass').value
-        if (!username || !password) { feedback('请填写好学账号和密码', 'err'); return }
-        ;({ user } = await loginByPassword(server, {
-          username,
-          password,
-          imagehash: captcha && captcha.need_captcha ? captcha.imagehash : '',
-          imagestring: $('captchaText').value.trim(),
-          twoStepCode: $('acc2fa').value.trim(),
-          extraForm: (captcha && captcha.extra_form) || {},
-          challengeMode: !!(captcha && captcha.challenge_mode),
-        }))
-        $('accPass').value = ''
-        $('acc2fa').value = ''
-        $('captchaText').value = ''
-      }
+      const { user } = await localLogin(server, { username, password })
+      $('localPass').value = ''
       feedback('登录成功')
       btn.disabled = false; btn.textContent = '登 录'
       showSession(user, true)
@@ -779,10 +722,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       feedback(`失败：${e.message}`)
       btn.disabled = false
       btn.textContent = '登 录'
-      if (e.needCaptchaRefresh && mode === 'account') {
-        $('captchaText').value = ''
-        loadCaptcha()
-      }
     }
   }
 

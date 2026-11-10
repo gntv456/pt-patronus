@@ -6,6 +6,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import WsStatusDot from '@/components/WsStatusDot.vue'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 import AppSidebar from '@/layouts/AppSidebar.vue'
+import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMainLayout } from '@/layouts/useMainLayout'
 import { Key, Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
@@ -37,6 +38,27 @@ const {
   closeMobileNav,
   openPalette,
 } = useMainLayout()
+
+// 升级引导：存量好学账号（无本地密码）在旧会话仍有效时自动弹「首次设置本地密码」，
+// 用户点一下即可完成迁移，不用终端 CLI / 改 compose。router guard 只在 !user 时
+// 拉 status，这里挂载时强制拉一次，保证 user 已缓存的场景也能判定。
+const setupPasswordMode = ref(false)
+onMounted(() => {
+  if (auth.authenticated) void auth.restoreUser()
+})
+watch(
+  () => auth.needsPasswordSetup,
+  (v) => {
+    if (v) {
+      setupPasswordMode.value = true
+      passwordDialogOpen.value = true
+    }
+  },
+)
+function onSetupDone() {
+  auth.clearPasswordSetup()
+  setupPasswordMode.value = false
+}
 </script>
 
 <template>
@@ -115,7 +137,11 @@ const {
         </el-dropdown>
       </header>
 
-      <ChangePasswordDialog v-model="passwordDialogOpen" />
+      <ChangePasswordDialog
+        v-model="passwordDialogOpen"
+        :setup-mode="setupPasswordMode"
+        @setup-done="onSetupDone"
+      />
 
       <GlobalNoticeBar />
 

@@ -1,16 +1,17 @@
 // PTPatronus 助手 —— 配置与 API 封装（popup/options/background 共用）。
-// 鉴权：好学账号登录（POST /auth/hxpt/cookie-login）换 JWT，之后所有请求带
-// Authorization: Bearer；令牌过期（401）时优先 POST /auth/refresh 滑动续期
-// （不再打扰好学站），refresh 也失败才退回好学 cookie 兑换。
-// cookie 与 token 只存 chrome.storage.local（本机），不进 sync。
-// hxptCreds（账号密码）经 secrets.js 密封存储（PBKDF2+AES-GCM）——
-// 本机任何能读 profile 的进程不再能直读明文密码（安全审计 P2）。
+// 鉴权：本地账号登录（POST /auth/local/login）换 JWT，之后所有请求带
+// Authorization: Bearer；令牌过期（401）时优先 POST /auth/refresh 滑动续期，
+// refresh 也失败才用本机密封保存的本地账号凭据静默重登。
+// token 与登录用户只存 chrome.storage.local（本机），不进 sync。
+// hxptCreds（本地账号密码，字段名为历史遗留）经 secrets.js 密封存储
+// （PBKDF2+AES-GCM）——本机任何能读 profile 的进程不再能直读明文密码（安全审计 P2）。
 import { baseUrl } from './util.js'
 import { readSecret, writeSecret, migratePlaintextSecrets } from './secrets.js'
 
 const DEFAULTS = { server: '', downloaderId: 0 }
-// 会话字段（local）：hxptCookie=好学登录 cookie；token=JWT；user=登录用户（含 is_admin）；
-// hxptCreds=账号密码登录的凭据（密封存储，供续期失效时静默重登）。
+// 会话字段（local）：token=JWT；user=登录用户（含 is_admin）；
+// hxptCreds=本地账号用户名/密码（密封存储，供续期失效时静默重登）。
+// hxptCookie 为好学时代遗留字段，仅兼容旧会话读取，不再用于登录兑换。
 const SESSION_DEFAULTS = { hxptCookie: '', token: '', user: null, hxptCreds: null }
 
 // 启动迁移：把旧版明文 hxptCreds 密封（失败静默——不阻断正常流程）。
@@ -33,13 +34,14 @@ export async function saveConfig(patch) {
   await chrome.storage.sync.set({ ...(server !== undefined ? { server } : {}), ...(downloaderId !== undefined ? { downloaderId } : {}) })
 }
 
-// 已登录判定：有 token 或有可用重登凭据（cookie/账号密码，首请求时会自动换 token）。
+// 已登录判定：有 token 或有可用的本地账号重登凭据（首请求时会自动换 token）。
+// hxptCookie 为旧版残留字段，不再参与判定。
 export function isConfigured(cfg) {
-  return !!(cfg && cfg.server && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
+  return !!(cfg && cfg.server && (cfg.token || (cfg.hxptCreds && cfg.hxptCreds.username)))
 }
 
-// saveSession / clearSession 登录态写入/登出清除（好学 cookie 与 JWT 同生命周期）。
-// hxptCreds 走密封存储（secrets.js）；其余字段明文本地存储（token 短时效、cookie 同会话）。
+// saveSession / clearSession 登录态写入/登出清除。
+// hxptCreds 走密封存储（secrets.js）；其余字段明文本地存储（token 短时效）。
 export async function saveSession({ hxptCookie, token, user, hxptCreds }) {
   const patch = {}
   if (hxptCookie !== undefined) patch.hxptCookie = hxptCookie
@@ -88,67 +90,15 @@ export async function localLogin(server, { username, password }) {
   return { token: body.token, user }
 }
 
-// login 好学 Cookie 登录：POST /auth/hxpt/cookie-login → {token, user}，并落库会话。
-export async function login(server, hxptCookie) {
-  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/cookie-login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cookie: hxptCookie }),
-  })
-  if (!resp.ok) {
-    throw new Error(body.message || body.error || `HTTP ${resp.status}`)
-  }
-  const user = body.user || {}
-  await saveSession({ hxptCookie, token: body.token, user, hxptCreds: null })
-  return { token: body.token, user }
-}
+// 好学时代登录端点 /auth/hxpt/{captcha,login,cookie-login} 已于后端 1.03.27 删除，
+// 本地账号登录统一走上面的 localLogin。
 
-// fetchCaptcha 账号登录 Step A：POST /auth/hxpt/captcha（取验证码图/探测挑战模式）。
-export async function fetchCaptcha(server) {
-  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/captcha`, { method: 'POST' })
-  if (!resp.ok) {
-    throw new Error(body.error || body.message || `HTTP ${resp.status}`)
-  }
-  return body
-}
-
-// loginByPassword 好学账号密码登录 Step B：POST /auth/hxpt/login（服务端代理好学验证）。
-// challenge 由 Step A 的返回回传（extra_form/challenge_mode 驱动后端挑战分支）。
-export async function loginByPassword(server, { username, password, imagehash, imagestring, twoStepCode, extraForm, challengeMode }) {
-  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username,
-      password,
-      imagehash: imagehash || '',
-      imagestring: imagestring || '',
-      two_step_code: twoStepCode || '',
-      extra_form: extraForm || {},
-      challenge_mode: !!challengeMode,
-    }),
-  })
-  if (resp.status === 409) {
-    throw new Error(body.message || '好学已开启挑战响应认证，请改用 Cookie 登录')
-  }
-  if (!resp.ok) {
-    const err = new Error(body.message || body.error || `HTTP ${resp.status}`)
-    err.status = resp.status
-    err.needCaptchaRefresh = resp.status === 401
-    throw err
-  }
-  const user = body.user || {}
-  // 凭据存本机供续期失效时静默重登（与 Web 端「记住登录」同语义）。
-  await saveSession({ hxptCookie: '', token: body.token, user, hxptCreds: { username, password } })
-  return { token: body.token, user }
-}
-
-// renew 续期（401 时）：先 refresh（服务端滑动续期，不碰好学）；refresh 失败
-// （token 被吊销/登出/过期太久）再退回好学 cookie 重新兑换。两条路都失败时
-// 清空会话并抛「请重新登录」语义错误，上层引导用户回选项页。
+// renew 续期（401 时）：先 refresh（服务端滑动续期）；refresh 失败
+// （token 被吊销/登出/过期太久）再用本机密封的本地账号凭据静默重登。
+// 两条路都失败时清空会话并抛「请重新登录」，上层引导用户回选项页。
 async function renew(server) {
   const sess = await chrome.storage.local.get(SESSION_DEFAULTS)
-  // 1) refresh：仍有有效 token 时最稳，不向好学发任何请求。
+  // 1) refresh：仍有有效 token 时最稳，不需重发密码。
   if (sess.token) {
     try {
       const resp = await fetch(`${baseUrl({ server })}/api/v1/auth/refresh`, {
@@ -160,25 +110,19 @@ async function renew(server) {
         await saveSession({ token: body.token, user: body.user })
         return { token: body.token, user: body.user }
       }
-    } catch { /* 网络错误走 cookie 兜底 */ }
+    } catch { /* 网络错误走本地凭据重登 */ }
   }
-  // 2) 兜底重登：优先好学 cookie 兑换；没有 cookie 用账号密码静默重登
-  //    （密码登录含验证码状态机，服务端无验证码时可行；失败即要求重新登录）。
-  if (sess.hxptCookie) {
-    try {
-      return await login(server, sess.hxptCookie)
-    } catch { /* cookie 也失效，继续看有无账号凭据 */ }
-  }
-  // hxptCreds 密封存储：解封后使用（readSecret 失败 = 无凭据）。
+  // 2) 兜底重登：hxptCreds 字段名是历史遗留，现存的即本地账号用户名/密码，
+  //    经 secrets.js 密封（readSecret 失败 = 无凭据）。
   let creds = sess.hxptCreds
   if (creds && creds.salt && creds.iv && creds.data) {
     const r = await readSecret('hxptCreds')
     creds = r.ok ? r.value : null
   }
-  if (creds && creds.username) {
+  if (creds && creds.username && creds.password) {
     try {
-      return await loginByPassword(server, creds)
-    } catch { /* 密码路径失败（验证码/挑战模式）→ 要求重新登录 */ }
+      return await localLogin(server, creds)
+    } catch { /* 密码已改/账号异常 → 要求重新登录 */ }
   }
   await clearSession()
   throw new Error('登录已失效，请重新登录')
@@ -195,10 +139,10 @@ function rawFetch(cfg, path, options = {}) {
 }
 
 // api 统一请求封装：拼 base URL + Bearer 头；非 2xx 抛错（message 取后端 error 字段）。
-// 401 时自动续期一次（refresh → cookie 兑换）再重放；全失败则抛「请重新登录」。
+// 401 时自动续期一次（refresh → 本地凭据重登）再重放；全失败则抛「请重新登录」。
 export async function api(cfg, path, options = {}) {
   let resp = await rawFetch(cfg, path, options)
-  if (resp.status === 401 && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username))) {
+  if (resp.status === 401 && (cfg.token || (cfg.hxptCreds && cfg.hxptCreds.username))) {
     const renewed = await renew(cfg.server)
     resp = await rawFetch({ ...cfg, token: renewed.token }, path, options)
   }
@@ -225,7 +169,7 @@ export async function searchTorrents(cfg, keyword, category = '') {
 // searchTorrentsStream 流式跨站搜索：GET /api/v1/search/stream（SSE）。
 // 每站完成推一帧 event:batch {results:[{site_name, torrents, error}]}，结束推 event:done。
 // onBatch 逐站回调（搜出一个显示一个），返回 promise 在 done/错误时 resolve。
-// 401 时先续期（refresh → cookie 兑换）再重放一次（SSE 长连接无法中途续，整条重来）。
+// 401 时先续期（refresh → 本地凭据重登）再重放一次（SSE 长连接无法中途续，整条重来）。
 export function searchTorrentsStream(cfgIn, keyword, onBatch, category = '') {
   return new Promise((resolve) => {
     const q = new URLSearchParams({ keyword })
@@ -240,7 +184,7 @@ export function searchTorrentsStream(cfgIn, keyword, onBatch, category = '') {
         resolve({ error: e.message })
         return
       }
-      if (resp.status === 401 && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)) && !retried) {
+      if (resp.status === 401 && (cfg.token || (cfg.hxptCreds && cfg.hxptCreds.username)) && !retried) {
         try {
           const renewed = await renew(cfg.server)
           await run({ ...cfg, token: renewed.token }, true)

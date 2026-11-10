@@ -8,6 +8,9 @@ interface AuthState {
   // 这里只存一个布尔标记（sessionStorage，标签页生命周期），供 authenticated 判定。
   // 标记的真实性由后端保证：cookie 失效时任意 API 401 → http 拦截器清标记跳登录。
   cookieSession: boolean
+  // 升级引导：已登录的存量好学账号还没有本地密码时，主布局自动弹「首次设置本地密码」。
+  // 只在拉到 /auth/status 后由后端判定，前端不猜。
+  needsPasswordSetup: boolean
 }
 
 // user 随 token 一起持久化：刷新后先从本地恢复（避免顶栏闪 fallback），再由 router guard
@@ -32,6 +35,7 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || '',
     user: loadPersistedUser(),
     cookieSession: loadCookieSession(),
+    needsPasswordSetup: false,
   }),
   getters: {
     authenticated: (s): boolean => !!s.token || s.cookieSession,
@@ -40,12 +44,13 @@ export const useAuthStore = defineStore('auth', {
     vipVerified: (s): boolean => !!s.user?.vip_level,
   },
   actions: {
-    // 登录成功统一落位（好学账号/Cookie/演示共用）：httpOnly cookie 由 Set-Cookie 头
+    // 登录成功统一落位（本地账号/OIDC/演示共用）：httpOnly cookie 由 Set-Cookie 头
     // 自动种下；Bearer 同时保留（扩展打开的 Web 页等非 cookie 场景兜底）。
     onLoginSuccess(token: string, user: HxptUser | null) {
       this.token = token
       this.user = user
       this.cookieSession = true
+      this.needsPasswordSetup = false
       sessionStorage.setItem('ptp_cookie_session', '1')
       localStorage.setItem('token', token)
       if (user) localStorage.setItem('user', JSON.stringify(user))
@@ -69,6 +74,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = ''
       this.user = null
       this.cookieSession = false
+      this.needsPasswordSetup = false
       sessionStorage.removeItem('ptp_cookie_session')
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -85,8 +91,13 @@ export const useAuthStore = defineStore('auth', {
     async status(): Promise<AuthStatus> {
       return authApi.status()
     },
+    // 用户在「首次设置本地密码」对话框里设完密码后调用，避免本会话内反复弹窗。
+    clearPasswordSetup() {
+      this.needsPasswordSetup = false
+    },
     // 刷新后 user 随内存丢失（只 token 持久化）：token 仍有效时拉 status 恢复 user，
-    // 顶栏用户名 / VIP 状态才不致回退。由 router guard 在 authenticated && !user 时调用。
+    // 顶栏用户名 / VIP 状态才不致回退。由 router guard 在 authenticated && !user 时调用，
+    // 主布局挂载时也会强制拉一次（user 已缓存时 guard 不会调，但升级引导仍要判定）。
     // 同时回填 cookie 会话标记（Bearer 过期但 cookie 仍有效的旧会话在此续上）。
     async restoreUser() {
       try {
@@ -97,6 +108,7 @@ export const useAuthStore = defineStore('auth', {
           this.user = s.user
           localStorage.setItem('user', JSON.stringify(s.user))
         }
+        this.needsPasswordSetup = s.authenticated && s.has_local_password === false
       } catch {
         /* token 失效由 http 拦截清 token 跳登录 */
       }

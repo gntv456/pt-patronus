@@ -160,10 +160,7 @@ http.interceptors.response.use(
     }
     // 401（续期失败/token_version_mismatch）：token 无效/过期/已登出——统一会话失效处理
     else if (status === 401) expireSession()
-    // 403 VIP 准入失败（vip_expired/vip_not_verified/not_vip）：清 token，要求重新登录验证
-    if (status === 403 && ['vip_expired', 'vip_not_verified', 'vip_unknown', 'not_vip'].includes(code)) {
-      expireSession()
-    }
+    // 好学 VIP 准入闸门已退役，不再有 VIP 类 403 需要清会话；403 统一按权限错误处理。
     // 错误友好化：改写 err.message 为 i18n 文案，组件 catch 显示 err.message 时即友好。
     // 后端已给 error/message 时优先用，否则按状态码/错误类型兜底（英文界面不再混中文）。
     const backend = body?.error || body?.message

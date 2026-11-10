@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -25,27 +24,14 @@ type localLoginReq struct {
 }
 
 type changePasswordReq struct {
-	OldPassword string `json:"old_password" binding:"required,max=128"`
+	// 存量升级账号（本地密码为空）首次设密时允许留空；已有密码则必须校验（handler 内判定）。
+	OldPassword string `json:"old_password" binding:"max=128"`
 	NewPassword string `json:"new_password" binding:"required,max=128"`
 }
 
-// validatePassword 弱密码闸门：≥8 位且同时含字母与数字（#<issue>）。
-// 纯数字/纯字母/短口令在公网自托管实例上撑不住限流窗口内的爆破。
-func validatePassword(pwd string) bool {
-	if len(pwd) < 8 {
-		return false
-	}
-	hasLetter, hasDigit := false, false
-	for _, r := range pwd {
-		switch {
-		case unicode.IsLetter(r):
-			hasLetter = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		}
-	}
-	return hasLetter && hasDigit
-}
+// validatePassword 委托 security.ValidatePassword：规则只维护一份，
+// 登录建号 / 改密 / compose 引导不会漂移。
+func validatePassword(pwd string) bool { return security.ValidatePassword(pwd) }
 
 // LocalLogin POST /auth/local/login：本地密码登录（好学站点关闭后的主路径）。
 // 首次登录自动建号（首位登录者即 admin，与好学/OIDC 同口径）；实例已有主人时
@@ -123,8 +109,10 @@ func (h *AuthHandler) LocalLogin(c *gin.Context) {
 }
 
 // ChangePassword POST /auth/local/password（guarded）：校验旧密码后改新密码。
-// 未设过密码的存量账号同样要求先走 reset-admin 初始化，避免「知道用户名即可
-// 占用改密入口给自己设密」的提权路径。
+// 例外：存量升级账号 PasswordHash 为空时允许首次直接设密、无需旧密码——guarded
+// 要求有效 JWT，能进到这里本身就证明是实例主人，不存在「知道用户名即可认领」
+// 的提权路径；这样用户升级后在网页上点一下即可完成迁移，不用跑终端 CLI。
+// 已有密码的账号仍强制校验旧密码，防会话被借用时静默改密。
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req changePasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -147,10 +135,13 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		dbFail(c, "password_user_lookup", err)
 		return
 	}
-	if u.PasswordHash == "" || !security.VerifyPassword(u.PasswordHash, req.OldPassword) {
+	if u.PasswordHash != "" && !security.VerifyPassword(u.PasswordHash, req.OldPassword) {
 		audit(c, "local_password", "fail", slog.String("reason", "bad_old_password"))
 		errcode.Respond(c, errcode.AuthBadCredentials)
 		return
+	}
+	if u.PasswordHash == "" {
+		audit(c, "local_password", "initial_setup", slog.String("reason", "legacy_user_without_password"))
 	}
 	hash, err := security.HashPassword(req.NewPassword)
 	if err != nil {

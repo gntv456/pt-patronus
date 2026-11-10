@@ -53,16 +53,19 @@ test('解锁入口取信封失败时必须自报「服务器读不到」，不�
 })
 
 // 接线判据 2：兜底 catch 不许无条件说「PIN 错误」。
+// 旧判据把「旧形状那句 `textContent = 'PIN 错误'`」当锚点——修法一旦删掉这句，锚点就消失，
+// 反而误报。改为直接判「无条件赋值不存在」+「分流赋值存在」，判据跟着修法走。
 test('解锁失败的外层 catch 必须区分「PIN 不对」与「服务器读不到」', () => {
-  const at = code.indexOf("textContent = 'PIN 错误'")
-  assert.ok(at > 0, "找不到 'PIN 错误' 这句（旧形状已不在？）")
-  const before = code.slice(Math.max(0, at - 400), at)
-  // 那段 catch 里必须有对「读不到」的分支，否则就是无条件报 PIN 错。
-  assert.match(
-    before,
-    /__unreachable|server-unreachable|读不到|unreachable/i,
-    "catch 里没有区分「服务器读不到」：用户填对 PIN 也会被告知密码错误 ⇒ 反复重试后认定库坏了",
+  assert.doesNotMatch(
+    code,
+    /textContent\s*=\s*'PIN 错误'/,
+    'catch 里仍有无条件「PIN 错误」赋值：用户填对 PIN 也会被告知密码错误 ⇒ 反复重试后认定库坏了',
   )
+  const at = code.indexOf('textContent = vaultUnreachable')
+  assert.ok(at > 0, '找不到按 vaultUnreachable 分流的赋值（判据没有落点）')
+  const tail = code.slice(at, at + 400)
+  assert.match(tail, /credUnreachableMsg/, '读不到库时必须给出可操作文案，而不是 PIN 错误')
+  assert.match(tail, /PIN 错误/, '真实 PIN 校验失败仍应提示 PIN 错误')
 })
 
 // 判据自身的前提：那条「服务器读不到」的文案必须真的可操作、且不是 PIN 措辞。

@@ -1,13 +1,13 @@
 {
-  "latestVersion": "1.03.28",
+  "latestVersion": "1.03.29",
   "minVersion": "0.60.00",
-  "releaseName": "性能重构版",
-  "releaseNotes": "1.03.28：全栈性能与流畅度重构（阶段 0-4 落地）。①前端——玻璃效果默认降级为静态渐变（设置可开回模糊，重交互提速约 4 倍）；WS 推送按帧合批，千级种子更新不再逐条重算组件树；迷你趋势图 SVG 改 Canvas 绘制；轮询统一调度（页面隐藏自动暂停、切回补跑）；首屏 JS 从 557KB 压到 154KB（-72%）。②后端——事件发布去同步等待（PublishAsync）、WS 广播批量合并锁（P99≈1ms，PTP_WS_BATCH=0 可回退）；站点识别预生成索引快速路径（PTP_SITE_FASTPATH=0 可回退）。③门禁——新增性能棘轮门禁（首屏体积/主 chunk/帧时间/INP/WS 广播 P99 等 7 项）与「新页面禁用 Element Plus」棘轮。④换框架评估——SolidJS 试点实测劣于 Vue 132%，判 NO-GO 不换框架。详见 docs/perf-refactor-plan.md。",
+  "releaseName": "本地账号升级无感版",
+  "releaseNotes": "1.03.29：好学 VIP 账号体系下线，登录改为本地用户名密码，存量实例升级无需迁移任何配置数据。①升级迁移——compose 新增 ADMIN_USERNAME / ADMIN_PASSWORD / ADMIN_PASSWORD_FILE：空库启动即建管理员；存量账号无密码时原地补本地密码（不改 User.ID，站点 / 下载器 / 订阅 / 界面偏好全部保留）；已有密码一律忽略。活跃 Web 用户升级后自动弹「首次设置本地密码」，零终端命令；会话过期或非 Web 端可用 reset-admin --password 兜底。②compose 清理——删除 AUTH_SITE_* 死配置，修正密钥自动生成说明，补 TZ 与 agent 自更新 env。③客户端——扩展移除好学 / Cookie 旧 Tab 与已删端点调用，修复选项页既有语法错误；前端 / 移动端文案与 VIP 分支清理。④全量测试绿灯（Go 全量 / vue-tsc / 扩展 100 项 / compose config）。升级务必保留 ./data 卷：换密钥会导致已加密的站点凭据失效。",
   "isForced": false,
-  "publishedAt": "2026-11-09T12:00:00+08:00",
+  "publishedAt": "2026-11-10T12:59:02+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.28",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.29",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {

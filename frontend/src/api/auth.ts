@@ -10,6 +10,7 @@ export interface AuthStatus {
   oidc_enabled?: boolean // 管理员配置了 OIDC/SSO 且启用
   oidc_display_name?: string // 登录按钮文案（默认 "OIDC / SSO"）
   user?: HxptUser | null // authed 时附当前 user（刷新后恢复顶栏用户名 / VIP 状态）
+  has_local_password?: boolean // 升级引导：已登录账号是否已设本地密码（false=存量好学账号）
 }
 
 export interface HxptUser {

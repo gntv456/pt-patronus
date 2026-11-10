@@ -38,7 +38,6 @@ type Deps struct {
 	TVCache            *auth.TokenVersionCache
 	Tickets            *auth.TicketStore
 	OIDC               *auth.OIDCService
-	VIPGraceDays       int
 	SiteOp             *oper.SiteOper
 	SiteCh             *chain.SiteChain
 	Reg                *site.Registry

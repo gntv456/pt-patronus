@@ -134,7 +134,6 @@ function noticeBadge(name: string): number {
         </template>
       </div>
     </nav>
-    <!-- 好学 VIP 徽标已随站点关闭移除（#<issue>） -->
   </aside>
 </template>
 

@@ -19,16 +19,17 @@ var (
 	Conflict     = New("conflict", "资源冲突，请刷新后重试", http.StatusConflict)
 	Unavailable  = New("unavailable", "服务暂不可用，请稍后重试", http.StatusServiceUnavailable)
 
-	// —— 鉴权 / VIP ——
+	// —— 鉴权 / 会话 ——
+	// 下列 VIP* 码为好学时代遗留（闸门已退役，生产不再返回），保留变量名兼容旧客户端与测试。
 	AdminRequired   = New("admin_required", "需要管理员权限", http.StatusForbidden)
 	TokenMismatch   = New("token_version_mismatch", "登录态已更新，请重新登录", http.StatusUnauthorized)
 	InvalidToken    = New("invalid_token", "登录态无效，请重新登录", http.StatusUnauthorized)
-	NotActivated    = New("not_activated", "APP 未激活，请先使用 好学 APP 专属 VIP 激活码", http.StatusForbidden)
-	NotVIP          = New("not_vip", "此功能需要好学 VIP", http.StatusForbidden)
-	VIPNotVerified  = New("vip_not_verified", "好学账号未完成验证", http.StatusForbidden)
-	VIPUnknown      = New("vip_unknown", "好学账号验证状态未知，请稍后重试", http.StatusForbidden)
-	VIPExpired      = New("vip_expired", "好学 VIP 已过期", http.StatusForbidden)
-	ChallengeMode   = New("challenge_mode", "好学已开启挑战响应认证，请改用 Cookie 登录", http.StatusConflict)
+	NotActivated    = New("not_activated", "实例未激活", http.StatusForbidden)
+	NotVIP          = New("not_vip", "无权访问该功能", http.StatusForbidden)
+	VIPNotVerified  = New("vip_not_verified", "登录态未完成验证，请重新登录", http.StatusForbidden)
+	VIPUnknown      = New("vip_unknown", "登录态验证状态未知，请稍后重试", http.StatusForbidden)
+	VIPExpired      = New("vip_expired", "登录态已过期，请重新登录", http.StatusForbidden)
+	ChallengeMode   = New("challenge_mode", "该登录方式需要额外验证", http.StatusConflict)
 	OIDCDeprecated  = New("deprecated", "该登录方式已停用", http.StatusGone)
 	ConfirmRequired = New("confirm_required", "需要先完成确认", http.StatusPreconditionRequired)
 
@@ -38,9 +39,9 @@ var (
 	AuthTicketFailed       = New("auth_ticket_failed", "签发 ticket 失败", http.StatusInternalServerError)
 	AuthCaptchaFailed      = New("auth_captcha_failed", "取验证码失败", http.StatusBadGateway)
 	AuthBadCredentials     = New("auth_bad_credentials", "用户名/密码/验证码错误", http.StatusUnauthorized)
-	// 本地密码登录（好学站点关闭后的主路径，#issue）专属错误。
+	// 本地密码登录专属错误。
 	AuthPasswordNotSet = New("auth_password_not_set",
-		"该账号未设置本地密码，请管理员用 reset-admin --password 初始化", http.StatusConflict)
+		"该账号未设置本地密码：升级实例请在 compose 设 ADMIN_PASSWORD 后重启，或执行 reset-admin --password 初始化", http.StatusConflict)
 	AuthWeakPassword = New("auth_weak_password",
 		"密码至少 8 位且需包含字母和数字", http.StatusBadRequest)
 	AuthCookieRequired = New("auth_cookie_required", "cookie 必填", http.StatusBadRequest)

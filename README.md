@@ -4,7 +4,7 @@ PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署�
 
 > **版本号单一真源**：后端 `backend/internal/version/version.go`，经 `GET /api/v1/system/info` 暴露（构建时可用 `-ldflags "-X .../version.Version=x.y.z"` 覆盖）；前端（设置·关于）与移动端（账户页）**运行时读取后端版本显示**，各自仅保留离线兜底常量，本 README 不手抄具体版本号（历史上曾滞后）。`pubspec.yaml` 的 `version:` 是发布构建元数据（Android versionCode / iOS build），与显示版本解耦，仅发布时更新。**日常升版只需改后端一处**（`version.go`），重启后端后三端立即生效。
 
-> 架构借鉴 MoviePilot（Chain/Module/Event + Oper）、PT-depiler（站点 Schema/Definition 两层 + 286 站 YAML）、pt_mate（SiteAdapter 接口 + CookieCloud）、qBitController（rid 增量同步）。保留「好学 APP 专属 VIP」准入验证。
+> 架构借鉴 MoviePilot（Chain/Module/Event + Oper）、PT-depiler（站点 Schema/Definition 两层 + 286 站 YAML）、pt_mate（SiteAdapter 接口 + CookieCloud）、qBitController（rid 增量同步）。账号体系为**本地用户名密码**（空库首次登录自动建号并成为管理员），不依赖任何外部站点 VIP 准入。
 
 架构与各模块设计见 [README/00-项目总览.md](README/00-项目总览.md) 与 [README/01-架构设计.md](README/01-架构设计.md)。
 
@@ -43,17 +43,18 @@ go mod tidy
 go run ./cmd/ptpatronus
 # 或 make dev
 ```
-环境变量见 `backend/configs/config.example.yaml`（SECRET_KEY / ACTIVATION_SECRET 生产必填）。
+环境变量见 `backend/configs/config.example.yaml`（`SECRET_KEY` / `ACTIVATION_SECRET` 留空时自动生成并持久化到 `data/`，零配置安全启动）。
 评审或公开演示实例可显式设置 `DEMO_MODE=true` 显示“浏览演示环境”入口；默认关闭，生产不建议开启。
 
 冒烟（另开终端）：
 ```bash
 curl http://localhost:8088/api/v1/system/health
-# 本地初始化（/auth/setup）已停用，登录走好学 APP 专属 VIP：
-#   账号登录 /auth/hxpt/login（验证码两步）或 Cookie 登录 /auth/hxpt/cookie-login（覆盖 2FA/挑战响应，最稳）
-# 首个通过 VIP 校验的用户自动成为管理员。
-curl -X POST http://localhost:8088/api/v1/auth/hxpt/cookie-login \
-  -H 'Content-Type: application/json' -d '{"cookie":"<你的好学 cookie>"}'
+# 本地账号登录：空库首次登录自动建号（首个登录者即管理员）
+curl -X POST http://localhost:8088/api/v1/auth/local/login \
+  -H 'Content-Type: application/json' -d '{"username":"admin","password":"Abcd12345678"}'
+# compose 设 ADMIN_USERNAME + ADMIN_PASSWORD（或 ADMIN_PASSWORD_FILE）：空库建管理员；
+# 存量账号无密码则原地补密码（不改 User.ID、配置全保留，无需迁移数据）。
+# 不设 env 时存量实例走：go run ./cmd/ptpatronus reset-admin --password 'Abcd12345678'
 ```
 
 ### Web UI（:5173，代理 /api → :8088）

@@ -3,7 +3,7 @@ part of 'package:ptpatronus/features/login/login_page.dart';
 
 extension on _LoginPageState {
   // OIDC/SSO：移动端 deep-link（ptpatronus://）回调尚未接通——直接拉起系统浏览器会令牌丢失，
-  // 用户卡在浏览器无法返回 App。改为弹说明引导用账号/Cookie 登录（保留「仍打开浏览器」兜底）。
+  // 用户卡在浏览器无法返回 App。改为弹说明引导用本地账号密码登录（保留「仍打开浏览器」兜底）。
   Future<void> _oidcLogin() async {
     if (!mounted) return;
     await showDialog<void>(
@@ -12,7 +12,7 @@ extension on _LoginPageState {
         title: Text('$_oidcName 暂不可用'),
         content: const Text(
           '移动端 SSO 自动回调（deep-link）尚未接通：在浏览器完成授权后，令牌无法自动回到 App。\n\n'
-          '请改用「好学账号」或「Cookie」标签页登录。',
+          '请改用本地账号密码登录。',
         ),
         actions: [
           TextButton(

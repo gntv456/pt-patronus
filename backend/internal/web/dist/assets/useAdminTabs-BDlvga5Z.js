@@ -1,1 +1,0 @@
-import{u as r}from"./index-BYIM-_-f.js";const s=new Set(["logs","doctor","oidc","llmgateway","tgbot"]);function S(t=s){const e=t instanceof Set?t:new Set(t),u=r();function o(n){return u.isAdmin||!e.has(n)}function c(n,i){return o(n)?n:i}return{canSeeTab:o,pickTab:c}}export{S as u};

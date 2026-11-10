@@ -118,6 +118,36 @@ func TestChangePassword_RequiresOldPassword(t *testing.T) {
 	}
 }
 
+// 存量升级账号（本地密码为空）在「已登录」状态下可首次设密，无需旧密码、无需终端 CLI。
+// 零终端升级的入口：guarded + 有效 JWT 已证明是实例主人，此时放宽旧密码校验是安全的。
+func TestChangePassword_LegacyUserCanSetInitialPassword(t *testing.T) {
+	r, database, j, h := newAuthTestEnv(t, false)
+	authed := r.Group("/auth/local", middleware.JWTAuth(j, "", h.tvCache))
+	authed.POST("/password", h.ChangePassword)
+
+	rec := postJSON(t, r, "/auth/local/login", `{"username":"owner","password":"abc12345"}`)
+	var resp struct {
+		Token string `json:"token"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp.Token == "" {
+		t.Fatal("拿不到登录 token")
+	}
+	// 模拟升级后的存量账号：密码为空（好学 VIP 时代遗留），但旧会话 JWT 仍有效。
+	if err := database.Model(&models.User{}).Where("username = ?", "owner").Update("password_hash", "").Error; err != nil {
+		t.Fatal(err)
+	}
+	setup := postJSONAuth(t, r, "/auth/local/password", resp.Token,
+		`{"old_password":"","new_password":"Upgrade12345"}`)
+	if setup.Code != http.StatusOK {
+		t.Fatalf("存量账号首次设密应 200，code=%d body=%s", setup.Code, setup.Body.String())
+	}
+	login := postJSON(t, r, "/auth/local/login", `{"username":"owner","password":"Upgrade12345"}`)
+	if login.Code != http.StatusOK {
+		t.Fatalf("新密码应可登录，code=%d body=%s", login.Code, login.Body.String())
+	}
+}
+
 // postJSONAuth 带 Bearer 头的 JSON POST（改密端点按 guarded 语义测试）。
 func postJSONAuth(t *testing.T, r *gin.Engine, path, token, body string) *httptest.ResponseRecorder {
 	t.Helper()

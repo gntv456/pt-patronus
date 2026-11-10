@@ -52,7 +52,7 @@ type activateReq struct {
 	DeviceID string `json:"device_id" binding:"max=64"`
 }
 
-// Activate（legacy）消费好学 APP 专属 VIP 激活码。不再作实例级准入 gate，保留兼容。
+// Activate（legacy）消费历史激活码。不再作实例级准入 gate，保留兼容。
 func (h *AuthHandler) Activate(c *gin.Context) {
 	var req activateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,6 +98,9 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		"local_login":   true,  // 本地密码登录恒可用（好学站点关闭后的主路径，#<issue>）
 		"vip_verified":  verified,
 		"demo_mode":     h.demoMode,
+		// 升级引导：已登录账号是否已设本地密码。存量好学账号为 false，前端据此弹
+		// 「首次设置本地密码」对话框，用户无需在终端跑 CLI / 改 compose。
+		"has_local_password": false,
 	}
 	if h.oidc != nil {
 		oc := h.oidc.LoadSettings()

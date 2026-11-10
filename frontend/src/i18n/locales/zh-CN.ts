@@ -4309,8 +4309,12 @@ export default {
     submit: '保存',
     cancel: '取消',
     ok: '密码已更新',
+    setupTitle: '升级后首次设置本地密码',
+    setupHint: '检测到当前账号还没有本地密码。设置一次即可，原有的站点、下载器、订阅等配置全部保留，无需在终端执行任何命令。',
+    setupOk: '本地密码已设置',
     err: {
       fill: '请填写当前密码和新密码',
+      fillNew: '请填写新密码',
       mismatch: '两次输入的新密码不一致',
       failed: '修改失败',
     },

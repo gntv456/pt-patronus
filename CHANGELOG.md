@@ -4,6 +4,43 @@
 - **升级注意**：标注需要用户干预（改配置/改挂载/重登）的破坏性变更
 - 完整历史 releaseNotes 见 `update-manifest.json` 各版本条目
 
+## 1.03.29（本地账号升级无感版，2026-11-10）
+
+**升级注意**：好学 VIP 账号体系已下线，登录改为本地用户名密码。存量实例升级后
+**不需要迁移任何配置数据**——站点 / 下载器 / 订阅 / 通知是全局表，界面偏好按 User.ID 归属，
+而升级保住 User.ID。务必保留 `./data` 卷：换了 `secret_key` 会让已加密的站点 Cookie / API Key
+解不开（表现像「配置全丢」）。活跃 Web 用户升级后打开页面会自动弹「首次设置本地密码」，
+不用敲任何命令；会话已过期或非 Web 端才需要 `ADMIN_PASSWORD` 或 `reset-admin --password` 兜底。
+
+### 本地账号与升级迁移
+- 新增 `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_PASSWORD_FILE` compose 引导
+  （`app/bootstrap_admin.go`）：空库启动即建管理员（堵首登抢注窗口）；存量账号无本地密码时
+  原地补 `password_hash`，不改 User.ID / Username / HxptUID，不新建平行账号；已有密码一律忽略，
+  绝不覆盖用户在 UI 改过的密码
+- 零终端升级：`/auth/status` 返回 `has_local_password`，Web 主布局对存量账号自动弹
+  「升级后首次设置本地密码」；`POST /auth/local/password` 在「有效 JWT + 无密码」时允许跳过
+  旧密码首次设密（guarded 已证明身份，未登录者无法认领 admin）
+- 密码规则统一到 `security.ValidatePassword`（bcrypt，≥8 位含字母数字）；
+  `auth_password_not_set`(409) 文案改为直接指引设 `ADMIN_PASSWORD` 重启或跑 CLI
+
+### compose 与配置清理
+- 删除死配置 `AUTH_SITE_ENABLED` / `AUTH_SITE_URL` / `AUTH_VIP_LEVEL` 及后端
+  `AuthSite*` / `VIPGraceDays` 字段与传递；`config.example.yaml` 同步
+- 修正 SECRET_KEY / ACTIVATION_SECRET 注释（留空自动生成并持久化到 `./data`，非「必填否则退出」）；
+  `docker-compose.example.yml` 锁版本 1.03.29、补 TZ / agent 自更新 env / 账号引导说明
+
+### 文档与客户端
+- README 主文件 / 快速开始 / 04-API参考 / 05-部署指南 / 07-开发指南 / mobile README /
+  extension README 全量改为本地账号，删除好学 VIP/Cookie 登录、激活码应急通道等过时说明
+- 浏览器扩展移除「好学账号（旧）/Cookie（旧）」Tab 与 `/auth/hxpt/*` 调用，续期兜底改走
+  `localLogin`；修掉 `options.js` 在旧版就存在的 3 处语法错误（选项页原本整个模块加载不了）
+  和「读不到凭据库」文案被无条件覆盖的问题
+- 前端删除 VIP 403 会话分支与徽标占位注释；移动端 OIDC 引导死文案改为本地账号登录
+
+### 质量
+- 全量 `go test ./...` 全绿；`vue-tsc --noEmit` 通过；扩展 100 项测试全绿、全量 JS 语法
+  扫描 0 失败；两份 compose `config --quiet` 通过
+
 ## 1.03.27（三站适配版，2026-11-08）
 
 ### 站点适配：自由农场（freefarm）n8 主题改版

@@ -4,7 +4,7 @@
 //     请求频率，替代原 stats/hr/freeleech/announcement/messages/cookie-keepalive 6 个分散 cron。
 //   - 签到（真实）
 //   - 注册开放检测（真实）：探测 signup 页 → 关闭→开放转换时通知
-//   - 好学 VIP 重验 / IYUU 辅种（真实）
+//   - IYUU 辅种（真实；好学 VIP 重验已随站点关闭退役）
 //
 // 对应原 Kotlin 项目的 BackgroundAutomationService，但常驻后端 Docker。
 package automation

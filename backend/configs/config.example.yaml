@@ -52,15 +52,24 @@ JWT_EXPIRE_MIN=1440
 
 
 
-# ── 好学 APP 专属 VIP 准入（AUTH_SITE 机制）──────────
-
-AUTH_SITE_ENABLED=false    # true 时未激活将限制访问
-
-AUTH_SITE_URL=https://www.hxpt.org
-
-AUTH_SITE_COOKIE=          # 好学 cookie（阶段 1 起抓取用户页判定 VIP 等级）
-
-AUTH_VIP_LEVEL=1
+# ── 账号（本地用户名密码）───────────────────────────
+# 主入口 POST /auth/local/login：空库首次登录自动建号（首位登录者即管理员），
+# 密码至少 8 位且含字母和数字，bcrypt 存储；改密走 POST /auth/local/password。
+# 存量实例（好学 VIP / OIDC 账号）升级后没有本地密码，登录会返回 409。两条路都不迁移数据：
+#   1) compose 设 ADMIN_PASSWORD 后重启 —— 后端原地给首个真实用户补 password_hash，
+#      不改 User.ID / Username，站点、下载器、订阅、SystemConfig、界面偏好全部保留；
+#   2) 离线 CLI：ptpatronus reset-admin --password '<新密码>'
+# 业务配置表是全局的、不按本地 user_id 归属，只有 UserPreference 按 uid 存——保住 ID 即可。
+# 好学 VIP 准入（AUTH_SITE_* / VIP_GRACE_DAYS）已随站点关闭移除，无需再配置。
+#
+# 可选：compose 声明账号 / 升级自动迁移（按实例状态自动判断）：
+# ADMIN_USERNAME=admin             # 仅空库建号时用；存量升级忽略，沿用原用户名
+# ADMIN_PASSWORD=                  # ≥8 位含字母数字；留空 = 首登建号 / 走上面的 CLI
+# ADMIN_PASSWORD_FILE=             # 优先于上一行，填 secrets 文件路径（首尾空白会去掉）
+#   ⚠ 明文 ADMIN_PASSWORD 会被 docker inspect 看到，生产建议用 _FILE + 权限 600 的文件。
+#   ⚠ 已有本地密码时一律忽略、绝不覆盖（env 每次启动都在）。
+#   ⚠ 密码不合规 / _FILE 读不到 → 拒绝启动，不静默留弱口令或没账号的实例。
+#   引导成功后可从 compose 移除该行：账号已落库，移除不影响登录。
 
 LOG_FILE=                  # 日志落盘文件（空=stdout，容器部署推荐交给 docker log driver）。
                            # 裸机/systemd 部署可设如 /var/log/ptpatronus/app.log，由应用按大小轮转：

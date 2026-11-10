@@ -20,7 +20,7 @@ async function openSearch(keyword) {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
       title: 'PTPatronus 助手',
-      message: '请先在扩展选项页配置服务器并登录好学账号',
+      message: '请先在扩展选项页配置服务器并用本地账号登录',
     })
     chrome.runtime.openOptionsPage()
     return
@@ -543,7 +543,7 @@ async function ocrCaptcha(image) {
 async function pushDownload(url) {
   try {
     const cfg = await getConfig()
-    if (!cfg.server || !cfg.token) return { ok: false, error: '请先在选项页登录好学账号' }
+    if (!cfg.server || !cfg.token) return { ok: false, error: '请先在选项页用本地账号登录' }
     let dlId = cfg.downloaderId ? Number(cfg.downloaderId) : 0
     if (!dlId) {
       // 未固定下载器（下载任务面板的选择会写回 downloaderId）→ 取默认；再不行取第一个。

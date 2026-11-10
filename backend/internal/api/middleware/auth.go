@@ -102,7 +102,7 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, sk
 		c.Set("username", claims.Username)
 		c.Set("is_admin", claims.IsAdmin)
 		c.Set("auth_via", "jwt")
-		c.Set("vip_verified_at", claims.VipVerifiedAt) // int64 unix；0=未验证（供 RequireVIP 快速判宽限）
+		c.Set("vip_verified_at", claims.VipVerifiedAt) // int64 unix；历史 claims 兼容，VIP 闸门已退役
 		c.Set("vip_level", claims.VipLevel)
 		c.Set("claims", claims) // 完整 claims（Refresh 滑动续期需要 FirstIssuedAt）
 		c.Next()
@@ -121,9 +121,9 @@ func RequireAuth() gin.HandlerFunc {
 }
 
 // RequireAdmin aborts with 403 if the authenticated user is not an admin.
-// 身份由 JWTAuth 注入：API-Key 旁路与首个好学 VIP 用户为 admin。用于收敛高破坏操作
+// 身份由 JWTAuth 注入：API-Key 旁路与首个本地登录用户为 admin。用于收敛高破坏操作
 // （删除资源 / 备份导入覆盖配置 / agent 密钥管理 / webhook 触发工作流）——
-// 非 admin 的 VIP 用户可读可用，但不能拆系统。
+// 非 admin 用户可读可用，但不能拆系统。
 func RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		v, ok := c.Get("is_admin")

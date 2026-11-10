@@ -135,7 +135,7 @@
     <!-- ============ 账号与登录 ============ -->
     <section class="page on" id="page-account">
       <h2 class="page-title">账号与登录</h2>
-      <p class="page-sub">与 Web 端同一套好学账号体系；登录后全插件共用本机会话。</p>
+      <p class="page-sub">与 Web 端同一套本地账号体系；登录后全插件共用本机会话。</p>
 
       <section class="glass panel">
         <div class="panel-title">服务器</div>
@@ -151,8 +151,6 @@
 
         <div class="segmented" id="loginSeg">
           <button id="tabLocal" class="on" type="button">账号登录</button>
-          <button id="tabAccount" type="button">好学账号（旧）</button>
-          <button id="tabCookie" type="button">Cookie（旧）</button>
         </div>
 
         <div id="paneLocal" style="margin-top:10px">
@@ -161,31 +159,8 @@
           <label for="localPass">密码</label>
           <input id="localPass" type="password" autocomplete="current-password" placeholder="密码" />
           <div class="hint" style="margin-top:6px">
-            首次登录自动创建账号（成为管理员）；凭据仅存本机。
-          </div>
-        </div>
-
-        <div id="paneAccount" style="display:none; margin-top:10px">
-          <label for="accUser">好学用户名</label>
-          <input id="accUser" autocomplete="username" placeholder="好学用户名" />
-          <label for="accPass">好学密码</label>
-          <input id="accPass" type="password" autocomplete="current-password" placeholder="好学密码" />
-          <label for="acc2fa">二级验证码（开了 2FA 才填，6 位）</label>
-          <input id="acc2fa" autocomplete="one-time-code" placeholder="留空表示未开 2FA" />
-          <div id="captchaRow" style="display:none; gap:8px; align-items:center; margin-top:8px">
-            <img id="captchaImg" alt="验证码" title="点击刷新" style="height:34px; border-radius:6px; cursor:pointer" />
-            <input id="captchaText" placeholder="验证码" style="flex:1" />
-          </div>
-          <div class="hint" style="margin-top:6px">
-            服务端代理好学验证（含验证码/挑战响应），凭据仅存本机。挑战响应账号请改用 Cookie 登录。
-          </div>
-        </div>
-
-        <div id="paneCookie" style="display:none; margin-top:10px">
-          <label for="hxptCookie">好学 Cookie</label>
-          <input id="hxptCookie" type="password" placeholder="粘贴好学站点 Cookie（c_secure_uid=…）" />
-          <div class="hint" style="margin-top:6px">
-            浏览器登录好学后 F12 → 网络 → 复制请求 Cookie 整串粘贴（覆盖 2FA/挑战响应账号）。
+            全新实例首次登录自动创建账号（成为管理员）；存量实例升级后由运维执行
+            <code>ptpatronus reset-admin --password &lt;新密码&gt;</code> 给已有账号补密码。凭据仅存本机。
           </div>
         </div>
 

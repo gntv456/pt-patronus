@@ -210,7 +210,7 @@ jobs:
       - name: Install Playwright chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      # HXPT_EMERGENCY_ADMIN：登录链路离线化（仅测试进程注入，生产不受影响）
+      # E2E 走本地账号空库首登，无需任何外部站点凭据
       - name: Run core flow E2E
         working-directory: frontend
         run: npx playwright test

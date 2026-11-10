@@ -89,7 +89,7 @@ type FileStorage struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// ActivationCode — 好学 APP 专属 VIP 激活码。
+// ActivationCode — legacy 激活码（好学 VIP 准入时代产物，端点保留但不再作门禁）。
 type ActivationCode struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
 	Code      string     `gorm:"uniqueIndex;size:128;not null" json:"code"`

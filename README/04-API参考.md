@@ -14,21 +14,25 @@ Base URL: `/api/v1`
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/system/health` | 健康检查 |
-| POST | `/auth/hxpt/captcha` | 好学账号登录 Step A：取登录页验证码/探测模式 → `{imagehash, image, need_captcha, challenge_mode, extra_form}` |
-| POST | `/auth/hxpt/login` | 好学账号登录 Step B：`{username, password, imagehash?, imagestring?, two_step_code?, extra_form?}` → 验 App 专属 VIP → JWT |
-| POST | `/auth/hxpt/cookie-login` | 好学 Cookie 登录（最稳，覆盖 2FA/挑战响应账号）：`{cookie}` → 验 VIP → JWT |
-| GET | `/auth/status` | 登录/VIP 状态 |
-| POST | `/auth/verify-vip` | 用 cookie 验好学 VIP |
-| POST | `/auth/login` | （已停用）本地密码登录 → 410，请用好学账号/Cookie 登录 |
-| POST | `/auth/setup` | （已停用）本地初始化 → 410 |
+| GET | `/system/health/ready`、`/system/info` | readiness 探针 / 版本信息 |
+| POST | `/auth/local/login` | **本地密码登录**：`{username, password}` → `{token, user}`。空库首次登录自动建号（首位登录者即 admin）；已有主人时拒绝第二账号（403 `auth_user_rejected`）；存量账号未设密码返回 409 `auth_password_not_set`（升级实例在 compose 设 `ADMIN_PASSWORD` 重启即自动补密，或跑 `reset-admin --password`） |
+| POST | `/auth/local/password` | （需鉴权）改密 `{old_password, new_password}`：已有密码须校验旧密码；存量无密码账号凭有效 JWT 可首次直接设密（`old_password` 留空，升级引导用） |
+| POST | `/auth/refresh` | JWT 滑动续期 |
+| POST | `/auth/logout` | （需鉴权）bump `TokenVersion`，已签发 JWT 立即失效 |
+| GET | `/auth/status` | 登录状态；已登录时带 `user` 与 `has_local_password`（false = 存量账号需走首次设密引导） |
+| POST | `/auth/demo-login` | 演示登录（仅 `DEMO_MODE=true` 开启，生产默认关） |
+| GET | `/auth/oidc/start`、`/auth/oidc/callback` | OIDC/SSO（管理员在 UI 显式启用） |
+| POST | `/auth/setup`、`/auth/login` | （已停用）→ 410 `OIDCDeprecated`，请用 `/auth/local/login` |
 | POST | `/auth/activate` | （legacy）激活码，不再作准入 gate |
+
+> `/auth/hxpt/{captcha,login,cookie-login}` 与 `/auth/verify-vip` 已于 1.03.27 删除（好学站点关闭）。
 
 ## 鉴权与会话
 
-- 业务端点需 `Authorization: Bearer <jwt>` 且**当前用户为好学 App 专属 VIP**（按用户门禁，宽限期 `VIP_GRACE_DAYS` 内放行；超期 → 403 `vip_expired`）。
-- `POST /auth/logout`（需鉴权）：bump `TokenVersion`，使当前用户所有已签发 JWT 立即失效。
-- `X-API-Key` 旁路跳过 VIP 门禁，作程序化/应急 admin 入口。
-- 登录响应：`{token, user:{id, username, hxpt_uid, hxpt_username, vip_level, is_admin}}`。首个好学 VIP 用户即管理员。
+- 业务端点需 `Authorization: Bearer <jwt>`，或 `X-API-Key: <key>` 作程序化/应急访问。
+- **登录身份即完整授权**：好学 VIP 准入闸门（`RequireVIP`）已摘除；`vip_level` / `vip_verified_at` 仅作历史兼容快照，不再有 VIP 宽限期与 403 `vip_expired`。
+- 登录响应：`{token, user:{id, username, hxpt_uid, hxpt_username, vip_level, is_admin}}`，同时下发 httpOnly `ptp_token` cookie。
+- 密码 bcrypt 存储，规则 ≥8 位且含字母和数字；改密无需管理员权限（单用户实例）。
 
 ## 站点管理（需鉴权）
 

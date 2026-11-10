@@ -325,7 +325,7 @@ function renderMediaItem(cfg, m, box) {
 async function runSearch(keyword) {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
-    $('status').innerHTML = '<span class="warn">未登录：点右上角 ⚙ 登录好学账号</span>'
+    $('status').innerHTML = '<span class="warn">未登录：点右上角 ⚙ 用本地账号登录</span>'
     return
   }
   switchTab('search')

@@ -39,13 +39,14 @@ type Config struct {
 	// JWT
 	JWTExpireMin int
 
-	// 好学 APP 专属 VIP 准入（AUTH_SITE 机制）
-	AuthSiteEnabled bool
-	AuthSiteURL     string // e.g. https://www.hxpt.org
-	AuthSiteCookie  string // bootstrap cookie for VIP verification (movable to DB later)
-	AuthVIPLevel    int    // minimum VIP level required
-	VIPGraceDays    int    // VIP 宽限天数（好学不可达时缓存 VIP 的有效期），默认 3
-	DemoMode        bool   // 显式开启演示登录（默认关闭，仅用于本地评审/公开演示）
+	// 本地账号 compose 引导（仅空库生效；实现见 app.bootstrapLocalAdmin）。
+	// 不设 = 走「空库首登自动建号」；设了 = 启动即建好管理员，堵住首登抢注窗口。
+	// 明文放 ADMIN_PASSWORD 会被 docker inspect 看到，生产建议用 ADMIN_PASSWORD_FILE + secrets。
+	AdminUsername     string
+	AdminPassword     string
+	AdminPasswordFile string
+
+	DemoMode bool // 显式开启演示登录（默认关闭，仅用于本地评审/公开演示）
 	// AllowPrivateSites 放行把「站点」建在内网/环回地址（默认关闭，站点抓取保持 SSRF 守卫）。
 	// 场景：自建站点（如本机 Docker 起的 FluxTorrent）、NAS/局域网 tracker——站长侧是常态需求。
 	// 开启后站点抓取客户端不再拦 127.0.0.1/10.x/192.168.x 等目标。
@@ -139,11 +140,9 @@ func Load() (*Config, error) {
 		DBType:                  strings.ToLower(getenv("DB_TYPE", "sqlite")),
 		DSN:                     getenv("DATABASE_URL", ""),
 		JWTExpireMin:            getenvInt("JWT_EXPIRE_MIN", 1440),
-		AuthSiteEnabled:         getenvBool("AUTH_SITE_ENABLED", false),
-		AuthSiteURL:             getenv("AUTH_SITE_URL", "https://www.hxpt.org"),
-		AuthSiteCookie:          getenv("AUTH_SITE_COOKIE", ""),
-		AuthVIPLevel:            getenvInt("AUTH_VIP_LEVEL", 1),
-		VIPGraceDays:            getenvInt("VIP_GRACE_DAYS", 3),
+		AdminUsername:           getenv("ADMIN_USERNAME", "admin"),
+		AdminPassword:           getenv("ADMIN_PASSWORD", ""),
+		AdminPasswordFile:       getenv("ADMIN_PASSWORD_FILE", ""),
 		DemoMode:                getenvBool("DEMO_MODE", false),
 		AllowPrivateSites:       getenvBool("ALLOW_PRIVATE_SITES", false),
 		BarkServer:              getenv("BARK_SERVER", ""),

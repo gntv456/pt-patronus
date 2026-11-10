@@ -54,6 +54,11 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	// compose 引导初始本地账号：仅空库生效，不设 ADMIN_PASSWORD 时完全跳过。
+	// 放在 db.Open（AutoMigrate 已跑完）之后、任何业务装配之前。
+	if err := bootstrapLocalAdmin(database, cfg); err != nil {
+		return nil, err
+	}
 	crypto := security.NewCrypto(cfg.SecretKey)
 	j := security.NewJWT(cfg.SecretKey, cfg.JWTExpireMin)
 	act := auth.NewActivation(database, cfg.ActivationSecret)

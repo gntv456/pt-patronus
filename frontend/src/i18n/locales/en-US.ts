@@ -4345,8 +4345,12 @@ export default {
     submit: 'Save',
     cancel: 'Cancel',
     ok: 'Password updated',
+    setupTitle: 'Set your local password',
+    setupHint: 'This account has no local password yet. Set one to finish the upgrade; all sites, downloaders and subscriptions are kept, with no terminal commands needed.',
+    setupOk: 'Local password set',
     err: {
       fill: 'Please enter current and new password',
+      fillNew: 'Please enter a new password',
       mismatch: 'New passwords do not match',
       failed: 'Failed to change password',
     },

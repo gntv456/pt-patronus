@@ -322,7 +322,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,
-		Crypto: crypto, TVCache: tvCache, VIPGraceDays: cfg.VIPGraceDays,
+		Crypto: crypto, TVCache: tvCache,
 		Tickets: ticketStore,
 		OIDC:    oidcSvc,
 		SiteOp:  siteOp, SiteCh: siteCh, Reg: registry, SiteHC: hc,

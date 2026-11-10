@@ -95,14 +95,14 @@
 
 1. 打开 `chrome://extensions`，右上角开「开发者模式」
 2. 「加载已解压的扩展程序」→ 选择本 `extension/` 目录
-3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）→「好学账号」tab 输用户名/密码登录，或切「Cookie 登录」粘贴好学 Cookie
+3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）→「账号登录」输本地用户名/密码
 4. 左侧导航进入各工具页：站点数据 / Cookie 台账 / 下载任务 / 收藏与历史 / 两步验证器
 
 ## 鉴权与安全
 
-- 与 Web/移动端同一套好学账号体系；成功后全部请求带 `Authorization: Bearer` 直连你自己的服务器
-- JWT 过期自动滑动续期（`POST /api/v1/auth/refresh`）；仅当续期失效才用本地好学 Cookie/凭据重新兑换
-- 好学 Cookie、JWT、登录用户信息只存 `chrome.storage.local`（仅本机）；服务器地址存 `chrome.storage.sync` 跨设备同步
+- 与 Web/移动端同一套本地账号体系（`POST /auth/local/login`）；成功后全部请求带 `Authorization: Bearer` 直连你自己的服务器
+- JWT 过期自动滑动续期（`POST /api/v1/auth/refresh`）；续期失效才用本机密封保存的本地账号凭据静默重登
+- JWT、登录用户信息只存 `chrome.storage.local`（仅本机），账号密码经 `secrets.js` 密封存储；服务器地址存 `chrome.storage.sync` 跨设备同步
 - 按登录身份（`user.is_admin`）自动降级：非管理员不可「← 覆盖浏览器」（cookie 明文回写）、验证码 OCR、CookieCloud 明文推送
 
 ## 文件

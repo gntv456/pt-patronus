@@ -39,8 +39,10 @@ services:
       # SECRET_KEY: openssl rand -base64 32 的输出        # 自控密钥；否则后端自动生成 + 持久化
       # ACTIVATION_SECRET: openssl rand -base64 32 的输出
       # 在线更新：后端读这份 manifest 检查新版本（Web UI「设置→关于→检查更新」+ 客户端 OTA）。
-      # 官方托管在公开仓 raw，默认即用；想关掉检查就注释掉这行。
-      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/update-manifest.json
+      # 官方清单随发版更新（latestVersion / docker.image 等），默认即用；想关掉检查就注释掉这行。
+      # 注：此前误指 ptpatronus-plugin-market 仓库的 manifest（停滞在 1.03.23），会导致自检失效；
+      # 现改指主仓 raw manifest（与主仓 update-manifest.json 同源、随发版回填）。
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/pt-patronus/main/update-manifest.json
       # Compose 项目扫描：容器内路径，对应下方 /host/compose 挂载
       COMPOSE_SCAN_DIR: /host/compose
       # 宿主机 compose 项目根（页面反推显示宿主路径用）；按实际放 compose 的目录改

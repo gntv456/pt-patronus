@@ -17,7 +17,7 @@ type Claims struct {
 	IsAdmin       bool   `json:"adm"`
 	TokenVersion  uint   `json:"tver,omitempty"` // 与 User.TokenVersion 比对，不符即视为已登出/失效
 	VipLevel      int    `json:"vip,omitempty"`  // VIP 等级快照（Guard 快速判定）
-	VipVerifiedAt int64  `json:"vvat,omitempty"` // 历史 VIP 校验时间 unix 秒（闸门已退役，保留 claims 兼容）
+	VipVerifiedAt int64  `json:"vvat,omitempty"` // 历史快照，闸门已退役
 	FirstIssuedAt int64  `json:"fiat,omitempty"` // 会话首次签发时间（滑动续期不得突破绝对寿命上限）
 	jwt.RegisteredClaims
 }

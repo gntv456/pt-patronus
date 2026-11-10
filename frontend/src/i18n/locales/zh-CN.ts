@@ -4302,16 +4302,11 @@ export default {
   },
 
   pwdDialog: {
-    title: '修改密码',
-    old: '当前密码',
-    new: '新密码',
-    confirm: '确认新密码',
-    submit: '保存',
-    cancel: '取消',
-    ok: '密码已更新',
-    setupTitle: '升级后首次设置本地密码',
-    setupHint: '检测到当前账号还没有本地密码。设置一次即可，原有的站点、下载器、订阅等配置全部保留，无需在终端执行任何命令。',
-    setupOk: '本地密码已设置',
+    title: '修改密码', old: '当前密码',
+    new: '新密码', confirm: '确认新密码',
+    submit: '保存', cancel: '取消', ok: '密码已更新',
+    setupTitle: '升级后首次设置本地密码', setupOk: '本地密码已设置',
+    setupHint: '检测到当前账号还没有本地密码。设置一次即可，原有配置全部保留，无需执行终端命令。',
     err: {
       fill: '请填写当前密码和新密码',
       fillNew: '请填写新密码',

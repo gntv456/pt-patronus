@@ -1,4 +1,4 @@
-// Package auth implements legacy activation codes (HMAC-signed) and session guards.
+// Package auth implements legacy activation codes and session guards.
 // 好学 VIP 准入已随站点关闭退役，激活码端点仅为历史兼容保留，不再作门禁。
 // and the AUTH_SITE-style VIP gate. The HxptVIP scrape itself lands in phase 1
 // (via internal/site adapter); this package provides the scaffolding + code flow.

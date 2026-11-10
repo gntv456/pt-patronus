@@ -108,7 +108,8 @@ export const useAuthStore = defineStore('auth', {
           this.user = s.user
           localStorage.setItem('user', JSON.stringify(s.user))
         }
-        this.needsPasswordSetup = s.authenticated && s.has_local_password === false
+        this.needsPasswordSetup =
+          s.authenticated && s.has_local_password === false
       } catch {
         /* token 失效由 http 拦截清 token 跳登录 */
       }

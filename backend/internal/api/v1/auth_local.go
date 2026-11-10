@@ -141,7 +141,8 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 	if u.PasswordHash == "" {
-		audit(c, "local_password", "initial_setup", slog.String("reason", "legacy_user_without_password"))
+		audit(c, "local_password", "initial_setup",
+			slog.String("reason", "legacy_user_without_password"))
 	}
 	hash, err := security.HashPassword(req.NewPassword)
 	if err != nil {

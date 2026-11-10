@@ -33,7 +33,8 @@ func bootstrapLocalAdmin(database *gorm.DB, cfg *config.Config) error {
 	// 无论有没有配密码都要查一次，用于「存量未迁移」的启动提示。
 	var existing models.User
 	err := database.Where(
-		"hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' AND hxpt_uid != 'demo'").
+		"hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' " +
+			"AND hxpt_uid != 'demo'").
 		Order("id ASC").First(&existing).Error
 	hasOwner := err == nil
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -46,7 +47,7 @@ func bootstrapLocalAdmin(database *gorm.DB, cfg *config.Config) error {
 	}
 	if pwd == "" {
 		if hasOwner && existing.PasswordHash == "" {
-			slog.Warn("存量账号没有本地密码，升级后将无法登录：请在 compose 设 ADMIN_PASSWORD（或 ADMIN_PASSWORD_FILE）后重启，或执行 reset-admin --password",
+			slog.Warn("存量账号没有本地密码：设 ADMIN_PASSWORD 重启或跑 reset-admin --password",
 				"username", existing.Username)
 		}
 		return nil
@@ -72,10 +73,11 @@ func bootstrapLocalAdmin(database *gorm.DB, cfg *config.Config) error {
 		if existing.VipVerifiedAt == nil {
 			updates["vip_verified_at"] = now
 		}
-		if err := database.Model(&models.User{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
+		q := database.Model(&models.User{}).Where("id = ?", existing.ID)
+		if err := q.Updates(updates).Error; err != nil {
 			return fmt.Errorf("bootstrap admin: migrate legacy owner: %w", err)
 		}
-		slog.Info("bootstrap admin: initialized local password for legacy owner (user id unchanged, no data migration needed)",
+		slog.Info("bootstrap admin: legacy owner password initialized",
 			"user_id", existing.ID, "username", existing.Username)
 		return nil
 	}
@@ -97,7 +99,8 @@ func bootstrapLocalAdmin(database *gorm.DB, cfg *config.Config) error {
 		// 并发启动兜底：另一进程已抢先建好账号就不算错误（username 有唯一索引）。
 		var again models.User
 		if database.Where("username = ?", username).First(&again).Error == nil {
-			slog.Warn("bootstrap admin raced with another process; using existing account", "username", username)
+			slog.Warn("bootstrap admin raced; using existing account",
+				"username", username)
 			return nil
 		}
 		return fmt.Errorf("bootstrap admin: create: %w", err)

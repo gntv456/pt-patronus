@@ -9,7 +9,10 @@ import { authApi } from '@/api/auth'
 // setupMode：升级后的存量好学账号没有本地密码，此时隐藏「当前密码」、改走首次设密，
 // 让用户在网页上点一下完成迁移，不用在终端跑 CLI / 改 compose。
 const visible = defineModel<boolean>({ default: false })
-const props = withDefaults(defineProps<{ setupMode?: boolean }>(), { setupMode: false })
+const props = withDefaults(
+  defineProps<{ setupMode?: boolean }>(),
+  { setupMode: false },
+)
 const emit = defineEmits<{ setupDone: [] }>()
 
 const { t } = useI18n()
@@ -43,7 +46,8 @@ async function submit() {
   }
   saving.value = true
   try {
-    await authApi.changePassword(props.setupMode ? '' : oldPwd.value, newPwd.value)
+    const old = props.setupMode ? '' : oldPwd.value
+    await authApi.changePassword(old, newPwd.value)
     ElMessage.success(t(props.setupMode ? 'pwdDialog.setupOk' : 'pwdDialog.ok'))
     visible.value = false
     reset()

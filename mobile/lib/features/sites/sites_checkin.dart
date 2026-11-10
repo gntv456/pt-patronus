@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _SitesPageState 的连通性/签到 mixin：探测、原因弹窗、单站/全部签到。
 // mixin on State 可用 setState；从 sites_page.dart 拆出，行为不变。
 part of 'package:ptpatronus/features/sites/sites_page.dart';

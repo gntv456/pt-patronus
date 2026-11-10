@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：自动化卡把四个数据源都 .catch 成空值，读失败时契约环形图画成全 0
 // （看着像「没有违约」）、工作流/刷流数字变成「-」与「0」——故障被渲染成正常。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 /// 后端日志键值属性（log.go 的 KV）。

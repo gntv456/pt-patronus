@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package workflow
 
 // GraphNode 是工作流图中的一个节点（前端 Vue Flow / Flutter 画布的节点 JSON，GORM 存为 text）。

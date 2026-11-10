@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package web 用 go:embed 把前端构建产物（dist/）打进后端二进制，
 // 使 Docker 镜像成为单文件完整产品（后端 API + Web UI）。
 //

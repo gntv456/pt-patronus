@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package app
 
 // 站点定义启动加载（从 app_setup.go 拆出，行数门禁 400）。

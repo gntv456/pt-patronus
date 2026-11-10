@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：站免页要把「这站没适配站免检测」和「适配了，当前没有促销」画成两样东西。
 // 背景：页面原先对所有 notices 为空的站点都显示 t('freeleech.notEnabled')＝「该站点未开启站免检测」，

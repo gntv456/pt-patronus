@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 自适应表格：宽屏多列表格 / 窄屏卡片（从 adaptive.dart 拆出，part of 主库；行为不变）。
 part of 'package:ptpatronus/widgets/adaptive.dart';
 

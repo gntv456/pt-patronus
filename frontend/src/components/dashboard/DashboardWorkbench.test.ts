@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：工作台拿到 errors（后端某些区块读失败）时必须明示「数据不完整」。
 // 背景：后端 Workbench 里那条每站最新统计的查询原先丢弃错误，读失败会被当成

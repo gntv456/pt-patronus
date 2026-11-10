@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点抓取错误友好化：把后端原始英文错误映射为用户可理解的中文，
 // 避免 "context deadline exceeded" 等技术黑话直接外显给普通用户。
 // 原始文本仍由调用方保留在 title 属性供高级用户悬停查看。

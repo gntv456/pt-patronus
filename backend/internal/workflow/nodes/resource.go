@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package nodes 实现内置工作流节点（16 个）。每个节点是无状态单例，构造期注入所需 chain/oper，
 // 在 app.go 注册到 workflow.Registry。节点间通过 *workflow.Context 传递状态。
 // nodes→chain 是无环的（chain 只 import workflow 引擎，不 import nodes）。

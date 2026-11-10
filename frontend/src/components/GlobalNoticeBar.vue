@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // GlobalNoticeBar — 全局消息提醒横幅（所有页面 topbar 下方）。
 // 聚合 useWs 实时告警（Cookie 失效站点 + H&R 危险种子），红色告警色醒目提示。

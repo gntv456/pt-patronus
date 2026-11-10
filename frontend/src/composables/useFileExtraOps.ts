@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // useFileExtraOps — 文件管理扩展操作（在线编辑/压缩/解压/权限/目录大小/预览）。
 // 从 useFileOps 抽出，独立 composable，避免单文件超 400 行。复用同一 fm 状态对象。
 import { ElMessage, ElMessageBox } from 'element-plus'

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // SiteFavicon — site logo/avatar with multi-source fallback.
 // Tries base/favicon.ico → origin icons → public resolvers → letter block.

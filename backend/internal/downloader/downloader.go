@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package downloader 定义统一下载器抽象（qBittorrent / Transmission / uTorrent / Deluge / Aria2 / ruTorrent / Flood）与数据模型。
 // 接口粒度参考 qBitController 的 Repository 层（已验证的业务方法集）。
 package downloader

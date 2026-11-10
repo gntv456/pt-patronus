@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # scripts/check_file_length.sh — 单文件行数/列宽门禁
 #
 # 对标 README 规范「单文件 ~400 行主动拆分；行宽 ≤80 列」。覆盖后端非测试/非生成

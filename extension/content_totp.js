@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // content script：TOTP 自动填充（对标 MoviePilot-Tools）。
 // 登录页检测到「2FA/动态码输入框」时向后台请求当期码自动填入——
 // Secret 只存在验证器页/后台，绝不注入页面脚本（页面只拿到 6 位数字本身）。

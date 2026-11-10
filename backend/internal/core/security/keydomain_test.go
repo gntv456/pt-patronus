@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package security
 
 // #406 JWT 签名密钥与 AES-at-rest / 直链签名三处共用同一段原始 SECRET_KEY 字节。

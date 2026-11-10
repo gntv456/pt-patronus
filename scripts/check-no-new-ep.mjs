@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/check-no-new-ep.mjs — 新页面禁用 Element Plus（阶段 1 约束）
 // 棘轮：baseline 记录存量 20 个 views；新增 views 若静态引入 element-plus 即失败。
 // 首次运行自动生成 baseline。--report-only 只告警。

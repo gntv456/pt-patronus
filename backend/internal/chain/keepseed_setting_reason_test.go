@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #386 SaveSetting 把「查不到这条设置」与「查不动这张表」压成同一个 row.ID==0。

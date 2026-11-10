@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // capped_list_notice.dart —— 「有单页上限的清单」的统一判定。
 //
 // 移动端已经有好几处这类清单（趋势采样、RSS 条目、整理记录、种子史、运行史…），

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 凭据解锁失败不许一律说「PIN 错误」（node:test）。
 // 跑法：node --test extension/test/cred_unlock_reason.test.mjs
 //

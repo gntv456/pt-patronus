@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package oper 实现数据访问层（Oper 模式）：每个领域一个操作类，封装 GORM 事务
 // 与敏感字段的加解密。借鉴 MoviePilot 的 Oper 模式。
 package oper

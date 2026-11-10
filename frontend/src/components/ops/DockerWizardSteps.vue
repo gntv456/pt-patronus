@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 创建向导步骤 0-4 的表单面板（镜像/基础/端口/卷/环境变量）。
 // 从 DockerCreateWizard.vue 迁出；行操作直接改 props 传入的数组（push/splice 均可）。

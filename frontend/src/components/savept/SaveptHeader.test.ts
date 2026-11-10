@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：PT监护室头部的生命体征必须显式给出「探测不明」数量。
 // 背景：后端 summarize 只数 健康/病危/已关 三项，probeOne 失败的占位卡（status=unknown）

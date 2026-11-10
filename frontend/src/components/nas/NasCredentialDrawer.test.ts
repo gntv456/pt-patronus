@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：用户名「存过但解不开」不能显示成「无用户名」。
 // 同一张卡片上的「密码 / 私钥」标记只看密文是否存在，所以主密钥换过后会出现

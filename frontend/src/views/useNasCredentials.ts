@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 凭据中心（OpsCredential CRUD）—— 从 NasServer.vue 抽出的状态簇。
 // 依赖注入：targets（凭据使用计数）/ reload（保存后刷新整体，即组件 loadAll）。
 import { ref, type Ref } from 'vue'

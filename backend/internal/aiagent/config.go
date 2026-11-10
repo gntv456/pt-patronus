@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package aiagent 实现 ReAct 智能体循环：LLM 流式 + 多轮工具调用 + 推理 + 上下文记忆。
 // 依赖经接口注入（provider 工厂 / 工具注册表 / 消息存储 / 配置 KV / 密钥解密），便于单测。
 // 注：包名 aiagent，避开既有的 internal/agent（NAS 监控 agent）。

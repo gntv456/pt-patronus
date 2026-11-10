@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #366 站点校准诊断（Inspect）把「用户自己能修的错」说成「上游服务不可用，请稍后重试」。

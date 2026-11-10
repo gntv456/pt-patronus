@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的分享站点卡组：站点卡/图标/身份信息。
 // （二次拆分；行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

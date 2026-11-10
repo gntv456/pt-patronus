@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：调度面板要交代「表达式按哪个钟解释」和「下一次什么时候跑」。
 // 背景：robfig/cron 用 time.Local，容器不设 TZ 就是 UTC —— 用户填 0 8 * * * 以为早八点跑，

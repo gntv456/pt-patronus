@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """FFmpeg缩略图 — 为缺少缩略图的视频用 ffmpeg 截取一帧生成 <文件名>-thumb.jpg。"""
 import json
 import os

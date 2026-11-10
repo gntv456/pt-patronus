@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package site
 
 // freefarm n8 改版 fixture 验证：testdata/freefarm_n8_index.html 为登录态

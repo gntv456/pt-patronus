@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // popup 主逻辑：MP 式底部 Tab 布局——概览(数据卡+站点行)/搜索(种子流式+影视)/下载(实时任务)/快捷/签到。
 // 目标：主要操作在弹窗内完成，不再"打开网页才能干活"；网页版仍作为深度操作入口。
 import { getConfig, isConfigured, api, searchTorrentsStream, searchMedia, createSubscription, openWebSearch, baseUrl } from './api.js'

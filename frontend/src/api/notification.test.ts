@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // 契约回归：「测试通知」的请求超时必须不短于后端扇出预算（30s），

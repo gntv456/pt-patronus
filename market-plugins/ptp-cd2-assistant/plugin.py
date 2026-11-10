@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """CloudDrive2助手 — 定时检查 CD2 实例健康 + 仪表盘。依赖 clouddrive 包（安装时自动 pip 装）。
 
 注意：clouddrive 是第三方 gRPC 客户端，以下调用按其公开 API 编写；各操作均 try/except，

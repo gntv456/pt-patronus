@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // content script：凭据自动填充 + 登录捕获（对标密码管理器）。
 // 填充：登录表单检测到「用户名 + 密码」组合时，向后台按 hostname 匹配本地凭据库——
 //   密码只经 background → content 的消息通道直达输入框，页面脚本拿不到整库。

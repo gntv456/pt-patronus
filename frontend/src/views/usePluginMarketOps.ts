@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // usePlugins 的「市场运营层」子模块：百鸟朝凤榜单/百宝袋收藏/分神实例/天序排序/市场源管理。
 // （从 usePlugins.ts 拆出；依赖宿主注入 market 状态与 loadMarket，行为不变。）
 import { ref, computed, onMounted, watch } from 'vue'

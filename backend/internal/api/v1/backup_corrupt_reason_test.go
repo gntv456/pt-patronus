@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #375 加密备份文件损坏时，界面说「请求参数有误」并甩一句英文 `bad salt`/`bad iv`/`bad data`。

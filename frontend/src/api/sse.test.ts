@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 const expire = vi.hoisted(() => vi.fn())

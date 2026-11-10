@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 凭据管理（对标 MoviePilot-Tools 凭据库）：网站账号密码的本地加密保管。
 // 与 TOTP 保险库同一套加密模式：PIN（PBKDF2-SHA256 ×310k → AES-256-GCM）加密后
 // 存 chrome.storage.local；未设 PIN 时明文 JSON（同 ptp_vault 语义）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 后端错误码 → 本地化文案（#355）。
 //
 // 起因：http.ts 的响应拦截器对后端 envelope 是

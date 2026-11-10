@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 聚合市场「少一个源」必须在界面上看得见：后端只在部分源失败时返回残缺清单（全失败才 502），
 // 从前 sources_failed 没人读，用户看到的与「仓库里就这些插件」完全同形。

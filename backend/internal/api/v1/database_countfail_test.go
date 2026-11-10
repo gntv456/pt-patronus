@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #397 运维数据库页「表行数读不出来 ⇒ 被说成 0 行」。

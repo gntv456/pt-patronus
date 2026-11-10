@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：仪表盘健康条必须把「统计读取失败」和「站点无采集数据」分成两种提示。
 // 背景：后端 Overview 里那条 MAX(id) 查询的错误被整条吞掉 → statMap 空 → 每个站都判

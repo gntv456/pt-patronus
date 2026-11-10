@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command fix_selectors 修复 definitions/*.yaml 里 cascidia v1.3.3 不支持的选择器伪类。
 // 仅做语义等价的安全改写（幂等，可重跑）：
 //   - tr:gt(0) → tr：cascadia 无 :gt；ParseSearch 已跳过表头行（title+download 空），等价。

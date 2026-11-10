@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref, computed, watch, type Ref } from 'vue'
 import { downloaderApi, type Downloader, type DownloaderResult } from '@/api/downloader'
 import type { DialogKind } from '@/components/downloader/TorrentTable.vue'

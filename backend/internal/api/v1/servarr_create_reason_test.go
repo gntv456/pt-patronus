@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #340 Servarr 兼容层的「添加电影/剧集」失败出口把原因压成三个字「创建失败」。

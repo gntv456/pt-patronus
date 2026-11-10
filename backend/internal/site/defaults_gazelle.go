@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package site
 
 // ensureGazelleDefaults 填 Gazelle 专属默认（镜像 ensureUnit3DDefaults，仅填空段，幂等）。

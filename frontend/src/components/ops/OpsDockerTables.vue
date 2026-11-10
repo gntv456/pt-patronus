@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // OpsDocker 的镜像/卷/网络三张表（从 OpsDocker.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'

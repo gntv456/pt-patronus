@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // zh-CN 基线：现有中文文案的唯一权威来源（首批：导航 / 登录 / 通用操作）。
 // key 命名 `页.区块.元素`；新增文案一律先进这里再在组件里 t()。
 export default {

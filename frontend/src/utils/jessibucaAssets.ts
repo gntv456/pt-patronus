@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // jessibuca 播放器资源的版本与字节数（前端侧副本）。
 //
 // 实际文件由**后端**按需下载到 DataDir/jessibuca 后直出（见 backend/internal/web/assets.go）——

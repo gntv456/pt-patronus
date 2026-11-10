@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 发版后同步 OTA update-manifest.json：latestVersion + docker image tag + 本地产物 sha256。
 // android/windows/agent 的 sha256 从 SHA256SUMS.txt 自动读；ios/macos 需把 Mac 上
 // 构建的产物拷进 dist 目录（iOS 未签名 ipa / macOS zip）才会回填。

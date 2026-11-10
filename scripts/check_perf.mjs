@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/check_perf.mjs — 性能棘轮门禁
 //
 // 语义对标 scripts/check_file_length.sh：

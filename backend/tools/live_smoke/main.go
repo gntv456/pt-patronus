@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command live_smoke 用真实 cookie 对站点跑端到端 Search + UserInfo，验证适配器+选择器对真实页面的解析。
 //
 // 两种模式：

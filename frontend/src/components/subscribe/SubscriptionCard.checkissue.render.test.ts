@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #262 的渲染层收口：后端把「本轮哪几个站读不出来」落进 last_check_error 之后，
 // 订阅卡片要真的把它显示出来——字段进了接口类型不等于上了屏幕。

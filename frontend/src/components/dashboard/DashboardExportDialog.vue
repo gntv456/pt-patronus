@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 仪表盘导出图片配置弹窗：主题 / 背景图(压缩后存 localStorage) / 总览字段开关 / 冠军7类选择
 // / 每站明细开关+站点白名单+数量 / 脱敏。配置持久化，点「导出图片」按当前配置绘制下载。

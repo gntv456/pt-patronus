@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package errcode
 
 // #348 四个兜底错误码的文案是「请求参数有误」「必填字段缺失」这类真空话。

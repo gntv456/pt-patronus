@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _SitesPageState 的行渲染扩展：列表主体/连通性胶囊。
 // （从 sites_widgets.dart 拆出；行为不变。）
 part of 'package:ptpatronus/features/sites/sites_page.dart';

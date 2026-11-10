@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // dashboard_extras.dart —— 移动端仪表盘「并发区」的失败口径（纯函数，便于用例）。
 import '../../core/api_client.dart';
 //

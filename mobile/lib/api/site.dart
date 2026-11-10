@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 /// 一键签到的账面：逐站结果 + 「站点清单读不出来」的原因（空串=清单读到了）。

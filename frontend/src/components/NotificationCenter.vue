@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // NotificationCenter — 全局通知中心铃铛（topbar 内）。
 // 通知数据由 useNotices 共享单例管理（与 Notices 全页面 / AppSidebar 同源）；下拉列表分组折叠。

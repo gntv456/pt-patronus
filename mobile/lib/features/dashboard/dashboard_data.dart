@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的数据加载/同步 mixin：配置、统计、连通性、全量/单站同步。
 // （含 setState 段；从 dashboard_page.dart 拆出，行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

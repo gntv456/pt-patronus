@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 /**
  * Site favicon URL candidates.
  * Prefer site-local icons; fall back to public resolvers when /favicon.ico is missing

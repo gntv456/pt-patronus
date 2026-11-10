@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 各下载器类型的能力位 + 文件优先级取值，集中管理。
 // 新增下载器类型时在此加一条；UI 按 caps(type).xxx 门控，避免散落的 type === 'qb' 判断。
 export type PrioOption = { label: string; value: number }

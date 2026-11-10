@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 运维配置中心（OpsConfig CRUD + 历史）—— 从 NasServer.vue 抽出的状态簇。
 // opsConfigs 由本 composable 持有并 return；调用方（loadAll / 部署簇 / computed）用解构回的 ref。
 import { ref } from 'vue'

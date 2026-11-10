@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package site
 
 // EnsureDefaults 按 schema 填充站点定义的空段（不改原 def，返回副本）。

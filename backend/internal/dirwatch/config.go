@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package dirwatch 实时监视本地目录，发现媒体文件即喂给整理流水线（补 DoneHook + cron
 // 覆盖不到的手动投放 / 非托管来源）。fsnotify 事件驱动 + debounce；compatibility 模式轮询兜底。
 package dirwatch

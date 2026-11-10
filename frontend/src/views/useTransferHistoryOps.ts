@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Transfer 页「整理历史/待入库」列表的动作簇：加载、视图切换、逐条整理/重做/删除、
 // 批量删除与清失败、手动 sweep。从 useTransfer.ts 迁出。
 import { ref, type Ref } from 'vue'

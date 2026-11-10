@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // en-US：与 zh-CN 同 key 的英文骨架（首批覆盖导航 / 登录 / 通用操作）。
 // 长尾文案迁移时按模块补齐；缺失 key 自动回落 zh-CN（fallbackLocale）。
 export default {

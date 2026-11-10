@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 摄像头接入指引文案（独立模块，不塞进两张主翻译表）。
 //
 // 为什么要独立：zh-CN.ts / en-US.ts 都在 scripts/check_file_length.sh 的行数棘轮上

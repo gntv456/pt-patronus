@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Transfer.vue 的整理配置对话框：模式/目录/云上传/路径映射/重命名模板（从 Transfer.vue 拆出）。
 // cfg/catsStr/skipStr 经 defineModel 双向绑定，动作经 emit 上抛。

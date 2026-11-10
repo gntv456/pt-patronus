@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #374 保存字幕源配置失败只说「服务内部错误」，用户既不知道原因、

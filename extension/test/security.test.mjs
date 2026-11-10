@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 扩展安全基线测试（node:test，纯逻辑无 DOM 依赖）。
 // 跑法：node --test extension/test/security.test.mjs
 // 覆盖三件事：

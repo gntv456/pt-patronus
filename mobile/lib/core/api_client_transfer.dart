@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // ApiClient 的字节流/上传下载/流式扩展（从 api_client.dart 拆出，part of 主库；行为不变）。
 part of 'package:ptpatronus/core/api_client.dart';
 

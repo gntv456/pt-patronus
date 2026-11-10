@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package site 实现站点适配框架：Schema（按平台）+ Definition（按站点，YAML 配置驱动）
 // 两层抽象，借鉴 PT-depiler 的架构。Selector 引擎用 goquery，新增站点零代码。
 package site

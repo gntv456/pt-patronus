@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref } from 'vue'
 import { searchApi, type SiteSearchResult } from '@/api/search'
 import type { MediaInfo } from '@/api/recommend'

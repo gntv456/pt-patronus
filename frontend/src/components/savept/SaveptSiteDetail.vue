@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // PT监护室站点详情弹窗：点击卡片右下角「详情」按钮打开。
 // 七个区块：站点LOGO/站点网址/开站时间/站点特色/站点人数/站点种子数/站点介绍。

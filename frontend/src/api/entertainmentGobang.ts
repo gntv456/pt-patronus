@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 蜂巢五子棋类型定义（自 entertainmentTypes.ts 拆出，行数门禁）。
 
 export interface GobangMove {

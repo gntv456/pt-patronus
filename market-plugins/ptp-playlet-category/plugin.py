@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 import shutil
 # -*- coding: utf-8 -*-
 import json, os, re, time, threading, shutil, socket, ipaddress, hashlib, base64, subprocess, urllib.request, urllib.error, urllib.parse, hmac, struct

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #396 注册检测的三个写出口只说「服务内部错误，请稍后重试」，而它们的语义各不相同。

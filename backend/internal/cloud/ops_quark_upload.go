@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package cloud
 
 // 夸克网盘分片上传：预上传(pre) → 逐分片 OSS PUT → uploadAuth 鉴权回调 → complete。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 /**
  * SiteTorrentFindDialog 的推送下载器状态与逻辑（从组件抽出，纯逻辑无 UI）。
  * 行为不变：打开→加载下载器→选默认→推送→显示成功态→可跳下载器任务。

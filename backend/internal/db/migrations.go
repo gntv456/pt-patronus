@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 版本化 schema 迁移 runner（数据审计/运维审计项：此前 AutoMigrate 单点 + 一次性
 // 迁移散落）。
 //

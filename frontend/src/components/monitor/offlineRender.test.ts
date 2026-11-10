@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：采集失败时后端会落一条 {"online":false} 的空指标快照（既定设计），
 // 前端不能把它渲染成健康读数——

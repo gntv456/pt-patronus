@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 备份覆盖范围：搬得走的东西不许漏（node:test）。
 // 跑法：node --test extension/test/backup_scope.test.mjs
 //

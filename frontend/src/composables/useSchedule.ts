@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 调度频率（聚合站点快照 cron，平衡站点隐蔽性与数据时效）。
 // 从 Settings.vue 抽出：管理快照与保活 cron 预设与保存。
 import { ref } from 'vue'

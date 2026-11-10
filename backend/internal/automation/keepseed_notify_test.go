@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package automation
 
 // #352 自动辅种主流程失败只写日志、不出声——而同文件「读设置失败」那处已经发了通知。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package schemas
 
 // piggo（猪猪，piggo.me）SRP-6a 登录客户端。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package fl 是 Flood (rTorrent WebUI) 客户端，实现 downloader.Downloader 接口。
 // 兼容 jesec/flood 与 Flood-UI legacy 两套路由：探测 /auth/verify → legacy，否则 jesec。
 // 鉴权：POST authenticate {username,password}；后续 cookie 会话（cookiejar）。

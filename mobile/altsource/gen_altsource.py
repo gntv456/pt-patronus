@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """生成/更新 AltSource.json（iOS AltStore / SideStore 侧载源）。
 
 私密分发：ipa 放网盘，不走 GitHub Release API（pt_mate 的 update_source.py 走 GitHub，

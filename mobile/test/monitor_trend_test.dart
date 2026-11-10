@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 设备趋势图的两个纯函数：取数窗口文案 + 按断口分段。
 // 断口不补 0（否则掉线时段画成「CPU 跌到 0%」的假谷），截断必须说出口（否则「最近 60 次」被读成全量历史）。
 import 'package:flutter_test/flutter_test.dart';

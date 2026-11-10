@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 工作流：可视化节点图引擎（参考 MoviePilot 工作流 + 图片收割机步骤编排）。

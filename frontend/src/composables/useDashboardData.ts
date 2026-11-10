@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 仪表盘核心数据：overview / 趋势 / 站点列表与派生指标。
 // 从 Dashboard.vue 抽出，供仪表盘及其子组件共享。
 import { ref, computed } from 'vue'

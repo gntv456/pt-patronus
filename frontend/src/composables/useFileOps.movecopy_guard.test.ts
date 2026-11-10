@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // 这一条补的是 #244 的接线证明：`targetReadFailedNotice` 自己绿不代表 doMoveCopy 真的在用它。

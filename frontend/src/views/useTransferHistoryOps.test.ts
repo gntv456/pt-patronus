@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 整理历史的取数账面：接口默认 200、封顶 500，被截断时界面必须说出来，
 // 否则更早的整理记录（含失败那些）在界面上等于不存在。

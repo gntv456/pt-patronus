@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Stylelint 配置（W2：锁住 token 化存量，防止硬编码色值回流）。
 // 策略分层：
 //   - error：品牌主色 hex（#6c5ce7/#4285f4）已 codemod 清零，出现在 color/background/

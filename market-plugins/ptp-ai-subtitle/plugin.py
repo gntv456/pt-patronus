@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """AI字幕生成 — faster-whisper 转录视频生成 .srt，可选 OpenAI 兼容接口翻译。
 
 外部 HTTP 运行时（runtime=external-http）：启动 ThreadingHTTPServer，

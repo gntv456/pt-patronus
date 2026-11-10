@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 // 类型定义抽出至 entertainmentTypes.ts；此处 re-export 保持现有 import 路径（@/api/entertainment）不变。
 export type {

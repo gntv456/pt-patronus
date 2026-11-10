@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）。
 // 从 Settings.vue 抽出：管理 OIDC Provider 的回显、表单与保存。
 import { ref } from 'vue'

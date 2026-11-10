@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #246 的链路收口：后端把「云盘账号已被删除」这类原因写成 404 信封里的中文
 // （errcode Respond ⇒ {code, message, error}，message=给人看的那句）。

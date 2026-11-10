@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // TaskIndicator — 顶栏长任务指示器（W4 任务中心）。
 // 消费 useWs 的 task-progress（后端逐站/逐任务推送）：有进行中任务时显示迷你进度条

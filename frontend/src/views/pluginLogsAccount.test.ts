@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 插件日志窗口：单一文案来源 + 审计面板的接线。
 // 两处消费（抽屉与审计面板）共用 pluginLogsNotice，避免同一条话抄两遍后各自漂移。

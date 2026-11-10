@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 云盘文件管理器 / 云任务队列 / 115 开放授权 / 直链 / 记录 端点。

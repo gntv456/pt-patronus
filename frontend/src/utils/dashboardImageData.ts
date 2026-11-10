@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import type { DashboardExportConfig, RankMetric } from './dashboardExportConfig'
 import type { DashboardShareData, DashboardShareSite, NumField, RankDef, Champion } from './dashboardImageTypes'
 import { fmtBytes, sum, earliestSite } from './dashboardImageHelpers'

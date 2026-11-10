@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // PTPatronus 助手 —— 配置与 API 封装（popup/options/background 共用）。
 // 鉴权：本地账号登录（POST /auth/local/login）换 JWT，之后所有请求带
 // Authorization: Bearer；令牌过期（401）时优先 POST /auth/refresh 滑动续期，

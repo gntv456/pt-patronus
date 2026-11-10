@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // useWorkflowEditor 的保存/运行/输入构建（从主文件拆出；行为不变）。
 import { ElMessage } from 'element-plus'
 import type { GraphNode, GraphEdge, ParamField } from '@/api/workflow'

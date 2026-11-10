@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 订阅卡片信息区：标题/三态开关簇/分辨率/促销/站点过滤/操作按钮。
 // 从 Subscriptions.vue 迁出；s 为宿主列表项引用，行内编辑直接改 s 并调 API（乐观更新）。

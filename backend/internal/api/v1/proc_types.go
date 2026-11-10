@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // procRow 对应 ps 输出的一行进程（对齐 1Panel 进程列表）。

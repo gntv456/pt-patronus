@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command ptpatronus is the PT management backend entry point.
 package main
 
@@ -14,8 +17,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/app"
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	applog "github.com/hxpt/ptpatronus/internal/core/log"
-	"github.com/hxpt/ptpatronus/internal/version"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/version"
 )
 
 func main() {

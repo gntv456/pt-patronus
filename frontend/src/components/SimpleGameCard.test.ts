@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：通用游戏卡的 stats/prizes/history 三个请求原先一律 `.catch(() => [])`／
 // `.catch(() => null)` 吞掉，站点抓取失败时卡片显示「0 次、暂无记录」，

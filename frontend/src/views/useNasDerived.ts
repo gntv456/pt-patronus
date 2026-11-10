@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 的派生计算簇（从 NasServer.vue 拆出；行为不变）。
 import { computed, type Ref } from 'vue'
 import { isSSHHost } from './nasServerHelpers'

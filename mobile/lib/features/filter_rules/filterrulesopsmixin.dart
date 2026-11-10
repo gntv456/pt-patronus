@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // FilterRulesPage 的 FilterRulesOpsMixin mixin（含 setState 段；从 filter_rules_page.dart 拆出，行为不变）。
 part of 'package:ptpatronus/features/filter_rules/filter_rules_page.dart';
 

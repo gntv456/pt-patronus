@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 扩展链路 E2E（核心三链路之外的第二批）：订阅读删、i18n 切换持久化、登录失败/登出。
 // 全链路离线（与 core-flow 同口径）：登录走本地密码（/auth/local/login）；订阅数据经应用 API 造数。
 //

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 import { formatTorrentSize, type EnrichedMeta, type TorrentTag } from '@/utils/torrentMeta'
 import { useI18n } from 'vue-i18n'

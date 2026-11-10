@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package llm 实现 LLM provider 抽象：统一 OpenAI 兼容与 Anthropic Claude 的
 // 流式 chat + tool-calling + 推理(reasoning_content / thinking)为一致的事件流。
 // 仅依赖标准库（net/http 直读 SSE），不引入外部 SDK。

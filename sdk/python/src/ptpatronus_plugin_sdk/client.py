@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """PTPHostClient — synchronous Host API client for external-http plugins (pure stdlib).
 
 Mirrors `@ptpatronus/plugin-sdk`'s PTPHostClient. All calls are synchronous (urllib); raise

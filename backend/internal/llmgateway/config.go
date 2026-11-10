@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package llmgateway 把现有 AI Agent 以 OpenAI / Anthropic 兼容协议对外暴露，
 // 供 Cursor / Claude Desktop / continue.dev 等外部客户端直接驱动 PTPatronus 的工具。
 // 本包只做协议转换（agent 事件流 → SSE chunk）+ 配置存取，不引外部 SDK。

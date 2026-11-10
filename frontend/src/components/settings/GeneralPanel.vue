@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 通用分区内容：主题切换、版本/更新检查、帮助/反馈/更新日志入口与弹窗。
 // 状态与逻辑来自 useGeneralSettings 组合式函数（与 Settings.vue 共享单例）。

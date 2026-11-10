@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 /**
  * 搜索页「确认下载」弹窗：信息预览 + 下载器/分类选择 + 高级选项 + 推送成功态。

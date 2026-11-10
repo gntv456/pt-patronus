@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #347 被控端与 RSS 订阅的「按 id 取」失败出口各自手抄（#345 的同族，同一处病）。

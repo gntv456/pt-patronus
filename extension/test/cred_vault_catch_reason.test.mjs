@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 凭据库「取信封失败」不许被降级成「压根没库」（node:test）。
 // 跑法：node --test extension/test/cred_vault_catch_reason.test.mjs
 //

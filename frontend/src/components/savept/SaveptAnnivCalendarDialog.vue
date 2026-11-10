@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // PT监护室站庆日历弹窗：按月历展示各站点的站庆日（琥珀色块），hover 气泡 / 点击在日历下方
 // 查看当日站庆的站点列表。日期来源：开站日期（data-opentime，每年同月日）优先；

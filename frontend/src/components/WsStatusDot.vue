@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // WsStatusDot — 顶栏实时连接状态小点。
 // useWs 的模块级单例状态在这里落地成可见反馈：连上=绿点（无打扰），断开=琥珀点 +

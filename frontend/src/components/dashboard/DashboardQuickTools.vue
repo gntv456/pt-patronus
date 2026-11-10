@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 快捷工具（对标 MSaber 快捷工具面板）：TOTP 两步验证码、AES-128/256 密钥、
 // 网络连通性测试（多目标 ping）、种子名称识别（转 /transfer 识别测试已有入口）。

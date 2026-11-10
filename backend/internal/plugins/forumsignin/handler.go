@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package forumsignin 实现论坛/PT 站论坛区的每日签到自动化（移植自 MoviePilot madrays/imaliang 论坛签到插件）。
 //
 // 架构对标 internal/plugins/groupchat：站点 handler 注册表 + 复用 httpclient。

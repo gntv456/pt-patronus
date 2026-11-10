@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // OpsDockerContainers 的列表视图（宽屏表格；从其拆出；行为不变）。
 import { useI18n } from 'vue-i18n'

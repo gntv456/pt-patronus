@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #406 直链签名密钥此前直接吃 []byte(cfg.SecretKey)，与 AES-at-rest / JWT

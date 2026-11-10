@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 字节 / 速率格式化（下载器表格、速率面板共用）。
 
 export function fmtBytes(n: number): string {

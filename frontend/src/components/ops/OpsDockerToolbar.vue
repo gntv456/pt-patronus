@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Docker 运维页顶部工具栏：本机/SSH 模式切换、远程主机选择、刷新、socket 提示。
 // 从 OpsDocker.vue 迁出。

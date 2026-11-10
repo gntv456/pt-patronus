@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package app
 
 // #351 插件 Host API 的 host-only 工具同样把失败原因原样透传给插件作者。

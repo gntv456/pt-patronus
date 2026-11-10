@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 插件安装计划/依赖/宿主能力辅助（从 pluginsHelpers.ts 拆出；行为不变）。
 import { permissionRisk } from './pluginsHelpers'
 import type { PluginInfo, PluginMarketIndex, PluginInstallPlanStep, PluginInstallPermissionAccept } from '@/api/plugin'

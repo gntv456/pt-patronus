@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/collect-perf.mjs — 零新增依赖的性能采集器
 //
 // 静态指标（首屏 JS gzip）直接扫 frontend/dist/assets，浏览器不可用时仍可出数。

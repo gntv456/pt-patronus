@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 从 workflow_list_page.dart 拆出（part of 主库；行为不变）。
 part of 'package:ptpatronus/features/workflow/workflow_list_page.dart';
 

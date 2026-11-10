@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 /**
  * 站点运营矩阵的「访问不活跃站点」逻辑（从 SiteOperationsMatrix.vue 抽出）。
  * 依次在弹窗里打开超过 30 天未访问的启用站点，间隔 8 秒，支持取消。

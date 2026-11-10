@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Plugins 宿主能力标签/描述（纯 Record 映射,无依赖,从 pluginsHelpers 拆出以控制单文件行数）。
 export function hostCapabilityLabel(capability: string) {
   const labels: Record<string, string> = {

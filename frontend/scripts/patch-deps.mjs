@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 对第三方依赖打持久化补丁（npm install 后自动应用；幂等）。
 //
 // 背景：element-plus 2.14.x 的 useKeyRender.initWatchDom 在 onMounted 无防御地调

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package doctor 提供离线健康诊断（对标 MoviePilot doctor）：一组检查项 → Finding → Report。
 // 检查项为 func 注入（per-check recover 隔离 panic），依赖经 app.go 装配，doctor 包保持叶子（仅 import config/sysinfo/gorm）。
 package doctor

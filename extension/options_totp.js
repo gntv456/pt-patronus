@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 两步验证器页（从 options.js 拆出，行为不变）：解锁/条目管理/当期码轮询。
 // PIN 语义与凭据库一致：PBKDF2×310k + AES-GCM（totp.js）；解锁后明文条目缓存
 // storage.session 供 content 自动填充，10 分钟无操作由 background 自动锁定（广播回锁定 UI）。

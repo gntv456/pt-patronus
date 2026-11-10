@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // sshServiceStatus SSH 服务运行状态（对齐 1Panel SSH 服务配置页）。

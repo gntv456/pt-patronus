@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // usePerfMode — 性能模式（阶段 1）：默认关闭全站 backdrop-filter。
 //
 // 187 处 blur+saturate 是 GPU 合成性能杀手（见 glass.css 注释）。

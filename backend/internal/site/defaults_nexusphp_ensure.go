@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package site
 
 // ensureNexusPHPDefaults 填 NexusPHP 专属默认：选择器（selectors/user_info/no_login/detail）

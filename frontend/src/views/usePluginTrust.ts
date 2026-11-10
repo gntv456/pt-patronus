@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Plugins 签名信任配置（官方公钥只读 + 用户受信公钥 + 是否允许未签名）—— 从 Plugins.vue 抽出的状态簇。
 // 自包含:无外部依赖注入（仅 pluginApi + ElMessage）。
 import { ref } from 'vue'

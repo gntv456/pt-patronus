@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package medalwall 实现「勋章墙」抓取：各平台勋章商店 + 已拥有勋章聚合，支持购买/佩戴/摘下。
 // per-platform 适配器 + Registry 分发（NexusPHP HTML 双布局 / MTeam 占位 / TNode / Unit3D JSON）。
 // 独立子包（仿 site/assessment），避免膨胀 schemas；由 chain.MedalChain 调用。

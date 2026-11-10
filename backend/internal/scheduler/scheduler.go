@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package scheduler 封装 robfig/cron，注册定时任务并内置 panic 恢复。
 package scheduler
 

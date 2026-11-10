@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // OCR 失败原因必须一路走到页面上（上一轮我在后台补了 message，这一条钉它的读者）。
 // 跑法：node --test extension/test/ocr_fail_note.test.mjs
 import { test } from 'node:test'

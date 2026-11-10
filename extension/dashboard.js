@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点数据聚合（对标竞品「站点个人数据仪表」）：拉 /api/v1/dashboard 总览，
 // 汇总上传/下载/分享率/做种/魔力 + 每站明细（等级/上传/下载/做种体积/魔力时产）。
 // POST /dashboard/sync 可即时抓取全部站点（站均 1-3s，全量较慢——面板手动触发）。

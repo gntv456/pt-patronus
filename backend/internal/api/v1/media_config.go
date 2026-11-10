@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 媒体源配置端点（GET/PUT：secret 脱敏回显、空串=不修改）。从 media.go 迁出。

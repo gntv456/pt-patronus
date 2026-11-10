@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // RSS 检查/条目账面：失败与「只查了窗口」都不能被渲染成「一切正常」。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/api/rss.dart';

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 通知通道面板：19 种通知渠道的配置卡片 + 测试 + 微信扫码登录弹窗。
 // 状态与逻辑全部来自 useNotification 组合式函数（与 Settings.vue 共享单例语义）。

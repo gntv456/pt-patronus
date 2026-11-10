@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #186 的 Web 侧：/agent/stats 是 admin-only，非管理员拿到的 403 必须说成「仅管理员可见」，
 // 不能画成「加载失败」让人反复刷新。这里在渲染层证明两条出口分得开。

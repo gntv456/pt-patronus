@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 整理记录的取数窗口文案：单页封顶 500、默认 200，被截断必须说出来。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/features/transfer/transfer_account.dart';

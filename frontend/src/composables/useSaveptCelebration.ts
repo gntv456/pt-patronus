@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // PT监护室站庆彩带：canvas-confetti 动态加载 + 生命周期管理。
 // 从 Savept.vue 抽出；依赖分组后的站点列表判断哪些卡片今日站庆。
 import { computed, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue'

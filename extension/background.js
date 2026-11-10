@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // background service worker（module 型——manifest 声明 "type": "module"）：
 // 右键菜单「搜索选中词」、omnibox、TOTP 自动填充、种子推送下载 + 下载历史、跨站收藏、
 // Cookie 自动同步（autosync.js：启动+定时双向同步，服务器接管保活）、

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref, computed, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { monitorApi, parseMetrics, type MonitorTarget, type Metrics, type MetricSnapshot } from '@/api/monitor'

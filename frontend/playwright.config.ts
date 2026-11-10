@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Playwright E2E 配置：三条 webServer（后端 Go / mock qBittorrent / 前端 Vite）。
 // 环境约定：
 //   - 登录走本地密码（/auth/local/login，好学站点关闭后的主路径，#<issue>）：

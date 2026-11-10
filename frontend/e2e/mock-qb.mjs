@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // E2E mock：最小 qBittorrent WebUI API（内存态）。
 // 用途：Playwright 核心链路测试在无真实下载器的环境下验证
 // 「创建下载器 → 测连接 → 下发种子 → 任务出现」全链路。

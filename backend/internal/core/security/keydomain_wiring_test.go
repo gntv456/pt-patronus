@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package security
 
 // #406 接线护栏（形状层）：三个密钥域必须各挂各的 HKDF info。

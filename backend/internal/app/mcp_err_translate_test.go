@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package app
 
 // #350 MCP/AI 工具的失败原因原样透传给 LLM，没有任何翻译（此前无任何扫描覆盖这条出口）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // content script：PT 站种子页增强（对标 PT-depiler / PT-Plugin-Plus）。
 // 1) 详情页：右下「⬇ 推送到 PTPatronus」浮钮（download.php?id= / unit3d / magnet 识别）
 // 2) 列表页（NexusPHP torrents.php 等）：右下角悬浮球（N 个种子 ⬇）——点击上弹

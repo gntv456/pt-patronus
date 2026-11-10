@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../../api/backup.dart';
 
 /// 明细最多显示几条（计数不受限，和后端 maxImportFailures=10 同量级，别刷屏）。

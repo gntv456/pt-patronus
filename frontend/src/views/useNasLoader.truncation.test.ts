@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 接线回归：告警被单页上限截断时，加载器要把 truncated/total 暴露成状态，
 // 供 NasServer 头部按钮说出来——否则按钮上的数字就是「全部未读」。

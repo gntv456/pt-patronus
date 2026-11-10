@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package savept 实现「PT监护室」：聚合第三方 PT 站点健康监控站 savept.icu 的公开数据，
 // 展示各 PT 站的存续状态（健康/病危/已关站）、建站年份、站庆、抢救时长，并与用户本地已配置的
 // 站点做匹配（已绑定/可添加/未收录）。独立于站点登录，纯公开页抓取 + 正则解析。

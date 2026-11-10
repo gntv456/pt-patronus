@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 /**
  * 搜索页「确认下载」弹窗状态与逻辑（从 Search.vue 抽出，纯逻辑无 UI）。
  * 行为不变：打开→加载下载器→选默认→推送→显示成功态→可跳下载器任务。

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 站点矩阵表格的数据统计列组（用户/上传下载/分享率/做种/魔力/最近等，compact|standard|wide 三形态）。
 // 从 SiteMatrixTable.vue 迁出；纯展示列，格式化函数与布局经 props 注入。

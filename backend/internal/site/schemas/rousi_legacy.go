@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package schemas
 
 // 旧版 Rousi Pro（Bearer passkey + /api/v1/search|profile）适配与共享解析工具。

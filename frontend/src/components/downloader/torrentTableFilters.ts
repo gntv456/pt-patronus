@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 种子表格的筛选/排序/分页状态与纯函数（stateGroup/stateLabel/magnetOf）。
 // 从 TorrentTable.vue 迁出；op/emit 回调经参数注入。
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'

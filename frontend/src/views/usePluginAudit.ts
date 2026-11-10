@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 插件「审计面板」（日志 + 版本发布历史 + 回滚）子状态簇。
 // 从 usePlugins.ts 迁出；openAudit/rollback 自包含,回滚成功后经 deps.reload 刷新宿主插件列表。
 import { ref } from 'vue'

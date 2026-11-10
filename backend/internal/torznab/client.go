@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package torznab 提供 Jackett/Prowlarr Torznab 搜索客户端（辅种候选源）。
 // 协议：GET {base}/api?t=search&q=...&apikey=... 返回 XML <item> 列表。
 package torznab

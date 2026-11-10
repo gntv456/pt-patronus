@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #273：百鸟朝凤（榜单）与百宝袋（收藏）读不出来时，不能回一份「读到了但是空的」形状。
 // 后端这两个口本来就会回 502（MarketCharts/MarketFavorites 上抛错误），是 Web 的 catch

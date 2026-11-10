@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // CookieCloud 同步（浏览器扩展推送最新 cookie → 覆盖本地失效站 + 自动新增匹配站）。
 // 从 Settings.vue 抽出：管理同步开关、服务器凭证、同步/推送操作。
 // mode：external=外部服务器（自建/公共 CookieCloud）；builtin=内置服务端（PTPatronus 自身

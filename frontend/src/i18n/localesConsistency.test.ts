@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // zh-CN / en-US 翻译表 key 集合一致性：
 //   - 两表逐层展开成点分 key 全集，双向 diff 必须为空
 //   - zh 缺失 → 英文用户回落中文（静默漏译）；en 缺失 → 中文用户切英文缺文案

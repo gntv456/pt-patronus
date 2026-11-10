@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #372 Downloader 的 Get 是全仓最后一处「按 id 查不到就说不存在」的手写出口。

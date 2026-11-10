@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #398 站点凭据解不开（「配过、但现在读不出来」）被混进站点抓取的通用失败。

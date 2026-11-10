@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command pttime_dump 抓 PTTime 真实页面并对照 PT-depiler 选择器命中情况，
 // 用于精确诊断「PTTime 数据显示不正确」的根因。
 //

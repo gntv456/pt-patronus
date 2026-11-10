@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // #382 筛选 composable 收按值数组 ⇒ computed 建不起依赖 ⇒ 数据到了也不重算。
 //
 // 复现自 Playwright core-flow E2E 的真实失败（core-flow.spec.ts:46）：

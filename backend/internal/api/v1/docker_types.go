@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // dockerListContainer 单个容器的精简视图（docker ps --format '{{json .}}' 对齐）。

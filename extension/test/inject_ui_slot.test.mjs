@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 注入 UI 的占位不冲突（node:test）。
 // 跑法：node --test extension/test/inject_ui_slot.test.mjs
 //

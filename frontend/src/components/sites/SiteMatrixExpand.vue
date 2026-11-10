@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 站点矩阵表格的行展开详情面板（定义/平台/地址/真实上传下载/魔力等）。
 // 从 SiteMatrixTable.vue 迁出；纯展示，数据与格式化函数经 props 注入。

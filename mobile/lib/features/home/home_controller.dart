@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:flutter/material.dart';
 
 /// 宽度阈值：≥ 此值显示常驻侧栏（桌面 / 大平板横屏），否则仅抽屉（手机布局）。

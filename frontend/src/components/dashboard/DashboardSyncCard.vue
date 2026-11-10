@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 仪表盘逐站同步进度卡片：进度条、当前站点、同步日志与失败列表。
 // 状态来自 useDashboardSync 组合式函数。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点数据页（从 options.js 拆出，行为不变）：站点列表 + 汇总指标 + 单站/全站同步。
 // 隐私模式掩码与 Web 端口径一致。
 import { esc } from './util.js'

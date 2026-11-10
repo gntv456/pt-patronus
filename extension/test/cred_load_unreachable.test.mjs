@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // loadCredVault 不许把「服务器读不到」降级成「空库」（node:test）。
 // 跑法：node --test extension/test/cred_load_unreachable.test.mjs
 //

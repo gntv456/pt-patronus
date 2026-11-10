@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的分享榜单区：榜单面板/网格/单元格。
 // （二次拆分；行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

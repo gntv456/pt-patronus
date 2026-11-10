@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref } from 'vue'
 
 // 监控目标的「可选配置」(opsConfig) 与 thresholds JSON 的序列化/反序列化。

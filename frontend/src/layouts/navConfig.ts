@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 导航配置数据：侧栏分组、palette-only 项、描述、别名
 
 export interface NavItem {

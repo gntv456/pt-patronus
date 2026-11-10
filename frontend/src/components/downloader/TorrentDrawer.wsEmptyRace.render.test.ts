@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #381 种子抽屉：WS 有本台快照但列表为空时，REST 兜底的结果被彻底丢弃。
 //

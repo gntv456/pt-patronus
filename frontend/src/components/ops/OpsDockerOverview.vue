@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // OpsDocker 的概览卡片区（运行中/总数/镜像数等 tile；从 OpsDocker.vue 拆出）。
 import { useI18n } from 'vue-i18n'

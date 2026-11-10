@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package entertainment
 
 // 蓝影论坛（hdblue.cc）阴阳契适配：出题对赌游戏。

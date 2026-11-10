@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // usePolling — 统一轮询调度器（阶段 1）
 //
 // 替代散落在组件里的 15 处 setInterval：

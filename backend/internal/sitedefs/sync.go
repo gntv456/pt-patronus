@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package sitedefs 站点定义远端源同步：把官方站点定义仓库（ptpatronus-sites）
 // 的最新定义拉到本地数据目录并热加载，站点适配不再绑定主程序发版。
 //

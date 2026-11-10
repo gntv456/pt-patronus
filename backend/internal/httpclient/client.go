@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package httpclient 是统一抓取 HTTP 客户端：cookie 管理、重试、UA、
 // Cloudflare 检测、SSRF 防护、可配置超时/跳过 TLS 校验。
 package httpclient

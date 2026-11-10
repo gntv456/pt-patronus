@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // OpsDocker 的容器列表区：搜索/状态筛选/批量操作/卡片与列表双视图（从 OpsDocker.vue 拆出）。
 // 仅展示与转发交互；容器数据与操作仍在父组件（useDockerOps/useDockerData）。

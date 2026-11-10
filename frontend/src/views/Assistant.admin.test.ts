@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // /agent/* 除 GET /config 外全是 RequireAdmin：非管理员打开 AI 助手必然满屏 403。
 // 页内守卫要在渲染层证明两件事——请求根本没发出去、界面不是「暂无会话」的死胡同。

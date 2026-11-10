@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 非管理员进「设置 → 维护」：后端 GET /system/logs 挂了 RequireAdmin，旧行为是立刻吃 403
 // 并把面板画成「没有日志」。这里既证判定本身，也证 Settings.vue 真的接上了这条判定。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 运维命令批次台账 + 告警清单的取数账面接线：后端已把 limit/total/truncated 一起回，
 // 若 composable 把字段丢掉，NasServer 面板就会把「最近 20 次」当成这台机器的全部执行历史。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package filemanager 定义网盘/存储后端抽象（WebDAV / Alist）与数据模型。
 package filemanager
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 运维命令批次台账的窗口说明必须真的画在面板里：#181 只做到了 props 与类型，
 // 这里补渲染层——截断时说清「共多少次、只列了多少次」，总数读不出换成另一句。

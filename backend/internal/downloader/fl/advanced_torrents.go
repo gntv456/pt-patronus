@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package fl
 
 // advanced.go 实现 Flood (jesec/flood) 的高级操作，对标 qb/tr。

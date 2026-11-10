@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Telegram bot（入站 chat-ops）。
 // 从 Settings.vue 抽出：管理 bot 开关、token、白名单与保存。
 import { ref } from 'vue'

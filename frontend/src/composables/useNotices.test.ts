@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 铃铛角标的账面：收件箱一次只回最近 limit 条（默认 200），
 // 若未读数只从这一页里 filter 出来，未读超过一页时角标就少报——

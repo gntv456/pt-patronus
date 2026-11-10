@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

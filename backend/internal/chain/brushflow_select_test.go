@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 刷流选种（RunSelect）推送失败的可观测性回归。

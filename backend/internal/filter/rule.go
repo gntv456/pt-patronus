@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package filter 实现资源过滤规则引擎（对标 MoviePilot-2 app/modules/filter）。
 //
 // 规则组 rule_string 用 '>' 分优先级层，每层是规则 id 的布尔表达式（! & | ()），

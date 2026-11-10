@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #353 OIDC 与 Trakt 的配置保存出口是裸 SaveFailed（连 err 都没带），文案又是「保存失败」。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // wire_extract.go —— New() 按域拆出的小装配函数（通知默认值 / 媒体链栈 / 守护神名片）。
 // 目标：压 app.go New() 的行数与合并冲突面；逻辑零变化，纯搬运。
 package app

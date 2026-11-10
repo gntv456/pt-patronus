@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 // SearchTorrent 是一条搜索命中的种子（区别于 downloader.Torrent：那是下载器任务，

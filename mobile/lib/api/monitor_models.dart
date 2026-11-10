@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 part of 'monitor.dart';
 
 /// 监控设备（host/nas/camera）。对齐后端 MonitorTarget（snake_case；凭据不回传）。

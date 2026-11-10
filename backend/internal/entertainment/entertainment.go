@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package entertainment 实现站点娱乐/抽奖游戏：LotteryGame 抽象 + 按站点 host 注册。
 // 游戏契约来自好学源码（jgg.php / magic_scratch.php 等），POST 带 cookie 调用站点端点、解析 JSON。
 package entertainment

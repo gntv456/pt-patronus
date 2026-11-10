@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package auth → oidc.go：通用 OIDC（Authorization Code + PKCE）SSO，
 // 兼容 Authelia / Keycloak / Casdoor 等任何标准 OIDC Provider。
 // 配置落 SystemConfig（auth.oidc）；令牌交换/userinfo 走标准 discovery。

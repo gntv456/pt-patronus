@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package groupchat
 
 // registry 是站点 handler 注册表(顺序决定 Dispatch 优先级：特殊站优先，NexusPHP 兜底最后)。

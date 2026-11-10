@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // virtualListRange — 虚拟列表范围计算（纯函数，便于单测；<script setup> 不允许 export）
 export function computeRange(scrollTop: number, viewportH: number, itemHeight: number, overscan: number, total: number) {
   const h = Math.max(1, itemHeight)

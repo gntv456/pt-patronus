@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：消息页要把「平台没适配私信」和「这站没私信」画成两样东西。
 // 背景：后端原先只给 Messages:[]，未接线（站点定义没开 messages capability）的站与

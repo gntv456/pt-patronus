@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #246 的第二层：404 那句中文到了调用方之后，界面到底弹不弹得出来。
 // 这里的错误对象是上一份用例（cloud.envelope.test.ts）证明的「拦截器改写后的 err」形状：

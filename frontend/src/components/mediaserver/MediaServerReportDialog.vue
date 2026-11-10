@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 媒体服务器「观影报告」对话框：用户活跃/Top 条目/最近播放。
 // 从 MediaServer.vue 迁出；数据与刷新动作经 props/emits 注入。

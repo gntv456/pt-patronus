@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // 本机 Docker 资源条的「停更仍画旧值」用例：refreshStats 是 5 秒轮询，

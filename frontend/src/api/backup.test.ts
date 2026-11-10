@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // http 层整体 mock 掉：这里只验 backupApi 往外发什么参数，不打网络。

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 文件管理器右栏顶部：路径面包屑工具栏 + 上传进度条 + 批量操作条/批量删除进度。
 // 从 FileManager.vue 迁出;动作与状态经 props/emits 注入。

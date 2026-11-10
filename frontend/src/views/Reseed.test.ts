@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：辅种候选列表后端单次最多返回 500 条。表头原先只写 tasks.length，
 // 1300 条候选会被渲染成「候选任务（500）」——部分被当成全部。

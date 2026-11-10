@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 单站历史数据浮层（从 dashboard_page.dart 拆出，行为不变）：
 // 宽屏表格 / 窄屏卡片自适应，对齐 Web 用户历史数据弹窗。
 import 'package:flutter/material.dart';

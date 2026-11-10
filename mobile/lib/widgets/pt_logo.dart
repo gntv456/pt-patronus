@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:flutter/material.dart';
 
 /// PTPatronus 品牌吉祥物 —— 忠实复刻 Web [frontend/public/logo-mark.svg]（1024² 坐标系）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 工作台聚合（对标 MSaber「天序工作台」）：一次拉取仪表盘首屏所需的今日域指标——

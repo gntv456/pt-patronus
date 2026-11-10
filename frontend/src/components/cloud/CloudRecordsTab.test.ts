@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 云端任务队列的账面渲染（#170 界面那一半）：接口把 total/truncated 交回来了，
 // 这里挂 CloudRecordsTab 真组件，确认「最近 50 条 · 共 60 条」真的画在队列 tab 上，

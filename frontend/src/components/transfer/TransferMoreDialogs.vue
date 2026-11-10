@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Transfer.vue 的设置类对话框组：目录同步/标签排序/识别词/分类规则/目录监视/手动整理。
 // （从 Transfer.vue 拆出；弹窗开关与表单状态经 defineModel 双向绑定，动作经 emit 上抛。）

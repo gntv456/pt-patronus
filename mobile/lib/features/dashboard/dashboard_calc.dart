@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的聚合计算/格式化扩展：求和/比值/榜首/身份显示/时间戳/速率格式化。
 // （二次拆分；行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

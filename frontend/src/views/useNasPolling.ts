@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NAS 运维页的 15s 轮询生命周期：挂载启动、卸载清理、页面隐藏暂停/可见恢复。
 // 从 NasServer.vue 迁出;refresh 经注入,首次拉取(命令历史等)由宿主 onMounted 自理。
 import { onMounted, onBeforeUnmount } from 'vue'

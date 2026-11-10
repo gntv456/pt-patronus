@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 import type { SiteStatItem } from '@/api/dashboard'
 import type { Site, SiteConnectivityStatus } from '@/api/site'

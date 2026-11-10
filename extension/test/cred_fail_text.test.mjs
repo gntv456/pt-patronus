@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 凭据保存失败文案的单一来源测试（node:test）。
 // 跑法：node --test extension/test/cred_fail_text.test.mjs
 //

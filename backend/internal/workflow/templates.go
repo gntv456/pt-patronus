@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package workflow
 
 // Template 是预置工作流模板（GET /workflows/templates 返回）。前端「从模板创建」加载到编辑器。

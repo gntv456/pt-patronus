@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer.vue 抽出的纯函数 / 数据常量 / 共享类型（零组件状态耦合）。
 // 这些不引用任何 ref/computed，仅依输入求值，便于单测与复用。
 import type { CommandRun, CommandRunTarget, MonitorTarget } from '@/api/monitor'

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # scripts/check-no-gpl-assets.sh — 断言构建产物里不含 GPL 资源。
 #
 # 为什么需要它：jessibuca（摄像头预览解码器）是 GPL-3.0，已被 .gitignore /

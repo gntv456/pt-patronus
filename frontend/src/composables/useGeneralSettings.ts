@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 通用设置：主题切换、版本号、在线更新检查、帮助/反馈/更新日志。
 // 从 Settings.vue 抽出，供 GeneralPanel 与父级共享。
 import { ref } from 'vue'

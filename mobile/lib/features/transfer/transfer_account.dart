@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // transfer_account.dart —— 整理记录的取数窗口文案（纯函数，口径对齐 Web useTransferHistoryOps）。
 // 后端 /transfer/history 默认只给最近 200 条、封顶 500：不把窗口说出来，
 // 界面就把「最近 200 次整理」画成全部记录，被挤掉的失败记录等于不存在。

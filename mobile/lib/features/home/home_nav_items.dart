@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:flutter/material.dart';
 import '../account/account_page.dart';
 import '../announcements/announcements_page.dart';

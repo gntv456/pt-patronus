@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #384 辅种候选筛选把「没配凭据」与「凭据解不开」压成同一个静默 continue。

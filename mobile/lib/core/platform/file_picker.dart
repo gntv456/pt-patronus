@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 文件选择门面：业务代码统一 import 本文件，用 appFilePicker.pickFiles /
 // saveFile，不直接依赖具体平台的 file_picker 包。
 //

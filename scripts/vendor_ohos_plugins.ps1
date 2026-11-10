@@ -1,4 +1,7 @@
-﻿#Requires -Version 5.1
+﻿# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     鸿蒙 ohos 插件本地化（vendor）脚本：build_ohos.ps1 在 pub get 之后、构建之前调用。

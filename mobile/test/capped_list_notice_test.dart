@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 「有单页上限的清单」的统一判定：移动端多处清单共用它（种子史等）。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/features/common/capped_list_notice.dart';

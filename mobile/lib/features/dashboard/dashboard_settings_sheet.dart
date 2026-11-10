@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 总览仪表盘设置面板（从 dashboard_page.dart 拆出，行为不变）。
 // 底部弹层：展示项开关 + 站点选择 + 紧凑模式等，保存经 onSave 回调。
 import 'package:flutter/material.dart';

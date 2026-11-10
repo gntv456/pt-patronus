@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 跨站收藏 + 下载历史（chrome.storage.local，仅本机；对标 PT-depiler my-collection / 下载历史）。
 // 收藏：任意种子详情页经 background 消息写入 {url,title,site,added_at}，上限 500 条 FIFO。
 // 历史：pushDownload 成功后追加 {title?,url,downloader_id,added_at}，上限 300 条。

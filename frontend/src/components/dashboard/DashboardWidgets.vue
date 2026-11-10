@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script lang="ts">
 // 部件目录导出（script setup 不允许值导出，放普通 script 块）。
 export interface WidgetDef {

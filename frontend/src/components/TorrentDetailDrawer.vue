@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 /**
  * 种子详情抽屉：抓取并解析单条种子详情页（简介/截图/MediaInfo/文件列表）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #371 Webhook 的 Update / Rotate 把「写入失败」一律说成 500「服务内部错误，请稍后重试」。

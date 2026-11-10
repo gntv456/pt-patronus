@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package middleware —— Prometheus 指标：HTTP 请求计数/耗时直方图 + 进程/Go 运行时。
 // 指标语义：
 //

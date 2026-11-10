@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // safeUrl 清洗外部可控的 URL，仅放行 http(s)/mailto/相对路径，阻断 javascript:/data:/vbscript 等 XSS 协议。
 // Vue 3 的 :href 绑定不过滤协议——RSS 源、PT 站链接等外部数据可注入 javascript:alert(document.cookie)。
 // 用法：<a :href="safeUrl(row.link)">。非字符串/空/非法协议一律返回 ''（渲染为空 href，不可点击）。

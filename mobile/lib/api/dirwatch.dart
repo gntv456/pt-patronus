@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 /// 单个被监视目录（dirwatch.WatchedDir）。发现媒体文件即喂给整理流水线。

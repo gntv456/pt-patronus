@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #187 的视图层断言：后端把降级说明写在 stale/notice 里，这里证明 Savept.vue 真的画出来，
 // 且新鲜快照不多出这条说明（只有类型层背书的话，「解析了字段」与「渲染了字段」无法区分）。

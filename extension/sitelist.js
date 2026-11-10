@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点白名单（收权核心）：所有内容脚本只注入「已配置的 PT 站点 + 手动追加域」。
 // 数据来源两路：
 //   1. options 页登录后「同步站点白名单」——从服务器 /sites 拉全部 base_url 域

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // vue-i18n 接入（组合式 API 模式）。
 // 约定（见 README/前端i18n接入评估.md）：
 //   - locale 持久化在 localStorage('locale')，默认 zh-CN

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 站点筛选公共组件：紧凑多列 checkbox 网格 + 搜索 + 全选/清空，适配一两百站点。
 // 各页（搜索/公告/消息/勋章墙/站免/考核/后宫）复用，统一多选体验。

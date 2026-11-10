@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 通知 Source（对齐后端 notice.SourceXxx 枚举，缺失会导致通知中心标签/图标退化）。

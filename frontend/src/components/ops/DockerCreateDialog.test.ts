@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 「创建并自动启动」的界面账面（#173 的最后一环）：后端已经把 started/start_error 交回来了，
 // 这里挂真组件确认容器没起来时弹的是 warning 而不是「创建成功」——只靠 vue-tsc 只能证明类型对得上。

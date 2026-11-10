@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 登录页挂载级取证（#299）：后端 SSO 失败时把错误码放进 fragment 回跳，
 // 这里挂真 Login.vue，确认那句人话真的画在表单错误位上（而不是只活在 utils/oidcFail.ts 里）。

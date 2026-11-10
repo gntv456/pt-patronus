@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package ws 提供实时推送的 WebSocket 基建：Hub 维护连接池并广播消息。
 package ws
 

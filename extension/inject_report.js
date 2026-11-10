@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // inject_report.js 补注入结果的汇总文案（设置页「授予全部站点权限」用）。
 // 抽成纯函数的原因：后台 injectAllTabs 只有真浏览器才有 chrome.tabs，测不到；
 // 而「N 个页面没生效时该说什么」正是会被写歪的那一层，必须能断言。

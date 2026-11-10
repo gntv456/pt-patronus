@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Transfer（媒体整理）页面状态与操作 —— 从 Transfer.vue 抽出的核心逻辑。
 import { ref, computed, onMounted } from 'vue'
 import { useTransferRules } from './useTransferRules'

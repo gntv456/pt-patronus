@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, expect, it } from 'vitest'
 import { i18n, loadLocale } from './index'
 import cameraBridge from './locales/cameraBridge'

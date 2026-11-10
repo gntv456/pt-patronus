@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 铃铛下拉的空态：读失败与真没有消息必须是两种说法。
 // useNotices.load() 从前 `catch { /* 静默 */ }`，列表空着也不报错，

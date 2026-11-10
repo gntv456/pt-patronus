@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package update 实现在线更新检查：拉取官方版本清单(manifest)，与当前版本比较，
 // 供服务端自检(Web UI 提示 docker pull 升级)与客户端中转(/system/update/check)。
 //

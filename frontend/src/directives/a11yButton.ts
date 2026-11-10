@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 可点击 div 的无障碍键盘可达指令（a11y 审计 P2：27 处 <div @click> 无法被键盘
 // 操作——无 tab 焦点、无 Enter/Space 触发）。
 // 用法：在带 @click 的 div 上加 v-a11y-button，即可获得：

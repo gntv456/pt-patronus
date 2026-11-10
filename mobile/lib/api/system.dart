@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:ptpatronus/core/api_client.dart';
 
 /// 在线更新检查结果（对应后端 GET /system/update/check 响应）。

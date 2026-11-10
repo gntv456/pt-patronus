@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/perf-auth-smoke.mjs — 登录态 dashboard 性能冒烟（非门禁，人工观测用）
 //
 // 为什么单独一支：collect-perf.mjs 采的是**未登录**首屏（登录页），拿不到

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 /// 保种契约：为站点设置分享率 / 做种数 / 上传量 / 官种 / 体积下限，定时或手动检查是否达标。

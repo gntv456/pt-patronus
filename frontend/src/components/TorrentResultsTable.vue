@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 /**
  * 种子模式结果区：失败站折叠提示 + 流式进度 + 筛选条 + 结果表 + 渲染上限 + 空态。

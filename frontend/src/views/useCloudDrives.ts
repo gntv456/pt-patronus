@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 云盘挂载 CRUD + 连接测试/配额查询子状态簇。
 // 从 Cloud.vue 迁出;t 经注入保持 i18n 上下文。
 import { ref } from 'vue'

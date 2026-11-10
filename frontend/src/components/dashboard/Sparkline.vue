@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Canvas 版迷你折线（阶段 1）：替换 SVG path + gradient defs + hover line，
 // 单个 <canvas> 完成绘制，减少 DOM 节点与 <defs> id 冲突。API 与原 SVG 版完全一致。

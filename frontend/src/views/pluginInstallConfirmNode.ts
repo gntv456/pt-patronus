@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 插件市场安装确认对话框的渲染节点（VNode 构造，无组件状态）。
 // 从 usePlugins.ts 的 confirmMarketInstall 迁出——那段 h() 树近 160 行，是文件超标的主因。
 import { h } from 'vue'

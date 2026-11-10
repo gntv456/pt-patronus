@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { downloaderApi, type Torrent, type Peer, type DownloaderResult } from '@/api/downloader'

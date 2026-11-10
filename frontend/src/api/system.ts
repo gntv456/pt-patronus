@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 应用版本号 —— 离线兜底常量（构建期来自 package.json），非权威来源。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 导出 PT-depiler 的 286 个站点定义为 JSON，供 convert-definitions.go 翻译为 PTPatronus YAML。
 //
 // 实现方式：TypeScript AST 提取（非运行时 import）。PT-depiler 的 node_modules 未安装，

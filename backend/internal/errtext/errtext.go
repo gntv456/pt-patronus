@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package errtext 把底层技术错误翻成用户看得懂、能照着做的中文。
 //
 // 它是「文案的单一来源」：HTTP 硬失败面（errcode 信封）与逐条结果里的 error 字段

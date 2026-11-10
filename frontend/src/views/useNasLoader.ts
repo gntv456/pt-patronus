@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NAS 运维页的全量数据加载（设备/告警/凭据/配置/执行历史/最新指标）。
 // 从 NasServer.vue 的 loadAll 迁出;失败时首屏置错误态,管理员额外拉凭据/配置/命令记录。
 import { ref, type Ref } from 'vue'

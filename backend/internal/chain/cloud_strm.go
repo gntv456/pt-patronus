@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // STRM 生成链路：按规则扫描网盘 → 写本地 .strm → 落库记录；含目录标签解析、

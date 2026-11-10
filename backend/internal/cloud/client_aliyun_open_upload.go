@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package cloud
 
 // 阿里云盘开放平台上传（秒传 + 分片）与 ProofCode 计算。

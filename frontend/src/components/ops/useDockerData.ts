@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // OpsDocker 的数据刷新与资源监控轮询（从 OpsDocker.vue 拆出，行为不变）。
 // 含：目标（SSH host/nas）加载、local/remote 双模式列表+stats 刷新、
 // sparkline 历史环形缓冲（20 点）、5s 轮询生命周期。

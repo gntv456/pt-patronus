@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 下载器种子列表的查询侧辅助（从 downloader.go 拆出以满足单文件 400 行门禁）：

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 // 容错数值转换：后端字段可能缺省/偶发为字符串，统一走 helper，避免单字段类型异常致整页 fromJson 抛错（审计 P1）。

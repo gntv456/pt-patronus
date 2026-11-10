@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Docker 运维页对话框/抽屉的可见性与内容状态 + 日志拉取/镜像删除动作。
 // 从 OpsDocker.vue 迁出;mode/selectedTarget/refresh/t 经 getter 注入保持响应式。
 import { ref } from 'vue'

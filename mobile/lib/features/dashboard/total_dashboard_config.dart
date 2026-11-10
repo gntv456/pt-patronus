@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 总览仪表盘展示配置（模型独立文件，dashboard_page 与设置面板/分享卡共用）。
 // 持久化在 SharedPreferences（key 见 [_storageKey]）；JSON 字段与 Web 端偏好对齐。
 class TotalDashboardConfig {

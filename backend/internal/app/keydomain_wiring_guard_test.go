@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package app
 
 // #406 接线护栏：直链签名密钥的装配必须走 HKDF 域派生 + 带上升级前的旧钥。

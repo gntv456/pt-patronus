@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package assessment 实现「站点考核」抓取：各平台考核任务（新手考核/长期考核/保种/魔力任务）
 // 的真实进度。per-platform 适配器 + Registry 分发（MTeam JSON / NexusPHP HTML 跨行聚合 / TNode 不支持）。
 // 独立子包，避免膨胀 schemas；由 chain.AssessmentChain 调用。

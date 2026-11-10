@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 批量推送失败必须带出原因（node:test）。
 // 跑法：node --test extension/test/push_batch_reason.test.mjs
 //

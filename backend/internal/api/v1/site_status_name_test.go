@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #367 Status 的第二次 List()（补 site_name）失败被静默吞掉，站名整列为空，

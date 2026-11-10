@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Assistant.vue 配置面板的两处「读不出来」判定：抽成纯函数，好让分支能被断言
 // （面板本身要真挂载才碰得到，jsdom 里点不进 el-dialog）。
 // 文案与仓内 composable 一致，直接中文。

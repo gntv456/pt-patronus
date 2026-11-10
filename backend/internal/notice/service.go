@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package notice 实现全局通知中心：聚合 13 类业务事件为站内通知。
 // NoticeService 统一入口：去重 → 持久化 → WS 实时推送 → 外发渠道（bark/tg/webhook）。
 package notice

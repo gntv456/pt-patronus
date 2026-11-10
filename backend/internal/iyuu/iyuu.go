@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package iyuu 对接 IYUU（api.iyuu.cn）精确辅种接口：按 infohash 跨站匹配 + 站点目录。
 // 协议参考 Go 实现 goreseed：sign 字段即 IYUU token（无额外签名）；下载 URL 客户端按平台规则拼 passkey。
 package iyuu

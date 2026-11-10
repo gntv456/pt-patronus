@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点定义诊断的展示映射（纯函数，便于单测；文案本体在 i18n 的 sites.diagKind.* / sites.diag*）。
 import type { DefinitionDiagnostic } from '@/api/site'
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的站点卡片区：站点列表/单站卡/行操作/等级标签/连通性胶囊/告警卡/格式化。
 // （二次拆分；行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

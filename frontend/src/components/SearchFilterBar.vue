@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 /**
  * 站点搜索结果筛选条（对标 MoviePilot TorrentFilterBar / PT-depiler 高级筛选）。

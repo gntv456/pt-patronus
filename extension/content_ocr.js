@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // content script：登录验证码 OCR 自动识别（轻量路线，对标 MoviePilot-Tools 三级链的「服务端 OCR」级）。
 // 流程：检测登录页验证码图片 → canvas 截取为 base64 → background 调 PTPatronus /api/v1/site/login-helper
 // 链路里的 OCR（服务端 ocr.Recognize，PaddleOCR/simple/ddddoc 三模式，管理员在系统设置配置端点）→ 回填输入框。

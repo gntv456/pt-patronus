@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _TorrentSheetState 的动作/编辑对话框扩展：菜单、分享限制、分类/标签/限额编辑、
 // 子表入口、添加种子、toast（无 setState 的段；从 torrent_sheet.dart 拆出，行为不变）。
 part of 'package:ptpatronus/features/downloaders/downloaders_page.dart';

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // PT监护室融合头部：品牌 + 生命体征 + 刷新 + 筛选栏。
 // 筛选下拉菜单状态自管理；通过 v-model:filters 与父级双向同步筛选条件。

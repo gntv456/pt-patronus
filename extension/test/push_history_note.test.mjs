@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 下载历史台账的写入失败必须能被上层看到（#60 + 本轮抽纯函数配套）。
 // 跑法：node --test extension/test/push_history_note.test.mjs
 import { test } from 'node:test'

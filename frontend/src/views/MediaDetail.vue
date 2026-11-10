@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 媒体详情页（对标 MoviePilot 详情）：点搜索结果卡片进入，展示海报/背景/简介/演职/推荐，
 // 并提供「搜索资源」一键跨到种子搜索（按标题在站点找片）。route: /media-detail?source=&id=

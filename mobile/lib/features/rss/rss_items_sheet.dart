@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // RSS 条目抽屉：取数窗口提示 + 行表（从 rss_page.dart 按域拆出，行为不变）。
 part of 'package:ptpatronus/features/rss/rss_page.dart';
 

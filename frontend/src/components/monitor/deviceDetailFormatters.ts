@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 设备详情的纯展示格式化工具（无组件状态）——从 useDeviceDetail.ts 原样迁出。
 import type { MonitorTarget, Metrics, MetricSnapshot } from '@/api/monitor'
 import { parseMetrics } from '@/api/monitor'

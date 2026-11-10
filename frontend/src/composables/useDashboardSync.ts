@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 仪表盘逐站同步：进度、日志、失败站点。
 // 从 Dashboard.vue 抽出；syncStats 完成后通过回调联动刷新其它卡片。
 import { ref, computed } from 'vue'

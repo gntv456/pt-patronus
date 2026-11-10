@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """媒体库刮削 — 调用宿主 /media/search 复用 TMDB/豆瓣源，写 movie.nfo/tvshow.nfo + 海报。"""
 import json
 import os

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // ApiClient 的会话/认证扩展：token 存取、baseUrl 切换、401 刷新登出。
 // （从 api_client.dart 拆出，part of 主库；行为不变。）
 part of 'package:ptpatronus/core/api_client.dart';

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 契约回归：monitorApi.alerts 要把后端的 total/truncated 一起交出。
 // 过去只回数组，运维面板把「单页上限 200 条」当成「全部未读告警」。

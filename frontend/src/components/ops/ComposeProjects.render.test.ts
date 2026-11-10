@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #218/#219 的渲染层收口：后端把「这次扫描不完整」放进 scan_error，
 // 但字段进了 JSON 不等于上了屏幕。这里在真组件里证明两个出口都会把这句中文画出来

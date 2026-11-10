@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #383 passkey 侧的凭据读取仍在吞错 —— #377 把 Cookie/APIKey/Password 都接上了可判别的

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 订阅追更端到端链路：真 SiteChain（假适配器搜种）+ 真 DownloadChain（假 qB）+ 真订阅表，

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 基础冒烟测试：登录页可构建 + 品牌与用户名/密码表单存在。
 //
 // 直接 pump LoginPage（而非 PTPatronusApp）：后者在 _runtimeBaseUrl 未设置（测试不调

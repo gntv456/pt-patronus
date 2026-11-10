@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #274 渲染层：保种契约的删除/开关写失败必须出声。
 // 旧代码 `remove()` / `toggle()` 里对 contractApi 的 await 没有任何兜底：

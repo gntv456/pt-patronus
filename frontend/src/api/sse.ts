@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 通用 SSE 消费：原生 fetch + ReadableStream（axios 不支持流式；需 Authorization header）。
 // 按空行分帧，解析 event:/data: 为 { event, data }，逐帧回调 onEvent；signal 用于中断。
 // 401 统一走 expireSession（清 token/user + redirect 登录）——与 http.ts 拦截器同语义。

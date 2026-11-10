@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package automation 实现后台自动化服务（7×24 跑在服务端）：
 //   - site-snapshot 聚合快照（真实）：每 4h 串行抓 stats / 站免 / 公告 / 消息 / cookie 保活 / 考核；另有小时级 cookie-keepalive，
 //     复用 UserInfo 的 uid 访问 userdetails.php?id=<uid>（避免裸访触发站点风控）；降低站点感知的

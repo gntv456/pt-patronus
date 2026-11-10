@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #377 SiteChain.credential 把「解不开凭据」压成空串，于是 20 个调用方拿空凭据真的去请求站点。

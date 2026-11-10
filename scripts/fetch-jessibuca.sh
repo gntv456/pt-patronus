@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # scripts/fetch-jessibuca.sh — 拉取摄像头预览所需的 jessibuca 播放器资源。
 #
 # 为什么不随仓库分发：jessibuca 是 GPL-3.0（见其 LICENSE）。把 decoder.wasm 提交进

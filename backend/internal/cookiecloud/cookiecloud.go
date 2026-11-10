@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package cookiecloud 实现 CookieCloud 协议解密与 host 匹配。
 //
 // CookieCloud 官方浏览器扩展存在两代加密格式（扩展设置「加密方式」可选，默认 legacy）：

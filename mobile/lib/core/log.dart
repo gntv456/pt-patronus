@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:flutter/foundation.dart';
 
 /// 安全日志：release 下静默；debug 下自动给敏感字段（token/cookie/secret/password/Bearer …）打码，

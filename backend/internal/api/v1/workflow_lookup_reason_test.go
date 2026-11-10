@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #343 工作流「按 id 取」失败的三处出口手抄归类，其中一处还用通用码（#342 的同族）。

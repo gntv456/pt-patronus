@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # -*- coding: utf-8 -*-
 """小米路由器助手 — 通过 Luci Web API 连接并配置小米/红米路由器。
 

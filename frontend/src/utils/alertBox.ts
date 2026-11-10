@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // ElMessageBox.alert 的安全封装。
 //
 // 为什么存在：alert 返回 promise，用户点「知道了/确认」resolve，但按 ESC / 点 X / 点遮罩

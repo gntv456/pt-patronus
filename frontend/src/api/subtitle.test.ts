@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // 字幕 api 的接线回归：请求参数由这里唯一决定，界面拿不到超时/归一后的形状就无从排查。

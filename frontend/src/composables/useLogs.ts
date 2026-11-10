@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 运行日志（环形缓冲）。
 // 从 Settings.vue 抽出：加载、清空、复制运行日志。
 import { ref } from 'vue'

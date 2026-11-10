@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 审计面板的窗口说明必须真的画在面板里：composable 导出了状态不代表视图读了它。
 import { describe, expect, it } from 'vitest'

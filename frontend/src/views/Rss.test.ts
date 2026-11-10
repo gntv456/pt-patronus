@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：RSS 页表单下拉的三个数据源（关联站点/下载器/过滤规则组）原先完全无声 catch，
 // 接口挂掉时下拉空了，用户以为「没得选是正常的」。

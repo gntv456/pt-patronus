@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 辅种候选「跳过」与自动化的边界：cron 每轮 Reseed，返回值会被 AutoReseedAdd 逐条

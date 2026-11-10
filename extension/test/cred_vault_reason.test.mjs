@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // #360 server 模式取不到信封时，原因被 openVault 吞掉 ⇒ 读侧那套原因码有一半是死代码。
 //
 // 读侧 #337 分出了四种原因（need-unlock / cred-blacklisted / server-unreachable / no-match），

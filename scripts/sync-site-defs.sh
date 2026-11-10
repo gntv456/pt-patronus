@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # 把 backend/definitions/*.yaml 同步到官方站点定义仓库 gntv456/ptpatronus-sites。
 # 用法：bash scripts/sync-site-defs.sh ["同步说明"]
 # 前置：gh auth 登录（write 权限）；主仓 definitions 是唯一编辑源——sites 仓库只读分发。

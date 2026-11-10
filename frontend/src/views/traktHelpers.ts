@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // #280 Trakt 面板的失败口径。
 //
 // 后端这次把四档分开写了人话（凭据没填去哪填 / 还没授权先点发起授权 / 授权码已过期重拿一张 /

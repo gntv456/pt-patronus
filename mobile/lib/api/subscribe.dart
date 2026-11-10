@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 // 订阅记录（对齐 backend models.Subscription）：cron 自动跨站搜种子 → 命中推送默认下载器 + 通知。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command verify 加载转换产物目录（默认 tools/out），验证全部 yaml 能被本项目
 // LoadDefinitions 反序列化、EnsureDefaults 分流不报错，并统计 schema 分布。
 //

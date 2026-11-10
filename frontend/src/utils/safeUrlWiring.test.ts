@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #405 第三方 API 响应里的 URL 直接绑 href/src ⇒ javascript: 注入。
 //

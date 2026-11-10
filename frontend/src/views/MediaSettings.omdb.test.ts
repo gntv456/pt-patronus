@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 挂载级取证（#302）：IMDb(OMDb) 这一源此前在后端一直存在（GET 回 omdb_api_key*、
 // PUT 收 omdb_api_key、rebuild 用它建源），但「媒体源设置」页没有任何输入框，

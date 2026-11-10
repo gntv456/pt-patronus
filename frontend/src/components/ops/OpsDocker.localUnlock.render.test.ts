@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #250 的渲染层收口：本机 Docker 起起来之后，用户要有办法让界面知道。
 // 「本机」按钮在 localAvailable=false 时是 disabled 的，探测又只在挂载发一次 ⇒ 按下 Docker 之后

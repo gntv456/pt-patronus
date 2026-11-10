@@ -1,4 +1,7 @@
-﻿#Requires -Version 5.1
+﻿# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     PTPatronus 鸿蒙（ohos/HarmonyOS）构建脚本。

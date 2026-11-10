@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 护栏：自产的中文原因必须有「人工载体」（WithDetail），不许只交给 WithErr。

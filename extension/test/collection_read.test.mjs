@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 收藏/下载历史的读取失败不许与「真的空」同形（node:test）。
 // 跑法：node --test extension/test/collection_read.test.mjs
 //

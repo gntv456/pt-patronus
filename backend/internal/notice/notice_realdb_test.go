@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 外部测试包：oper 依赖链上含 notice（oper→monitor→notice），包内测试无法反向引入 oper。
 package notice_test
 

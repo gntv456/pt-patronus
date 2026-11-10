@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #391 批量运维命令的**审计写失败**出口只说「服务内部错误，请稍后重试」。

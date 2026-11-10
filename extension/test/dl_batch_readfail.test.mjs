@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 下载任务页两个批量按钮不许把「读不出任务清单」当成「没有任务」（node:test）。
 // 跑法：node --test extension/test/dl_batch_readfail.test.mjs
 //

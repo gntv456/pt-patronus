@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #399 两个站点抓取出口自己抄了一份 `BadGateway.WithErr`，把两种「重试不会好」

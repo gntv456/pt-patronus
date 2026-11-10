@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #349 整理链层还有两句英文原文会直接进界面/AI 上下文（#52 的尾，此前被误判为死代码）。

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // SptIcon — PT监护室专用轻量内联 SVG 图标集（Lucide 描边风格，stroke=currentColor）。
 // 替代 MoviePilot 版用的 Vuetify MDI 图标（PTPatronus 无 MDI 依赖）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 种子页三个注入 UI 的槽位不重叠（node:test）。
 // 跑法：node --test extension/test/torrent_ui_slot.test.mjs
 //

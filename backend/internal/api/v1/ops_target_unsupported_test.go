@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #402 「这个目标不支持该操作」与「命令太长」被压进 502「上游服务不可达」。

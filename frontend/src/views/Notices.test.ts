@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 收件箱取数账面（渲染层）：后端一次只给最近 limit 条（默认 200、封顶 1000）。
 // 界面若不区分「窗口」与「整个收件箱」，未读超过上限的那部分就永远不存在——

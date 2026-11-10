@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 收藏失败必须被说出来，且后台必须回调 sendResponse（node:test）。
 // 跑法：node --test extension/test/favorite_batch.test.mjs
 //

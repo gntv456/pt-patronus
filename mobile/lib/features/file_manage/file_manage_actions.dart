@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _FileManagePageState 的文件操作 mixin：下载/上传/建目录/重命名/移动复制/STRM。
 // （含 setState 段；从 file_manage_page.dart 拆出，行为不变。）
 part of 'package:ptpatronus/features/file_manage/file_manage_page.dart';

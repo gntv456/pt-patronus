@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 资源过滤规则 API（对齐后端 internal/filter + api/v1/filter_rule.go）。

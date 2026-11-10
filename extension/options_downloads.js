@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 下载任务页（从 options.js 拆出，行为不变）：任务列表 + 快捷推送 + 拖放链接。
 import { esc, fmtBytes } from './util.js'
 import { api, getConfig, isConfigured } from './api.js'

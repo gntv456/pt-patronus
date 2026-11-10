@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command ptpatronus-agent 是 PTPatronus 监控 agent（独立轻量二进制，跑在被监控机）。
 // 通过 WS 长连接主动上报本机指标到 dashboard，替代 SSH 拉取。
 //

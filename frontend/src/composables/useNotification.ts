@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 通知通道设置（DB+UI 热更新；微信扫码登录）。
 // 从 Settings.vue 抽出：管理所有通知通道（19 种）的回显、表单、校验、保存、测试与微信扫码登录。
 import { ref, onBeforeUnmount } from 'vue'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package transfer —— 目录标签（DirTag）：一处定义目录，跨模块引用。
 //
 // 对标 MSaber 目录标签：订阅保存路径 / STRM 生成目录 / 云端整理目标 等场景引用

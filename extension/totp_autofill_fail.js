@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // TOTP 自动填充失败的原因码 → 人话（单一来源，#400）。
 //
 // 为什么单列一个模块而不是留在 background.js 里：

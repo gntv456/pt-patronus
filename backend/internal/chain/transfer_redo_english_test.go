@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #363 Redo 在 Aria2 下必然找不到种子，而且找不到时说的是一句英文。

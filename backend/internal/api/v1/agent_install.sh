@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # PTPatronus 监控 Agent 一键安装脚本（Linux，systemd）。
 # 用法（由 dashboard 的 Agent 管理页生成，curl | bash）：
 #   curl -fsSL <DASHBOARD>/api/v1/monitor/agents/install.sh | \

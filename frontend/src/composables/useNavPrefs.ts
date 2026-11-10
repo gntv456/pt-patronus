@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 侧栏偏好：折叠分组 / 收藏 / 最近访问。全部 localStorage，纯前端零后端。
 // key 前缀 nav. 便于日后清偏好或迁移。
 

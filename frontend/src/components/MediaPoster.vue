@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 媒体海报图：豆瓣 doubanio.com 防盗链，浏览器 <img> 直连只回 1x1 占位图（且 img 不带
 // JWT，无法过 /media/image 的鉴权）。故豆瓣图改由 axios（带 JWT）请求后端反代取 blob，

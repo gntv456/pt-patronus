@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package tr 是 Transmission RPC 客户端，实现 downloader.Downloader 接口。
 // 协议：POST JSON-RPC 风格，首次返回 409 携带 X-Transmission-Session-Id，
 // 重试带上该头；Basic Auth；torrent-get/torrent-add/torrent-stop/start/remove。

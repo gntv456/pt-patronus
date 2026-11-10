@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 共享工具：HTML 转义 / DOM 快捷 / 字节与时间格式化 / URL 归一化。
 // 全部为纯函数，可被页面脚本与 module 型 SW（background）安全 import。
 const escMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }

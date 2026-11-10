@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #354 文件管理的「不能动存储根目录」9 处出口全回一句「不允许的操作」。

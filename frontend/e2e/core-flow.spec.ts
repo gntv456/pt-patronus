@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 核心链路 E2E：登录 → 站点列表 → 跨站搜索 → 下发下载器。
 // 全链路离线：
 //   - 登录走本地密码（/auth/local/login，好学站点关闭后的主路径，#<issue>）

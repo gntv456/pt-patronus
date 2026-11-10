@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package cloud
 
 // 115 开放平台秒传/分片上传实现。从 client_115_open.go 迁出。

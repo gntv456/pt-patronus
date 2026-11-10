@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package mediaserver 统一封装 Emby / Jellyfin / Plex 的 REST 客户端子集：
 // 库扫描 / 元数据刷新 / 管理员通知 / 近期条目（封面生成用）。
 //

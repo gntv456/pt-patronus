@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package cloud
 
 // 本文件集中放「HTTP 200、成败写在正文」这一类网盘写接口的判据。

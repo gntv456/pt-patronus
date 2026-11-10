@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 全局错误浮层：把「整页白屏(零信息)」变成「可见的错误卡片」。
 //
 // 触发场景正是 Vue 渲染失败 / 样式未就绪 / 脚本运行时抛错，所以浮层必须自给自足：

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #395 AI 助手配置的两个写失败出口都只说「服务内部错误，请稍后重试」，

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // pluginLogsAccount.ts —— 插件日志窗口提示的单一文案来源。
 // 两处消费（插件「运行日志」抽屉、插件「审计面板」）共用一份判定，避免同一条话抄两遍后漂移。
 

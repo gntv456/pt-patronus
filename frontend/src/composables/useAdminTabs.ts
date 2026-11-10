@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { useAuthStore } from '@/stores/auth'
 
 // 页面上「读侧就是 admin-only」的 Tab：这些 Tab 背后的 GET 全部挂了 RequireAdmin

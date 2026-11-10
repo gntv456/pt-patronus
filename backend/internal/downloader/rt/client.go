@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package rt 是 ruTorrent (rTorrent WebUI) 客户端，实现 downloader.Downloader 接口。
 // 协议：HTTP Basic Auth；列表/控制走 POST /plugins/httprpc/action.php（mode=list|pause|...
 // 或 XML multicall）；添加走 POST /php/addtorrent.php。连通性探测 /php/getsettings.php。

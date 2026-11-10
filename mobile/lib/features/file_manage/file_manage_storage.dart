@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _FileManagePageState 的存储后端 mixin：全部状态字段 + 后端加载/切换/增删/连通性探测。
 // mixin on State 可用 setState；从 file_manage_page.dart 拆出，行为不变。
 part of 'package:ptpatronus/features/file_manage/file_manage_page.dart';

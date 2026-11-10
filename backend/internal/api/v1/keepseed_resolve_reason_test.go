@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #369 辅种「处理候选」的三条人话原因被 respondKeepSeedErr 的兜底档丢掉，

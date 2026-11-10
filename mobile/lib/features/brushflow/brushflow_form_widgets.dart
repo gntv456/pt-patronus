@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _BrushFlowFormState 的展示层扩展：字段行/开关行/解析工具/toast。
 // （从 brushflow_form.dart 拆出；行为不变。）
 part of 'package:ptpatronus/features/brushflow/brushflow_page.dart';

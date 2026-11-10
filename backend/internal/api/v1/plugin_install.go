@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 插件市场·安装面：市场源与签名信任配置、市场浏览、从市场安装（含失败分档映射）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
 // 依赖: pluginApi + ElMessage/ElMessageBox + pluginsHelpers。
 import { computed, h, onMounted, ref, watch, type Ref } from 'vue'

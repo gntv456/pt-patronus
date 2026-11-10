@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _SitesPageState 的站点添加/编辑表单 mixin（从 sites_page.dart 拆出；行为不变）。
 part of 'package:ptpatronus/features/sites/sites_page.dart';
 

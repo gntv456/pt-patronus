@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import axios from 'axios'
 import { terr } from './i18nErr'
 import { translateErrcode } from './errcodeI18n'

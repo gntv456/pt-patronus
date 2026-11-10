@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // AI 助手侧栏会话清单的取数账面：后端单页 200 个封顶，字段丢了侧栏就会把
 // 「最近 200 个」画成「你的全部会话」；读取失败也必须真的出声，不能静默留空列表。

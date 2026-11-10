@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package monitor 实现设备监控（服务器/NAS/摄像头）的采集、调度、告警与 RTSP 转发。
 // 设计：Collector 接口 + Registry 按 (type,protocol) 分发；Service 单 ticker 扫表编排；
 // Alerter 阈值状态转换去重；RTSPProxy 把 RTSP 转 WebSocket 供前端 jessibuca 解码。

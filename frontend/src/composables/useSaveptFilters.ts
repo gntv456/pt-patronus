@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { computed, reactive, type Ref } from 'vue'
 import type { SaveptSiteCard as SiteCardData } from '@/api/savept'
 import { buildSiteKeywords, getMpStatusMeta, getStatusMeta, siteTypeLabel } from '@/utils/savept'

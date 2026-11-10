@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/gen-site-index.mjs — 阶段 4：把 definitions/*.yaml 下沉为编译期索引
 //
 // 生成 backend/internal/site/zz_defs_index.go（zz_ 前缀已被 check_file_length.sh 排除）。

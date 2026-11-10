@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点范围（黑名单模型）：默认所有站点可用，黑名单内的站点不注入。
 // 数据 chrome.storage.local：
 //   ptp_site_blacklist   — 完全黑名单：这些域上不注入任何内容脚本（种子增强/TOTP/OCR/凭据全部禁用）

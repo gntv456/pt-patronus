@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 控制台页（选项页）：左侧导航整合全部工具页（站点数据 / Cookie 台账 / 下载任务 /
 // 收藏与历史 / TOTP 验证器 / 同步备份），账号登录与配置沿用原逻辑。
 // 各工具页逻辑就地实现（复用 dashboard/cookies/downloads/collection/totp 模块）。

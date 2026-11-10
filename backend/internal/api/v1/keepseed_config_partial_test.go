@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #392 辅种配置保存是「多次独立写、无事务」，失败出口却只说「服务内部错误，请稍后重试」。

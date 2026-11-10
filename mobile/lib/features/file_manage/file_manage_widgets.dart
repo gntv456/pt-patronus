@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _FileManagePageState 的展示层：toast/父路径/后端下拉/路径栏/条目行/错误视图 + 页面构建。
 // （无 setState 段；从 file_manage_page.dart 拆出，行为不变。）
 part of 'package:ptpatronus/features/file_manage/file_manage_page.dart';

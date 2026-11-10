@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 仪表盘待处理事项：聚合 Cookie 失效 / 站点未联通 / H&R 危险 / 同步失败。
 // 从 Dashboard.vue 抽出。
 import { computed } from 'vue'

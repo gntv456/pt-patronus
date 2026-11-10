@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 娱乐中心类型定义：抽出为独立文件以收敛 entertainment.ts 体积。
 // entertainment.ts 会 re-export 这些类型，保持现有 import 路径不变。
 

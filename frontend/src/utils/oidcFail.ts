@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // SSO 失败码友好化：/auth/oidc/start 与 /auth/oidc/callback 都由浏览器整页导航进入，
 // 后端失败时把错误码放进 fragment 回跳登录页（否则用户看到的是浏览器渲染的一屏 JSON）。
 // 这里把码翻成人话，并给出「下一步去哪儿」——沿用 utils/siteError.ts 的做法（文案单一来源、

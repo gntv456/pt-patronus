@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 import type { CustomRuleInput, RuleGroupInput, FilterRule, FilterRuleGroup } from '@/api/filter'
 import { useI18n } from 'vue-i18n'

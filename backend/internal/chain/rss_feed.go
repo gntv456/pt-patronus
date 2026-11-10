@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // rss_feed.go —— RSS feed 条目的纯函数群（去重键、feed 新旧方向判定、关键词/体积过滤、
 // 下载链与 pubDate 提取、自动下载参数），自 rss.go 按域拆出（行数门禁 400 上限）。
 package chain

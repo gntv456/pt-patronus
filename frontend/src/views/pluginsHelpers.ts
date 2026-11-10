@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Plugins.vue 抽出的纯函数 / 类型（零组件状态耦合）：权限/宿主能力/依赖/兼容性/安装计划/
 // 信任等级的展示与归一化,以及 normalizePlugin/normalizeMarket/schema/configGroups/defaultsFromSchema 等。
 import {

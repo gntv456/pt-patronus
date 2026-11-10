@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import type { ArrKey, SortField } from '@/composables/useSearchFilter'
 
 // 搜索筛选条的静态配置选项（维度/时间/排序字段）。

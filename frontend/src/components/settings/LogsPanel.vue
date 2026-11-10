@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 运行日志面板：级别筛选、刷新、复制、清空。
 // 状态与逻辑来自 useLogs 组合式函数。

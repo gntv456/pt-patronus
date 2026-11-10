@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:ptpatronus/core/api_client.dart';
 
 // RSS 订阅（对齐后端 models.RssSubscription / RssItem + api/v1/rss.go）。

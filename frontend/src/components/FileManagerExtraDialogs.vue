@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // FileManagerExtraDialogs — 文件扩展操作对话框（在线编辑/压缩/权限/预览）。
 // 从 FileManager.vue 抽出，避免主文件超 400 行。状态由父级 fm 双向绑定。

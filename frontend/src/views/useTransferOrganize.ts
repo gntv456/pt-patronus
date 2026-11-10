@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Transfer 页手动整理（下载器选种 → 立即整理）子状态簇。
 // 从 useTransfer.ts 迁出；organizing 与宿主共用（待入库 sweep 也置位）。
 import { ref, computed, type Ref } from 'vue'

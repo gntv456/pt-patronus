@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package trakt 对接 Trakt.tv REST API：Device OAuth 授权 + WatchList 拉取。
 // 仅依赖标准库 + 内部 httpclient，便于 httptest 端到端覆盖。
 // 端点契约来自 Trakt API v2（trakt.tv/oauth，trakt.tv/users/me/watchlist）。

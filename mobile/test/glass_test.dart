@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 玻璃降级纯函数测试：钉死 sigma 归零触发跳过 BackdropFilter + 降级时底色不透明度。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/theme/glass.dart';

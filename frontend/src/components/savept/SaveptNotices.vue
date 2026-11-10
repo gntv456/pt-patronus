@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // PT监护室结构化公告区：按严重级别分区展示告警/消息，站名高亮。
 import { computed } from 'vue'

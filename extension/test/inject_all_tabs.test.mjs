@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 授权全站后「补注入」的结果必须出声（#60 同族：动作回 ok、配套写失败被丢）。
 // 跑法：node --test extension/test/inject_all_tabs.test.mjs
 import { test } from 'node:test'

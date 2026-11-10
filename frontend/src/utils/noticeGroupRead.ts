@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // #294：组内「一键已读」的结果结算抽成纯函数。
 //
 // useNotices 的 readOne 自己 catch 掉失败并弹提示、**不向上抛**，

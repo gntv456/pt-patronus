@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 发布部署 —— 从 NasServer.vue 抽出的部署簇。
 // 耦合最重:读 config 的 opsConfigs、驱动的 exec 的执行能力、组件的 sshTargets/选中目标/面板滚动/工作区切换,
 // 故用依赖对象显式注入。deployForm/Visible/ConfigId 及 deployProfiles/runs/steps 由本 composable 持有。

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """Data types for the PTPatronus Plugin SDK (mirrors the TypeScript SDK surface)."""
 from __future__ import annotations
 

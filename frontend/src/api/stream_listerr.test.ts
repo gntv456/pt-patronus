@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 流式 done 帧的 list_error 必须变成一次 reject —— 视图里已有的 catch 才会弹原文。
 // 这里不打桩 streamSSE（那等于把要验的分帧/解析换掉），而是喂真 SSE 字节给真的 streamSSE。

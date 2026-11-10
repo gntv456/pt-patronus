@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package bizmetrics 业务链路 Prometheus 指标：站点数据同步 / Cookie 保活 / H&R 告警。
 // 与 HTTP 层指标（middleware.Prometheus 的 ptpatronus_http_*）互补——这里回答
 // 「保号自动化运转得怎么样」，供 Grafana 看板与告警规则消费：

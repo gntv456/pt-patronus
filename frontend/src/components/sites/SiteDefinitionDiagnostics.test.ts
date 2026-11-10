@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #331 渲染层：站点定义诊断条必须真的把「N 条配置没生效」画出来，
 // 且「读失败」与「真的没有诊断」不能共用一行文案（本仓最常见的一族）。

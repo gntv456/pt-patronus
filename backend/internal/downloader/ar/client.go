@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package ar 是 Aria2 JSON-RPC 客户端，实现 downloader.Downloader 接口。
 // 协议：HTTP POST /jsonrpc（JSON-RPC 2.0）；鉴权为 params 首参 token:<rpc-secret>
 // （对应 aria2 配置 rpc-secret；用户名忽略）。仅处理 bittorrent 任务。

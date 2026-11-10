@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // file_picker 门面的默认实现（官方 SDK 全平台）：转发 pub.dev file_picker 8.x。
 //
 // 鸿蒙构建时 scripts/build_ohos.ps1 用 file_picker_ohos_impl.dart 的内容

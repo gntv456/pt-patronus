@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 备份文件口令加密（安全审计：备份导出含全量明文 cookie/passkey/密码，
 // 此前导出文件本身不加密）。格式：JSON 信封
 //

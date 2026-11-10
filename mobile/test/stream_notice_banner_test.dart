@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 流式账面该落在哪里：一条数据都没到 → 整页错误态（带重试）；已有数据 → 顶部常驻横幅。
 // done 帧的清单/源账面由四个流式页（后宫/勋章墙/考核/推荐）共用这一套判据与横幅。
 import 'package:flutter/material.dart';

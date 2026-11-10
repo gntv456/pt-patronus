@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // PT监护室 — 聚合 savept.icu 站点健康数据，ICU 仪表盘风格展示。
 // 头部/筛选/公告/站点卡片/站庆彩带已抽至子组件与组合式函数；本文件保留数据加载、筛选派生、滚动与布局。

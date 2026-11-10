@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #258：一键签到的「站点清单读不出来」与「没有启用的站点」是两件事。
 // 后端修好后信封里有 list_error，但如果这个 composable 只读 results，

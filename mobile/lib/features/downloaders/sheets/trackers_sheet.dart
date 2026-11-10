@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Tracker 列表弹窗：新增/删行即时生效。
 // （从 downloaders_page.dart 拆出，part of 主库；行为不变。）
 part of 'package:ptpatronus/features/downloaders/downloaders_page.dart';

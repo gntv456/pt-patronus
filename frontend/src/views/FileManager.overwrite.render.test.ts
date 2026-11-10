@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #244 的最后一米：判据与接线用例都绿了，但「用户真的看得见这个确认框」没证过。
 // 这里挂真 FileManager.vue 走真交互链：行内「移动」→ 对话框「移动到此处」→ doMoveCopy 的同名预检

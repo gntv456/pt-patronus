@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // 用 vi.hoisted 让 mock 句柄在 vi.mock 工厂（被提升到文件顶部）执行时已就绪。

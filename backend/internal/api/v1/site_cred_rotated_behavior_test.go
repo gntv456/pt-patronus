@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #398 行为测试（端到端）：主密钥换过 ⇒ 站点凭据解不开 ⇒ 五个抓取出口必须

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Cloud.vue 的「网盘」tab：驱动卡片列表 + 测试/配额/浏览/整理/修复操作（从 Cloud.vue 拆出）。
 import { useI18n } from 'vue-i18n'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 /// 刷流任务（对齐后端 /brushflow）：选种规则 + 删种规则 + 统计。

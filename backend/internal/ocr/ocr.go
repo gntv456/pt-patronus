@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package ocr 提供验证码 OCR 识别（对标 MSaber OCR 周边服务）：
 // 通用 HTTP OCR 服务（自建 PaddleOCR / 第三方）识别登录验证码图片。
 // 配置经 SystemConfig（OCR_ENDPOINT / OCR_API_KEY / OCR_MODE），未配置时登录回退人工输入。

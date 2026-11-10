@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 平台能力抽象层：全项目平台差异的唯一收敛点（见 docs/鸿蒙端完善.md）。
 //
 // 鸿蒙（ohos）是 OpenHarmony fork Flutter 独有的 TargetPlatform 枚举成员，

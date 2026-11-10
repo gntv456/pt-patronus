@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 通用 schema 字段渲染：field.type → Element Plus 控件。配置/动作 dialog 共用。
 // 自包含(label/control/help)，不依赖 el-form-item，便于父级 CSS grid 控制占宽与对齐。

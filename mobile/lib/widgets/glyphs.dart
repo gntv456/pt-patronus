@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Lucide 风格字形字典 —— 与 Web 端 frontend/src/components/GlassIcon.vue 的 GLYPHS
 // 逐字一致（24×24 viewBox、stroke 描边、圆角端点）。由 GlassIcon 用 flutter_svg 渲染，
 // 套在彩色渐变圆角块上，实现「移动端导航图标 = Web 端 GlassIcon」的视觉对齐。

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 根组件：路由出口。深浅色主题在 main.ts 之前可按 localStorage 切换。
 import { computed } from 'vue'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // ESLint 9 扁平配置。两大职责：
 //   1. i18n 防回潮门禁（no-raw-chinese 自定义规则，限定已迁移页面）
 //   2. TypeScript 推荐规则的「告警级」子集（no-explicit-any / no-floating-promises

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package entertainment
 
 // 下注/选号类娱乐（Bettable）：猜大小/骰宝/双色球/翻面/Betting/红包。纯 Cookie。

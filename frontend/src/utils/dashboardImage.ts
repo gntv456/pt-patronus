@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 零依赖：Canvas 2D 绘制「PTPatronus 仪表盘」成就海报，config 驱动（字段显隐/主题/脱敏/背景图/冠军 7 类）。
 // 参考 PT-depiler UserDataTimeline + 旧版 Kotlin DashboardExporter。@2x 渲染，不引 html2canvas/konva。
 import type { DashboardExportConfig } from './dashboardExportConfig'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NAS 运维页的工作区切换、终端抽屉、面板定位导航小组。
 // 从 NasServer.vue 迁出;setWorkspace 同步校正 activeTab 使其与新工作区匹配。
 import { ref, nextTick } from 'vue'

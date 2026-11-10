@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref, computed, readonly } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'

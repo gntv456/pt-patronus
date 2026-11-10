@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #346 插件静态资源票据签发失败报 502「上游服务不可用」，方向完全指错。

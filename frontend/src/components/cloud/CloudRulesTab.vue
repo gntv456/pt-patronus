@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 云盘页 STRM 规则表格页签：规则列表 + 生成/编辑/删除行操作。
 // 从 Cloud.vue 迁出；动作经 emits 回传宿主。

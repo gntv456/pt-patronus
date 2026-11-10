@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 铃铛角标的未读数：必须用服务端同行的 total，不能只数被上限截断的那一页。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/api/notice.dart';

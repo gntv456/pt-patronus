@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Docker 运维页初始化与模式切换：应用商店模板选中、docker.sock 提示复制、
 // 首次挂载探测本机可用性并启动轮询、模式切换/刷新时重新探测并重启统计。
 // 从 OpsDocker.vue 迁出。

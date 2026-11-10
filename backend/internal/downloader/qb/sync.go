@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package qb
 
 // syncResponse 是 qB /api/v2/sync/maindata 的响应（全量或增量）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // DeviceForm 的纯工具函数：空白表单/协议推断/NAS 字段规整（从 DeviceForm.vue 拆出）。
 import type { MonitorTarget, TargetInput } from '@/api/monitor'
 

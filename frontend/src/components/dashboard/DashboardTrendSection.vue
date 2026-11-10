@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 账号增长趋势面板 + 待处理事项面板。
 // 数据来自 useDashboardData（趋势/指标）与 useDashboardActions（待办）。

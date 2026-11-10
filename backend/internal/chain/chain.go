@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package chain 是业务编排层基类，借鉴 MoviePilot 的 ChainBase。
 // Base 持有模块管理器与事件总线；各业务 Chain（SiteChain 等）内嵌 Base，
 // 通过 RunModule 按 priority 遍历模块并聚合结果。

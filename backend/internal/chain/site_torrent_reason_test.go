@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #401 下载 .torrent 的两类失败（cookie 失效 / 拿到的是 HTML 不是种子）原文是英文，

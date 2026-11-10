@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _ReseedPageState 的任务卡片区扩展：任务列表区/单任务卡。
 // （从 reseed_widgets.dart 拆出；行为不变。）
 part of 'package:ptpatronus/features/reseed/reseed_page.dart';

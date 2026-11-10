@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 挂载级取证（#309）：后端 monitor.detect 逐条评估 CPU/内存/磁盘/温度/离线五项阈值，
 // onboarding 帮助文本（zh-CN「告警阈值（CPU / 内存 / 磁盘 / 温度 / 离线）：编辑设备调整」）

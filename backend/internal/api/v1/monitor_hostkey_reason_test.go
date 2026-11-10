@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #341 AcceptHostKey 的目标查找失败出口用了通用码、且把原因整个丢掉。

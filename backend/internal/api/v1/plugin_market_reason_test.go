@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #370 插件市场的收藏/榜单出口把「市场运营层没装配」说成 400「请求参数有误」。

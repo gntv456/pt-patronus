@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #373 AcceptHostKey 把 DB 真故障说成「监控目标不存在」，而同文件 Update 早就修好了。

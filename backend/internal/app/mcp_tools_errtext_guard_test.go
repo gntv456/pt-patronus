@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package app
 
 // MCP / Agent 工具面的错误出口同样必须走 mcpErr：mcp.Server 把 Handler 返回的

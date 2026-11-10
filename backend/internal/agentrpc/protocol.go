@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package agentrpc 定义 agent 文件管理的协议类型与接口（纯类型叶子包，无 oper/monitor 依赖）。
 // 供 monitor（实现 AgentFileRPC）、filemanager（消费，AgentBackend 转发）、agent（JSON 对齐，独立定义）共享，
 // 以打破 monitor→filemanager→oper→monitor 的 import 循环。

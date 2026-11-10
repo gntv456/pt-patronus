@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #368 整理配置的两个写入口把链层写给用户的中文校验丢进日志，界面只剩一句通用话术。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 从 downloaders_page.dart 拆出（part of 主文件，共享私有类型/工具函数；行为不变）。
 part of 'package:ptpatronus/features/downloaders/downloaders_page.dart';
 

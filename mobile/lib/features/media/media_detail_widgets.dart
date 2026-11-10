@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // MediaDetailPage 的展示层扩展（无 setState 段；从 media_detail_page.dart 拆出，行为不变）。
 part of 'package:ptpatronus/features/media/media_detail_page.dart';
 

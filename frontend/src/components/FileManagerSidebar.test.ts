@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：文件管理器侧栏的云盘列表接口挂掉时，
 // 原先静默 catch 后只剩本地存储，看起来像「没配网盘」。

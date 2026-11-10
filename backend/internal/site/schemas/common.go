@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package schemas 实现各平台 Schema 适配器。每个适配器服务该 schema 下所有站点定义。
 //
 // common.go 提供 HTML 抓取系适配器（NexusPHP/Unit3D/Gazelle...）的公共基类与 helper：

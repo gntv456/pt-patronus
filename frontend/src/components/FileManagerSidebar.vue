@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 文件管理器左栏：存储挂载列表（本地 fs / 云盘）、状态点、右键菜单与新增入口。
 // 从 FileManager.vue 迁出；选中/测试/菜单动作经 emits 回传宿主。

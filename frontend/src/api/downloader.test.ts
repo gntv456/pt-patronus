@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // 只验 downloaderApi 怎么读 /torrents 的响应体：http 层整体 mock，不打网络。

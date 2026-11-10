@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package transfer
 
 // 整理执行核心：电影/剧集的识别→硬链/移动→命名落位。从 engine.go 迁出。

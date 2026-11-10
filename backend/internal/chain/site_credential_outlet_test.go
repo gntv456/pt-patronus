@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // #377 第三步（出口层）：凭据读不出来这条原因必须真的出现在聚合结果里，

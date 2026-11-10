@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package sitedefs
 
 // Wire 把远端定义源同步接进宿主进程：构造 Syncer + 注册 cron（每 6h），

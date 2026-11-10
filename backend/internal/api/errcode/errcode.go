@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package errcode 机器可读错误码：统一 API 错误信封 {code, message, error?}。
 //
 // 设计约束（见 README/后端错误消息码化立项.md）：

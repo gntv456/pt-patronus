@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 /**
  * SiteTorrentFindDialog 的卡片聚合 + 前端过滤逻辑（从组件抽出，纯逻辑无 UI）。
  * 行为不变：结果扁平化 → enrich → 过滤 → 按卡片聚合 → promo+seeders 排序。

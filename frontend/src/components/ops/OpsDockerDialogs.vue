@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Docker 运维页的抽屉/向导/商店组：日志与 Compose 对话框、详情抽屉、exec 终端、
 // 创建向导、本地 Compose 编辑器、应用商店。从 OpsDocker.vue 迁出。

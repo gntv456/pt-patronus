@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package errtext
 
 // #401 登记口（Register / lookupRegistry）的并发安全与幂等判据。

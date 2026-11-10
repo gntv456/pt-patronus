@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：健康中心「巡检未完整覆盖」必须可见。
 // 背景：后端把连不上的服务器/读不出的库静默跳过后返回空报告，前端照常渲染

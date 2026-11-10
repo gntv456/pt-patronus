@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 仪表盘导出图片配置：字段显隐 / 站点筛选 / 数量 / 主题 / 脱敏 / 背景图，持久化到 localStorage。
 // 对照重构前旧版(Kotlin) TotalDashboardConfig 的能力子集。配置驱动 dashboardImage.ts 绘制。
 

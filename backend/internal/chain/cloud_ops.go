@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 云盘文件操作面（从 cloud.go 拆出以满足单文件 400 行门禁）：建目录/移动/复制/重命名/

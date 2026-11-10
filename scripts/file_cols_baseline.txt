@@ -265,7 +265,7 @@
 9	backend/internal/cloud/strm.go
 10	backend/internal/cookiecloud/cookiecloud.go
 2	backend/internal/cookiecloud/server.go
-20	backend/internal/core/config/config.go
+19	backend/internal/core/config/config.go
 1	backend/internal/core/event/async.go
 4	backend/internal/core/event/event.go
 1	backend/internal/core/module/module.go
@@ -281,7 +281,7 @@
 6	backend/internal/db/models/plugin_market.go
 47	backend/internal/db/models/site.go
 8	backend/internal/db/models/system.go
-8	backend/internal/db/models/user.go
+6	backend/internal/db/models/user.go
 45	backend/internal/db/models/workflow.go
 6	backend/internal/db/oper/agent.go
 8	backend/internal/db/oper/agent_conversation.go
@@ -733,7 +733,6 @@
 6	backend/internal/workflow/nodes/siteops.go
 4	backend/internal/workflow/nodes/util.go
 50	backend/internal/workflow/templates.go
-1	backend/internal/ws/batch.go
 8	backend/internal/ws/broadcaster.go
 6	backend/internal/ws/broadcaster_diff.go
 3	backend/tools/convert-definitions.go
@@ -781,7 +780,7 @@
 6	frontend/src/api/freeleech.ts
 4	frontend/src/api/harem.ts
 20	frontend/src/api/http.test.ts
-7	frontend/src/api/http.ts
+6	frontend/src/api/http.ts
 2	frontend/src/api/llmGateway.ts
 1	frontend/src/api/logs.ts
 6	frontend/src/api/medal-wall.ts
@@ -826,7 +825,7 @@
 19	frontend/src/components/CbgSlotGame.vue
 21	frontend/src/components/CbgWheelGame.vue
 7	frontend/src/components/CelebrityDialog.vue
-8	frontend/src/components/ChangePasswordDialog.vue
+7	frontend/src/components/ChangePasswordDialog.vue
 21	frontend/src/components/City13DiceGame.vue
 22	frontend/src/components/City13WheelGame.vue
 6	frontend/src/components/CommandPalette.vue

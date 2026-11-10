@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // WS 实时推送消息解析测试：匹配后端 ws.TorrentSnapshot + 顶层消息信封形状。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/core/ws_client.dart';

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # 开发启动脚本（git bash / WSL）：加载 backend/.env → go run。
 #
 # 用法：

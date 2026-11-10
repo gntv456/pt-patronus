@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package schemas
 
 // Piggo（猪猪，piggo.me）适配器 —— Laravel + Vite SPA 自研引擎，全 JSON API。

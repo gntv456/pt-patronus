@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package ut 是 uTorrent（μTorrent）WebUI 客户端，实现 downloader.Downloader 接口。
 // 协议：HTTP Basic Auth + GET /gui/token.html 取 CSRF token（服务器同时 Set-Cookie: GUID，
 // cookiejar 自动存）；之后所有操作为 GET /gui/?token=...&t=<ts>&action=...&...，

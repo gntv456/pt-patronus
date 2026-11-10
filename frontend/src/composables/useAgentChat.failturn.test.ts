@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // AI 助手「这一轮失败了」必须在会话记录里留痕。后端出错时不落助手消息，旧代码只弹一条
 // 3 秒 toast：记录里只剩用户自己那句，实时气泡还永远停在「…」——界面既谎报还在生成，

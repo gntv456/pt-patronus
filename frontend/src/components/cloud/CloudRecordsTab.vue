@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Cloud.vue 的「STRM 记录」与「云端任务队列」两个 tab（从 Cloud.vue 拆出；行为不变）。
 import { Refresh } from '@element-plus/icons-vue'

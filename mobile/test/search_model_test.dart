@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 搜索模型解析测试：匹配后端 /search 响应形状（含 error 站点的容错）。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ptpatronus/api/search.dart';

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // Telegram Bot 配置面板（含 Cookie 保活频率，复用调度表单）。
 // 状态与逻辑来自 useTgBot + useSchedule 组合式函数。

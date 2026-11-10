@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package notification 实现通知通道抽象与多通道管理。
 // 通道：Bark / Telegram / QQ / 微信 / Webhook / 钉钉 / 飞书 / 邮件。Manager 并发扇出、错误隔离。
 package notification

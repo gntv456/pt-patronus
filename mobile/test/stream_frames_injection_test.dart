@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 四条流式页共用的帧源注入缝：证明 api 层「帧 → 条目 + 账面」真的接在 stream 上。
 // 没有这个缝时，把 `ev.key == 'done'` 改错或整帧丢弃都不会让任何用例变红（只有编译层背书）。
 import 'dart:async';

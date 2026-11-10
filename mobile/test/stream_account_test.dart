@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 流式 done 帧的清单账面（后宫/勋章墙共用同一判据）：`list_error` 一丢，
 // 「站点清单读失败」就会被画成「没有药单 / 没有勋章」。
 import 'package:flutter_test/flutter_test.dart';

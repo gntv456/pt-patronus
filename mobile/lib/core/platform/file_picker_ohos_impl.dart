@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // file_picker 门面的鸿蒙实现：转发 file_picker_ohos 10.3.8
 // （CPF-Flutter 适配版，MethodChannel 桥接鸿蒙原生文件选择器）。
 //

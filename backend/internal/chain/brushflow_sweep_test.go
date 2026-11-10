@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // 刷流扫删（RunSweep）回归：体积淘汰与原生限流必须各管各的种子。

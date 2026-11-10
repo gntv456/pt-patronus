@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package qb 是 qBittorrent WebUI 客户端：登录(403 自动重登)、版本感知、
 // rid 增量同步、种子增删改。借鉴 qBitController 的三层设计。
 //

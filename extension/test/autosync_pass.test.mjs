@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Cookie 自动同步的逐站容错测试（node:test）。
 // 跑法：node --test extension/test/autosync_pass.test.mjs
 //

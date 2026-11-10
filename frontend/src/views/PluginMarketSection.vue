@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 import { Delete, Download, Plus, Refresh, Setting, Star, StarFilled, Top, Bottom } from '@element-plus/icons-vue'
 import { computed } from 'vue'

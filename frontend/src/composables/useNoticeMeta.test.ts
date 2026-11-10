@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { describe, it, expect } from 'vitest'
 
 // 回归钉（1.03.22 白屏 P0）：useNoticeMeta.ts 曾在模块顶层调用 useI18n()，

@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 通知中心（全页面）：按来源类型分组并折叠，点击展开查看每条详情。
 // 与 topbar 铃铛下拉（NotificationCenter.vue）共用 sourceMeta / 路由映射，体验一致。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 签到记录抽屉的取数账面：接口默认单页 100 条、支持 offset，
 // 若界面只把这一页当全部，更早的签到（含失败的）就整段看不见。

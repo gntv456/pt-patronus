@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 校验 update-manifest.json 的发布完整性（CI / 发版前可重复执行）：
 //   1. latestVersion / minVersion 为合法 x.y.z 风格版本号
 //   2. 声明了 url 的 target 必须带 64 位 hex sha256（docker 除外——镜像

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """PTPatronus Plugin SDK (Python) — runtime client + types for external-http plugins.
 
 A thin, pure-stdlib client that mirrors the TypeScript SDK (`@ptpatronus/plugin-sdk`).

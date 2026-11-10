@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:ptpatronus/core/api_client.dart';
 
 // 通知通道配置（GET /notification/config 回显）。secret 脱敏 + *_configured 标记。

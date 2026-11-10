@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // piggo（猪猪）.torrent 下载分流 —— 从 site_torrent.go 拆出（行数门禁 400）。

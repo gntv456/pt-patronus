@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package chain
 
 // CookieCloud 推送安全性：拉取失败时绝不能「从空 base 推送」——CookieCloud 的 PUT 是

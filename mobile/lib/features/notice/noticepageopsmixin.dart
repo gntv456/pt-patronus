@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NoticePage 的动作面（单条已读 / 全部已读 / 删除 / 清空），从 notice_page.dart 拆出。
 //
 // 拆分之外还修了一处真实缺陷：四个动作从前一律 `catch (_) {}`。后端 #204/#205 把

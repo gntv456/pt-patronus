@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package media 实现影视/音乐元数据匹配：MediaSource 抽象 + TMDB/豆瓣/MusicBrainz
 // 多源 + 海报缓存 + NFO 生成。移植现有 PTPatronus RecommendService/TmdbSearch 到 Go。
 package media

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 五子棋 MCTS 的可复现开关。
 //
 // gobangMCTS 默认用墙钟播种、按墙钟预算收工：同一局面两次搜索可以给出不同着法，

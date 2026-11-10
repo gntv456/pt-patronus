@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import '../core/api_client.dart';
 
 // 种子详情页（对齐 backend site.TorrentDetail）。字段 best-effort：站点未抽到的留空。

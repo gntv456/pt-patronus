@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：公告页的「该平台没适配公告抓取」不能和「抓到了，暂无公告」共用一行文案
 // （与站免/消息页同一口径：配置事实 vs 站点现状）。

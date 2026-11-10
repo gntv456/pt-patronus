@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // WorkflowEditorPage 的 WorkflowEditorOpsMixin mixin（含 setState 段；从 workflow_editor_page.dart 拆出，行为不变）。
 part of 'package:ptpatronus/features/workflow/workflow_editor_page.dart';
 

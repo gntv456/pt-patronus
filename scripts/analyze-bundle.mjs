@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // scripts/analyze-bundle.mjs — 零依赖 chunk 体积分析（配合 make perf / 首屏门禁）
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { gzipSync, brotliCompressSync } from 'node:zlib'

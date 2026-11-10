@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #342 「按 id 取站点」失败一律报 SiteNotFound，15 处出口各抄一份（#341 的放大版）。

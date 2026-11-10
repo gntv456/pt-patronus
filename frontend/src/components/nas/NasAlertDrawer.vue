@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 告警历史抽屉：标题栏 + 清空按钮 + AlertList。
 // 从 NasServer.vue 迁出；动作经 emits 回传宿主。

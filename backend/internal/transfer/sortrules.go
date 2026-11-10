@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package transfer —— 种子排序规则（多维权重可配的订阅择优）。
 //
 // 对标 MSaber 种子排序：订阅命中多资源时按权重打分取最优。维度（越大越优，负数降权）：

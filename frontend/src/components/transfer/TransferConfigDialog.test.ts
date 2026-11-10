@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：整理配置抽屉的下载器/云盘下拉数据源读失败时，
 // 原先直接渲染空下拉，看起来像「没配置」。

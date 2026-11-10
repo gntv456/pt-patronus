@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // #397 表行数的显示口径：唯一来源（组件与测试共用）。
 //
 // 为什么单列一个模块：`? = 行数未知` 这个判断很容易被顺手改回去

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // CookieCloud 协议互通测试（node:test）。
 // 跑法：node --test extension/test/cookiecloud.test.mjs
 //

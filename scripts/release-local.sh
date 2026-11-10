@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 # 本地一键发版：前端 build+embed → docker build/push → agent 交叉编译 → Android+Windows 客户端打包。
 # 用法：bash scripts/release-local.sh [版本号]   （不传则读 backend/internal/version/version.go）
 #

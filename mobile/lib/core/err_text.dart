@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'api_client.dart';
 
 /// 任意异常 → 给用户看的一句话（#403 的单一入口）。

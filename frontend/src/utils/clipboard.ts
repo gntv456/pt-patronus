@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ElMessage } from 'element-plus'
 
 // copyText 把文本写入剪贴板，返回是否成功。

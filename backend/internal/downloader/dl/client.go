@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package dl 是 Deluge Web UI 客户端，实现 downloader.Downloader 接口。
 // 协议：POST /json 自有 JSON-RPC（{id,method,params}）；auth.login([password]) 换 session cookie
 // （Deluge 认证只用密码，用户名不参与）；core.* 操作种子。

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 The PTPatronus Authors
+
 """SDK Demo plugin — uses ptpatronus-plugin-sdk (optional import, falls back to stdlib).
 
 Demonstrates the public Python SDK: PTPHostClient.from_env() + log() + kv_get/set against the

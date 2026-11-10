@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'dart:math' as math;
 import 'ent_read_fail.dart';
 import 'package:flutter/material.dart';

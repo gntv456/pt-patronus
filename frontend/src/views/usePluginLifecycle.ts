@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 插件生命周期动作：市场安装（含权限确认）、重载、卸载、停用/启用。
 // 从 usePlugins.ts 迁出;confirmMarketInstall 依赖 VNode 构造器(pluginInstallConfirmNode)。
 import { ref, type Ref } from 'vue'

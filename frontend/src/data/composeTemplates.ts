@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Docker Compose 多容器模板库 —— 预置常用编排方案，一键部署。
 // 对标飞牛/绿联/极空间 NAS：小白用户选模板 → 微调 → 部署，无需手写 YAML。
 

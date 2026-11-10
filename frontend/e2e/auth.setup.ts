@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 登录 setup：产出 storageState 供后续测试项目复用（每个测试免重复登录）。
 // 走本地密码登录（/auth/local/login，好学站点关闭后的主路径，#<issue>）——
 // 空库首登自动建号即 admin，完全离线不触真实好学站。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package cookiecloud 内置服务端（PTPatronus 自身充当 CookieCloud 服务器）。
 //
 // 官方协议语义（easychen/CookieCloud api/app.js）：

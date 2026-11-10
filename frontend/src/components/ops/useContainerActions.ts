@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // OpsDocker 的容器批量操作与单容器动作（从 OpsDocker.vue 拆出，行为不变）。
 // 含：单容器 start/stop/restart/remove、批量选择/全选/批量动作（破坏性操作统一确认）。
 import { computed, ref } from 'vue'

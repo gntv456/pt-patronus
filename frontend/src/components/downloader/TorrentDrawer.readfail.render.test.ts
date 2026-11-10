@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #260 的渲染层收口：种子抽屉里 REST 兜底的失败从前被 `catch {}` 吞掉。
 // tr/ut/dl 没有 StatsCacher（组件内注释自己写着），WS 永远不会推这台的实时帧 ⇒

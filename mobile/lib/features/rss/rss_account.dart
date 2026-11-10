@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // rss_account.dart —— RSS「检查」与「条目列表」的账面文案（纯函数，口径对齐 Web Rss.vue）。
 import 'package:ptpatronus/api/rss.dart';
 

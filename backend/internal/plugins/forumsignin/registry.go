@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package forumsignin
 
 // byKey 是 key → handler 注册表；order 保留注册顺序（决定结果列表稳定排序）。

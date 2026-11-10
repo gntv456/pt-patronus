@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // trend_window.dart —— 设备趋势图的两个纯函数：取数窗口文案、按断口分段。
 //
 // 后端 /monitors/:id/metrics 一次最多回 limit 条，并把 total/truncated 一起带回来；

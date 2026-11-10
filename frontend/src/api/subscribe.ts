@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 订阅（对标 MoviePilot 订阅）：cron 跨站搜种子→推送默认下载器+通知。

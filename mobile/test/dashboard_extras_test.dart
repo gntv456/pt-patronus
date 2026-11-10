@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 移动端仪表盘并发区的失败口径：六路并发取数中某一路读失败时，界面必须说「加载失败」，
 // 不能拿 0/空数组继续渲染成「你真的没有」。区名互不相同也要守住——重名会让一个区的失败
 // 顶掉另一个区的账面。

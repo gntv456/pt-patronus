@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // #393 云盘 Generate 出口是 7 处同类出口里唯一手抄的一份，而且是「退步」的那份。

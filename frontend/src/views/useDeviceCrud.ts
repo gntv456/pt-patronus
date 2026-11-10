@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 设备 CRUD（添加/编辑/删除/探活/告警）—— 从 NasServer.vue 抽出。
 // 依赖注入：targets（工作区切换）、reload（操作后刷新）、setWorkspace/openAddMonitorItem（工作区联动）。
 import { ref, type Ref } from 'vue'

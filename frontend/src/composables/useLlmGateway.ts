@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // LLM 网关（把 AI Agent 以 OpenAI/Anthropic 兼容协议对外暴露）。
 // 从 Settings.vue 抽出：管理网关开关、访问令牌、允许模型与并发。
 import { ref } from 'vue'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package subtitle 封装多源字幕搜索与下载（SubHD / Zimuku / ASSRT / OpenSubtitles）。
 //
 // 设计：各源实现 Provider 接口（Search 返回 []Subtitle，Download 解析为字节），

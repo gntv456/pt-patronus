@@ -1,3 +1,8 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 The PTPatronus Authors
+-->
+
 <script setup lang="ts">
 // 站点健康状态条 + 无采集数据告警卡。
 // 数据来自 useDashboardData（overview/站点数）与 useDashboardActions（联通计数/待办）。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // BigSmallView 的 BigSmallOpsMixin mixin（含 setState 段；从 bigsmall_view.dart 拆出，行为不变）。
 // entReadFailed 来自库文件 bigsmall_view.dart 的 import（part 文件自己不许有 import）。
 part of 'package:ptpatronus/features/entertainment/bigsmall_view.dart';

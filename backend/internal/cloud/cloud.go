@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package cloud 封装网盘（115 / 夸克 / 123云盘）原生 HTTP 客户端子集 + STRM 生成器。
 //
 // 设计：三家网盘协议各异但操作子集一致（列目录 / 配额 / 探活），各实现 Client 接口，

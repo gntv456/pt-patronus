@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package log configures the global slog logger + 内存环形缓冲（供 /system/logs 查看）。
 package log
 

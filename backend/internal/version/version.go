@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package version 持有应用版本号（三端单一权威来源）。
 //
 // 当前版本 1.03.29。发布构建时可用 ldflags 覆盖：

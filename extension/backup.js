@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 配置备份（对标竞品 WebDAV 备份 + CookieCloud 协议兼容）：
 // 1. WebDAV：PUT/GET 单个 JSON 文件（扩展配置 + TOTP 库 + 收藏，统一再包一层口令 AES-GCM）
 // 2. CookieCloud：把本扩展的站点 cookie 台账以 CookieCloud 协议格式推送/拉取——

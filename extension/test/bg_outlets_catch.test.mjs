@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 后台每个异步出口都必须两个分支都回调（#362 那一形的全文件普查门禁）。
 // 判据不是「某一条用例挂了」而是「整类形状不许存在」，所以自带命中基数与旧形状正控。
 // 跑法：node --test extension/test/bg_outlets_catch.test.mjs

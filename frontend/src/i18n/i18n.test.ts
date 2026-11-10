@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // i18n 实例行为：懒加载、默认 locale、切换持久化、缺失 key 回落链（en-US → zh-CN → 兜底串）。
 import { describe, expect, it, beforeEach } from 'vitest'
 import { i18n, setLocale, loadLocale, i18nBoot, LOCALE_KEY } from '@/i18n'

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // _DashboardPageState 的站点区/榜单/引导/指标渲染扩展。
 // （无 setState 段；从 dashboard_page.dart 拆出，行为不变。）
 part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';

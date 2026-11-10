@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package sysinfo 封装 gopsutil 本机指标采集（纯函数，不依赖 target/models）。
 // 设计：被 internal/monitor 的 local HostCollector 和 standalone agent 二进制共用，
 // 避免采集逻辑重复；agent 不 import internal/monitor（否则拉入 RTSP/gortsplib 重型依赖致体积爆炸）。

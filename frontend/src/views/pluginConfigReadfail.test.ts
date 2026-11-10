@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #272：插件「市场源」与「签名信任配置」读不出来时，绝不能进可编辑态。
 // 这两个面板的保存都是整份替换——假空草稿点一次保存，就把真实源列表 / 受信公钥整份抹掉，

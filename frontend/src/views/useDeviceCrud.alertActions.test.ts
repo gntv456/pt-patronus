@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // #317 告警面板五个动作（标记已读 / 确认 / 静默 / 删除 / 清空）此前一个 try/catch 都没有。
 // 后端这些出口有真会发生的 400/404（#301/#310 那批刚把中文原因接进 invalidInput 载体：

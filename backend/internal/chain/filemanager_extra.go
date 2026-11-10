@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // filemanager_extra.go — chain 层扩展能力转发（在线编辑/压缩/解压/chmod/目录大小）。
 // 各方法先取 backend，再做可选能力类型断言；未实现返回 ErrUnsupported。
 

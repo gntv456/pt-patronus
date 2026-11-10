@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package manager 管理多下载器实例：按 id 懒构建客户端并缓存，配置变更即失效重建。
 // 独立成包以避免 downloader（接口/类型）↔ qb/tr（实现）之间的循环依赖。
 package manager

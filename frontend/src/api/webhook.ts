@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { http } from './http'
 
 // 进站 Webhook：外部 POST /api/v1/webhooks/in/:token → 触发目标工作流/广播事件/通知。

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // useTransfer 的「目录标签/排序/目录同步/识别词/识别词云端共享」子模块。
 // （从 useTransfer.ts 拆出；自含全部状态与方法，行为不变。）
 import { ref } from 'vue'

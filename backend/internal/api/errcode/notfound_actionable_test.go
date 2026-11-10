@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package errcode
 
 // #344 「按 id 定位的记录没了」这一族错误码里，有 9 条还是光秃秃的「X 不存在」。

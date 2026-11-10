@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归（两处）：
 // 1) 站点详情「考核·契约」等 tab 在列表接口挂掉时，原先 catch 后渲染成「暂无考核数据/未配置契约」。

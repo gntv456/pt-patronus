@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import 'package:flutter/material.dart';
 
 /// 屏幕宽度分档 —— 对齐 Web 的响应式语义，替代散落各页的裸 `MediaQuery` 判断。

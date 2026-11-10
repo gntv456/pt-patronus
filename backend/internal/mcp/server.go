@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Package mcp 实现 Model Context Protocol（MCP）服务端核心子集：JSON-RPC 2.0 over
 // streamable HTTP，暴露宿主能力为 MCP 工具（tools/list、tools/call）。
 //

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 隐私模式（对标竞品「截图隐藏敏感数据」）：
 // 开关存 chrome.storage.local.privacyMode；mask* 工具按开关打码指纹/魔力/域名。
 // 值本身不删——只是展示层打码（前 4 位 + ***），导出/比对逻辑不受影响。

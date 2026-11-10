@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // @vitest-environment jsdom
 // 渲染层回归：「保级风险」卡片对 UNKNOWN 卡片（抓取超时/未登录/解析失败）的计数与告警。
 // 背景：UNKNOWN 既非 DANGER 也非 PROGRESS——旧逻辑只统计两者，整站抓取失败（冷缓存截断/

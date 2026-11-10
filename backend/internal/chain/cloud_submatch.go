@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // cloud_submatch.go —— 云盘 STRM 记录 ↔ 订阅 的文件名匹配纯函数群（自 cloud.go 拆出）。
 // 匹配策略：双方归一化（去扩展名/分隔符/分辨率编码年份噪声）后，
 // 订阅标题的每个 token 都须作为独立词出现在文件名（避免裸子串误匹配）。

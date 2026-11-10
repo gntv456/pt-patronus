@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 import { ref, type Ref } from 'vue'
 import { cloudApi, type CloudDrive, type StrmRule, type StrmRecord, type StrmResult } from '@/api/cloud'
 

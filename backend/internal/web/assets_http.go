@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package web
 
 // HTTP 层：把 DataDir/jessibuca 下的播放器资源直出，缺失时自动下载。

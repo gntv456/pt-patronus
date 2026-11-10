@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 站点统计快照的行构造与落库。
 //
 // 这里曾有两条各自逐字段抄写的映射：automation.Service.recordStat（定时聚合）与

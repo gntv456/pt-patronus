@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package v1
 
 // 鉴权域测试公共骨架：AuthHandler + 生产形态公开鉴权路由 + JSON 请求 helper。

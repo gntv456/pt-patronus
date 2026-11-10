@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package web
 
 // 摄像头预览资源（jessibuca）的按需获取与分发。

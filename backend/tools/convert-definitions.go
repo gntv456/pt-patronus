@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // Command convert-definitions 把 export-definitions.mjs 产出的 dump/*.json 翻译为
 // PTPatronus 的 SiteMetadata YAML（输出到 tools/out/<id>.yaml）。
 //

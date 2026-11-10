@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // 页面侧 await chrome.runtime.sendMessage 必须自带兜底（#334/#362 那一族在调用方这一侧的形状）。
 // 后台两个分支都回调之后，剩下的风险是通道本身：SW 被回收时 promise 直接 reject，
 // 裸 await 会把所在的那段逻辑（往往是逐条循环）整段抛死——计数丢失、按钮停在旧文案。

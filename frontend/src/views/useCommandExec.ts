@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 // NasServer 命令批量执行（exec hub）—— 从 NasServer.vue 抽出的最大状态簇。
 // 依赖注入：sshTargets（SSH 主机列表 computed）/ focusExecPanel（执行面板滚动回调，组件持有）。
 // commandRuns / execTargetIds 等由本 composable 持有并 return；loadAll / 部署簇用解构回的 ref。

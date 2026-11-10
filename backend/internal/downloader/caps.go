@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 The PTPatronus Authors
+
 package downloader
 
 // PrioOption 文件优先级取值（前端 Select 选项）。

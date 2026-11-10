@@ -85,12 +85,13 @@ jobs:
       - uses: sigstore/cosign-installer@1aa8e0f2454b781fbf0fbf306a4c9533a0c57409 # v3.7.0
       - name: Sign image (cosign keyless)
         run: cosign sign --yes "${{ steps.digest.outputs.image }}"
-      # 扫描实际推送的镜像（tag 与 dev-<sha> 都扫——dev 镜像同样会被人拉去试用，
-      # 漏洞只在发版日暴露就晚了），CRITICAL 门禁红灯，HIGH 报告不阻断（基线收敛后再升级）。
+      # 扫描实际推送的镜像。CRITICAL 门禁红灯（exit-code=1 阻断）；HIGH 不阻断
+      # （仅报告）——遵循既定策略：基线收敛后再升级为 HIGH 也阻断。
+      # 注：之前误配成 severity: CRITICAL,HIGH 导致 HIGH 也阻断，与策略矛盾，已修正。
       - name: 扫描镜像漏洞（Trivy，CRITICAL 门禁）
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: ${{ steps.digest.outputs.image }}
           format: table
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
           exit-code: '1'

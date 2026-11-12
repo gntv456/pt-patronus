@@ -75,3 +75,7 @@ frontend/public/jessibuca/decoder.wasm
 
 # 本地体验测试用的空库演示实例（UX 评估期间起过，勿入库）
 backend/data-demo/
+
+# 本地 agent 会话工作区（凭据副本/临时脚本，绝不入库）
+.zcode/
+.workbuddy/

@@ -13,7 +13,7 @@ import (
 // ---- 云端整理（CloudOrganize） ----
 //
 // 对「已在云盘上的文件」（转存/离线下载来的散乱结构）做识别→重命名→移动到云端
-// 分类目录——对标 MSaber 文件整理（strm_transfer）。复用 MediaChain 识别（经接口
+// 分类目录——复用 MediaChain 识别（经接口
 // 注入，断 cloud→chain 依赖），目标从本地路径换成网盘路径，经 FileManager 执行。
 
 // Organizer 媒体识别能力（chain.MediaChain 结构化满足）。

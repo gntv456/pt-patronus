@@ -3,7 +3,7 @@
 
 // Package tgbot 实现入站 Telegram bot：getUpdates 长轮询收消息 → 斜杠命令或自然语言 →
 // 复用 AI Agent（经 TalkFunc 注入，避免 tgbot→aiagent 依赖）→ 回帖。
-// 与出站推送 notification/telegram.go 分离（bot 不是 Channel）。对标 MoviePilot telegram + chat-ops。
+// 与出站推送 notification/telegram.go 分离（bot 不是 Channel）。
 package tgbot
 
 import "encoding/json"

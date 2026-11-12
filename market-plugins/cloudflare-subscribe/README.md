@@ -1,5 +1,5 @@
 # cloudflare-subscribe
 
-定时拉取订阅源并更新本地 hosts 片段（迁移自 MoviePilot）。
+Fetch subscription sources on schedule and update local hosts entries.
 
 Former PTPatronus built-in, now open-source market plugin.

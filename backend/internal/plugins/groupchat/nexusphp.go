@@ -15,7 +15,7 @@ import (
 // nexusPHPBase 是 NexusPHP 系喊话的默认实现，14 站共享底座。
 // 特殊站通过嵌入本结构体 + 覆写 Send/FetchFeedback 实现差异化。
 //
-// 默认协议(对标原版 ISiteHandler.send_messagebox)：
+// 默认协议(send_messagebox)：
 //
 //	Send:         GET /shoutbox.php?shbox_text=<msg>&shout=我喊&sent=yes&type=shoutbox
 //	FetchFeedback: GET /shoutbox.php → goquery 解析 //tr[td.shoutrow] 找含 @username 的行
@@ -107,7 +107,7 @@ func parseNexusFeedback(html, username string) *Feedback {
 	return fb
 }
 
-// rewardKeywords 奖励类型 → 触发关键词(对标原版各 handler 的分类逻辑)。
+// rewardKeywords 奖励类型 → 触发关键词(各 handler 分类逻辑)。
 var rewardKeywords = []struct {
 	Type string
 	Kws  []string

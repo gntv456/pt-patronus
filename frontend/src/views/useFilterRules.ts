@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, onMounted } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   filterApi,
@@ -19,6 +20,9 @@ function errMsg(e: unknown, fb: string): string {
   return (e as Error)?.message || fb
 }
 
+
+const t = (k: string) => i18n.global.t(k)
+
 export function useFilterRules() {
   const activeTab = ref<'builtin' | 'custom' | 'group'>('builtin')
 
@@ -30,7 +34,7 @@ export function useFilterRules() {
     try {
       builtins.value = await filterApi.builtins()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '加载内置规则失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k1')))
     } finally {
       loadingBuiltins.value = false
     }
@@ -44,7 +48,7 @@ export function useFilterRules() {
     try {
       customs.value = await filterApi.custom()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '加载自定义规则失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k2')))
     } finally {
       loadingCustom.value = false
     }
@@ -78,38 +82,38 @@ export function useFilterRules() {
   }
   async function saveCustom() {
     if (!customForm.value.id.trim()) {
-      ElMessage.warning('规则 id 必填（仅字母数字）')
+      ElMessage.warning(t('opusefilterrules.k3'))
       return
     }
     try {
       savingCustom.value = true
       if (editingCustom.value) {
         await filterApi.updateCustom(editingCustom.value.id, customForm.value)
-        ElMessage.success('已更新')
+        ElMessage.success(t('common.updated'))
       } else {
         await filterApi.createCustom(customForm.value)
-        ElMessage.success('已创建')
+        ElMessage.success(t('common.created'))
       }
       showCustomForm.value = false
       await loadCustom()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '保存失败'))
+      ElMessage.error(errMsg(e, t('common.saveFailed')))
     } finally {
       savingCustom.value = false
     }
   }
   async function deleteCustom(r: FilterRule) {
     try {
-      await ElMessageBox.confirm(`删除自定义规则「${r.id}」？被规则组引用时将被拒绝。`, '确认', { type: 'warning' })
+      await ElMessageBox.confirm(`删除自定义规则「${r.id}」？被规则组引用时将被拒绝。`, t('common.confirm'), { type: 'warning' })
     } catch {
       return
     }
     try {
       await filterApi.deleteCustom(r.id)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await loadCustom()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '删除失败'))
+      ElMessage.error(errMsg(e, t('common.deleteFailed')))
     }
   }
 
@@ -121,7 +125,7 @@ export function useFilterRules() {
     try {
       groups.value = await filterApi.groups()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '加载规则组失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k4')))
     } finally {
       loadingGroups.value = false
     }
@@ -152,29 +156,29 @@ export function useFilterRules() {
   }
   async function saveGroup() {
     if (!groupForm.value.name.trim() || !groupForm.value.rule_string.trim()) {
-      ElMessage.warning('组名与规则表达式必填')
+      ElMessage.warning(t('opusefilterrules.k5'))
       return
     }
     try {
       savingGroup.value = true
       if (editingGroup.value) {
         await filterApi.updateGroup(editingGroup.value.name, groupForm.value)
-        ElMessage.success('已更新')
+        ElMessage.success(t('common.updated'))
       } else {
         await filterApi.createGroup(groupForm.value)
-        ElMessage.success('已创建')
+        ElMessage.success(t('common.created'))
       }
       showGroupForm.value = false
       await loadGroups()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '保存失败'))
+      ElMessage.error(errMsg(e, t('common.saveFailed')))
     } finally {
       savingGroup.value = false
     }
   }
   async function deleteGroup(g: FilterRuleGroup) {
     try {
-      await ElMessageBox.confirm(`删除规则组「${g.name}」？全局绑定中的悬空引用会被一并清理。`, '确认', {
+      await ElMessageBox.confirm(`删除规则组「${g.name}」？全局绑定中的悬空引用会被一并清理。`, t('common.confirm'), {
         type: 'warning',
       })
     } catch {
@@ -182,11 +186,11 @@ export function useFilterRules() {
     }
     try {
       await filterApi.deleteGroup(g.name)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await loadGroups()
       await loadBindings()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '删除失败'))
+      ElMessage.error(errMsg(e, t('common.deleteFailed')))
     }
   }
 
@@ -201,7 +205,7 @@ export function useFilterRules() {
   }
   async function runTest() {
     if (!testRuleString.value.trim()) {
-      ElMessage.warning('请填写规则表达式')
+      ElMessage.warning(t('opusefilterrules.k6'))
       return
     }
     const torrents: FilterTorrent[] = testTitles.value
@@ -210,14 +214,14 @@ export function useFilterRules() {
       .filter(Boolean)
       .map((title) => ({ title }))
     if (!torrents.length) {
-      ElMessage.warning('请至少输入一行种子标题')
+      ElMessage.warning(t('opusefilterrules.k7'))
       return
     }
     try {
       testing.value = true
       testResult.value = await filterApi.test({ rule_string: testRuleString.value, torrents })
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '试算失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k8')))
     } finally {
       testing.value = false
     }
@@ -230,16 +234,16 @@ export function useFilterRules() {
     try {
       bindings.value = await filterApi.bindings()
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '加载全局绑定失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k9')))
     }
   }
   async function saveBindings() {
     try {
       savingBindings.value = true
       await filterApi.setBindings(bindings.value)
-      ElMessage.success('全局绑定已保存')
+      ElMessage.success(t('opusefilterrules.k10'))
     } catch (e: unknown) {
-      ElMessage.error(errMsg(e, '保存绑定失败'))
+      ElMessage.error(errMsg(e, t('opusefilterrules.k11')))
     } finally {
       savingBindings.value = false
     }

@@ -2,8 +2,12 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, watch, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { downloaderApi, type Downloader, type DownloaderResult } from '@/api/downloader'
 import type { DialogKind } from '@/components/downloader/TorrentTable.vue'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useTorrentDialog(downloader: Ref<Downloader>, refresh: () => void) {
   const activeDialog = ref<{ kind: DialogKind; hashes: string[] } | null>(null)
@@ -117,14 +121,14 @@ export function useTorrentDialog(downloader: Ref<Downloader>, refresh: () => voi
           return
       }
       if (r && r.ok) {
-        ElMessage.success('操作成功')
+        ElMessage.success(t('common.actionOk'))
         activeDialog.value = null
         refresh()
       } else if (r) {
-        ElMessage.warning(r.error || '失败')
+        ElMessage.warning(r.error || t('common.failed'))
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '请求失败')
+      ElMessage.error((e as Error).message || t('common.requestFailed'))
     } finally {
       dlgLoading.value = false
     }
@@ -161,18 +165,18 @@ export function useCategoryManage(downloader: Ref<Downloader>, loadCats: () => P
     if (!newCatName.value.trim()) return
     const r = await downloaderApi.createCategory(downloader.value.id, newCatName.value.trim(), newCatPath.value.trim())
     if (r.ok) {
-      ElMessage.success('已添加')
+      ElMessage.success(t('common.added'))
       newCatName.value = ''
       newCatPath.value = ''
       loadCats()
     } else {
-      ElMessage.warning(r.error || '失败')
+      ElMessage.warning(r.error || t('common.failed'))
     }
   }
 
   async function delCat(name: string) {
     try {
-      await ElMessageBox.confirm(`确认删除分类「${name}」？该分类下任务将变为无分类。`, '删除分类', {
+      await ElMessageBox.confirm(`确认删除分类「${name}」？该分类下任务将变为无分类。`, t('opusetorrentdrawer.k1'), {
         type: 'warning',
       })
     } catch {
@@ -180,10 +184,10 @@ export function useCategoryManage(downloader: Ref<Downloader>, loadCats: () => P
     }
     const r = await downloaderApi.deleteCategories(downloader.value.id, [name])
     if (r.ok) {
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       loadCats()
     } else {
-      ElMessage.warning(r.error || '失败')
+      ElMessage.warning(r.error || t('common.failed'))
     }
   }
 

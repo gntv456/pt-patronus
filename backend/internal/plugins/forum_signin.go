@@ -14,7 +14,7 @@ import (
 
 // forum-signin：论坛/PT 站论坛区每日签到（NodeSeek/蜂巢/飞牛/柠檬/国语视界/SSDForum）。
 // 凭据由插件配置承载（每行 key|base|cookie[|path]），不走 PT 站点列表。
-// 对标 group-chat-zone：thin plugin 入口 + forumsignin 子包自包含（避循环 import）。
+// 同 group-chat-zone：thin plugin 入口 + forumsignin 子包自包含（避循环 import）。
 
 // fsRTAdapter 把 plugins.Runtime 适配成 forumsignin.Runtime（同 gcRTAdapter 模式）。
 type fsRTAdapter struct{ rt Runtime }

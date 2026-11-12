@@ -45,7 +45,7 @@ func (o *StrmRuleOper) Create(in StrmRuleInput) (*models.StrmRule, error) {
 	}
 	// Recursive/KeepExt/Enabled 均带 gorm:"default:true"；GORM 对带 default 标签的零值 bool(false)
 	// 即使 Select 强制列名，仍会用 DB 默认 true 覆盖（RETURNING 回填）——实测 struct+Create 无法写入 false。
-	// 用 map[string]any 绕开 default 机制，确保显式 false 正确落库（对标 keepseed.SaveSetting 的同款修复）。
+	// 用 map[string]any 绕开 default 机制，确保显式 false 正确落库（同 keepseed.SaveSetting 的修复）。
 	row := map[string]any{
 		"name": in.Name, "drive_id": in.DriveID, "cloud_path": in.CloudPath, "output_dir": in.OutputDir,
 		"mount_root": in.MountRoot, "template": in.Template,

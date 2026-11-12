@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { entertainmentApi, type GameStats, type PlayResult, type GameRecord } from '@/api/entertainment'
 import { entFail } from '@/utils/entFail'
 
@@ -34,6 +35,9 @@ export const layout = [
 ]
 
 // 奖品 id → 外圈位置（0-7）。id9 归到 pos5（VIP1天格）。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function mapIdToPos(id: number): number {
   if (id >= 1 && id <= 8) return id - 1
   if (id === 9) return 5
@@ -91,15 +95,15 @@ export function useJggGame(siteId: Ref<number>) {
         result.value = res
         const win = res.prize && res.prize !== '谢谢参与'
         if (win) ElMessage.success(`🎉 获得 ${res.prize}`)
-        else ElMessage.info(res.message || '谢谢参与')
+        else ElMessage.info(res.message || t('opusejgggame.k1'))
       } else {
         result.value = res
-        ElMessage.warning(res.message || '抽奖失败')
+        ElMessage.warning(res.message || t('opusejgggame.k2'))
       }
       await Promise.all([refreshStats(), refreshHistory()])
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || t('common.requestFailed'))
     } finally {
       spinning.value = false
     }
@@ -126,12 +130,12 @@ export function useJggGame(siteId: Ref<number>) {
         const wins = (res.prizes || []).filter((p) => p.is_win).length
         ElMessage.success(`🎉 ${count}连抽完成，中奖 ${wins}/${count}`)
       } else {
-        ElMessage.warning(res.message || '连抽失败')
+        ElMessage.warning(res.message || t('opusejgggame.k3'))
       }
       await Promise.all([refreshStats(), refreshHistory()])
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || t('common.requestFailed'))
     } finally {
       bulkSpinning.value = false
     }

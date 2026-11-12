@@ -4,7 +4,7 @@
 import 'package:ptpatronus/core/api_client.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
-// 资源过滤规则（对标 MoviePilot-2 filter 模块）。后端：internal/filter + internal/api/v1/filter_rule.go。
+// 资源过滤规则。后端：internal/filter + internal/api/v1/filter_rule.go。
 //
 // 规则组 rule_string 用 '>' 分优先级层，每层是规则 id 的布尔表达式（! & | ()），
 // first-match-wins 赋 pri_order；内置规则只读、自定义规则 CRUD、规则组 CRUD、

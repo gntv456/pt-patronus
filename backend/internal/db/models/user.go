@@ -6,7 +6,7 @@ package models
 
 import "time"
 
-// UserPreference — 用户界面偏好（跨浏览器同步）。对标 MSaber「偏好随账号同步」：
+// UserPreference — 用户界面偏好（跨浏览器同步）：
 // 主题/壁纸/侧栏/卡片样式等 UI 偏好存服务端，登录即拉取，localStorage 仅作离线缓存。
 // Value 为 JSON 文本（前端结构自由演进，后端只透传；上限 64KB 防滥用）。
 type UserPreference struct {

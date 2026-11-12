@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package forumsignin 实现论坛/PT 站论坛区的每日签到自动化（移植自 MoviePilot madrays/imaliang 论坛签到插件）。
+// Package forumsignin 实现论坛/PT 站论坛区的每日签到自动化（）。
 //
-// 架构对标 internal/plugins/groupchat：站点 handler 注册表 + 复用 httpclient。
+// 架构同 internal/plugins/groupchat：站点 handler 注册表 + 复用 httpclient。
 // 与 groupchat 的区别：这些论坛（NodeSeek/SSDForum 等非 PT 论坛，及 PT 站的论坛区）
 // 不一定在宿主 PT 站点列表中，故凭据（cookie/base）由插件配置承载（每行 key|base|cookie[|path]），
 // 而非复用 SiteList/SiteCookie。签到端点基于社区逆向契约，httptest mock 覆盖，真实联调留用户。

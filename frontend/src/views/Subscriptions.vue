@@ -132,7 +132,7 @@ function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
 }
 
-// ---- 批量操作（对标 MSaber：卡片勾选 → 批量编辑 / 重新搜索 / 取消订阅） ----
+// ---- 批量操作（卡片勾选 → 批量编辑 / 重新搜索 / 取消订阅） ----
 const batchMode = ref(false)
 const selectedIds = ref<number[]>([])
 const batchRunning = ref(false)

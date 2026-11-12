@@ -13,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
+	"github.com/hxpt/ptpatronus/internal/errtext"
 )
 
 type betReq struct {
@@ -135,7 +136,9 @@ func (h *EntertainmentHandler) FlipWS(c *gin.Context) {
 	defer cancel()
 	events, err := h.ent.FlipBridge(ctx, id, c.Param("game"))
 	if err != nil {
-		_ = conn.WriteJSON(gin.H{"type": "error", "message": err.Error()})
+		// WS 错误帧同样走 errtext 单一文案源：err.Error() 直发会把英文内部错误
+		// 弹给游戏页（HTTP 面已收敛，这条 WS 旁路是 #112 说的「改了这边漏那边」）。
+		_ = conn.WriteJSON(gin.H{"type": "error", "message": errtext.Text(err)})
 		return
 	}
 	// 读泵：仅用于探测客户端断开（读到错即取消 ctx，关上游）

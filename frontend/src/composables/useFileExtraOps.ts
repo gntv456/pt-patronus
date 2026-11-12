@@ -4,11 +4,15 @@
 // useFileExtraOps — 文件管理扩展操作（在线编辑/压缩/解压/权限/目录大小/预览）。
 // 从 useFileOps 抽出，独立 composable，避免单文件超 400 行。复用同一 fm 状态对象。
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { i18n } from '@/i18n'
 import { fileApi } from '@/api/filemanager'
 import type { FileEntry } from '@/api/filemanager'
 import type { useFileManager } from './useFileManager'
 
 type FileManager = ReturnType<typeof useFileManager>
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useFileExtraOps(fm: FileManager, refresh: () => void) {
   // ── 在线编辑 ──
@@ -23,7 +27,7 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
         fm.editContent.value = c
       })
       .catch((err) => {
-        ElMessage.error(err.message || '读取失败')
+        ElMessage.error(err.message || t('opusefileextraops.k1'))
         fm.editVisible.value = false
       })
       .finally(() => {
@@ -35,11 +39,11 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
     fm.editLoading.value = true
     try {
       await fileApi.writeFile(fm.curFs.value!.id, fm.editTarget.value.path, fm.editContent.value)
-      ElMessage.success('已保存')
+      ElMessage.success(t('common.saved'))
       fm.editVisible.value = false
       refresh()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || t('common.saveFailed'))
     } finally {
       fm.editLoading.value = false
     }
@@ -53,16 +57,16 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
     fm.archiveVisible.value = true
   }
   async function doArchive() {
-    if (!fm.archiveTarget.value || !fm.archiveName.value.trim()) return ElMessage.warning('请填压缩包名')
+    if (!fm.archiveTarget.value || !fm.archiveName.value.trim()) return ElMessage.warning(t('opusefileextraops.k2'))
     fm.archiveLoading.value = true
     try {
       const dst = fm.path.value.replace(/\/$/, '') + '/' + fm.archiveName.value.trim()
       await fileApi.archive(fm.curFs.value!.id, fm.archiveTarget.value.path, dst)
-      ElMessage.success('压缩完成')
+      ElMessage.success(t('opusefileextraops.k3'))
       fm.archiveVisible.value = false
       refresh()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '压缩失败')
+      ElMessage.error((e as Error).message || t('opusefileextraops.k4'))
     } finally {
       fm.archiveLoading.value = false
     }
@@ -71,16 +75,16 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
   // ── 解压 ──
   async function doExtract(e: FileEntry) {
     try {
-      await ElMessageBox.confirm(`解压 ${e.name} 到当前目录？`, '解压', { type: 'info' })
+      await ElMessageBox.confirm(`解压 ${e.name} 到当前目录？`, t('opusefileextraops.k5'), { type: 'info' })
     } catch {
       return
     }
     try {
       await fileApi.extract(fm.curFs.value!.id, e.path, fm.path.value)
-      ElMessage.success('解压完成')
+      ElMessage.success(t('opusefileextraops.k6'))
       refresh()
     } catch (err: unknown) {
-      ElMessage.error((err as Error).message || '解压失败')
+      ElMessage.error((err as Error).message || t('opusefileextraops.k7'))
     }
   }
 
@@ -94,14 +98,14 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
   async function doChmod() {
     if (!fm.chmodTarget.value) return
     const oct = parseInt(fm.chmodMode.value, 8)
-    if (isNaN(oct)) return ElMessage.warning('请填有效的八进制权限（0-777）')
+    if (isNaN(oct)) return ElMessage.warning(t('opusefileextraops.k8'))
     fm.chmodLoading.value = true
     try {
       await fileApi.chmod(fm.curFs.value!.id, fm.chmodTarget.value.path, oct, fm.chmodRecursive.value)
-      ElMessage.success('权限已修改')
+      ElMessage.success(t('opusefileextraops.k9'))
       fm.chmodVisible.value = false
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '修改失败')
+      ElMessage.error((e as Error).message || t('opusefileextraops.k10'))
     } finally {
       fm.chmodLoading.value = false
     }
@@ -114,7 +118,7 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
       const r = await fileApi.dirSize(fm.curFs.value!.id, e.path)
       fm.dirSizeMap.value = { ...fm.dirSizeMap.value, [e.path]: r.sizeStr }
     } catch (err: unknown) {
-      ElMessage.error((err as Error).message || '计算失败')
+      ElMessage.error((err as Error).message || t('opusefileextraops.k11'))
     } finally {
       fm.dirSizeLoading.value = { ...fm.dirSizeLoading.value, [e.path]: false }
     }
@@ -132,7 +136,7 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
         fm.previewContent.value = c
       })
       .catch((err) => {
-        ElMessage.error(err.message || '读取失败')
+        ElMessage.error(err.message || t('opusefileextraops.k1'))
         fm.previewVisible.value = false
       })
       .finally(() => {

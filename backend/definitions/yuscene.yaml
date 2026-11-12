@@ -1,4 +1,3 @@
-# yuscene — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: unit3d。已由本项目运行时 schema adapter 支持。
 aka:
     - YS

@@ -33,7 +33,7 @@ func TestParseNot(t *testing.T) {
 	}
 }
 
-// TestParseSamePrecedence 验证 & 与 | 同优先级左结合（对齐 MP-2 pyparsing）。
+// TestParseSamePrecedence 验证 & 与 | 同优先级左结合。
 // A | B & C，A=true B=false C=false：
 //
 //	同优先级 → ((A|B)&C) = (true&false) = false
@@ -75,8 +75,8 @@ func TestSplitLevels(t *testing.T) {
 	}
 }
 
-// TestSplitLevelsMP2LongExample MP-2 RuleParser.py:79-81 的 50 层 rule_string 应切成 50 个非空层。
-func TestSplitLevelsMP2LongExample(t *testing.T) {
+// TestSplitLevelsLongExample 50 层 rule_string 应切成 50 个非空层。
+func TestSplitLevelsLongExample(t *testing.T) {
 	rs := "SPECSUB & CNVOI & 4K & !BLU > CNSUB & 4K > 4K & !BLU & !REMUX > 1080P & !BLU"
 	ls, err := SplitLevels(rs)
 	if err != nil {

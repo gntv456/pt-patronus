@@ -5,7 +5,7 @@
 
 <script setup lang="ts">
 // SptIcon — PT监护室专用轻量内联 SVG 图标集（Lucide 描边风格，stroke=currentColor）。
-// 替代 MoviePilot 版用的 Vuetify MDI 图标（PTPatronus 无 MDI 依赖）。
+// 自绘 SVG 图标（无 Vuetify MDI 依赖）。
 // 与 GlassIcon（圆角渐变 app 图标）区分：这里是行内小图标，跟随文字颜色。
 import { computed } from 'vue'
 

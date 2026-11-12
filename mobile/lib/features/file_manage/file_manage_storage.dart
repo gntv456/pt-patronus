@@ -73,7 +73,7 @@ mixin FileManageStorageMixin on State<FileManagePage> {
         return;
       }
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
     } finally {
       // 仅在未触发 _select（无后端/出错分支）时收尾 _loading。
       if (mounted && !selected) setState(() => _loading = false);

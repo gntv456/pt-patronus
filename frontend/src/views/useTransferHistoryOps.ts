@@ -4,8 +4,12 @@
 // Transfer 页「整理历史/待入库」列表的动作簇：加载、视图切换、逐条整理/重做/删除、
 // 批量删除与清失败、手动 sweep。从 useTransfer.ts 迁出。
 import { ref, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { transferApi, type TransferHistory, type TransferPendingItem } from '@/api/transfer'
+
+
+const t = (k: string, params?: Record<string, unknown>) => i18n.global.t(k, params ?? {})
 
 export function useTransferHistoryOps(opts: {
   viewMode: Ref<'history' | 'pending'>
@@ -43,7 +47,7 @@ export function useTransferHistoryOps(opts: {
         }
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载失败')
+      ElMessage.error((e as Error).message || t('common.loadFailed'))
     } finally {
       loading.value = false
     }
@@ -58,11 +62,11 @@ export function useTransferHistoryOps(opts: {
     opts.organizing.value = true
     try {
       const res = await transferApi.organize(row.downloader_id, row.hash)
-      if (res && res.Success) ElMessage.success('整理完成：' + (res.Files?.length || 0) + ' 文件 → ' + res.DestDir)
-      else ElMessage.warning('整理未成功：' + (res?.ErrMsg || '未知'))
+      if (res && res.Success) ElMessage.success(t('opusetransferhistoryops.organized', { name: t('opusetransferhistoryops.k1'), n: res.Files?.length || 0, dest: res.DestDir }))
+      else ElMessage.warning(t('opusetransferhistoryops.k2') + (res?.ErrMsg || t('common.unknown')))
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '整理失败')
+      ElMessage.error((e as Error).message || t('opusetransferhistoryops.k3'))
     } finally {
       opts.organizing.value = false
     }
@@ -74,13 +78,13 @@ export function useTransferHistoryOps(opts: {
       // 此前这里不看回执一律报绿 ⇒ 点了按钮、消息说已触发、实际一粒种子都没整理。
       const res = await transferApi.sweep()
       if (res && res.ok === false) {
-        ElMessage.warning(res.msg || '扫描未启动')
+        ElMessage.warning(res.msg || t('opusetransferhistoryops.k4'))
         return
       }
-      ElMessage.success('已触发扫描，稍后刷新查看')
+      ElMessage.success(t('opusetransferhistoryops.k5'))
       setTimeout(load, 4000)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '扫描失败')
+      ElMessage.error((e as Error).message || t('opusetransferhistoryops.k6'))
     }
   }
 
@@ -88,11 +92,11 @@ export function useTransferHistoryOps(opts: {
     redoing.value = h.id
     try {
       const res = await transferApi.redo(h.id)
-      if (res && res.Success) ElMessage.success('重做完成：' + (res.Files?.length || 0) + ' 文件')
-      else ElMessage.warning('重做未成功：' + (res?.ErrMsg || '未知'))
+      if (res && res.Success) ElMessage.success(t('opusetransferhistoryops.k7') + (res.Files?.length || 0) + ' 文件')
+      else ElMessage.warning(t('opusetransferhistoryops.k8') + (res?.ErrMsg || t('common.unknown')))
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '重做失败')
+      ElMessage.error((e as Error).message || t('opusetransferhistoryops.k9'))
     } finally {
       redoing.value = null
     }
@@ -100,16 +104,16 @@ export function useTransferHistoryOps(opts: {
 
   async function deleteRow(h: TransferHistory) {
     try {
-      await ElMessageBox.confirm(`删除历史「${h.title}」？`, '确认', { type: 'warning' })
+      await ElMessageBox.confirm(`删除历史「${h.title}」？`, t('common.confirm'), { type: 'warning' })
     } catch {
       return
     }
     try {
       await transferApi.deleteHistory(h.id)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
+      ElMessage.error((e as Error).message || t('common.deleteFailed'))
     }
   }
 
@@ -120,7 +124,7 @@ export function useTransferHistoryOps(opts: {
   async function batchDeleteRows() {
     if (!selectedRows.value.length) return
     try {
-      await ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 条整理记录？`, '批量删除', {
+      await ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 条整理记录？`, t('opusetransferhistoryops.k10'), {
         type: 'warning',
       })
     } catch {
@@ -136,13 +140,13 @@ export function useTransferHistoryOps(opts: {
       selectedRows.value = []
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '批量删除失败')
+      ElMessage.error((e as Error).message || t('opusetransferhistoryops.k11'))
     }
   }
 
   async function clearFailed() {
     try {
-      await ElMessageBox.confirm('确认清除全部失败记录？此操作不可撤销。', '清除失败', { type: 'warning' })
+      await ElMessageBox.confirm(t('opusetransferhistoryops.k12'), t('opusetransferhistoryops.k13'), { type: 'warning' })
     } catch {
       return
     }
@@ -151,7 +155,7 @@ export function useTransferHistoryOps(opts: {
       ElMessage.success(`已清除 ${res.deleted} 条失败记录`)
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '清除失败')
+      ElMessage.error((e as Error).message || t('opusetransferhistoryops.k13'))
     }
   }
 

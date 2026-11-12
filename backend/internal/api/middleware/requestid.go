@@ -12,7 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const requestIDKey = "request_id"
+// RequestIDKey 是 gin.Context 里请求 ID 的键。导出供包外消费方（errcode 错误日志
+// 等）按同一键取值关联——原 private 导致 500 的 api error 日志无法与访问日志的
+// req_id 对上，排障只能靠时间戳猜。
+const RequestIDKey = "request_id"
 
 // RequestID 为每个请求注入 X-Request-ID（优先沿用客户端传入），便于全链路追踪。
 func RequestID() gin.HandlerFunc {
@@ -21,7 +24,7 @@ func RequestID() gin.HandlerFunc {
 		if id == "" {
 			id = randID(8)
 		}
-		c.Set(requestIDKey, id)
+		c.Set(RequestIDKey, id)
 		c.Header("X-Request-ID", id)
 		c.Next()
 	}
@@ -29,7 +32,7 @@ func RequestID() gin.HandlerFunc {
 
 // RequestIDOf 取当前请求的 ID（供 handler 写审计日志）。
 func RequestIDOf(c *gin.Context) string {
-	if v, ok := c.Get(requestIDKey); ok {
+	if v, ok := c.Get(RequestIDKey); ok {
 		if s, ok := v.(string); ok {
 			return s
 		}

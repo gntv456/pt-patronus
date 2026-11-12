@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { downloaderApi, type Stats } from '@/api/downloader'
 import { useWs } from '@/composables/useWs'
+import { registerPolling } from '@/composables/usePolling'
 import StatsBar from './StatsBar.vue'
 import AddTorrentPanel from './AddTorrentPanel.vue'
 import TorrentTable from './TorrentTable.vue'
@@ -77,7 +78,7 @@ const wsStats = computed(() => snapshot.value?.stats ?? null)
 // TR 的 WS 不带 stats → 兜底轮询 GET /stats
 const polledStats = ref<Stats | null>(null)
 const stats = computed(() => wsStats.value ?? polledStats.value)
-let statsTimer: ReturnType<typeof setInterval> | undefined
+let statsStop: (() => void) | null = null
 
 async function refreshStats() {
   try {
@@ -183,13 +184,15 @@ watch(
       loadCats()
       lastUpdated.value = new Date()
       if (props.downloader.type !== 'qb') {
-        // qb 经 StatsCacher 由 WS 推送 stats；tr/ut/dl 无 StatsCacher → 兜底轮询 GET /stats
+        // qb 经 StatsCacher 由 WS 推送 stats；tr/ut/dl 无 StatsCacher → 兜底轮询 GET /stats。
+        // 统一调度器：后台标签页暂停、切回补拉（原裸 setInterval 后台照跑 5s 打 API）。
         refreshStats()
-        statsTimer = setInterval(refreshStats, 5000)
+        statsStop?.()
+        statsStop = registerPolling(refreshStats, 5000, { runOnShow: true })
       }
-    } else if (statsTimer) {
-      clearInterval(statsTimer)
-      statsTimer = undefined
+    } else {
+      statsStop?.()
+      statsStop = null
     }
     if (v) {
       lastWsHit = 0
@@ -203,7 +206,7 @@ watch(
 )
 
 onUnmounted(() => {
-  if (statsTimer) clearInterval(statsTimer)
+  statsStop?.()
   stopRestPolling()
 })
 </script>

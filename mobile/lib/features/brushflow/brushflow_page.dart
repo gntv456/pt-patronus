@@ -214,7 +214,13 @@ class _BrushFlowPageState extends State<BrushFlowPage> with BrushFlowOpsMixin {
         children: [
           // 刷新已有列表时顶部细条；首次加载在 _content 居中 spinner。
           if (_loading && _list.isNotEmpty) const LinearProgressIndicator(minHeight: 2),
-          Expanded(child: _content()),
+                  // 下拉刷新（与全仓 30 处 RefreshIndicator 同一心智；加载中不可再拉）。
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: _content(),
+          ),
+        ),
         ],
       ),
     );

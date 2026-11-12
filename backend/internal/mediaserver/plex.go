@@ -233,6 +233,31 @@ func (c *plexClient) LibraryItems(ctx context.Context, libraryID string) ([]Deta
 // plexAccountKey 把数字账户 id 转字符串（统一 ID 类型为 string）。
 func plexAccountKey(id int) string { return strconv.Itoa(id) }
 
+// LibraryItemCount: GET /library/sections/<id>/all
+// ?X-Plex-Container-Start=0&X-Plex-Container-Size=0
+// —— Size=0 时 Plex 不返回 Metadata、MediaContainer 仍有 totalSize，比 LibraryItems
+// 整库拉条目轻几个数量级（工作台 60s 轮询在用）。Plex 的 section 计数按库类型整体
+// 给出（movie 库全是电影、show 库全是剧集），按 lib.Type 归类；mixed 归 Movies。
+func (c *plexClient) LibraryItemCount(
+	ctx context.Context, lib Library,
+) (LibraryCount, error) {
+	u := fmt.Sprintf(
+		"%s/library/sections/%s/all?X-Plex-Container-Start=0&X-Plex-Container-Size=0",
+		c.apiRoot, esc(lib.ID))
+	var res struct {
+		MediaContainer struct {
+			TotalSize int `json:"totalSize"`
+		} `json:"MediaContainer"`
+	}
+	if err := jsonGet(ctx, c.hc, u, c.headers(), &res); err != nil {
+		return LibraryCount{}, err
+	}
+	if lib.Type == "tvshows" {
+		return LibraryCount{Series: res.MediaContainer.TotalSize}, nil
+	}
+	return LibraryCount{Movies: res.MediaContainer.TotalSize}, nil
+}
+
 // EpisodeCount 剧集已入库集数（健康中心缺集判定用）。
 // GET /library/metadata/<ratingkey>/allChildren → leafCount 即全部集数；
 // 兜底再拉 children 计数（leafCount 缺失的旧版本）。

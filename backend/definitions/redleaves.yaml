@@ -1,4 +1,4 @@
-# redleaves - user_info override migrated from PT-depiler and covered by mock tests; dead site retained.
+# redleaves - user_info override 按上游定义校准迁移 and covered by mock tests; dead site retained.
 # schema: nexusphp; defaults fill common NexusPHP fields.
 
 aka:

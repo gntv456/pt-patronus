@@ -1,4 +1,4 @@
-# audiences - custom skin user fields migrated from PT-depiler/PT-manager; live smoke still recommended.
+# audiences - 用户字段按上游定义校准迁移；建议 live smoke 复核。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 
 aka:

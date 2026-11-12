@@ -16,6 +16,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 part 'file_manage_actions.dart';
 part 'file_manage_storage.dart';

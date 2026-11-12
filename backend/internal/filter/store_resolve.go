@@ -38,7 +38,7 @@ func (s *Store) SetBindings(key string, names []string) error {
 
 // ---------- 规则集与组解析 ----------
 
-// RuleSet 返回运行期规则集 = 深拷贝内置 + 自定义覆盖（对齐 MP-2 init_module）。
+// RuleSet 返回运行期规则集 = 深拷贝内置 + 自定义覆盖。
 func (s *Store) RuleSet() (map[string]Rule, error) {
 	out := make(map[string]Rule, len(BuiltinRuleSet))
 	for _, id := range builtinOrder {
@@ -68,7 +68,7 @@ func (s *Store) KnownIDs() (map[string]bool, error) {
 }
 
 // ResolveGroups 按 media_type/category 筛选适用组；names 非空时再按名过滤。
-// 对齐 MP-2 RuleHelper.get_rule_group_by_media：
+// 按 media_type 取规则组：
 //   - 组 media_type 空 → 适用（全局）
 //   - 组 media_type 命中媒体类型且 category 空 → 适用
 //   - 组 category 命中媒体 category → 适用（最具体）

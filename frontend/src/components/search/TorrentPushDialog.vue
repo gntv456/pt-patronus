@@ -10,7 +10,7 @@ import { dlTypeLabel } from '@/composables/useSearchPush'
 import type { Downloader } from '@/api/downloader'
 import MediaPoster from '@/components/MediaPoster.vue'
 
-// 确认下载弹窗（对齐 MoviePilot）：种子预览 + 下载器/分类选择 + 高级选项 + 推送成功态。
+// 确认下载弹窗：种子预览 + 下载器/分类选择 + 高级选项 + 推送成功态。
 // 受控弹窗：v-model:visible 控制显隐，业务状态由父组件管理。
 const { t } = useI18n()
 

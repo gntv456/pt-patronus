@@ -3,7 +3,7 @@
 
 package site
 
-// ensureSmallHorseDefaults fills defaults for MoviePilot's SmallHorse parser
+// ensureSmallHorseDefaults fills smallhorse parser defaults
 // shape: index user.php?id discovery, user.php stats blocks, and
 // torrents.php?type=seeding&userid=N table#torrent_table seeding totals.
 func ensureSmallHorseDefaults(cp *SiteMetadata) {
@@ -37,7 +37,7 @@ func DefaultSmallHorseSelectors() SiteSelectors {
 	}
 }
 
-// DefaultSmallHorseUserInfo mirrors MoviePilot app/modules/indexer/parser/
+// DefaultSmallHorseUserInfo mirrors the smallhorse framework
 // small_horse.py with executable CSS selectors and filters.
 func DefaultSmallHorseUserInfo() UserInfoDef {
 	stats := "ul.stats.nobullet:eq(1)"

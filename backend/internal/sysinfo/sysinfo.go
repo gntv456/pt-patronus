@@ -79,7 +79,7 @@ type DeviceInfo struct {
 // CollectSystemMetrics 采集本机 CPU/内存/磁盘/网络/负载/温度/进程/运行时长。
 // 单点失败不中断其余指标；返回的 Metrics.Online 恒为 true。
 // 速率(NetRxRate/NetTxRate)不在此算——由服务端对比上次快照算（agent 只报累计字节）。
-// extraPaths：host 采集器可传宿主 bind mount 进容器的目录（MoviePilot 式），statvfs 穿透到宿主 FS；
+// extraPaths：host 采集器可传宿主 bind mount 进容器的目录（宿主磁盘监控），statvfs 穿透到宿主 FS；
 // agent 上报走无参调用（extraPaths=nil），行为不变。
 func CollectSystemMetrics(extraPaths ...string) Metrics {
 	m := Metrics{Online: true}
@@ -216,7 +216,7 @@ func collectDisks(extraPaths []string) []DiskMetric {
 			out = append(out, DiskMetric{Device: p.Mountpoint, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition"})
 		}
 	}
-	// 额外路径：宿主目录经 docker bind mount 进容器，statvfs 穿透到宿主 FS（MoviePilot 式）。
+	// 额外路径：宿主目录经 docker bind mount 进容器，statvfs 穿透到宿主 FS（宿主磁盘监控）。
 	// 裸路径无 source 设备信息，用 fsid/st_dev 退化去重，与上面分区表共享 seen。
 	for _, raw := range extraPaths {
 		p := strings.TrimSpace(raw)

@@ -29,7 +29,7 @@ const {
   openChangelog,
 } = useGeneralSettings()
 
-// 界面定制（对标 MSaber 界面自定义面板）：主题色/风格/壁纸/遮罩/卡片风格，偏好随账号同步。
+// 界面定制：主题色/风格/壁纸/遮罩/卡片风格，偏好随账号同步。
 const { normalized, set, fetchBingDaily } = useUiPrefs()
 const wallpaperFile = ref<File | null>(null)
 
@@ -171,6 +171,11 @@ function onWallpaperFile(f: File | null) {
       </div>
       <div class="about-actions">
         <el-tag size="small" type="info" effect="plain">v{{ version }}</el-tag>
+        <!-- 浏览器扩展包：后端 embed 分发（/system/extension.zip），Docker 用户
+             无需进仓库找 extension/ 目录；下载后解压按快速开始加载。 -->
+        <el-button size="small" tag="a" href="/api/v1/system/extension.zip" download="ptpatronus-extension.zip">
+          {{ t('gp.downloadExtension') }}
+        </el-button>
         <el-button size="small" :loading="updateChecking" @click="checkUpdate">{{ t('gp.checkUpdate') }}</el-button>
       </div>
     </div>

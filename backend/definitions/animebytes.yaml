@@ -1,4 +1,3 @@
-# animebytes — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: gazelle。user_info.pages 已翻译为可执行选择器并有 mock 回归覆盖；真实站点仍建议 live smoke。
 aka:
     - AB

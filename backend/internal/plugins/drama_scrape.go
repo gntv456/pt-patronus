@@ -44,7 +44,7 @@ func parseVideoExts(value string) map[string]bool {
 	return m
 }
 
-// listMediaFiles 递归遍历 folder，返回扩展名命中的文件绝对路径（对标 Python os.walk 过滤）。
+// listMediaFiles 递归遍历 folder，返回扩展名命中的文件绝对路径（类 os.walk 过滤）。
 func listMediaFiles(folder string, exts map[string]bool) []string {
 	var out []string
 	_ = filepath.WalkDir(folder, func(path string, d fs.DirEntry, err error) error {

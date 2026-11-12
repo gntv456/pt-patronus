@@ -22,7 +22,7 @@ import (
 
 // TransferChain 编排媒体整理流水线：下载完成（DoneHook）/ cron 兜底 / 手动整理 →
 // 调 transfer.Engine 识别+重命名+硬链+刮削 → 写 TransferHistory + 通知 → 触发媒体库刷新。
-// 对标 MoviePilot TransferChain，复用 PTPatronus 既有 MediaChain 识别 / media.NFO / 媒体服务器。
+// 复用 PTPatronus 既有 MediaChain 识别 / media.NFO / 媒体服务器。
 type TransferChain struct {
 	Base
 	engine   *transfer.Engine

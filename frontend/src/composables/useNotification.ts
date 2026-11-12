@@ -4,8 +4,10 @@
 // 通知通道设置（DB+UI 热更新；微信扫码登录）。
 // 从 Settings.vue 抽出：管理所有通知通道（19 种）的回显、表单、校验、保存、测试与微信扫码登录。
 import { ref, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { notificationApi, type NotifyConfig, type NotifyConfigInput, type NotifySendResult } from '@/api/notification'
+import { registerPolling } from '@/composables/usePolling'
 
 // 原始回显（含 *_configured 标记，用于秘密字段脱敏占位判断）
 const notifCfg = ref<NotifyConfig | null>(null)
@@ -23,7 +25,7 @@ const wxQrUrl = ref('')
 const wxQrcode = ref('')
 // wxTimer 模块级可变单例的风险：两处同时扫码会互相覆盖句柄 → 前一个轮询泄漏。
 // 用持有者令牌守卫：仅当前持有者可启动/停止，旧轮询被新登录自动终止。
-let wxTimer: ReturnType<typeof setInterval> | undefined
+let wxStop: (() => void) | null = null
 let wxTimerOwner = 0
 
 function emptyNotifForm(): NotifyConfigInput {
@@ -108,7 +110,7 @@ async function loadNotif() {
     }
     testResults.value = []
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载通知配置失败')
+    ElMessage.error((e as Error).message || t('opusenotification.k1'))
   } finally {
     notifLoading.value = false
   }
@@ -190,10 +192,10 @@ async function saveNotif() {
   notifSaving.value = true
   try {
     await notificationApi.setConfig(notif.value)
-    ElMessage.success('已保存，即时生效')
+    ElMessage.success(t('opusenotification.k2'))
     await loadNotif()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
   } finally {
     notifSaving.value = false
   }
@@ -202,6 +204,9 @@ async function saveNotif() {
 // notifyTestOutcome 把「逐通道回执」翻译成一个提示级别与文案。
 // 此前只要 results 非空就报「已向全部通道发送测试」——3 个通道全部失败（token 失效、
 // 被墙、URL 不通）时界面同样是绿的，而失败信息只躺在下面的结果表里。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function notifyTestOutcome(results: NotifySendResult[] | undefined): {
   kind: 'success' | 'warning' | 'error'
   text: string
@@ -224,7 +229,7 @@ async function testNotif() {
     const out = notifyTestOutcome(r.results)
     ElMessage[out.kind](out.text)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '发送测试失败')
+    ElMessage.error((e as Error).message || t('opusenotification.k3'))
   } finally {
     testLoading.value = false
   }
@@ -238,7 +243,9 @@ async function wxLogin() {
     wxQrVisible.value = true
     stopWxPoll()
     const owner = ++wxTimerOwner
-    wxTimer = setInterval(async () => {
+    // 统一调度器：后台标签页暂停（扫码窗只在登录者眼前有意义，后台不必空转）。
+    wxStop?.()
+    wxStop = registerPolling(async () => {
       if (owner !== wxTimerOwner) {
         stopWxPoll()
         return
@@ -248,7 +255,7 @@ async function wxLogin() {
         if (s.logged_in) {
           stopWxPoll()
           wxQrVisible.value = false
-          ElMessage.success('微信登录成功，已自动绑定')
+          ElMessage.success(t('opusenotification.k4'))
           await loadNotif()
         }
       } catch {
@@ -256,15 +263,13 @@ async function wxLogin() {
       }
     }, 2000)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '获取二维码失败')
+    ElMessage.error((e as Error).message || t('opusenotification.k5'))
   }
 }
 function stopWxPoll() {
   wxTimerOwner++ // 使任何在飞轮询失效
-  if (wxTimer) {
-    clearInterval(wxTimer)
-    wxTimer = undefined
-  }
+  wxStop?.()
+  wxStop = null
 }
 
 function secretPlaceholder(configured: boolean | undefined) {

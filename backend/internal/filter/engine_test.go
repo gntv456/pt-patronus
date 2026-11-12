@@ -104,7 +104,7 @@ func TestMatchSizeRange(t *testing.T) {
 	if !matchSize("500MB", "<1000", 1) {
 		t.Fatal("500MB 应 <= 1000MB")
 	}
-	// 纯数字（无 >/</-）→ unknown → 不匹配（对齐 MP-2）。
+	// 纯数字（无 >/</-）→ unknown → 不匹配。
 	if matchSize("3GB", "1000", 1) {
 		t.Fatal("纯数字 size_range 应为 unknown 不匹配")
 	}

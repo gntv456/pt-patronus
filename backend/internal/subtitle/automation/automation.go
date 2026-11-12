@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package subauto 实现字幕自动下载（Bazarr / ChineseSubFinder 模式）：
+// Package subauto 实现字幕自动下载（自动化模式）：
 // 监听媒体入库事件 transfer_done → 按语言 / provider 优先级搜索字幕 → 下载落盘到
 // 媒体同目录（同名 .srt/.ass）→ 发通知。替代 Subtitle 页纯手动搜索，做到「整理完成即有字幕」。
 //

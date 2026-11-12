@@ -76,9 +76,32 @@ func NewAgentMessageOper(db *gorm.DB) *AgentMessageOper {
 }
 
 // ListByConv 按时间正序（对话顺序）。始终返回非 nil。
+// AI 执行侧（agent 历史裁剪）需要全量；用户侧展示请用 ListByConvLimit。
 func (o *AgentMessageOper) ListByConv(convID uint) ([]models.AgentMessage, error) {
 	out := make([]models.AgentMessage, 0)
 	return out, o.db.Where("conversation_id = ?", convID).Order("created_at ASC").Find(&out).Error
+}
+
+// ListByConvLimit 取会话最近 limit 条（仍按时间正序返回，保持对话顺序）。
+// Messages 端点在用：长会话（工具循环多轮、含 reasoning/tool_calls 大文本列）
+// 全量返回可达数 MB，前端渲染卡；limit<=0 视为不限。
+func (o *AgentMessageOper) ListByConvLimit(
+	convID uint, limit int,
+) ([]models.AgentMessage, error) {
+	out := make([]models.AgentMessage, 0)
+	if limit <= 0 {
+		return out, o.db.Where("conversation_id = ?", convID).
+			Order("created_at ASC").Find(&out).Error
+	}
+	if err := o.db.Where("conversation_id = ?", convID).
+		Order("created_at DESC").Limit(limit).Find(&out).Error; err != nil {
+		return nil, err
+	}
+	// DESC 取最近 N 条后反转为正序。
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out, nil
 }
 
 // Append 追加一条消息。

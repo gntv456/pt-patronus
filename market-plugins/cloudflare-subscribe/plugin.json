@@ -5,7 +5,7 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "定时拉取订阅源并更新本地 hosts 片段（迁移自 MoviePilot）。",
+  "description": "Fetch subscription sources on schedule and update local hosts entries.",
   "license": "MIT",
   "keywords": [
     "cloudflare",

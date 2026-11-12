@@ -48,6 +48,9 @@ class _MediaPosterState extends State<MediaPoster>
       (proxied ?? Uri.parse(widget.url)).toString(),
       headers: headers,
       fit: BoxFit.cover,
+      // 缩略图按目标宽解码：原实现整图解码（海报原图几百 KB×100+ 张，低端机内存
+      // 膨胀）。200 物理像素对网格缩略图绰绰有余，内存降一个数量级。
+      cacheWidth: 200,
       loadingBuilder: (c, child, p) {
         if (p == null) {
           // 图片就绪：触发一次性淡入

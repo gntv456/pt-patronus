@@ -1,4 +1,3 @@
-# desigaane — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: gazelle_jsonapi。标准 Gazelle JSON API 用户字段已由通用适配器和定义回归覆盖；真实站点仍建议 live smoke。
 
 aka:

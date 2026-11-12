@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, watch, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { monitorApi, parseMetrics, type MonitorTarget, type Metrics, type MetricSnapshot } from '@/api/monitor'
 import { fmtSpeed } from '@/utils/format'
@@ -76,6 +77,9 @@ export interface DeviceDetailState {
   load: () => Promise<void>
   runPower: (action: PowerAction) => Promise<void>
 }
+
+
+const tr = (k: string) => i18n.global.t(k)
 
 export function useDeviceDetail(
   visible: Ref<boolean>,
@@ -185,7 +189,7 @@ export function useDeviceDetail(
       try {
         await monitorApi.collect(target.value.id)
       } catch (e: unknown) {
-        ElMessage.warning(`本次采集失败：${(e as Error).message || '未知原因'}（下方显示的是历史数据）`)
+        ElMessage.warning(`本次采集失败：${(e as Error).message || tr('common.unknownReason')}（下方显示的是历史数据）`)
       }
       const res = await monitorApi.metrics(target.value.id, undefined, 120)
       const s = res.snapshots ?? []
@@ -207,10 +211,10 @@ export function useDeviceDetail(
       ? '关机后可能需要手动开机，或通过 NAS/云厂商控制台恢复。'
       : '设备会短暂离线，稍后可回到本页刷新状态。'
     try {
-      await ElMessageBox.confirm(`确定要${isShutdown ? '关闭' : '重启'}「${t.name}」吗？${detail}`, title, {
+      await ElMessageBox.confirm(`确定要${isShutdown ? tr('opusedevicedetail.k1') : tr('opusedevicedetail.k2')}「${t.name}」吗？${detail}`, title, {
         type: 'warning',
-        confirmButtonText: isShutdown ? '关机' : '重启',
-        cancelButtonText: '取消',
+        confirmButtonText: isShutdown ? tr('opusedevicedetail.k3') : tr('opusedevicedetail.k2'),
+        cancelButtonText: tr('common.cancel'),
       })
     } catch {
       return
@@ -220,9 +224,9 @@ export function useDeviceDetail(
     try {
       const r = await monitorApi.power(t.id, action)
       if (!r.ok) throw new Error(r.error || '电源操作失败')
-      ElMessage.success(isShutdown ? '关机命令已发送' : '重启命令已发送')
+      ElMessage.success(isShutdown ? tr('opusedevicedetail.k4') : tr('opusedevicedetail.k5'))
     } catch (e) {
-      ElMessage.error((e as Error).message || '电源操作失败')
+      ElMessage.error((e as Error).message || tr('opusedevicedetail.k6'))
     } finally {
       powerLoading.value = ''
     }

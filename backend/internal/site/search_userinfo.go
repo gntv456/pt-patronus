@@ -50,11 +50,11 @@ func fallbackBonus(doc *goquery.Document, def *SiteMetadata, u *UserInfo) {
 // ParseUserDetail 把 def.UserInfo.DetailFields（富资料页 userdetails.php?id=<uid> 的字段，
 // 通常是 level/join_date）合并进已有 u。用于多页抓取的二次页补充。
 // DetailFields 现含 bonus/uploaded/downloaded/ratio/seeding/seeding_size 等统计默认
-// （PT-depiler 方案：统计行在 userdetails 的站由此补抓）。合并语义为「统计只补零、身份可覆盖」：
+// （统计行在 userdetails 的站由此补抓）。合并语义为「统计只补零、身份可覆盖」：
 // 基础页已抓到的统计值不被详情页清零/覆盖；等级/加入时间等身份字段以后到者为准。
 // ParseUserDetail 把 def.UserInfo.DetailFields（富资料页 userdetails.php?id=<uid> 的字段，
 // 通常是 level/join_date）合并进已有 u。用于多页抓取的二次页补充。
-// DetailFields 现含 bonus/uploaded/downloaded/ratio 等统计默认（PT-depiler 方案：统计行在
+// DetailFields 现含 bonus/uploaded/downloaded/ratio 等统计默认（统计行在
 // userdetails.php rowhead 的站由此补抓）。合并语义与 ParseUserInfoFields 一致（非空即写）：
 // userdetails 的 rowhead 行结构化更完整，覆盖基础页用户条的粗解析是预期行为；
 // 误覆盖由「默认 DetailFields 只用精确 rowhead 锚、不带 #info_block 兜底」规避。

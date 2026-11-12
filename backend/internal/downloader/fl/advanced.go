@@ -3,7 +3,7 @@
 
 package fl
 
-// advanced.go 实现 Flood (jesec/flood) 的高级操作，对标 qb/tr。
+// advanced.go 实现 Flood (jesec/flood) 的高级操作，接口面同 qb/tr。
 // API 参考：https://github.com/jesec/flood （/server/routes/api/torrents.ts、client.ts）。
 //
 // jesec 路径与 legacy Flood-UI 不同：本文件面向 jesec（主流分叉），
@@ -168,7 +168,7 @@ func (c *Client) DeleteCategories(ctx context.Context, names []string) error {
 
 // SetShareLimits 设置分享比率/做种时长上限。
 // Flood REST 未暴露分享比率/做种时长限制端点；rTorrent 底层经 XML-RPC（views/group）
-// 支持但 Flood REST 不开放。保持未实现（对标 MoviePilot 亦未对 Flood 实现）。
+// 支持但 Flood REST 不开放。保持未实现（ 亦未对 Flood 实现）。
 func (c *Client) SetShareLimits(ctx context.Context, hashes []string, limits downloader.ShareLimits) error {
 	return downloader.ErrNotImplemented
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package module 实现可插拔模块注册表与 Run 调度原语（借鉴 MoviePilot 的
+// Package module 实现可插拔模块注册表与 Run 调度原语（自研 的
 // ModuleManager + run_module）。Chain 层通过 Run 按 priority 遍历模块，
 // 依据返回的控制信号聚合结果。
 package module

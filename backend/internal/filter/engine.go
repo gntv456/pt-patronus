@@ -26,11 +26,11 @@ func (e *Engine) Store() *Store { return e.store }
 
 // Filter 对 torrents 应用命名规则组，返回按优先级降序的结果；无层命中的种子被剔除。
 //
-// 语义对齐 MP-2 filter_torrents：
+// 过滤语义：
 //   - groupNames 空 → 不过滤（全部保留，PriOrder=0）。
 //   - 多组串行 AND：每组在前一组存活集上再过滤，空则提前结束。
 //   - 每组内 rule_string 按 '>' 分层，first-match-wins 赋 pri（100/99/98…），无层命中=剔除。
-//   - 多组时后赋的 pri 覆盖前者（与 MP-2 多组行为一致）。
+//   - 多组时后赋的 pri 覆盖前者（后赋覆盖前者）。
 //   - 最终按 PriOrder 降序稳定排序。
 func (e *Engine) Filter(ctx context.Context, groupNames []string, torrents []site.Torrent, media *MediaInfo) ([]MatchedTorrent, error) {
 	if len(torrents) == 0 {
@@ -151,7 +151,7 @@ func matchOrder(t site.Torrent, asts []expr, media *MediaInfo, rules map[string]
 	return 0
 }
 
-// matchRule 判定单条规则是否匹配种子（对齐 MP-2 __match_rule）。
+// matchRule 判定单条规则是否匹配种子。
 func matchRule(t site.Torrent, id string, media *MediaInfo, rules map[string]Rule) bool {
 	rule, ok := rules[id]
 	if !ok {
@@ -224,7 +224,7 @@ func matchRule(t site.Torrent, id string, media *MediaInfo, rules map[string]Rul
 	return true
 }
 
-// matchAttrValues 按 MP-2 rule.match 取种子的指定属性值（list 展开）。
+// matchAttrValues 按 rule.match 取种子的指定属性值（list 展开）。
 // site.Torrent 无 labels/description 字段，分别映射到 Tags/SubTitle。
 func matchAttrValues(t site.Torrent, attr string) []string {
 	switch attr {
@@ -242,7 +242,7 @@ func matchAttrValues(t site.Torrent, attr string) []string {
 	return nil
 }
 
-// matchTMDB 判定 TMDB 元数据短路匹配（对齐 MP-2 __match_tmdb：属性大写列表与期望值有交集）。
+// matchTMDB 判定 TMDB 元数据短路匹配（属性大写列表与期望值有交集）。
 func matchTMDB(tmdb map[string]string, media *MediaInfo) bool {
 	if media == nil {
 		return false
@@ -277,7 +277,7 @@ func matchTMDB(tmdb map[string]string, media *MediaInfo) bool {
 }
 
 // torrentDownloadFactor 下载因子（0=FREE）。优先用 site.Torrent.DownloadVolumeFactor（>0 的促销值），
-// 否则用 Free 近似（true→0/false→1）。对齐 MP-2 torrent.downloadvolumefactor。
+// 否则用 Free 近似（true→0/false→1）。同 torrent.downloadvolumefactor 口径。
 func torrentDownloadFactor(t site.Torrent) float64 {
 	if t.DownloadVolumeFactor > 0 {
 		return t.DownloadVolumeFactor

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, onMounted, watch } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'
@@ -14,6 +15,9 @@ type ConnState = 'checking' | 'ok' | 'fail'
 
 // 文件名非法字符（与 OS 保留字符对齐）：含其一即拒绝提交。
 const ILLEGAL_NAME_RE = /[\/\\:*?"<>|]/
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useFileManager() {
   const auth = useAuthStore()
@@ -154,7 +158,7 @@ export function useFileManager() {
       probeAll()
       if (!current.value && list.value.length) selectStorage(list.value[0])
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载失败')
+      ElMessage.error((e as Error).message || t('common.loadFailed'))
     } finally {
       loading.value = false
     }

@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { Refresh } from '@element-plus/icons-vue'
 import type { PluginInfo, PluginLog } from '@/api/plugin'
 import { fmtTime, jsonText } from './pluginsHelpers'
+import { registerPolling } from '@/composables/usePolling'
 
 const { t } = useI18n()
 
@@ -27,20 +28,20 @@ const props = defineProps<{
   loading: boolean
 }>()
 const autoRefresh = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
+let stop: (() => void) | null = null
 function applyAuto() {
   if (autoRefresh.value && props.visible) {
-    if (!timer) timer = setInterval(() => emit('refresh'), 5000)
+    // 统一调度器：后台标签页暂停（原裸 setInterval 后台照跑 5s 拉日志）。
+    stop?.()
+    stop = registerPolling(() => emit('refresh'), 5000, { runOnShow: true })
   } else {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
-    }
+    stop?.()
+    stop = null
   }
 }
 watch(() => [autoRefresh.value, props.visible], applyAuto, { immediate: true })
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+  stop?.()
 })
 </script>
 

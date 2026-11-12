@@ -248,7 +248,10 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 	defer cancel()
 	out, err := h.runComposeCLIWithFlags(ctx, in.Dir, "", subArgs)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "output": out + "\n" + err.Error()})
+		// 失败走 errcode 信封（CLI 原文经 output 字段下发）：原 200+ok:false 会被
+		// 前端通用拦截器当成功，且英文原文直出。前端从 e.response.data.output 恢复。
+		errcode.RespondWithFields(c, errcode.ComposeActionFailed.WithErr(err),
+			gin.H{"ok": false, "output": out + "\n" + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "output": out})

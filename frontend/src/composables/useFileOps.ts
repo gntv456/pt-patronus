@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { i18n } from '@/i18n'
 import { fileApi, targetReadFailedNotice, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi } from '@/api/cloud'
 import type { useFileManager } from './useFileManager'
@@ -9,6 +10,9 @@ import type { StorageItem } from './useFileManager'
 
 type FileManager = ReturnType<typeof useFileManager>
 const ILLEGAL_NAME_RE = /[\/\\:*?"<>|]/
+
+
+const t = (k: string, params?: Record<string, unknown>) => i18n.global.t(k, params ?? {})
 
 export function useFileOps(fm: FileManager) {
   const refresh = fm.refresh
@@ -20,18 +24,18 @@ export function useFileOps(fm: FileManager) {
     const name = fm.mkdirName.value.trim()
     if (!name) return
     if (ILLEGAL_NAME_RE.test(name)) {
-      ElMessage.warning('名称不能包含 / \\ : * ? " < > | 等非法字符')
+      ElMessage.warning(t('opusefileops.k1'))
       return
     }
     fm.submitting.value = true
     try {
       await fileApi.mkdir(fm.curFs.value.id, fm.path.value.replace(/\/$/, '') + '/' + name)
-      ElMessage.success('已新建')
+      ElMessage.success(t('opusefileops.k2'))
       fm.mkdirVisible.value = false
       fm.mkdirName.value = ''
       await refresh()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '新建失败')
+      ElMessage.error((e as Error).message || t('opusefileops.k3'))
     } finally {
       fm.submitting.value = false
     }
@@ -42,7 +46,7 @@ export function useFileOps(fm: FileManager) {
     const dup = fm.entries.value.find((e) => !e.is_dir && e.name === opt.file.name)
     if (dup) {
       try {
-        await ElMessageBox.confirm(`「${opt.file.name}」已存在，上传将覆盖，是否继续？`, '覆盖确认', {
+        await ElMessageBox.confirm(`「${opt.file.name}」已存在，上传将覆盖，是否继续？`, t('opusefileops.k4'), {
           type: 'warning',
         })
       } catch {
@@ -52,10 +56,10 @@ export function useFileOps(fm: FileManager) {
     fm.uploadProgress.value = 0
     try {
       await fileApi.upload(fm.curFs.value.id, fm.path.value, opt.file, (p) => (fm.uploadProgress.value = p))
-      ElMessage.success('上传成功')
+      ElMessage.success(t('opusefileops.k5'))
       await refresh()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '上传失败')
+      ElMessage.error((e as Error).message || t('opusefileops.k6'))
     } finally {
       fm.uploadProgress.value = -1
     }
@@ -71,17 +75,17 @@ export function useFileOps(fm: FileManager) {
     const name = fm.renameNewName.value.trim()
     if (!name) return
     if (ILLEGAL_NAME_RE.test(name)) {
-      ElMessage.warning('名称不能包含 / \\ : * ? " < > | 等非法字符')
+      ElMessage.warning(t('opusefileops.k1'))
       return
     }
     fm.submitting.value = true
     try {
       await fileApi.rename(fm.curFs.value.id, fm.renameTarget.value.path, name)
-      ElMessage.success('已重命名')
+      ElMessage.success(t('opusefileops.k7'))
       fm.renameVisible.value = false
       await refresh()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '重命名失败')
+      ElMessage.error((e as Error).message || t('opusefileops.k8'))
     } finally {
       fm.submitting.value = false
     }
@@ -90,7 +94,7 @@ export function useFileOps(fm: FileManager) {
   async function delOne(e: FileEntry) {
     if (!fm.curFs.value) return
     try {
-      await ElMessageBox.confirm(`确认删除「${e.name}」？${e.is_dir ? '（目录及其内容）' : ''}`, '删除', {
+      await ElMessageBox.confirm(`确认删除「${e.name}」？${e.is_dir ? t('opusefileops.k9') : ''}`, t('common.delete'), {
         type: 'warning',
       })
     } catch {
@@ -98,10 +102,10 @@ export function useFileOps(fm: FileManager) {
     }
     try {
       await fileApi.removeFile(fm.curFs.value.id, e.path)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await refresh()
     } catch (e2: unknown) {
-      ElMessage.error((e2 as Error).message || '删除失败')
+      ElMessage.error((e2 as Error).message || t('common.deleteFailed'))
     }
   }
 
@@ -115,7 +119,7 @@ export function useFileOps(fm: FileManager) {
     if (!fm.curFs.value || !fm.selected.value.length) return
     const items = [...fm.selected.value]
     try {
-      await ElMessageBox.confirm(`确认删除选中的 ${items.length} 项？`, '批量删除', { type: 'warning' })
+      await ElMessageBox.confirm(`确认删除选中的 ${items.length} 项？`, t('opusefileops.k10'), { type: 'warning' })
     } catch {
       return
     }
@@ -138,10 +142,10 @@ export function useFileOps(fm: FileManager) {
     fm.batchDelProgress.value = null
     const cancelled = batchDelCancelled
     if (ok > 0) {
-      const tail = (fail > 0 ? `，失败 ${fail} 项` : '') + (cancelled ? '（已取消）' : '')
+      const tail = (fail > 0 ? t('opusefileops.tailFailed', { n: fail }) : '') + (cancelled ? t('opusefileops.tailCancelled') : '')
       ElMessage.success(`已删除 ${ok} 项${tail}`)
     } else if (!cancelled) {
-      ElMessage.error('选中项全部删除失败')
+      ElMessage.error(t('opusefileops.k11'))
     }
     await refresh()
   }
@@ -187,8 +191,8 @@ export function useFileOps(fm: FileManager) {
       if (conflicts.length) {
         try {
           await ElMessageBox.confirm(
-            `目标存在同名 ${conflicts.length} 项（如「${conflicts[0].name}」），${fm.moveCopyMode.value === 'move' ? '移动' : '复制'}将覆盖，是否继续？`,
-            '覆盖确认',
+            `目标存在同名 ${conflicts.length} 项（如「${conflicts[0].name}」），${fm.moveCopyMode.value === 'move' ? t('opusefileops.k12') : t('opusefileops.k13')}将覆盖，是否继续？`,
+            t('opusefileops.k4'),
             { type: 'warning' },
           )
         } catch {
@@ -236,7 +240,7 @@ export function useFileOps(fm: FileManager) {
   }
   async function doStrm() {
     if (!fm.curCloud.value || !fm.strmDir.value || !fm.strmForm.value.output_dir)
-      return ElMessage.warning('请填写输出目录')
+      return ElMessage.warning(t('opusefileops.k14'))
     fm.strmLoading.value = true
     try {
       const r = await cloudApi.generate({
@@ -249,11 +253,11 @@ export function useFileOps(fm: FileManager) {
         keep_ext: fm.strmForm.value.keep_ext,
       })
       ElMessage.success(
-        `STRM 已生成：新增 ${r.generated}，跳过 ${r.skipped}${r.errors.length ? '，失败 ' + r.errors.length : ''}`,
+        t('opusefileops.strmDone', { gen: r.generated, skip: r.skipped, errs: r.errors.length ? t('opusefileops.strmErrs', { n: r.errors.length }) : '' }),
       )
       fm.strmVisible.value = false
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || 'STRM 生成失败')
+      ElMessage.error((e as Error).message || t('opusefileops.k15'))
     } finally {
       fm.strmLoading.value = false
     }
@@ -280,31 +284,31 @@ export function useFileOps(fm: FileManager) {
   }
   async function submit() {
     if (fm.submitting.value) return
-    if (!fm.form.value.name) return ElMessage.warning('请填写名称')
-    if (fm.form.value.type === 'agent' && !fm.form.value.agent_id) return ElMessage.warning('请选择 Agent')
-    if (fm.form.value.type === 'rclone' && !fm.form.value.username) return ElMessage.warning('请填写 remote 名')
+    if (!fm.form.value.name) return ElMessage.warning(t('opusefileops.k16'))
+    if (fm.form.value.type === 'agent' && !fm.form.value.agent_id) return ElMessage.warning(t('opusefileops.k17'))
+    if (fm.form.value.type === 'rclone' && !fm.form.value.username) return ElMessage.warning(t('opusefileops.k18'))
     if (['webdav', 'alist', 'smb'].includes(fm.form.value.type) && !fm.form.value.url)
-      return ElMessage.warning('请填写地址')
+      return ElMessage.warning(t('opusefileops.k19'))
     fm.submitting.value = true
     try {
       if (fm.editingId.value) {
         await fileApi.update(fm.editingId.value, fm.form.value)
-        ElMessage.success('已更新')
+        ElMessage.success(t('common.updated'))
       } else {
         await fileApi.create(fm.form.value)
-        ElMessage.success('已添加')
+        ElMessage.success(t('common.added'))
       }
       fm.storageDialog.value = false
       await loadStorages()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '失败')
+      ElMessage.error((e as Error).message || t('common.failed'))
     } finally {
       fm.submitting.value = false
     }
   }
   async function delStorage(fsItem: FileStorage) {
     try {
-      await ElMessageBox.confirm(`确认删除存储「${fsItem.name}」？仅移除配置，不影响远端文件。`, '删除存储', {
+      await ElMessageBox.confirm(`确认删除存储「${fsItem.name}」？仅移除配置，不影响远端文件。`, t('opusefileops.k20'), {
         type: 'warning',
       })
     } catch {
@@ -312,11 +316,11 @@ export function useFileOps(fm: FileManager) {
     }
     try {
       await fileApi.remove(fsItem.id)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       if (fm.current.value?.kind === 'fs' && fm.current.value.fs.id === fsItem.id) fm.current.value = null
       await loadStorages()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
+      ElMessage.error((e as Error).message || t('common.deleteFailed'))
     }
   }
 

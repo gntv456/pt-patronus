@@ -9,6 +9,10 @@ mixin LoginOpsMixin on State<LoginPage> {
   Future<void> _onLoginOk(Map<String, dynamic> res);
 
   bool _loading = false;
+  bool _showPass = false; // 密码可见切换（login_widgets 的 suffixIcon）
+
+  /// 密码可见切换（extension 里不能调 setState，方法落在 State mixin 上）。
+  void togglePassVisible() => setState(() => _showPass = !_showPass);
   bool _demoMode = false;
   bool _oidcEnabled = false;
   String _oidcName = 'OIDC / SSO';
@@ -47,7 +51,9 @@ mixin LoginOpsMixin on State<LoginPage> {
       });
       await _onLoginOk(res);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _err = e.message);
+      // userMessage 是网络层预映射的友好中文；message 可能是英文原始异常串
+      // （如 ClientException: ...），直接展示会让用户无从下手。
+      if (mounted) setState(() => _err = e.userMessage);
     } catch (_) {
       if (mounted) {
         setState(() => _err = '网络错误，请确认后端地址是否正确、后端服务是否已启动');
@@ -69,7 +75,9 @@ mixin LoginOpsMixin on State<LoginPage> {
       );
       await _onLoginOk(res);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _err = e.message);
+      // userMessage 是网络层预映射的友好中文；message 可能是英文原始异常串
+      // （如 ClientException: ...），直接展示会让用户无从下手。
+      if (mounted) setState(() => _err = e.userMessage);
     } catch (_) {
       if (mounted) setState(() => _err = '演示登录未启用或后端不可达');
     } finally {

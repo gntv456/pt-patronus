@@ -164,7 +164,7 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
   reader.readAsText(file)
 }
 
-// MoviePilot 明文导入（不支持加密信封，保持原路径）。
+// 外部站点 JSON 明文导入（不支持加密信封，保持原路径）。
 function onPlainFile(file: File, kind: 'own' | 'moviepilot') {
   importing.value = true
   const reader = new FileReader()
@@ -173,7 +173,7 @@ function onPlainFile(file: File, kind: 'own' | 'moviepilot') {
       const data = JSON.parse(String(reader.result))
       const fn = backupApi.importMoviePilot
       const res = await fn(data)
-      // 0 条不是「导入完成」：拿自有备份去点 MoviePilot 入口就是这种返回，
+      // 0 条不是「导入完成」：拿自有备份去点外部导入入口就是这种返回，
       // 从前无条件弹绿色 success（后端这条链不发通知，所以只有界面在说谎）。
       if (importOutcomeKind(res?.imported_sites, res?.imported_downloaders) === 'none') {
         ElMessage.warning(t('backup.importNothing'))

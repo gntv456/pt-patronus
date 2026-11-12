@@ -28,9 +28,9 @@ import (
 //
 // Contract sources:
 //   - PeerGo 前端 bundles 实测提取（tools 扫 assets/manifest）
-//   - PT-depiler rousipro.ts: Bearer passkey, /api/v1/search,
+//   - Bearer passkey, /api/v1/search,
 //     /api/v1/profile, /api/v1/seeding-reward.
-//   - MoviePilot Rousi parser/spider: profile response fields and
+//   - profile response fields and
 //     seeding_leeching_data shape.
 type Rousi struct {
 	hc *httpclient.Client

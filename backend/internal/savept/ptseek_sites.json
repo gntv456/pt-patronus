@@ -60,10 +60,6 @@
     "url": "https://www.pthub.cc/sites/mteam.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/mteam.ts"
-   },
-   {
     "name": "社区“十二大”说法（2026口径）",
     "url": "https://blog.treehappy.cn/2026/01/19/pt%E5%85%A5%E9%97%A8%E6%8C%87%E5%8D%97/"
    },
@@ -142,10 +138,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/chdbits.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/chdbits.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -232,10 +224,6 @@
     "url": "https://www.pthub.cc/sites/audiences.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/audiences.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/audiences.yml"
    },
@@ -299,10 +287,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hhanclub.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hhanclub.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -379,10 +363,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdsky.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdsky.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -472,10 +452,6 @@
     "url": "https://www.pthub.cc/sites/pterclub.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pter.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/pterclub.yml"
    },
@@ -544,10 +520,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/springsunday.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/springsunday.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -626,10 +598,6 @@
     "url": "https://www.pthub.cc/sites/totheglory.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/totheglory.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/totheglory.yml"
    },
@@ -705,10 +673,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdhome.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdhome.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -796,10 +760,6 @@
     "url": "https://www.pthub.cc/sites/ourbits.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ourbits.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ourbits.yml"
    },
@@ -881,10 +841,6 @@
     "url": "https://www.pthub.cc/sites/keepfrds.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/keepfrds.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/keepfriends.yml"
    },
@@ -953,10 +909,6 @@
     "url": "https://www.pthub.cc/sites/u2.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/u2.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/u2.yml"
    },
@@ -1016,10 +968,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdchina.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdchina.ts"
    },
    {
     "name": "社区“九大”说法",
@@ -1090,10 +1038,6 @@
     "url": "https://www.pthub.cc/sites/ubits.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ubits.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ubits.yml"
    }
@@ -1138,10 +1082,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/lemonhd.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/lemonhd.ts"
    }
   ],
   "features": "LemonHD（新柠檬/柠檬不酸）是中文综合站。PThub 的说明称其在旧站停止后清空数据重启，当前具体资源特色仍需以站内信息为准。",
@@ -1212,10 +1152,6 @@
     "url": "https://www.pthub.cc/sites/hddolby.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hddolby.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hddolby.yml"
    }
@@ -1273,10 +1209,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/pttime.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pttime.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -1339,10 +1271,6 @@
     "url": "https://www.pthub.cc/sites/hdtime.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdtime.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdtime.yml"
    }
@@ -1396,10 +1324,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdarea.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdarea.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -1468,10 +1392,6 @@
     "url": "https://www.pthub.cc/sites/piggo.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/piggo.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/pignetwork.yml"
    },
@@ -1529,10 +1449,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/leaves.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/redleaves.ts"
    }
   ],
   "features": "红叶成立于2022年10月，主打有声小说，有综合区。目前站内设立有声官组,资源产出稳定。喜欢有声内容的朋友，欢迎你的加入！资源分类还包括 有声书、影视、游戏。公开站点定义可识别的发布组包括 RLWEB、RLeaves、RLTV、R²。",
@@ -1575,10 +1491,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/dicmusic.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dicmusic.ts"
    },
    {
     "name": "音乐专站资料",
@@ -1634,10 +1546,6 @@
     "url": "https://www.pthub.cc/sites/cyanbug.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cyanbug.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/cyanbug.yml"
    }
@@ -1690,10 +1598,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/carpt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/carpt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -1765,10 +1669,6 @@
     "url": "https://www.pthub.cc/sites/hdkyl.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdkylin.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdkylin.yml"
    }
@@ -1826,10 +1726,6 @@
     "url": "https://www.pthub.cc/sites/zmpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/zmpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/zmpt.yml"
    }
@@ -1885,10 +1781,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ptsbao.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptsbao.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -1956,10 +1848,6 @@
     "url": "https://www.pthub.cc/sites/pthome.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pthome.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/pthome.yml"
    }
@@ -2021,10 +1909,6 @@
     "url": "https://www.pthub.cc/sites/ptcafe.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptcafe.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ptcafe.yml"
    }
@@ -2078,10 +1962,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/opencd.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/opencd.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -2145,10 +2025,6 @@
     "url": "https://www.pthub.cc/sites/hdcity.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdcity.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdc.yml"
    }
@@ -2190,10 +2066,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdatmos.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdatmos.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 影视。",
@@ -2234,10 +2106,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/fsm.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/fsm.ts"
    }
   ],
   "features": "FSM（飞天拉面神教）是一家专注于R18内容的PT站点，需要配置搜索入口才可搜索。资源分类还包括 成人。",
@@ -2290,10 +2158,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/52pt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/52pt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -2358,10 +2222,6 @@
     "url": "https://www.pthub.cc/sites/1ptba.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/1ptba.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/1ptbar.yml"
    }
@@ -2410,10 +2270,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/htpt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/htpt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -2475,10 +2331,6 @@
     "url": "https://www.pthub.cc/sites/haidan.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/haidan.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/haidan.yml"
    }
@@ -2535,10 +2387,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/btschool.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/btschool.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -2604,10 +2452,6 @@
     "url": "https://www.pthub.cc/sites/hdfans.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdfans.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdfans.yml"
    }
@@ -2666,10 +2510,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/kufei.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kufei.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -2744,10 +2584,6 @@
     "url": "https://www.pthub.cc/sites/agsv.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/agsvpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/agsvpt.yml"
    }
@@ -2811,10 +2647,6 @@
     "url": "https://www.pthub.cc/sites/qingwa.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/qingwa.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/qingwa.yml"
    }
@@ -2856,10 +2688,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ptvicomo.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptvicomo.ts"
    }
   ],
   "features": "大象自中虚，中虚真不渝！资源分类还包括 综合。",
@@ -2899,10 +2727,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/zhuque.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/zhuque.ts"
    }
   ],
   "features": "新架构的影视站点。",
@@ -2955,10 +2779,6 @@
     "url": "https://www.pthub.cc/sites/soulvoice.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/soulvoice.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/soulvoice.yml"
    }
@@ -2998,10 +2818,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ptchina.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptchina.ts"
    }
   ],
   "features": "PT新手的梦想之家，PT老鸟的黄埔军校。",
@@ -3042,10 +2858,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/sunnypt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sunnypt.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 影视。",
@@ -3085,10 +2897,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/yemapt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/yemapt.ts"
    }
   ],
   "features": "YemaPT 是一个由全新技术架构构建而来的综合类资源PT站点。有分享率和登录要求，可访问 wiki.yemapt.org 查看。",
@@ -3135,10 +2943,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ultrahd.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ultrahd.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -3196,10 +3000,6 @@
     "url": "https://www.pthub.cc/sites/ptlgs.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptlgs.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ptlgs.yml"
    }
@@ -3241,10 +3041,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/icc.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/icc2022.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 影视。",
@@ -3299,10 +3095,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdvideo.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdvideo.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -3362,10 +3154,6 @@
     "url": "https://www.pthub.cc/sites/crabpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/crabpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/crabpt.yml"
    }
@@ -3415,10 +3203,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/discfan.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/discfan.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -3476,10 +3260,6 @@
     "url": "https://www.pthub.cc/sites/hdroute.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdroute.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdroute.yml"
    },
@@ -3535,10 +3315,6 @@
     "url": "https://www.pthub.cc/sites/monikadesign.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/monikadesign.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/monikadesign-api.yml"
    }
@@ -3584,10 +3360,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/nice.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nicept.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -3655,10 +3427,6 @@
     "url": "https://www.pthub.cc/sites/panda.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pandapt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/panda.yml"
    }
@@ -3722,10 +3490,6 @@
     "url": "https://www.pthub.cc/sites/freefarm.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/freefarm.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/freefarm.yml"
    }
@@ -3767,10 +3531,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdu.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdupt.ts"
    }
   ],
   "features": "这是一个尊重版权的私有资源PT分享站点HDU。高清有你，你有UPXIN。资源分类还包括 影视。",
@@ -3810,10 +3570,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/raingfh.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/raingfh.ts"
    }
   ],
   "features": "与你相逢，就是奇迹。资源分类还包括 影视。",
@@ -3856,10 +3612,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/rousi.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/rousi.ts"
    }
   ],
   "features": "你也喜欢 Rousi 对吧？资源分类还包括 影视、成人。",
@@ -3914,10 +3666,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ilolicon.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ilolicon.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -3975,10 +3723,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/wintersakura.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/wintersakura.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -4045,10 +3789,6 @@
     "url": "https://www.pthub.cc/sites/okpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/okpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/okpt.yml"
    }
@@ -4105,10 +3845,6 @@
     "url": "https://www.pthub.cc/sites/oshen.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/oshenpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/oshenpt.yml"
    }
@@ -4161,10 +3897,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ptzone.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptzone.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -4222,10 +3954,6 @@
     "url": "https://www.pthub.cc/sites/gtk.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptgtk.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ptgtk.yml"
    }
@@ -4266,10 +3994,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdpost.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdpost.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 电影、电视剧/电视节目。",
@@ -4331,10 +4055,6 @@
     "url": "https://www.pthub.cc/sites/tlf.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tlfbits.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/tlfbits.yml"
    }
@@ -4378,10 +4098,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/xingyunge.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/xingyunge.ts"
    }
   ],
   "features": "三十年河东，三十年河西！莫欺少年穷！资源分类还包括 影视、国漫。",
@@ -4435,10 +4151,6 @@
     "url": "https://www.pthub.cc/sites/cspt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cspt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/cspt.yml"
    }
@@ -4480,10 +4192,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/tmpt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tmpt.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 影视。",
@@ -4524,10 +4232,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hspt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hspt.ts"
    }
   ],
   "features": "公开站点定义列出的资源类型包括 影视。",
@@ -4583,10 +4287,6 @@
     "url": "https://www.pthub.cc/sites/sewerpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sewerpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/sewerpt.yml"
    }
@@ -4638,10 +4338,6 @@
     "url": "https://www.pthub.cc/sites/mypt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/mypt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ptcc.yml"
    }
@@ -4684,10 +4380,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/siqi.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/siqi.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -4747,10 +4439,6 @@
     "url": "https://www.pthub.cc/sites/13city.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/13city.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/13city.yml"
    }
@@ -4804,10 +4492,6 @@
     "url": "https://www.pthub.cc/sites/kelu.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kelu.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/kelu.yml"
    }
@@ -4851,10 +4535,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/afun.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/afun.ts"
    }
   ],
   "features": "希望都能找到各自的兴趣、爱好、欢喜。资源分类还包括 电影、电视剧/电视节目、纪录片、成人。",
@@ -4896,10 +4576,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ptskit.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptskit.ts"
    }
   ],
   "features": "短的是时间 长的是热爱。资源分类还包括 短剧、成人。",
@@ -4953,10 +4629,6 @@
     "url": "https://www.pthub.cc/sites/tccf.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tccf.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/torrentccf.yml"
    }
@@ -4999,10 +4671,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/greatposterwall.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/greatposterwall.ts"
    }
   ],
   "features": "GPW 全名 Great Poster Wall，结合了长城（the Great Wall）、海报墙（Poster Wall）两个词，同时，「海报」谐音「海豹」，所以大家可以在 Logo 上看到一只萌萌的小海豹。资源分类还包括 电影。",
@@ -5050,10 +4718,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/luckpt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/luckpt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -5108,10 +4772,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/longpt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/longpt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -5172,10 +4832,6 @@
     "url": "https://www.pthub.cc/sites/novahd.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/novahd.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/novahd.yml"
    },
@@ -5231,10 +4887,6 @@
     "url": "https://www.pthub.cc/sites/zrpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/zrpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/zrpt.yml"
    }
@@ -5280,7 +4932,7 @@
    "其他"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标注该站已关闭；官网在本次核对时为域名出售页面，当前不存在可核实的 PT 注册入口。",
+  "registration": "早期资料标注该站已关闭；官网在本次核对时为域名出售页面，当前不存在可核实的 PT 注册入口。",
   "difficulty": "当前官网为域名出售页面，不适用入站或保种难度评价。",
   "specialties": [],
   "tags": [],
@@ -5289,13 +4941,9 @@
    {
     "name": "昆仑历史官网地址（本次显示域名出售页面）",
     "url": "https://www.yhpp.cc/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kunlun.ts"
    }
   ],
-  "features": "昆仑（Kunlun／YHPP）曾是中文综合影视 PT 站。PT-Depiler 固定定义列出电影、电视剧、综艺、动漫、纪录片、体育和音乐等历史分类，并标记该站已关闭；本次官网访问显示域名出售页面。",
+  "features": "昆仑（Kunlun／YHPP）曾是中文综合影视 PT 站。早期资料列出电影、电视剧、综艺、动漫、纪录片、体育和音乐等历史分类，并标记该站已关闭；本次官网访问显示域名出售页面。",
   "beginner_tips": "不要使用历史地址或等级规则申请账号、交换邀请或判断现行规则；如有服务恢复，应仅以可核实的官方公告为准。",
   "community_profile": null
  },
@@ -5350,13 +4998,9 @@
    {
     "name": "March 官网注册页",
     "url": "https://duckboobee.org/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/march.ts"
    }
   ],
-  "features": "March（三月传媒）是中文私有 PT 站，官网以“分享你所爱、他所求的珍藏资源”为站点说明并显示 NexusPHP 架构。PT-Depiler 固定定义列出电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐等分类，并标注 WEB 方向。",
+  "features": "March（三月传媒）是中文私有 PT 站，官网以“分享你所爱、他所求的珍藏资源”为站点说明并显示 NexusPHP 架构。早期资料列出电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐等分类，并标注 WEB 方向。",
   "beginner_tips": "官网已说明自由注册关闭，请仅通过合法邀请加入；获邀后先阅读站规、分享率、保种与发布要求。",
   "community_profile": null
  },
@@ -5417,10 +5061,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/tjupt.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tjupt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -5494,10 +5134,6 @@
     "url": "https://www.pthub.cc/sites/sjtu.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sjtu.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/putao.yml"
    },
@@ -5567,10 +5203,6 @@
     "url": "https://www.pthub.cc/sites/nanyangpt.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nanyangpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/nanyangpt.yml"
    },
@@ -5627,10 +5259,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/byr.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/byrbt.ts"
    },
    {
     "name": "CERNET 高校 PT 资料",
@@ -5698,10 +5326,6 @@
     "url": "https://www.pthub.cc/sites/hust.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hudbt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hudbt.yml"
    },
@@ -5754,10 +5378,6 @@
     "url": "https://www.pthub.cc/sites/neu6.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/neu6.ts"
-   },
-   {
     "name": "CERNET 高校 PT 资料",
     "url": "https://cernet.edu.cn/xxh/ip6/yj/gn/201211/t20121118_870519.shtml"
    }
@@ -5774,7 +5394,7 @@
   ],
   "alias": "花梨月下",
   "url": "https://pt.ecust.pp.ua/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ecustpt.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -5803,17 +5423,9 @@
    {
     "name": "ECUSTPT 主页（本次访问未能完成 TLS 连接）",
     "url": "https://pt.ecust.pp.ua/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ecustpt.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ecustpt.png"
    }
   ],
-  "features": "ECUSTPT（花梨月下）是与华东理工大学有关联的中文 PT 站。PT-Depiler 固定定义将其描述为“华东理工大学PT站”，标注教育网、综合和影视方向，并标记为历史/停运；当前主页无法建立 TLS 连接，无法确认实际运营状态。",
+  "features": "ECUSTPT（花梨月下）是与华东理工大学有关联的中文 PT 站。早期资料 固定定义将其描述为“华东理工大学PT站”，标注教育网、综合和影视方向，并标记为历史/停运；当前主页无法建立 TLS 连接，无法确认实际运营状态。",
   "beginner_tips": "不要依据历史高校站资料判断当前入站或分享规则；如服务恢复，应以站内公告、网络访问范围和保种说明为准。",
   "community_profile": null
  },
@@ -5871,15 +5483,11 @@
     "url": "https://www.hitpt.com/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hitpt.ts"
-   },
-   {
     "name": "PT邀请码网：百川/HITPT 介绍",
     "url": "https://www.ptyqm.com/29455.html"
    }
   ],
-  "features": "百川PT是中文私有 BT/PT 站。官网说明其采用 NexusPHP、需注册访问并统计分享率；PT-Depiler 固定定义标注教育网并列出电子文档、教学视频、网络课程、音乐、游戏和工程软件等分类。公开资料称其由哈尔滨工业大学（威海）学生管理，并提供教育网与公网连接说明。",
+  "features": "百川PT是中文私有 BT/PT 站。官网说明其采用 NexusPHP、需注册访问并统计分享率；早期资料标注教育网并列出电子文档、教学视频、网络课程、音乐、游戏和工程软件等分类。公开资料称其由哈尔滨工业大学（威海）学生管理，并提供教育网与公网连接说明。",
   "beginner_tips": "先根据官网注册页面的实时要求申请账号；获得账号后阅读用户协议、站规和分享率规则，避免启用 DHT。",
   "community_profile": null
  },
@@ -5889,7 +5497,7 @@
   "aka": [],
   "alias": "",
   "url": "https://v6.nexushd.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -5940,19 +5548,11 @@
     "url": "https://www.nexushd.org/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nexushd.ts"
-   },
-   {
     "name": "浙江大学校园服务资料中的 NexusHD 介绍（2018）",
     "url": "https://www.sohu.com/a/282557384_169472"
-   },
-   {
-    "name": "PT-Depiler NexusPHP 默认图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "NexusHD 是中文 PT 站。PT-Depiler 固定定义称其为国内较早创建并使用 NexusPHP 架构的站点，列出影视、动漫、音乐、游戏和在线学习等分类并标注教育网。公开高校资料将其描述为浙江大学校内私有 BT 下载站；据此记录为高校起源，而非据教育网标签推定。",
+  "features": "NexusHD 是中文 PT 站。早期资料 固定定义称其为国内较早创建并使用 NexusPHP 架构的站点，列出影视、动漫、音乐、游戏和在线学习等分类并标注教育网。公开高校资料将其描述为浙江大学校内私有 BT 下载站；据此记录为高校起源，而非据教育网标签推定。",
   "beginner_tips": "不要依据历史等级或旧校园访问说明判断当前资格；如可通过官方渠道访问，先核实网络范围并阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -5962,7 +5562,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.nwsuaf6.edu.cn/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -5996,7 +5596,7 @@
   "community_labels": [
    "高校站"
   ],
-  "registration": "PT-Depiler 固定定义标注该站为历史/停运状态；本次无法完成主页 TLS 连接，当前注册或访问资格无法核实。",
+  "registration": "早期资料标注该站为历史/停运状态；本次无法完成主页 TLS 连接，当前注册或访问资格无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [
    "教育网",
@@ -6010,23 +5610,15 @@
     "url": "https://pt.nwsuaf6.edu.cn/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nwsuaf6.ts"
-   },
-   {
     "name": "西北农林科技大学网络与教育技术中心：麦田PT简介（2012）",
     "url": "https://nic.nwafu.edu.cn/old/fwzn/fwzn1/a2485cec21d740f884d4d193a3be1e6b.htm"
    },
    {
     "name": "西北农林科技大学：IPv6资源分享平台介绍（2014）",
     "url": "https://news.nwafu.edu.cn/xnxw/47265.htm"
-   },
-   {
-    "name": "PT-Depiler NexusPHP 默认图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "麦田PT是西北农林科技大学的 IPv6 资源分享平台。校方网络与教育技术中心资料称其由该中心主办、学生自主创建与管理，提供影视、学习、软件、音乐等资源；PT-Depiler 固定定义将其标记为历史/停运。",
+  "features": "麦田PT是西北农林科技大学的 IPv6 资源分享平台。校方网络与教育技术中心资料称其由该中心主办、学生自主创建与管理，提供影视、学习、软件、音乐等资源；早期资料 固定定义将其标记为历史/停运。",
   "beginner_tips": "不要依据历史校园访问说明或旧规则判断当前入站资格；如服务恢复，应以校方或站内公告明确的网络范围、注册条件和保种规则为准。",
   "community_profile": null
  },
@@ -6036,7 +5628,7 @@
   "aka": [],
   "alias": "",
   "url": "https://hitpt.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -6071,7 +5663,7 @@
   "community_labels": [
    "高校站"
   ],
-  "registration": "PT-Depiler 固定定义标注该站为历史/停运状态；本次无法完成主页 TLS 连接，当前注册或访问资格无法核实。",
+  "registration": "早期资料标注该站为历史/停运状态；本次无法完成主页 TLS 连接，当前注册或访问资格无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [
    "教育网"
@@ -6084,23 +5676,15 @@
     "url": "https://hitpt.org/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/qingyingpt.ts"
-   },
-   {
     "name": "哈工大清影PT博客介绍（历史资料）",
     "url": "https://blog.sina.cn/dpool/blog/u/3806593674"
    },
    {
     "name": "中国青年报：哈工大校内清影PT 介绍（2014）",
     "url": "https://zqb.cyol.com/html/2014-01/09/nw.D110000zgqnb_20140109_4-08.htm"
-   },
-   {
-    "name": "PT-Depiler NexusPHP 默认图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "清影PT是与哈尔滨工业大学有关的中文高校 PT 站。PT-Depiler 固定定义描述其由哈尔滨工业大学维护并标注教育网；历史公开介绍称其为哈工大校内资源传输测试站，覆盖影视、动漫、学习和软件等分类。固定定义将该站标记为历史/停运。",
+  "features": "清影PT是与哈尔滨工业大学有关的中文高校 PT 站。早期资料 固定定义描述其由哈尔滨工业大学维护并标注教育网；历史公开介绍称其为哈工大校内资源传输测试站，覆盖影视、动漫、学习和软件等分类。固定定义将该站标记为历史/停运。",
   "beginner_tips": "不要依据历史校园访问说明或旧规则判断当前入站资格；如服务恢复，应以官方公告明确的网络范围、注册条件和保种规则为准。",
   "community_profile": null
  },
@@ -6112,7 +5696,7 @@
   ],
   "alias": "西电睿思",
   "url": "https://resource.xidian.edu.cn/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -6164,19 +5748,11 @@
     "url": "https://resource.xidian.edu.cn/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/rs.ts"
-   },
-   {
     "name": "西安电子科技大学校园网使用指南（2025）",
     "url": "https://blog.starryskymeow.cn/2025/08/%E8%A5%BF%E5%AE%89%E7%94%B5%E5%AD%90%E7%A7%91%E6%8A%80%E5%A4%A7%E5%AD%A6%E6%A0%A1%E5%9B%AD%E7%BD%91%E9%A3%9F%E7%94%A8%E6%8C%87%E5%8C%97/"
-   },
-   {
-    "name": "PT-Depiler NexusPHP 默认图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "睿思（西电睿思）是与西安电子科技大学有关的中文 PT 站。PT-Depiler 固定定义标注教育网并列出影视、动漫、音乐、学习、游戏和软件等分类；公开校园网资料将 resource.xidian.edu.cn 列为西电睿思 PT 站，并说明其为校内资源服务。",
+  "features": "睿思（西电睿思）是与西安电子科技大学有关的中文 PT 站。早期资料标注教育网并列出影视、动漫、音乐、学习、游戏和软件等分类；公开校园网资料将 resource.xidian.edu.cn 列为西电睿思 PT 站，并说明其为校内资源服务。",
   "beginner_tips": "不要依据旧校园网说明绕过访问或邀请要求；如具备合法校内资格，先确认当前网络范围，再阅读站内规则、分享率和保种要求。",
   "community_profile": null
  },
@@ -6188,7 +5764,7 @@
   ],
   "alias": "溪涧草堂",
   "url": "http://pt.xauat6.edu.cn/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/xauat6.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -6224,7 +5800,7 @@
    "其他"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标记该站已停止；定义所列官网地址在本次核对时无法访问，当前不存在可核实的注册或加入入口。",
+  "registration": "早期资料 固定定义标记该站已停止；定义所列官网地址在本次核对时无法访问，当前不存在可核实的注册或加入入口。",
   "difficulty": "站点已被固定定义标记为停止运营，当前不适用入站或保种难度评价；历史规则不应视为现行要求。",
   "specialties": [
    "教育网"
@@ -6235,17 +5811,9 @@
    {
     "name": "溪涧草堂PT 历史官网地址（本次无法访问）",
     "url": "http://pt.xauat6.edu.cn/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/xauat6.ts"
-   },
-   {
-    "name": "PT-Depiler 溪涧草堂PT站点图标（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/xauat6.png"
    }
   ],
-  "features": "溪涧草堂PT是历史上的中文综合资源 PT 站。PT-Depiler 固定定义标注其为教育网并列出影视、综艺、纪录、资料、动漫、音乐、软件、体育与游戏分类，且标记该站已停止；本次无法访问定义所列官网地址。公开资料未能明确证实其由哪所高校运营或发起，因此未标记为高校组织或高校站。",
+  "features": "溪涧草堂PT是历史上的中文综合资源 PT 站。早期资料标注其为教育网并列出影视、综艺、纪录、资料、动漫、音乐、软件、体育与游戏分类，且标记该站已停止；本次无法访问定义所列官网地址。公开资料未能明确证实其由哪所高校运营或发起，因此未标记为高校组织或高校站。",
   "beginner_tips": "不要依据历史教育网地址、注册信息或分享规则尝试加入或判断资格；如服务恢复，应以可核实的官方公告为准。",
   "community_profile": null
  },
@@ -6255,7 +5823,7 @@
   "aka": [],
   "alias": "",
   "url": "http://pt.zhixing.bjtu.edu.cn/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/zhixing.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "CGBTSource",
@@ -6306,13 +5874,9 @@
    {
     "name": "北京交通大学论坛—知行信息交流平台（含 PT 入口）",
     "url": "https://zhixing.bjtu.edu.cn/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/zhixing.ts"
    }
   ],
-  "features": "知行PT是与北京交通大学知行信息交流平台关联的中文私有 BitTorrent Tracker。该平台主页列有 PT 分区，并提供该 Tracker 的主页入口和资源审核区链接；PT-Depiler 固定定义将其描述为“北京交通大学知行PT”，标注教育网、综合和影视方向，且列有影视、音乐、动漫、游戏、软件、学习和体育等分类。2026-09-04 从本次公网环境访问 Tracker 入口返回 HTTP 502，无法据此确认其实际运营状态。",
+  "features": "知行PT是与北京交通大学知行信息交流平台关联的中文私有 BitTorrent Tracker。该平台主页列有 PT 分区，并提供该 Tracker 的主页入口和资源审核区链接；早期资料 固定定义将其描述为“北京交通大学知行PT”，标注教育网、综合和影视方向，且列有影视、音乐、动漫、游戏、软件、学习和体育等分类。2026-09-04 从本次公网环境访问 Tracker 入口返回 HTTP 502，无法据此确认其实际运营状态。",
   "beginner_tips": "不要仅凭高校关联推断可访问网络范围或入站资格；如入口恢复访问，请先阅读知行平台 PT 分区的最新公告和规则。",
   "community_profile": null
  },
@@ -6364,10 +5928,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/hdbits.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdbits.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -6452,10 +6012,6 @@
     "url": "https://www.pthub.cc/sites/passthepopcorn.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/passthepopcorn.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    },
@@ -6529,10 +6085,6 @@
     "url": "https://www.pthub.cc/sites/broadcasthenet.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/broadcasthenet.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    },
@@ -6601,10 +6153,6 @@
     "url": "https://www.pthub.cc/sites/beyondhd.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/beyondhd.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -6671,10 +6219,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/redacted.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/redacted.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -6746,10 +6290,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/empornium.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/empornium.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -6827,10 +6367,6 @@
     "url": "https://www.pthub.cc/sites/blutopia.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/blutopia.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/blutopia-api.yml"
    },
@@ -6902,10 +6438,6 @@
     "url": "https://www.pthub.cc/sites/cinematik.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cinematik.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/cinematik.yml"
    },
@@ -6971,10 +6503,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/gazellegames.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gazellegames.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -7048,10 +6576,6 @@
     "url": "https://www.pthub.cc/sites/karagarga.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/karagarga.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/karagarga.yml"
    },
@@ -7121,10 +6645,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/animebytes.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/animebytes.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -7203,10 +6723,6 @@
     "url": "https://www.pthub.cc/sites/filelist.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/filelist.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -7273,10 +6789,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/iptorrents.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/iptorrents.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -7352,10 +6864,6 @@
     "url": "https://www.pthub.cc/sites/torrentleech.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/torrentleech.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/torrentleech.yml"
    },
@@ -7421,10 +6929,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/anthelion.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/anthelion.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -7496,10 +7000,6 @@
     "url": "https://www.pthub.cc/sites/aither.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/aither.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/aither-api.yml"
    },
@@ -7564,10 +7064,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/ianon.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ianon.ts"
    }
   ],
   "features": "iAnon 是专注 Apple 生态的私有站点，主要收录 macOS/iOS 软件及相关资源。",
@@ -7612,10 +7108,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/uhdbits.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/uhdbits.ts"
    }
   ],
   "features": "UHDBits（UHD）以高清和 UHD 电影、剧集为主，也收录部分音乐资源；公开社区资料提示其分享率积累相对不易。",
@@ -7659,10 +7151,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/pussytorrents.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pussytorrents.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -7712,10 +7200,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/speedapp.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/speedapp.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -7780,10 +7264,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/sportscult.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sportscult.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -7863,10 +7343,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/star.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/starspace.ts"
    }
   ],
   "features": "StarSpace（星空/影）以影视与音乐综合内容为主，站内可识别 YingWEB、YingDIY、YingTV 等发布组。",
@@ -7962,10 +7438,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/happyfappy.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/happyfappy.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -8086,10 +7558,6 @@
     "url": "https://www.pthub.cc/sites/capybarabr.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/capybarabr.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/capybarabr.yml"
    },
@@ -8171,10 +7639,6 @@
     "url": "https://www.pthub.cc/sites/lat.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/latteam.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/lat-team-api.yml"
    },
@@ -8246,10 +7710,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/oldtoonsworld.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/oldtoonsworld.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -8384,10 +7844,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/brokenstones.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/brokenstones.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -8528,10 +7984,6 @@
     "url": "https://www.pthub.cc/sites/orpheus.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/orpheus.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    },
@@ -8601,10 +8053,6 @@
     "url": "https://www.pthub.cc/sites/thegeeks.html"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/thegeeks.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/thegeeks.yml"
    },
@@ -8672,10 +8120,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/alpharatio.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/alpharatio.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -8799,10 +8243,6 @@
    {
     "name": "PThub",
     "url": "https://www.pthub.cc/sites/mtv.html"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/morethantv.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -8938,7 +8378,7 @@
   "aka": [],
   "alias": "",
   "url": "https://1337x.to/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/1337x.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "公开资料未明确",
@@ -8988,17 +8428,9 @@
    {
     "name": "1337x 官方状态页与域名公告",
     "url": "https://1337x-status.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/1337x.ts"
-   },
-   {
-    "name": "PT-Depiler 1337x 站点图标（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/1337x.ico"
    }
   ],
-  "features": "1337x 是面向英文用户的公开 BitTorrent 索引服务，不是私有 Tracker。PT-Depiler 固定定义将其标为 public，并说明可提供经验证的种子下载；定义列出影视、动漫、音乐、软件、游戏、电子书、漫画和成人等分类，以及种子文件与磁力链接入口。官方状态页列出 1337x.to 为官方域名，并提示域名和可用性可能变化。",
+  "features": "1337x 是面向英文用户的公开 BitTorrent 索引服务，不是私有 Tracker。早期资料 固定定义将其标为 public，并说明可提供经验证的种子下载；定义列出影视、动漫、音乐、软件、游戏、电子书、漫画和成人等分类，以及种子文件与磁力链接入口。官方状态页列出 1337x.to 为官方域名，并提示域名和可用性可能变化。",
   "beginner_tips": "通过官方状态页核对域名，避免把未列出的代理或过期域名当作官方站点；下载前核对文件与来源，并遵守所在地法律及版权规则。",
   "community_profile": null
  },
@@ -9044,13 +8476,9 @@
    {
     "name": "Saint-Petersburg Toshokan 批量包公开索引",
     "url": "https://asnet.pw/?mode=1"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/anisource.ts"
    }
   ],
-  "features": "Saint-Petersburg Toshokan（AniSource）是公开的动漫种子索引服务，不是私有 Tracker。官网称可免费下载动漫，并公开列出 Batches、スカーRaws、Raws-4U、Audio-4U、Leopard-Raws 与 Other 分类；PT-Depiler 固定定义将其标记为 public，并说明条目提供磁力链接。",
+  "features": "Saint-Petersburg Toshokan（AniSource）是公开的动漫种子索引服务，不是私有 Tracker。官网称可免费下载动漫，并公开列出 Batches、スカーRaws、Raws-4U、Audio-4U、Leopard-Raws 与 Other 分类；早期资料 固定定义将其标记为 public，并说明条目提供磁力链接。",
   "beginner_tips": "下载前核对条目名称、文件与可用做种者；仅获取有合法授权的内容，并遵守所在地法律及版权规则。",
   "community_profile": null
  },
@@ -9096,13 +8524,9 @@
    {
     "name": "AudioNews 官网",
     "url": "https://audionews.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/audionews.ts"
    }
   ],
-  "features": "AudioNews（AN）是面向音乐制作的英语私有 PT 社区；官网确认其为邀请制社区，PT-Depiler 固定定义列出音频软件、采样库、预设、乐谱和学习资料等分类。",
+  "features": "AudioNews（AN）是面向音乐制作的英语私有 PT 社区；官网确认其为邀请制社区，早期资料列出音频软件、采样库、预设、乐谱和学习资料等分类。",
   "beginner_tips": "不要把官网的捐赠说明视作持续可用的加入保证；如已获得合法邀请，先阅读当前分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9114,7 +8538,7 @@
   ],
   "alias": "bB",
   "url": "https://baconbits.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/baconbits.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "公开资料未明确",
@@ -9142,17 +8566,9 @@
    {
     "name": "baconBits 主页（本次访问未能完成 TLS 连接）",
     "url": "https://baconbits.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/baconbits.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/baconbits.ico"
    }
   ],
-  "features": "baconBits（bB）是英语综合 PT 站；PT-Depiler 固定定义将其描述为 0day 与综合资源站，并标记为历史/停运。因主页无法完成 TLS 连接，公开资料不足以确认当前运营状态。",
+  "features": "baconBits（bB）是英语综合 PT 站；早期资料 固定定义将其描述为 0day 与综合资源站，并标记为历史/停运。因主页无法完成 TLS 连接，公开资料不足以确认当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，以站内公告、分享率和保种要求为准。",
   "community_profile": null
  },
@@ -9197,13 +8613,9 @@
    {
     "name": "BitPorn 申请页",
     "url": "https://bitporn.eu/application"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/bitporn.ts"
    }
   ],
-  "features": "BitPorn 是匈牙利语界面的成人 PT 专站。官网当前提供登录和申请加入页面，并明确显示其使用 UNIT3D Fork；PT-Depiler 固定定义也将其归为成人资源。",
+  "features": "BitPorn 是匈牙利语界面的成人 PT 专站。官网当前提供登录和申请加入页面，并明确显示其使用 UNIT3D Fork；早期资料 固定定义也将其归为成人资源。",
   "beginner_tips": "仅通过官网当前的合法申请渠道加入；获准后先阅读年龄限制、分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9248,13 +8660,9 @@
    {
     "name": "ClearJAV 会员申请页",
     "url": "https://clearjav.com/application"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/clearjav.ts"
    }
   ],
-  "features": "ClearJAV 是英语界面的成人 PT 专站。官网当前提供登录、邀请注册说明和会员申请页；PT-Depiler 固定定义显示其使用 Unit3D，并包含 VR 与 4K 等筛选维度。",
+  "features": "ClearJAV 是英语界面的成人 PT 专站。官网当前提供登录、邀请注册说明和会员申请页；早期资料 固定定义显示其使用 Unit3D，并包含 VR 与 4K 等筛选维度。",
   "beginner_tips": "仅使用官网当前的邀请或申请渠道；获准后先阅读年龄限制、分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9310,13 +8718,9 @@
    {
     "name": "DarkPeers 会员申请页",
     "url": "https://darkpeers.org/application"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/darkpeers.ts"
    }
   ],
-  "features": "DarkPeers（DP）是英语综合 PT 站。官网登录页显示其运行 Unit3D v9.2.0 并提供申请入口；PT-Depiler 固定定义列出影视、音乐、游戏、软件、图书、动漫和成人等分类。",
+  "features": "DarkPeers（DP）是英语综合 PT 站。官网登录页显示其运行 Unit3D v9.2.0 并提供申请入口；早期资料列出影视、音乐、游戏、软件、图书、动漫和成人等分类。",
   "beginner_tips": "仅使用官网当前的邀请或申请渠道；获准后先阅读分享率、保种、发布与 H&R 规则。",
   "community_profile": null
  },
@@ -9383,13 +8787,9 @@
    {
     "name": "EXT Torrents 高级搜索页",
     "url": "https://ext.to/advanced/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/exttorrents.ts"
    }
   ],
-  "features": "EXT Torrents 是面向英文用户的公开 BitTorrent 索引服务，不是私有 Tracker。官网公开浏览与高级搜索页按电影、电视剧、音乐、游戏、软件、图书、动漫等分类检索，并显示做种者、下载者和来源字段；PT-Depiler 固定定义标记其为 public，且列出成人、体育与其他细分分类及磁力链接获取逻辑。",
+  "features": "EXT Torrents 是面向英文用户的公开 BitTorrent 索引服务，不是私有 Tracker。官网公开浏览与高级搜索页按电影、电视剧、音乐、游戏、软件、图书、动漫等分类检索，并显示做种者、下载者和来源字段；早期资料 固定定义标记其为 public，且列出成人、体育与其他细分分类及磁力链接获取逻辑。",
   "beginner_tips": "下载前核对域名、条目来源、文件和可用做种者；仅获取有合法授权的内容，并遵守所在地法律及版权规则。",
   "community_profile": null
  },
@@ -9399,7 +8799,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.gay-torrents.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gtnet.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "公开资料未明确",
@@ -9428,17 +8828,9 @@
    {
     "name": "Gay-Torrents.net 官网（本次访问返回 403）",
     "url": "https://www.gay-torrents.net/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gtnet.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gtnet.ico"
    }
   ],
-  "features": "Gay-Torrents.net 是英语同性成人资源 PT 站。PT-Depiler 固定定义将其列为私有成人 Tracker；本次官网访问受 403 响应限制，无法进一步确认实时运营与规则。",
+  "features": "Gay-Torrents.net 是英语同性成人资源 PT 站。早期资料 固定定义将其列为私有成人 Tracker；本次官网访问受 403 响应限制，无法进一步确认实时运营与规则。",
   "beginner_tips": "仅以官网当前公开说明为准，不要依赖第三方或历史注册信息；如有合法账号，先阅读年龄限制、分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9486,13 +8878,9 @@
    {
     "name": "Gay Torrents 注册入口（跳转至邀请抽选页）",
     "url": "https://www.gaytor.rent/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gtru.ts"
    }
   ],
-  "features": "Gay Torrents 当前使用 gaytor.rent 域名，PT-Depiler 固定定义保留其旧称 GayTorrent.ru 和旧域名。官网为多语言界面，定位为同性成人资源 PT 服务；固定定义显示分类亦含视频、图片等成人内容。",
+  "features": "Gay Torrents 当前使用 gaytor.rent 域名，早期资料 固定定义保留其旧称 GayTorrent.ru 和旧域名。官网为多语言界面，定位为同性成人资源 PT 服务；固定定义显示分类亦含视频、图片等成人内容。",
   "beginner_tips": "常规注册当前关闭；仅以官网最新的合法加入途径为准，获准后先阅读年龄限制、分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9539,13 +8927,9 @@
    {
     "name": "HD-Forever 官网",
     "url": "https://hdf.world/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdf.ts"
    }
   ],
-  "features": "HD-Forever（HD-F／HDF）是法语高清影视 PT 站。官网当前显示法语登录入口；PT-Depiler 固定定义列出电影、动画、演出/音乐会、剧集和纪录片等分类。",
+  "features": "HD-Forever（HD-F／HDF）是法语高清影视 PT 站。官网当前显示法语登录入口；早期资料列出电影、动画、演出/音乐会、剧集和纪录片等分类。",
   "beginner_tips": "当前未发现公开注册链接；如有合法账号或加入渠道，先阅读分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -9577,7 +8961,7 @@
    "动漫"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标注站点已关闭；官网在本次核对时无法建立连接，当前注册状态无法核实。",
+  "registration": "早期资料标注站点已关闭；官网在本次核对时无法建立连接，当前注册状态无法核实。",
   "difficulty": "固定定义标注站点已关闭，当前不适用入站或保种难度评价。",
   "specialties": [
    "日本影视"
@@ -9588,13 +8972,9 @@
    {
     "name": "JPTV.club 官网（历史地址）",
     "url": "https://jptv.club/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/jptvclub.ts"
    }
   ],
-  "features": "JPTV.club 曾专注日本电视剧、电影和粉丝录像（FANRES）资源；PT-Depiler 固定定义还标注动漫分类，并将该站标记为已关闭。",
+  "features": "JPTV.club 曾专注日本电视剧、电影和粉丝录像（FANRES）资源；早期资料 固定定义还标注动漫分类，并将该站标记为已关闭。",
   "beginner_tips": "不要依据历史注册链接申请账号；如日后出现可核实的官方恢复公告，应以官网的最新规则和加入方式为准。",
   "community_profile": null
  },
@@ -9648,10 +9028,6 @@
    {
     "name": "LST 官网注册页",
     "url": "https://lst.gg/register"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/lst.ts"
    }
   ],
   "features": "LST 是英语私有 Tracker。官网公开登录和注册页面显示其使用 UNIT3D；固定站点定义列出电影、电视、音乐、游戏、应用、电子书/漫画、教育和粉丝录像等资源类别。",
@@ -9666,7 +9042,7 @@
   ],
   "alias": "PB",
   "url": "https://pornbay.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/pornbay.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Luminance",
@@ -9688,7 +9064,7 @@
   "community_labels": [
    "成人专站"
   ],
-  "registration": "PT-Depiler 固定定义标注该站长期不可用并标记为已关闭；本次无法完成主页 TLS 连接，当前注册或加入渠道无法核实。",
+  "registration": "早期资料标注该站长期不可用并标记为已关闭；本次无法完成主页 TLS 连接，当前注册或加入渠道无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [
    "成人内容"
@@ -9699,17 +9075,9 @@
    {
     "name": "Pornbay 官网（本次访问未能完成 TLS 连接）",
     "url": "https://pornbay.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pornbay.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/pornbay.ico"
    }
   ],
-  "features": "Pornbay（PB）是英语成人内容私有 Tracker。PT-Depiler 固定定义列出成人视频、图片、游戏、动画与 VR 内容等方向，并注明该站长期不可用、标记为已关闭；本次无法完成主页 TLS 连接。",
+  "features": "Pornbay（PB）是英语成人内容私有 Tracker。早期资料列出成人视频、图片、游戏、动画与 VR 内容等方向，并注明该站长期不可用、标记为已关闭；本次无法完成主页 TLS 连接。",
   "beginner_tips": "不要依据历史域名或旧规则申请账号；如服务恢复，应仅在符合当地法律与平台规则的前提下，以官方公告为准。",
   "community_profile": null
  },
@@ -9765,13 +9133,9 @@
    {
     "name": "Portugas 官网注册页",
     "url": "https://portugas.org/register"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/portugas.ts"
    }
   ],
-  "features": "Portugas 是面向葡语内容的私有 Tracker。官网公开页面标注“Tracker Português”并显示 UNIT3D Community Edition 架构；PT-Depiler 固定定义列出影视、音乐、游戏、应用、电子书和动画等分类。",
+  "features": "Portugas 是面向葡语内容的私有 Tracker。官网公开页面标注“Tracker Português”并显示 UNIT3D Community Edition 架构；早期资料列出影视、音乐、游戏、应用、电子书和动画等分类。",
   "beginner_tips": "官网已说明注册关闭，请勿尝试绕过邀请要求；如通过合法邀请加入，先阅读站内分享率、做种与 H&R 规则。",
   "community_profile": null
  },
@@ -9830,10 +9194,6 @@
    {
     "name": "RetroToon World 官网注册页",
     "url": "https://retrotoon.world/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/retrotoon.ts"
    }
   ],
   "features": "RetroToon World（RetroToon／RTW）是英语动画私有 Tracker。固定站点定义将其描述为动画电影和电视剧资源库，并列出复古、现代、OVA、短片、独立动画、漫画及动画原声等分类；官网公开页面提供登录、注册、FAQ 与规则入口。",
@@ -9895,13 +9255,9 @@
    {
     "name": "seedpool 官网注册页",
     "url": "https://seedpool.org/register"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/seedpool.ts"
    }
   ],
-  "features": "seedpool（SP）是英语综合私有 Tracker。PT-Depiler 固定定义列出电影、电视、动漫、体育、音乐、有声书、电子书、软件、游戏及音乐制作等分类，并显示 Unit3D 架构。",
+  "features": "seedpool（SP）是英语综合私有 Tracker。早期资料列出电影、电视、动漫、体育、音乐、有声书、电子书、软件、游戏及音乐制作等分类，并显示 Unit3D 架构。",
   "beginner_tips": "官网已明确关闭开放注册，请勿尝试绕过邀请要求；如通过合法邀请加入，先阅读站内分享率、做种和 H&R 规则。",
   "community_profile": null
  },
@@ -9950,13 +9306,9 @@
    {
     "name": "Superbits 官网客户端（注册与邀请路由）",
     "url": "https://superbits.org/dist/app.bundle.js"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/superbits.ts"
    }
   ],
-  "features": "Superbits 是瑞典语私有 Tracker。官网称其为“瑞典最大的 BitTorrent Tracker”，公开页面使用瑞典语并显示 Rartracker 架构；PT-Depiler 固定定义列出电影、电视剧、瑞典电视、音乐、P2P 和归档分类。",
+  "features": "Superbits 是瑞典语私有 Tracker。官网称其为“瑞典最大的 BitTorrent Tracker”，公开页面使用瑞典语并显示 Rartracker 架构；早期资料列出电影、电视剧、瑞典电视、音乐、P2P 和归档分类。",
   "beginner_tips": "如需加入，使用官网提供的合法邀请或申请入口；获得账号后先阅读站内分享率、做种和发布规则。",
   "community_profile": null
  },
@@ -10015,13 +9367,9 @@
    {
     "name": "Tokyo Toshokan 官方登录与注册入口",
     "url": "https://tokyo-tosho.net/login.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tokyotosho.ts"
    }
   ],
-  "features": "Tokyo Toshokan（東京 図書館）是面向日本媒体的公开 BitTorrent 索引服务，不是私有 Tracker。官网首页公开列出最新条目、搜索、RSS、种子文件和磁力链接，并显示做种者、下载者与完成数；PT-Depiler 固定定义将其标记为 public，且列出动漫、漫画、剧集、音乐、RAW、批量包和成人内容等分类。",
+  "features": "Tokyo Toshokan（東京 図書館）是面向日本媒体的公开 BitTorrent 索引服务，不是私有 Tracker。官网首页公开列出最新条目、搜索、RSS、种子文件和磁力链接，并显示做种者、下载者与完成数；早期资料 固定定义将其标记为 public，且列出动漫、漫画、剧集、音乐、RAW、批量包和成人内容等分类。",
   "beginner_tips": "下载前核对条目名称、文件、来源和可用做种者；仅获取有合法授权的内容，并遵守所在地法律及版权规则。",
   "community_profile": null
  },
@@ -10066,13 +9414,9 @@
    {
     "name": "0Magnet 英文官方首页",
     "url": "https://0magnet.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/0magnet.ts"
    }
   ],
-  "features": "0Magnet（无极磁链）是公开的种子分享与磁链搜索服务。中文官网首页提供磁链搜索、公开列表浏览和种子文件上传入口；PT-Depiler 的固定版本定义将其 type 标为 public，并将搜索结果类别标为 XXX。",
+  "features": "0Magnet（无极磁链）是公开的种子分享与磁链搜索服务。中文官网首页提供磁链搜索、公开列表浏览和种子文件上传入口；早期资料 的固定版本定义将其 type 标为 public，并将搜索结果类别标为 XXX。",
   "beginner_tips": "这是公开索引服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -10082,7 +9426,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.2xfree.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/2xfree.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -10111,17 +9455,9 @@
    {
     "name": "2xFree 主页（本次访问未能完成 TLS 连接）",
     "url": "https://pt.2xfree.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/2xfree.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/2xfree.png"
    }
   ],
-  "features": "2xFree 是主要使用中文界面的综合 PT 站；PT-Depiler 固定提交列出综合、VR 和成人内容，并将站点标记为历史/停运，公开资料不足以确认其当前运营状态。",
+  "features": "2xFree 是主要使用中文界面的综合 PT 站；早期资料 固定提交列出综合、VR 和成人内容，并将站点标记为历史/停运，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史等级资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -10167,13 +9503,9 @@
    {
     "name": "52movie 官方首页",
     "url": "https://www.52movie.top/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/52movie.ts"
    }
   ],
-  "features": "52movie 是面向中文用户的综合 PT Tracker。PT-Depiler 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐；该站首页当前受 Cloudflare 验证保护，公开可核实资料有限。",
+  "features": "52movie 是面向中文用户的综合 PT Tracker。早期资料 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐；该站首页当前受 Cloudflare 验证保护，公开可核实资料有限。",
   "beginner_tips": "当前注册状态未能从公开页面确认；如获得合法加入方式，请先阅读站内规则，特别留意分享率、上传量和保种要求。",
   "community_profile": null
  },
@@ -10218,13 +9550,9 @@
    {
     "name": "ACG.RIP 官方首页",
     "url": "https://acg.rip/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/acgrip.ts"
    }
   ],
-  "features": "ACG.RIP 是公开的日漫资源索引与种子下载服务。官网提供动画、日剧、综艺、音乐、合集等分类、站内搜索和直接种子下载链接；官网公告同时说明其 Tracker 不再有效。PT-Depiler 的固定版本定义将其 type 标为 public。",
+  "features": "ACG.RIP 是公开的日漫资源索引与种子下载服务。官网提供动画、日剧、综艺、音乐、合集等分类、站内搜索和直接种子下载链接；官网公告同时说明其 Tracker 不再有效。早期资料 的固定版本定义将其 type 标为 public。",
   "beginner_tips": "这是公开索引/下载服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -10273,13 +9601,9 @@
    {
     "name": "Aidoru!Online 官网",
     "url": "https://aidoru-online.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/aidoruonline.ts"
    }
   ],
-  "features": "Aidoru!Online 是私有 BitTorrent 站点。PT-Depiler 的固定版本定义列出偶像团体、游戏、影视节目、现场表演、音乐视频、音频、专辑、单曲、电台节目和图片等分类；官网当前入口会转向登录页。",
+  "features": "Aidoru!Online 是私有 BitTorrent 站点。早期资料 的固定版本定义列出偶像团体、游戏、影视节目、现场表演、音乐视频、音频、专辑、单曲、电台节目和图片等分类；官网当前入口会转向登录页。",
   "beginner_tips": "如需加入，请先在官网确认注册入口是否开放；加入后应阅读站内分享率、保种和上传规则。",
   "community_profile": null
  },
@@ -10329,13 +9653,9 @@
    {
     "name": "alingPT 注册页",
     "url": "https://pt.aling.de/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/alingpt.ts"
    }
   ],
-  "features": "alingPT 是中文综合 PT 站。官网当前显示中文登录与注册页面；PT-Depiler 固定定义列出的公开分类覆盖影视、动漫、音乐视频、体育和短剧。",
+  "features": "alingPT 是中文综合 PT 站。官网当前显示中文登录与注册页面；早期资料列出的公开分类覆盖影视、动漫、音乐视频、体育和短剧。",
   "beginner_tips": "注册前核对实时要求；入站后先阅读分享率、保种、新人考核和客户端规则。",
   "community_profile": null
  },
@@ -10372,13 +9692,9 @@
    {
     "name": "AnimeLovers 官方首页",
     "url": "https://animelovers.club/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/animelovers.ts"
    }
   ],
-  "features": "AnimeLovers 是以动漫为方向的私有 Tracker。PT-Depiler 固定提交定义标注其使用 Unit3D，并标为 isDead；本次官方首页连接超时，当前运营状态无法由公开页面确认。",
+  "features": "AnimeLovers 是以动漫为方向的私有 Tracker。早期资料 固定提交定义标注其使用 Unit3D，并标为 isDead；本次官方首页连接超时，当前运营状态无法由公开页面确认。",
   "beginner_tips": "请勿依据历史开放注册信息尝试加入；如官方页面恢复且有合法入口，先阅读站内规则与分享要求。",
   "community_profile": null
  },
@@ -10428,13 +9744,9 @@
    {
     "name": "Anime Tosho 官方停运说明",
     "url": "https://animetosho.org/about/shutdown2"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/animetosho.ts"
    }
   ],
-  "features": "Anime Tosho 是面向动漫发布的公开自动化索引与下载链接服务。PT-Depiler 的固定定义将其 type 标为 public，并说明其提供动漫发布的种子文件、磁力链接和直链。官网于 2026-09-04 显示，其已在 2026-05-09 永久停止新增内容与数据更新，当前作为冻结档案保留；历史条目仍可显示 torrent、磁力链接、NZB 和直链。该服务并非传统私有 Tracker。",
+  "features": "Anime Tosho 是面向动漫发布的公开自动化索引与下载链接服务。早期资料 的固定定义将其 type 标为 public，并说明其提供动漫发布的种子文件、磁力链接和直链。官网于 2026-09-04 显示，其已在 2026-05-09 永久停止新增内容与数据更新，当前作为冻结档案保留；历史条目仍可显示 torrent、磁力链接、NZB 和直链。该服务并非传统私有 Tracker。",
   "beginner_tips": "该站已停止更新，检索到的条目并不代表仍有新发布或可用来源；下载或分享前请确认当地法律、版权规则与文件安全性。",
   "community_profile": null
  },
@@ -10475,10 +9787,6 @@
    {
     "name": "AnimeZ 官网",
     "url": "https://animez.to/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/animez.ts"
    },
    {
     "name": "Private Trackers Spreadsheet（AnimeTorrents 历史条目）",
@@ -10537,13 +9845,9 @@
    {
     "name": "AniRena 官方首页",
     "url": "https://www.anirena.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/anirena.ts"
    }
   ],
-  "features": "AniRena 是公开的动漫与日本相关种子索引/下载服务。官网将自身表述为动漫种子的聚合地，并向游客直接提供搜索、磁链和种子下载链接；PT-Depiler 的固定版本定义将其 type 标为 public，并列出动漫、日剧、漫画、音乐、游戏等分类。",
+  "features": "AniRena 是公开的动漫与日本相关种子索引/下载服务。官网将自身表述为动漫种子的聚合地，并向游客直接提供搜索、磁链和种子下载链接；早期资料 的固定版本定义将其 type 标为 public，并列出动漫、日剧、漫画、音乐、游戏等分类。",
   "beginner_tips": "这是公开索引/下载服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -10587,10 +9891,6 @@
     "url": "https://eiga.moi/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/asiancinema.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/asiancinema.yml"
    },
@@ -10609,7 +9909,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.asmrpt.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/asmrpt.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -10640,17 +9940,9 @@
    {
     "name": "ASMR PT 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://www.asmrpt.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/asmrpt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/asmrpt.png"
    }
   ],
-  "features": "ASMR PT 是面向中文用户的 ASMR PT 站。PT-Depiler 的固定版本定义将其标记为私有站，并标注为历史/停运；公开资料不足以确认其当前运营状态。",
+  "features": "ASMR PT 是面向中文用户的 ASMR PT 站。早期资料 的固定版本定义将其标记为私有站，并标注为历史/停运；公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -10694,13 +9986,9 @@
    {
     "name": "AudioBook Bay 官方首页",
     "url": "https://audiobookbay.lu/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/audiobookbay.ts"
    }
   ],
-  "features": "AudioBook Bay（ABB）是英语公开有声书索引与下载服务。PT-Depiler 的固定定义将其标为面向有声书的公开 Torrent Tracker；官网公开列出有声书条目、分类、搜索和直链下载，并显示小说、讲座与教程等内容方向。该服务不是传统私有 Tracker。",
+  "features": "AudioBook Bay（ABB）是英语公开有声书索引与下载服务。早期资料 的固定定义将其标为面向有声书的公开 Torrent Tracker；官网公开列出有声书条目、分类、搜索和直链下载，并显示小说、讲座与教程等内容方向。该服务不是传统私有 Tracker。",
   "beginner_tips": "这是公开索引服务，不代表全部条目都可用或可自由传播；下载或分享前请确认当地法律、版权规则与文件安全性。",
   "community_profile": null
  },
@@ -10738,13 +10026,9 @@
    {
     "name": "Aura4k 官方首页（本次返回 Cloudflare 530）",
     "url": "https://aura4k.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/aura4k.ts"
    }
   ],
-  "features": "Aura4k 是私有 BitTorrent 站点。PT-Depiler 的固定版本定义列出电影和电视剧分类；官网本次访问返回 Cloudflare 530，公开资料不足以进一步核实运营与资源范围。",
+  "features": "Aura4k 是私有 BitTorrent 站点。早期资料 的固定版本定义列出电影和电视剧分类；官网本次访问返回 Cloudflare 530，公开资料不足以进一步核实运营与资源范围。",
   "beginner_tips": "当前注册状态无法从公开页面确认；如获得合法加入方式，请先阅读站内分享率、保种和上传规则。",
   "community_profile": null
  },
@@ -10756,7 +10040,7 @@
   ],
   "alias": "AVGV",
   "url": "https://avgv.cc/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -10784,13 +10068,9 @@
    {
     "name": "爱薇网官方首页",
     "url": "https://avgv.cc/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/avgv.ts"
    }
   ],
-  "features": "爱薇网是面向新加坡华人用户的成人内容 PT Tracker；PT-Depiler 固定提交定义将其资源标签列为成人、AV、GAY 和 LES，并标为 isDead。官方首页当前受 JavaScript 验证保护，运营状态无法由公开页面确认。",
+  "features": "爱薇网是面向新加坡华人用户的成人内容 PT Tracker；早期资料 固定提交定义将其资源标签列为成人、AV、GAY 和 LES，并标为 isDead。官方首页当前受 JavaScript 验证保护，运营状态无法由公开页面确认。",
   "beginner_tips": "请勿依据历史开放注册信息尝试加入；如官方页面提供合法入口，先阅读站内的分享率、保种和内容规则。",
   "community_profile": null
  },
@@ -10835,10 +10115,6 @@
     "url": "https://avistaz.to/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/avistaz.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -10855,7 +10131,7 @@
   ],
   "alias": "AHD",
   "url": "https://awesome-hd.me/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/awesomehd.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Gazelle",
@@ -10880,17 +10156,9 @@
    {
     "name": "Awesome-HD 官方首页（本次重定向至无关页面）",
     "url": "https://awesome-hd.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/awesomehd.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/awesomehd.ico"
    }
   ],
-  "features": "Awesome-HD 是影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
+  "features": "Awesome-HD 是影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -10934,10 +10202,6 @@
    {
     "name": "梓喵官网",
     "url": "https://azusa.wiki/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/azusa.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -10984,10 +10248,6 @@
    {
     "name": "BakaBT 官网",
     "url": "https://bakabt.me/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/bakabt.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -11058,10 +10318,6 @@
     "url": "https://p.t-baozi.cc/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/baozi.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/baozipt.yml"
    },
@@ -11095,7 +10351,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.beitai.pt/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -11120,17 +10376,9 @@
    {
     "name": "备胎官方首页（本次请求超时）",
     "url": "https://www.beitai.pt/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/beitai.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交 NexusPHP 默认图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "备胎是面向中文用户的影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；官网本次请求超时，公开资料不足以确认其当前运营状态。",
+  "features": "备胎是面向中文用户的影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；官网本次请求超时，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -11190,13 +10438,9 @@
    {
     "name": "极速之星官方注册页",
     "url": "https://bitpt.cn/bbs/member.php?mod=register"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/bitpt.ts"
    }
   ],
-  "features": "极速之星是中文 IPv6 资源交流 PT 平台。PT-Depiler 固定提交定义列出的分类覆盖电影、剧集、音乐、动漫、游戏、节目、书籍、软件和学习资源；官方注册页当前要求教育邮箱。",
+  "features": "极速之星是中文 IPv6 资源交流 PT 平台。早期资料 固定提交定义列出的分类覆盖电影、剧集、音乐、动漫、游戏、节目、书籍、软件和学习资源；官方注册页当前要求教育邮箱。",
   "beginner_tips": "注册前确认自己具备符合要求的教育邮箱；加入后先阅读站内规则，留意分享率、上传量和保种要求。",
   "community_profile": null
  },
@@ -11225,7 +10469,7 @@
   "community_labels": [
    "音乐专站"
   ],
-  "registration": "公开服务：PT-Depiler 的固定版本定义将其 type 标为 public。该服务不采用私有 PT 的邀请准入或分享率体系；2026-09-04 核对时官网主页被 Cloudflare 验证页拦截，无法进一步核验页面设置。",
+  "registration": "公开服务：早期资料 的固定版本定义将其 type 标为 public。该服务不采用私有 PT 的邀请准入或分享率体系；2026-09-04 核对时官网主页被 Cloudflare 验证页拦截，无法进一步核验页面设置。",
   "difficulty": "不适用：该服务为公开音乐追踪器，不设私有 PT 的会员准入、分享率或保种等级体系。",
   "specialties": [
    "Bootleg FLAC 音乐"
@@ -11238,13 +10482,9 @@
    {
     "name": "BT.etree 官方首页（2026-09-04 被 Cloudflare 验证页拦截）",
     "url": "https://bt.etree.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/btetree.ts"
    }
   ],
-  "features": "BT.etree 是专注于 Bootleg FLAC 音乐的公开 BitTorrent 追踪器。PT-Depiler 的固定版本定义将其说明为 public tracker，并提供公开搜索、列表、详情和种子下载解析规则。",
+  "features": "BT.etree 是专注于 Bootleg FLAC 音乐的公开 BitTorrent 追踪器。早期资料 的固定版本定义将其说明为 public tracker，并提供公开搜索、列表、详情和种子下载解析规则。",
   "beginner_tips": "这是公开音乐追踪服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -11297,10 +10537,6 @@
     "url": "https://cangbao.ge/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cbg.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/cangbaoge.yml"
    }
@@ -11351,10 +10587,6 @@
     "url": "https://www.cathode-ray.tube/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cathoderaytube.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/cathoderaytube.yml"
    },
@@ -11373,7 +10605,7 @@
   "aka": [],
   "alias": "",
   "url": "https://ccfbits.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ccfbits.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "TBSource",
@@ -11400,17 +10632,9 @@
    {
     "name": "CCFBits 官方首页（本次返回 HTTP 403）",
     "url": "https://ccfbits.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ccfbits.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ccfbits.ico"
    }
   ],
-  "features": "CCFBits 是面向中文用户的综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；官网本次返回 HTTP 403，公开资料不足以确认其当前运营状态。",
+  "features": "CCFBits 是面向中文用户的综合影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；官网本次返回 HTTP 403，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -11420,7 +10644,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.cdfile.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -11459,14 +10683,6 @@
    {
     "name": "CD File 官网停止运营公告",
     "url": "https://pt.cdfile.org/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cdfile.ts"
-   },
-   {
-    "name": "PT-Depiler 通用 NexusPHP 图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
   "features": "CD File 是中文高品质光盘镜像资源 PT 站，公开定义称其专注 Blu-ray、DVD 与 CD 等归档资源，并列出影视、动漫、音乐和体育分类；官网当前已明确宣布停止运营。",
@@ -11479,7 +10695,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.cdy.ics/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -11517,13 +10733,9 @@
    {
     "name": "传道院官方首页",
     "url": "https://pt.cdy.ics/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cdy.ts"
    }
   ],
-  "features": "传道院是中文综合 PT Tracker。PT-Depiler 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育、音乐和游戏；本次无法通过其定义所列当前及历史首页完成连通性核验。",
+  "features": "传道院是中文综合 PT Tracker。早期资料 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育、音乐和游戏；本次无法通过其定义所列当前及历史首页完成连通性核验。",
   "beginner_tips": "请勿依据旧资料判断开放状态；如官方页面恢复并提供合法入口，加入后先阅读分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -11575,10 +10787,6 @@
    {
     "name": "CGPeers 官方首页",
     "url": "https://cgpeers.to/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cgpeers.ts"
    }
   ],
   "features": "CGPeers 是专注于计算机图形资源的私有 BitTorrent 站点。官网确认 cgpeers.to 与 cgpeers.com 为其仅有的官方域名；固定版本定义列出 3D 打印、应用软件、游戏开发、素材、模型、插件、教程和网页开发等分类。",
@@ -11633,13 +10841,9 @@
    {
     "name": "Cinemageddon 官方注册页",
     "url": "https://cinemageddon.net/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cinemageddon.ts"
    }
   ],
-  "features": "Cinemageddon 是以 B 级片、罕见和冷门电影为重点的英文私有 Tracker。官方首页列举恐怖、武侠、血腥、剥削和动作电影等方向；PT-Depiler 固定提交定义还列出原声带、电子书和成人内容分类。",
+  "features": "Cinemageddon 是以 B 级片、罕见和冷门电影为重点的英文私有 Tracker。官方首页列举恐怖、武侠、血腥、剥削和动作电影等方向；早期资料 固定提交定义还列出原声带、电子书和成人内容分类。",
   "beginner_tips": "当前只能通过既有用户邀请加入；获得合法邀请后，先阅读站内分享率、保种和内容规则。",
   "community_profile": null
  },
@@ -11681,10 +10885,6 @@
    {
     "name": "CinemaZ 官网",
     "url": "https://cinemaz.to/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cinemaz.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -11740,13 +10940,9 @@
    {
     "name": "国语视界官方首页",
     "url": "https://cnlang.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cnlang.ts"
    }
   ],
-  "features": "国语视界是国语视界音轨组和特效字幕组的官方首发论坛，分享国语音轨、字幕、音频软件及蓝光 DIY 教程。尽管 PT-Depiler 将其列入 private 定义，官网明确称其为论坛，且公开首页未显示 BitTorrent 下载或分享率体系；因此本项目按资源社区论坛而非 PT Tracker 收录。",
+  "features": "国语视界是国语视界音轨组和特效字幕组的官方首发论坛，分享国语音轨、字幕、音频软件及蓝光 DIY 教程。尽管 早期资料 将其列入 private 定义，官网明确称其为论坛，且公开首页未显示 BitTorrent 下载或分享率体系；因此本项目按资源社区论坛而非 PT Tracker 收录。",
   "beginner_tips": "注册前先查看各版块规则与作品发布要求；不要把论坛注册入口视作 PT 站点的开放注册。",
   "community_profile": null
  },
@@ -11758,7 +10954,7 @@
   ],
   "alias": "hdscg",
   "url": "https://www.cnscg.club/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -11784,13 +10980,9 @@
    {
     "name": "圣城家园PT 官方首页",
     "url": "https://www.cnscg.club/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/cnscg.ts"
    }
   ],
-  "features": "圣城家园PT 是中文综合影视 Tracker。PT-Depiler 固定提交定义将 hdscg 作为其说明中的名称线索，并标为 isDead；本次无法连通定义列出的当前官方首页，运营状态无法由公开页面确认。",
+  "features": "圣城家园PT 是中文综合影视 Tracker。早期资料 固定提交定义将 hdscg 作为其说明中的名称线索，并标为 isDead；本次无法连通定义列出的当前官方首页，运营状态无法由公开页面确认。",
   "beginner_tips": "请勿依据旧资料判断开放状态；如官方页面恢复并提供合法入口，加入后先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -11800,7 +10992,7 @@
   "aka": [],
   "alias": "",
   "url": "https://dajiao.cyou/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/dajiao.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -11829,14 +11021,6 @@
    {
     "name": "DAJIAO 官方首页（本次重定向至无关页面）",
     "url": "https://dajiao.cyou/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dajiao.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/dajiao.png"
    }
   ],
   "features": "DAJIAO 是面向中文用户的综合影视私有 BitTorrent 站点，固定版本定义列出纪录片方向及 DJWEB、DJTV 官方发布组模式。该定义标记其为历史/停运，原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
@@ -11893,13 +11077,9 @@
    {
     "name": "DaXiangJiao 官方注册页",
     "url": "https://pt.daxiangjiao.org/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/daxiangjiao.ts"
    }
   ],
-  "features": "DaXiangJiao（大香蕉）是中文私有资源分享站。PT-Depiler 固定提交定义列出的常规分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐，并设有日韩、国产和欧美特色分区；定义标签还列出成人内容方向。",
+  "features": "DaXiangJiao（大香蕉）是中文私有资源分享站。早期资料 固定提交定义列出的常规分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音乐，并设有日韩、国产和欧美特色分区；定义标签还列出成人内容方向。",
   "beginner_tips": "当前仅允许邀请注册；获得合法邀请后，先阅读站内分享率、保种和内容规则。",
   "community_profile": null
  },
@@ -11950,15 +11130,11 @@
     "url": "https://dstudio.me/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dstudio.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/depthstudio.yml"
    }
   ],
-  "features": "Depth Studio 是中文综合影视 PT 站；PT-Depiler 的公开说明将海外 WEB-DL 追更列为主要方向。",
+  "features": "Depth Studio 是中文综合影视 PT 站；早期资料 的公开说明将海外 WEB-DL 追更列为主要方向。",
   "beginner_tips": "追更类资源更新频繁，下载前确认自动化工具、保种和重复下载行为符合站规。",
   "community_profile": null
  },
@@ -11999,13 +11175,9 @@
    {
     "name": "DesiGaane 官方首页",
     "url": "https://desigaane.rocks/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/desigaane.ts"
    }
   ],
-  "features": "DesiGaane 是专注于印度音乐的私有 BitTorrent 站点。官网当前提供登录和申请入口；PT-Depiler 的固定版本定义同样将其定位为印度音乐私有 Tracker。",
+  "features": "DesiGaane 是专注于印度音乐的私有 BitTorrent 站点。官网当前提供登录和申请入口；早期资料 的固定版本定义同样将其定位为印度音乐私有 Tracker。",
   "beginner_tips": "申请加入前先阅读申请页和站内规则；加入后留意分享率、保种和上传要求。",
   "community_profile": null
  },
@@ -12015,7 +11187,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.dhtclub.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/dhtclub.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -12040,17 +11212,9 @@
    {
     "name": "DHTCLUB PT 主页（本次访问证书链无法验证）",
     "url": "https://pt.dhtclub.com/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dhtclub.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/dhtclub.ico"
    }
   ],
-  "features": "DHTCLUB PT 是中文综合 PT 站；PT-Depiler 固定定义将其标记为历史/停运，并显示其曾使用 NexusPHP。由于当前主页证书链无法验证，无法确认实际运营状态。",
+  "features": "DHTCLUB PT 是中文综合 PT 站；早期资料 固定定义将其标记为历史/停运，并显示其曾使用 NexusPHP。由于当前主页证书链无法验证，无法确认实际运营状态。",
   "beginner_tips": "不要依据历史等级资料判断当前入站或分享规则；如服务恢复，应以站内公告、分享率和保种说明为准。",
   "community_profile": null
  },
@@ -12104,10 +11268,6 @@
    {
     "name": "DigitalCore 官网",
     "url": "https://digitalcore.club/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/digitalcore.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -12167,13 +11327,9 @@
    {
     "name": "動漫花園資源網官方首页",
     "url": "https://share.dmhy.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dmhy.ts"
    }
   ],
-  "features": "動漫花園資源網是公开的动漫资源索引与下载服务。官网将自身描述为动漫爱好者的自由交流平台，提供动画、漫画、动漫音乐、游戏等分类、站内搜索及公开磁链/种子链接；PT-Depiler 的固定版本定义将其 type 标为 public。",
+  "features": "動漫花園資源網是公开的动漫资源索引与下载服务。官网将自身描述为动漫爱好者的自由交流平台，提供动画、漫画、动漫音乐、游戏等分类、站内搜索及公开磁链/种子链接；早期资料 的固定版本定义将其 type 标为 public。",
   "beginner_tips": "这是公开索引/下载服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -12211,13 +11367,9 @@
    {
     "name": "龍之家官方首页",
     "url": "https://www.dragonhd.xyz/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dragonhd.ts"
    }
   ],
-  "features": "龍之家（DragonHD）是面向中文用户的综合影视私有 BitTorrent 站点。官网当前可访问并显示 NexusPHP 与注册入口；PT-Depiler 的固定版本定义同样将其标为 NexusPHP 私有 Tracker。",
+  "features": "龍之家（DragonHD）是面向中文用户的综合影视私有 BitTorrent 站点。官网当前可访问并显示 NexusPHP 与注册入口；早期资料 的固定版本定义同样将其标为 NexusPHP 私有 Tracker。",
   "beginner_tips": "注册前先确认资格和站内规则；加入后留意分享率、保种、下载量及用户等级要求。",
   "community_profile": null
  },
@@ -12271,10 +11423,6 @@
     "url": "https://dubhe.site/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dubhe.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/dubhe.yml"
    }
@@ -12289,7 +11437,7 @@
   "aka": [],
   "alias": "",
   "url": "https://dxdhd.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_unit3d.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -12329,15 +11477,11 @@
     "url": "https://dxdhd.com/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/dxdhd.ts"
-   },
-   {
     "name": "r/OpenSignups 历史公告（2020）",
     "url": "https://www.reddit.com/r/OpenSignups/comments/ifjimw/dxdhd_application_signups/"
    }
   ],
-  "features": "DXDHD 是英文综合私有 Tracker。2020 年的公开社区公告称其历史上以 HD/UHD 电影和电视剧为主，并有音乐、动漫、游戏、应用软件和成人内容分区；PT-Depiler 固定提交定义标为 isDead，当前官方域名无法完成连通性核验。",
+  "features": "DXDHD 是英文综合私有 Tracker。2020 年的公开社区公告称其历史上以 HD/UHD 电影和电视剧为主，并有音乐、动漫、游戏、应用软件和成人内容分区；早期资料 固定提交定义标为 isDead，当前官方域名无法完成连通性核验。",
   "beginner_tips": "请勿依据历史开放注册或申请信息尝试加入；如官方页面恢复并提供合法入口，先阅读站内最新规则。",
   "community_profile": null
  },
@@ -12384,13 +11528,9 @@
    {
     "name": "E-Hentai 官方首页",
     "url": "https://e-hentai.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ehentai.ts"
    }
   ],
-  "features": "E-Hentai（EH）是公开的成人向同人志、漫画与图像图库/种子索引服务。PT-Depiler 的固定定义将其 type 标为 public，标注漫画和成人方向；官网公开提供同人志、漫画、CG、图集与 Cosplay 等分类、搜索功能和 Torrents 导航。该服务不是传统私有 Tracker。",
+  "features": "E-Hentai（EH）是公开的成人向同人志、漫画与图像图库/种子索引服务。早期资料 的固定定义将其 type 标为 public，标注漫画和成人方向；官网公开提供同人志、漫画、CG、图集与 Cosplay 等分类、搜索功能和 Torrents 导航。该服务不是传统私有 Tracker。",
   "beginner_tips": "这是含成人内容的公开服务；请遵守所在地法律、年龄限制、版权规则和文件安全要求，不要将公开浏览误解为对全部条目的下载或传播授权。",
   "community_profile": null
  },
@@ -12439,10 +11579,6 @@
    {
     "name": "ExoticaZ 官方首页",
     "url": "https://exoticaz.to/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/exoticaz.ts"
    }
   ],
   "features": "ExoticaZ（亦称 Exo、YourExotic）是 AvistaZ Network 的成人私有 BitTorrent 站点。官网当前显示 Beta 版本并提供注册入口；固定版本定义列出成人视频、DVD、蓝光、图集及图书杂志等分类。",
@@ -12457,7 +11593,7 @@
   ],
   "alias": "FNP",
   "url": "https://fearnopeer.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/fearnopeer.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -12484,17 +11620,9 @@
    {
     "name": "FearNoPeer 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://fearnopeer.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/fearnopeer.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/fearnopeer.ico"
    }
   ],
-  "features": "FearNoPeer（FNP）是综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义将其描述为电影、电视剧及综合资源 Tracker，并标记为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
+  "features": "FearNoPeer（FNP）是综合影视私有 BitTorrent 站点。早期资料 的固定版本定义将其描述为电影、电视剧及综合资源 Tracker，并标记为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率、保种和 H&R 要求。",
   "community_profile": null
  },
@@ -12552,13 +11680,9 @@
    {
     "name": "凤凰PT 注册页",
     "url": "https://pt.521.best/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/fhpt.ts"
    }
   ],
-  "features": "凤凰PT（FengHuang PT／521best）是中文影视取向 PT 站。官网当前可访问并使用 NexusPHP；PT-Depiler 固定定义将其定位为小体积压制与 WEB-DL 电影方向，且列出影视以外的动漫、音乐、图书、游戏和成人分类。固定定义中的全站 Free 描述不代表实时优惠规则。",
+  "features": "凤凰PT（FengHuang PT／521best）是中文影视取向 PT 站。官网当前可访问并使用 NexusPHP；早期资料 固定定义将其定位为小体积压制与 WEB-DL 电影方向，且列出影视以外的动漫、音乐、图书、游戏和成人分类。固定定义中的全站 Free 描述不代表实时优惠规则。",
   "beginner_tips": "自由注册当前关闭，不要把历史介绍当作加入保证；获邀后先阅读分享率、保种、新人考核和客户端规则。",
   "community_profile": null
  },
@@ -12568,7 +11692,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.filept.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -12594,13 +11718,9 @@
    {
     "name": "Filept 官方首页",
     "url": "https://www.filept.com/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/filept.ts"
    }
   ],
-  "features": "Filept 是综合影视私有 Tracker。PT-Depiler 固定提交定义标为 isDead；官方首页当前受 JavaScript 验证保护，公开资料不足以确认其当前运营状态。",
+  "features": "Filept 是综合影视私有 Tracker。早期资料 固定提交定义标为 isDead；官方首页当前受 JavaScript 验证保护，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "请勿依据历史资料判断开放状态；如官方页面提供合法入口，先阅读站内分享率、保种和使用规则。",
   "community_profile": null
  },
@@ -12610,7 +11730,7 @@
   "aka": [],
   "alias": "",
   "url": "https://gainbound.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gainbound.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -12636,14 +11756,6 @@
    {
     "name": "丐帮官方首页（本次重定向至无关页面）",
     "url": "https://gainbound.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gainbound.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gainbound.ico"
    }
   ],
   "features": "丐帮是面向中文用户的影视私有 BitTorrent 站点，固定版本定义列出高清电影与纪录片方向，并标记为历史/停运。原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
@@ -12656,7 +11768,7 @@
   "aka": [],
   "alias": "",
   "url": "https://gfxpeers.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gfxpeers.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Gazelle",
@@ -12692,19 +11804,11 @@
     "url": "https://gfxpeers.net/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gfxpeers.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gfxpeers.ico"
-   },
-   {
     "name": "Torrends GFXPeers 站点资料",
     "url": "https://torrends.to/site/gfxpeers"
    }
   ],
-  "features": "GFXPeers 是历史上面向图形设计和视觉特效资源的私有 Tracker；第三方目录列出应用、插件、教程、纹理、三维模型和游戏开发分类。PT-Depiler 固定提交定义标为 isDead，且本次访问定义所列域名已重定向到无关页面，当前运营状态无法确认。",
+  "features": "GFXPeers 是历史上面向图形设计和视觉特效资源的私有 Tracker；第三方目录列出应用、插件、教程、纹理、三维模型和游戏开发分类。早期资料 固定提交定义标为 isDead，且本次访问定义所列域名已重定向到无关页面，当前运营状态无法确认。",
   "beginner_tips": "请勿依据历史目录中的开放或邀请说明尝试加入；如有新的官方域名或合法入口，应先核对官方公告和站内规则。",
   "community_profile": null
  },
@@ -12745,10 +11849,6 @@
     "url": "https://www.gamegamept.com/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ggpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/ggpt.yml"
    }
@@ -12763,10 +11863,10 @@
   "aka": [],
   "alias": "",
   "url": "https://gay-torrents.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gtorg.png",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
-  "site_engine": "未确认（PT-Depiler 固定定义未标注站点程序）",
+  "site_engine": "未确认（早期资料 固定定义未标注站点程序）",
   "language": "en-US",
   "rank": null,
   "source_category": "用户补充",
@@ -12796,17 +11896,9 @@
    {
     "name": "Gay-Torrents.Org 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://gay-torrents.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/gtorg.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/gtorg.png"
    }
   ],
-  "features": "Gay-Torrents.Org 是成人私有 BitTorrent 站点。PT-Depiler 的固定版本定义列出男性同性恋成人内容、图集和图书等分类，以及分享率和上传量相关用户等级；官网本次无法完成 TLS 连接，公开资料有限。",
+  "features": "Gay-Torrents.Org 是成人私有 BitTorrent 站点。早期资料 的固定版本定义列出男性同性恋成人内容、图集和图书等分类，以及分享率和上传量相关用户等级；官网本次无法完成 TLS 连接，公开资料有限。",
   "beginner_tips": "当前注册状态无法从公开页面确认；如获得合法加入方式，请先阅读站内成人内容、分享率和保种规则。",
   "community_profile": null
  },
@@ -12819,7 +11911,7 @@
   ],
   "alias": "白兔 / 白兔俱乐部",
   "url": "https://club.hares.top/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hares.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -12848,14 +11940,6 @@
    {
     "name": "HaresClub 官方首页（本次受 Cloudflare 验证保护）",
     "url": "https://club.hares.top/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hares.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hares.png"
    }
   ],
   "features": "HaresClub（白兔、白兔俱乐部）是面向中文用户的综合影视私有 BitTorrent 站点，固定版本定义列出 4K 及以上高清资源与纪录片方向，并标记为历史/停运。官网本次受 Cloudflare 验证保护，公开资料不足以确认其当前运营状态。",
@@ -12872,7 +11956,7 @@
   ],
   "alias": "兽站 / 兽组 / HD4F",
   "url": "https://pt.hd4fans.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -12908,10 +11992,6 @@
     "url": "https://pt.hd4fans.org/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hd4fans.ts"
-   },
-   {
     "name": "PT邀请码网 HD4FANS 历史资料（2021）",
     "url": "https://www.ptyqm.com/28810.html"
    },
@@ -12920,7 +12000,7 @@
     "url": "https://www.invitehawk.com/topic/166886-hd4fans-hd4f-hd-2023-review/"
    }
   ],
-  "features": "HD4FANS 是中文影视私有 Tracker，历史上亦被称为兽站或兽组。公开站点资料将其定位为小体积高清影视并强调高保真音轨，列出 beAst 为其制作组；PT-Depiler 固定提交定义标为 isDead，本次未能连通官方主页确认当前状态。",
+  "features": "HD4FANS 是中文影视私有 Tracker，历史上亦被称为兽站或兽组。公开站点资料将其定位为小体积高清影视并强调高保真音轨，列出 beAst 为其制作组；早期资料 固定提交定义标为 isDead，本次未能连通官方主页确认当前状态。",
   "beginner_tips": "请勿依据历史邀请资料判断当前开放状态；如官方页面恢复并提供合法入口，先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -12930,7 +12010,7 @@
   "aka": [],
   "alias": "",
   "url": "https://hd4.xyz/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hd4free.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -12956,17 +12036,9 @@
    {
     "name": "HD4Free 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://hd4.xyz/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hd4free.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hd4free.ico"
    }
   ],
-  "features": "HD4Free 是综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
+  "features": "HD4Free 是综合影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -12976,7 +12048,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.hd.ai/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hdai.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13001,17 +12073,9 @@
    {
     "name": "HDAI 主页（本次访问超时）",
     "url": "https://www.hd.ai/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdai.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hdai.png"
    }
   ],
-  "features": "HDAI 是中文影视 PT 站；PT-Depiler 固定定义显示其曾使用 NexusPHP，并标记为历史/停运。当前主页连接超时，公开资料不足以确认其实际运营状态。",
+  "features": "HDAI 是中文影视 PT 站；早期资料 固定定义显示其曾使用 NexusPHP，并标记为历史/停运。当前主页连接超时，公开资料不足以确认其实际运营状态。",
   "beginner_tips": "不要依据历史等级资料判断当前入站或分享规则；如服务恢复，以站内公告、分享率和保种说明为准。",
   "community_profile": null
  },
@@ -13118,13 +12182,9 @@
    {
     "name": "HDClone 官方注册页",
     "url": "https://pt.hdclone.top/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdclone.ts"
    }
   ],
-  "features": "HDClone 是中文综合私有 Tracker。PT-Depiler 固定提交定义列出的分类包括电影、电视剧、纪录片、综艺、动漫、音乐视频、演唱会、体育、音乐和教程；官方首页显示其使用 NexusPHP。",
+  "features": "HDClone 是中文综合私有 Tracker。早期资料 固定提交定义列出的分类包括电影、电视剧、纪录片、综艺、动漫、音乐视频、演唱会、体育、音乐和教程；官方首页显示其使用 NexusPHP。",
   "beginner_tips": "当前仅允许邀请注册；获得合法邀请后，先阅读站内分享率、发布数量、保种和客户端规则。",
   "community_profile": null
  },
@@ -13136,7 +12196,7 @@
   ],
   "alias": "HDD",
   "url": "https://hddisk.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13162,17 +12222,9 @@
    {
     "name": "HDDisk 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://hddisk.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hddisk.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交 NexusPHP 默认图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "HDDisk（HDD）是综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
+  "features": "HDDisk（HDD）是综合影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -13185,7 +12237,7 @@
   ],
   "alias": "小蚂蚁PT / XiaoMayi",
   "url": "http://hdmayi.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13210,13 +12262,9 @@
    {
     "name": "HDmayi 原官方域名（当前待售停放页）",
     "url": "http://hdmayi.com/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdmayi.ts"
    }
   ],
-  "features": "HDmayi（小蚂蚁PT）是历史上的中文私有电影资源分享站。PT-Depiler 固定提交定义描述其面向电影爱好者并标为 isDead；定义所列原官方域名当前为待售停放页。",
+  "features": "HDmayi（小蚂蚁PT）是历史上的中文私有电影资源分享站。早期资料 固定提交定义描述其面向电影爱好者并标为 isDead；定义所列原官方域名当前为待售停放页。",
   "beginner_tips": "不要依据历史资料尝试注册或判断规则；如出现新的官方公告或域名，应先核验其真实性和最新站规。",
   "community_profile": null
  },
@@ -13226,7 +12274,7 @@
   "aka": [],
   "alias": "",
   "url": "https://hdpt.xyz/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13254,14 +12302,6 @@
    {
     "name": "明教原官方首页（本次显示待售页面）",
     "url": "https://hdpt.xyz/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdpt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交 NexusPHP 默认图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
   "features": "明教是面向中文用户的综合影视私有 BitTorrent 站点。固定版本定义标记其为历史/停运，并列出 hdptweb 官方发布组；该定义虽称其为 PT 论坛，但其 NexusPHP 架构、种子发布和分享率等级规则支持按 PT Tracker 收录。原域名当前显示待售页面。",
@@ -13317,13 +12357,9 @@
    {
     "name": "HD-Space 官方注册页",
     "url": "https://hd-space.org/index.php?page=signup"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdspace.ts"
    }
   ],
-  "features": "HD-Space（HD-S）是以高清电影和电视剧为核心的英文私有 Tracker。PT-Depiler 固定提交定义还列出纪录片、动漫、音乐、音乐视频、成人内容和软件分类；官方首页显示站点使用 XBTIT。",
+  "features": "HD-Space（HD-S）是以高清电影和电视剧为核心的英文私有 Tracker。早期资料 固定提交定义还列出纪录片、动漫、音乐、音乐视频、成人内容和软件分类；官方首页显示站点使用 XBTIT。",
   "beginner_tips": "注册可用性未能从公开页面确认；如官方注册页可用且提供合法入口，先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -13333,7 +12369,7 @@
   "aka": [],
   "alias": "",
   "url": "https://hdstreet.club/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hdstreet.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13360,17 +12396,9 @@
    {
     "name": "高清街官方首页（本次重定向至无关页面）",
     "url": "https://hdstreet.club/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdstreet.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/hdstreet.ico"
    }
   ],
-  "features": "高清街是专注于华语影视的私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
+  "features": "高清街是专注于华语影视的私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；原域名当前重定向至无关页面，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -13418,10 +12446,6 @@
     "url": "https://hd-torrents.org/account.php"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdtorrents.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hdtorrents.yml"
    }
@@ -13438,7 +12462,7 @@
   ],
   "alias": "HDFun",
   "url": "https://hdfun.me/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13467,10 +12491,6 @@
     "url": "https://hdfun.me/"
    },
    {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hdzone.ts"
-   },
-   {
     "name": "InviteHawk HDZone 更换域名公告（2023）",
     "url": "https://www.invitehawk.com/topic/167586-hdzone-news/"
    },
@@ -13479,7 +12499,7 @@
     "url": "https://t.me/s/fku0007?before=11904"
    }
   ],
-  "features": "HDZone 是历史上的中文影视私有 Tracker，后续域名为 HDFun（hdfun.me）。PT-Depiler 固定提交定义标为 isDead；本次无法连通定义所列当前及历史域名，当前运营状态无法由公开页面确认。",
+  "features": "HDZone 是历史上的中文影视私有 Tracker，后续域名为 HDFun（hdfun.me）。早期资料 固定提交定义标为 isDead；本次无法连通定义所列当前及历史域名，当前运营状态无法由公开页面确认。",
   "beginner_tips": "请勿依据旧域名或历史开放注册信息尝试加入；如有新的官方入口，应先核验公告和最新站规。",
   "community_profile": null
  },
@@ -13518,13 +12538,9 @@
    {
     "name": "HUNO 官方首页（登录页本次受 Cloudflare 验证保护）",
     "url": "https://hawke.uno/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/huno.ts"
    }
   ],
-  "features": "HUNO 是 Hawke-One 旗下、使用 Unit3D 的综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义列出电影和电视剧分类；官网当前可重定向至登录页，但该页受 Cloudflare 验证保护。",
+  "features": "HUNO 是 Hawke-One 旗下、使用 Unit3D 的综合影视私有 BitTorrent 站点。早期资料 的固定版本定义列出电影和电视剧分类；官网当前可重定向至登录页，但该页受 Cloudflare 验证保护。",
   "beginner_tips": "当前加入方式无法从公开页面确认；如获得合法加入方式，请先阅读站内分享率、保种和 H&R 规则。",
   "community_profile": null
  },
@@ -13570,10 +12586,6 @@
     "url": "https://www.hxpt.org/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/hxpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/hxpt.yml"
    }
@@ -13588,7 +12600,7 @@
   "aka": [],
   "alias": "",
   "url": "http://ihdbits.me/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13613,17 +12625,9 @@
    {
     "name": "iHDBits 原官方首页（本次重定向至无关页面）",
     "url": "http://ihdbits.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ihdbits.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交 NexusPHP 默认图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "iHDBits 是影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运，并列出 ihdbits.me 与 pt.newworld.plus 地址；前者当前重定向至无关页面，后者本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
+  "features": "iHDBits 是影视私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运，并列出 ihdbits.me 与 pt.newworld.plus 地址；前者当前重定向至无关页面，后者本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -13673,13 +12677,9 @@
    {
     "name": "PT分享站官方注册页",
     "url": "https://pt.itzmx.com/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/itzmx.ts"
    }
   ],
-  "features": "PT分享站是中文综合私有 Tracker。PT-Depiler 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音轨；官方首页显示其使用 NexusPHP。",
+  "features": "PT分享站是中文综合私有 Tracker。早期资料 固定提交定义列出的分类包括电影、电视剧、综艺、纪录片、动漫、音乐视频、体育和音轨；官方首页显示其使用 NexusPHP。",
   "beginner_tips": "注册前确认邮箱符合官方页面当前要求；加入后先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -13689,7 +12689,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.joyhd.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/joyhd.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -13720,17 +12720,9 @@
    {
     "name": "JoyHD 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://www.joyhd.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/joyhd.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/joyhd.png"
    }
   ],
-  "features": "JoyHD 是面向华语用户的综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义称其于 2013 年成立，定位包括蓝光原碟、蓝光 DIY 和原抓音乐，并标记为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
+  "features": "JoyHD 是面向华语用户的综合影视私有 BitTorrent 站点。早期资料 的固定版本定义称其于 2013 年成立，定位包括蓝光原碟、蓝光 DIY 和原抓音乐，并标记为历史/停运；官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率、保种和用户等级要求。",
   "community_profile": null
  },
@@ -13775,10 +12767,6 @@
    {
     "name": "JPopsuki 官网",
     "url": "https://jpopsuki.eu/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/jpopsuki.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -13838,13 +12826,9 @@
    {
     "name": "JPTV4us 官方注册页",
     "url": "https://jptv4.us/register"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/jptv4us.ts"
    }
   ],
-  "features": "JPTV4us 是英文综合私有 Tracker。PT-Depiler 固定提交定义列出的分类包括动漫电影、动漫剧集、纪录片、剧情剧集、电影、音乐、新闻、综艺和纯音频；官方页面显示其使用 Unit3D。",
+  "features": "JPTV4us 是英文综合私有 Tracker。早期资料 固定提交定义列出的分类包括动漫电影、动漫剧集、纪录片、剧情剧集、电影、音乐、新闻、综艺和纯音频；官方页面显示其使用 Unit3D。",
   "beginner_tips": "当前只能通过邀请加入；获得合法邀请后，先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -13902,13 +12886,9 @@
    {
     "name": "KamePT 官方首页（本次受 Cloudflare 验证保护）",
     "url": "https://kamept.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kamept.ts"
    }
   ],
-  "features": "KamePT（龟站）是面向中文用户、主打二次元同人成人内容的私有 BitTorrent 站点。PT-Depiler 的固定版本定义列出同人 AV、VR 同人、Cosplay 图集、动画、CG、同人志、游戏及音声等分类；官网本次受 Cloudflare 验证保护。",
+  "features": "KamePT（龟站）是面向中文用户、主打二次元同人成人内容的私有 BitTorrent 站点。早期资料 的固定版本定义列出同人 AV、VR 同人、Cosplay 图集、动画、CG、同人志、游戏及音声等分类；官网本次受 Cloudflare 验证保护。",
   "beginner_tips": "当前加入方式无法从公开页面确认；如获得合法加入方式，请先阅读站内成人内容、分享率和保种规则。",
   "community_profile": null
  },
@@ -13918,7 +12898,7 @@
   "aka": [],
   "alias": "",
   "url": "https://kimoji.club/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_unit3d.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -13943,13 +12923,9 @@
    {
     "name": "KIMOJI 官方首页",
     "url": "https://kimoji.club/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kimoji.ts"
    }
   ],
-  "features": "KIMOJI 是历史上的音乐私有 Tracker。PT-Depiler 固定提交定义标为 isDead；本次访问定义所列官方域名仅返回空响应，无法确认当前运营状态。",
+  "features": "KIMOJI 是历史上的音乐私有 Tracker。早期资料 固定提交定义标为 isDead；本次访问定义所列官方域名仅返回空响应，无法确认当前运营状态。",
   "beginner_tips": "请勿依据历史资料判断开放状态；如出现新的官方入口，应先核验其公告和最新规则。",
   "community_profile": null
  },
@@ -13996,13 +12972,9 @@
    {
     "name": "kufirc 官方首页",
     "url": "https://kufirc.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/kufirc.ts"
    }
   ],
-  "features": "kufirc（kf）是成人私有 BitTorrent 站点。官网当前可访问，显示 Luminance 项目链接、登录和恢复账号入口；PT-Depiler 的固定版本定义列出视频、图集、杂志、VR 及游戏与应用等成人内容分类。",
+  "features": "kufirc（kf）是成人私有 BitTorrent 站点。官网当前可访问，显示 Luminance 项目链接、登录和恢复账号入口；早期资料 的固定版本定义列出视频、图集、杂志、VR 及游戏与应用等成人内容分类。",
   "beginner_tips": "官网公开页未显示注册入口；如获得合法加入方式，请先阅读站内成人内容、分享率和保种规则。",
   "community_profile": null
  },
@@ -14051,13 +13023,9 @@
    {
     "name": "lajidui 官方注册页",
     "url": "https://pt.lajidui.top/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/lajidui.ts"
    }
   ],
-  "features": "lajidui（垃圾堆）是中文综合私有 Tracker，官方首页的站点标语为“极致文件共享体验”。PT-Depiler 固定提交定义将其资源方向列为影视综艺、游戏软件和电子书，官方页面显示其使用 NexusPHP。",
+  "features": "lajidui（垃圾堆）是中文综合私有 Tracker，官方首页的站点标语为“极致文件共享体验”。早期资料 固定提交定义将其资源方向列为影视综艺、游戏软件和电子书，官方页面显示其使用 NexusPHP。",
   "beginner_tips": "当前仅允许邀请注册；获得合法邀请后，先阅读站内分享率、保种和发布规则。",
   "community_profile": null
  },
@@ -14104,13 +13072,9 @@
    {
     "name": "柠檬不甜官方首页",
     "url": "https://lemonhd.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/lemonhdnet.ts"
    }
   ],
-  "features": "柠檬不甜（LemonHD）是面向中文用户的综合私有 BitTorrent 站点。官网当前显示 NexusPHP、登录与注册入口；PT-Depiler 的固定版本定义列出电影、动画、音乐视频、纪录片、电视剧和 3D 内容等分类。",
+  "features": "柠檬不甜（LemonHD）是面向中文用户的综合私有 BitTorrent 站点。官网当前显示 NexusPHP、登录与注册入口；早期资料 的固定版本定义列出电影、动画、音乐视频、纪录片、电视剧和 3D 内容等分类。",
   "beginner_tips": "注册前先确认资格和站内规则；加入后留意分享率、保种、下载量与做种积分要求。",
   "community_profile": null
  },
@@ -14122,7 +13086,7 @@
   ],
   "alias": "柠檬",
   "url": "https://lemonhd.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -14154,13 +13118,9 @@
    {
     "name": "LemonHD 官方首页（原域名）",
     "url": "https://lemonhd.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/lemonhdorg.ts"
    }
   ],
-  "features": "LemonHD（原名 LeagueHD）是中文私有 BitTorrent 站点，固定版本的 PT-Depiler 定义称其聚焦高清资源，并列出电影、电视剧和综合类别。该定义标记站点已停止运营；2026-09-04 核对时，官方域名未能正常访问，当前运营信息有限。",
+  "features": "LemonHD（原名 LeagueHD）是中文私有 BitTorrent 站点，固定版本的 早期资料 定义称其聚焦高清资源，并列出电影、电视剧和综合类别。该定义标记站点已停止运营；2026-09-04 核对时，官方域名未能正常访问，当前运营信息有限。",
   "beginner_tips": "历史资料有限，勿依据旧资料判断注册或运营状态；如站点恢复访问，请先核对站内规则与公告。",
   "community_profile": null
  },
@@ -14205,10 +13165,6 @@
    {
     "name": "Luminarr 官方注册页",
     "url": "https://luminarr.me/register"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/luminarr.ts"
    }
   ],
   "features": "Luminarr（LUME）是电影与电视剧私有 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0-2，固定版本定义列出原盘、Remux、WEB-DL 等资源规格及 H&R 规则支持。",
@@ -14260,13 +13216,9 @@
    {
     "name": "MidnightScene 官方注册页",
     "url": "https://midnightscene.cc/register"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/midnightscene.ts"
    }
   ],
-  "features": "MidnightScene（MS）是综合私有 BitTorrent 站点。官网当前可访问，登录页显示 Unit3D v9.2.0；PT-Depiler 的固定版本定义列出电影、电视剧、音乐和游戏分类。",
+  "features": "MidnightScene（MS）是综合私有 BitTorrent 站点。官网当前可访问，登录页显示 Unit3D v9.2.0；早期资料 的固定版本定义列出电影、电视剧、音乐和游戏分类。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读分享率、保种和 H&R 规则。",
   "community_profile": null
  },
@@ -14320,13 +13272,9 @@
    {
     "name": "Milkie 官方首页",
     "url": "https://milkie.cc/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/milkie.ts"
    }
   ],
-  "features": "Milkie.cc（ME）是面向英文用户的私有 BitTorrent 综合站点。PT-Depiler 的固定版本定义将其描述为 0DAY / GENERAL Tracker，并列出电影、电视、音乐、游戏、电子书、应用及成人内容分类。",
+  "features": "Milkie.cc（ME）是面向英文用户的私有 BitTorrent 综合站点。早期资料 的固定版本定义将其描述为 0DAY / GENERAL Tracker，并列出电影、电视、音乐、游戏、电子书、应用及成人内容分类。",
   "beginner_tips": "注册状态与规则未获公开确认；访问站点后先核对资格要求、分享率和保种规则。",
   "community_profile": null
  },
@@ -14340,7 +13288,7 @@
   ],
   "alias": "MINE / 地雷站 / 矿站",
   "url": "https://mine.pt/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/minept.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "meanTorrent",
@@ -14366,17 +13314,9 @@
    {
     "name": "MINE.pt 官方首页（本次重定向至域名服务页面）",
     "url": "https://mine.pt/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/minept.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/minept.ico"
    }
   ],
-  "features": "MINE.pt（MINE、地雷站、矿站）是面向中文用户的综合影视私有 BitTorrent 站点。PT-Depiler 的固定版本定义将其描述为国内首个使用 meanTorrent 架构的站点，并标记为历史/停运；原域名当前重定向至域名服务页面。",
+  "features": "MINE.pt（MINE、地雷站、矿站）是面向中文用户的综合影视私有 BitTorrent 站点。早期资料 的固定版本定义将其描述为国内首个使用 meanTorrent 架构的站点，并标记为历史/停运；原域名当前重定向至域名服务页面。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -14386,7 +13326,7 @@
   "aka": [],
   "alias": "",
   "url": "https://moecat.best/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -14405,7 +13345,7 @@
    "动漫"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标注该站为历史/停运状态；本次无法完成官网主页 TLS 连接，当前注册或加入渠道无法核实。",
+  "registration": "早期资料标注该站为历史/停运状态；本次无法完成官网主页 TLS 连接，当前注册或加入渠道无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [],
   "tags": [],
@@ -14414,17 +13354,9 @@
    {
     "name": "MoeCat 官网（本次访问未能完成 TLS 连接）",
     "url": "https://moecat.best/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/moecat.ts"
-   },
-   {
-    "name": "PT-Depiler NexusPHP 默认图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
-  "features": "MoeCat 是中文影视与动漫 PT 站。PT-Depiler 固定定义列出电影、电视剧和动漫方向，并标记其为历史/停运；本次无法完成主页 TLS 连接，公开资料不足以确认实际运营状态。",
+  "features": "MoeCat 是中文影视与动漫 PT 站。早期资料列出电影、电视剧和动漫方向，并标记其为历史/停运；本次无法完成主页 TLS 连接，公开资料不足以确认实际运营状态。",
   "beginner_tips": "不要依据历史注册链接或旧规则申请账号；如服务恢复，应以站内公告、分享率与保种说明为准。",
   "community_profile": null
  },
@@ -14471,10 +13403,6 @@
     "url": "https://www.momentpt.top/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/momentpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/momentpt.yml"
    }
@@ -14489,7 +13417,7 @@
   "aka": [],
   "alias": "",
   "url": "https://mooko.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/mooko.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "Gazelle",
@@ -14516,17 +13444,9 @@
    {
     "name": "MooKo 官方关闭公告",
     "url": "https://mooko.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/mooko.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/mooko.png"
    }
   ],
-  "features": "MooKo 是曾面向中文用户提供电影、电视剧及综合资源的私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为 Gazelle 架构；官网当前公告明确说明 47BT 与 MooKo 已关闭。",
+  "features": "MooKo 是曾面向中文用户提供电影、电视剧及综合资源的私有 BitTorrent 站点。早期资料 的固定版本定义标记其为 Gazelle 架构；官网当前公告明确说明 47BT 与 MooKo 已关闭。",
   "beginner_tips": "该站已公告关闭，不要寻找或使用所谓复活链接；如需查阅历史资料，应核对来源日期。",
   "community_profile": null
  },
@@ -14569,10 +13489,6 @@
    {
     "name": "音乐乌托邦官网",
     "url": "https://www.musopia.vip/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/musopia.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -14640,10 +13556,6 @@
     "url": "https://pt.muxuege.org/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/muxuege.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/muxuege.yml"
    }
@@ -14691,10 +13603,6 @@
     "url": "https://www.myanonamouse.net/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/myanonamouse.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -14724,7 +13632,7 @@
   "content_types": [],
   "community_labels": [],
   "registration": "2026-09-04 核对时，官方登录页源代码包含注册表单，但未能确认可用入口或当前开放状态；请以官网提示为准。",
-  "difficulty": "PT-Depiler 的固定定义列有按时长和上传量划分的用户等级门槛；当前分享率、保种与准入规则未获公开确认。",
+  "difficulty": "早期资料 的固定定义列有按时长和上传量划分的用户等级门槛；当前分享率、保种与准入规则未获公开确认。",
   "specialties": [],
   "tags": [
    "匈牙利"
@@ -14734,13 +13642,9 @@
    {
     "name": "nCore 官方首页",
     "url": "https://ncore.pro/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ncore.ts"
    }
   ],
-  "features": "nCore 是面向匈牙利语用户的私有 BitTorrent Tracker。官方首页当前跳转至匈牙利语登录页；PT-Depiler 的固定版本定义提供该站的账户信息与等级规则解析。公开来源未能确认具体资源分类。",
+  "features": "nCore 是面向匈牙利语用户的私有 BitTorrent Tracker。官方首页当前跳转至匈牙利语登录页；早期资料 的固定版本定义提供该站的账户信息与等级规则解析。公开来源未能确认具体资源分类。",
   "beginner_tips": "不要依据旧资料判断是否可注册；如官网显示可加入，请先阅读匈牙利语站规、等级与分享要求。",
   "community_profile": null
  },
@@ -14782,10 +13686,6 @@
     "url": "https://nebulance.io/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nebulance.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -14800,7 +13700,7 @@
   "aka": [],
   "alias": "",
   "url": "https://nekobt.to/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/nekobt.webp",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "未知",
@@ -14829,17 +13729,9 @@
    {
     "name": "nekoBT 官方首页",
     "url": "https://nekobt.to/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nekobt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/nekobt.webp"
    }
   ],
-  "features": "nekoBT 是公开的动漫 BitTorrent 追踪与索引服务，官网说明其侧重发布组和粉丝字幕。未登录首页提供搜索、资源列表和公开磁链下载选项；PT-Depiler 的固定版本定义将其 type 标为 public，并列出字幕级别、原创翻译和机器翻译等筛选项。",
+  "features": "nekoBT 是公开的动漫 BitTorrent 追踪与索引服务，官网说明其侧重发布组和粉丝字幕。未登录首页提供搜索、资源列表和公开磁链下载选项；早期资料 的固定版本定义将其 type 标为 public，并列出字幕级别、原创翻译和机器翻译等筛选项。",
   "beginner_tips": "这是公开动漫追踪/索引服务，并非私有 PT 站。访问或下载内容前请确认当地法律、版权规则和文件安全性；不要上传或分享无权发布的内容。",
   "community_profile": null
  },
@@ -14893,10 +13785,6 @@
    {
     "name": "浦园PT 官网",
     "url": "https://njtupt.top/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/njtupt.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -14962,13 +13850,9 @@
    {
     "name": "NordicBytes 官方注册页",
     "url": "https://nordicbytes.org/register"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nordicbytes.ts"
    }
   ],
-  "features": "NordicBytes（NBy、DanishBytes）是面向北欧内容的私有 BitTorrent 站点。官网当前可访问，PT-Depiler 的固定版本定义列出电影、电视剧、软件、游戏、音乐、图书、播客和成人内容等分类。",
+  "features": "NordicBytes（NBy、DanishBytes）是面向北欧内容的私有 BitTorrent 站点。官网当前可访问，早期资料 的固定版本定义列出电影、电视剧、软件、游戏、音乐、图书、播客和成人内容等分类。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读站内分享率、保种和 H&R 规则。",
   "community_profile": null
  },
@@ -14993,7 +13877,7 @@
   "content_types": [],
   "community_labels": [],
   "registration": "邀请制：2026-09-04 核对时，官方注册页明确显示关闭公开注册，需获邀请才能加入。",
-  "difficulty": "PT-Depiler 的固定定义列出按上传量、分享率、时长及做种量递进的用户等级门槛；当前具体规则以站内说明为准。",
+  "difficulty": "早期资料 的固定定义列出按上传量、分享率、时长及做种量递进的用户等级门槛；当前具体规则以站内说明为准。",
   "specialties": [],
   "tags": [
    "北欧"
@@ -15007,13 +13891,9 @@
    {
     "name": "NordicQuality 官方注册页",
     "url": "https://nordicq.org/register"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nordicquality.ts"
    }
   ],
-  "features": "NordicQuality 是面向英文用户的私有 BitTorrent Tracker。官方登录页与固定版本的 PT-Depiler 定义均显示其使用 UNIT3D；固定定义标注其北欧定位。公开资料未能充分核实资源细分。",
+  "features": "NordicQuality 是面向英文用户的私有 BitTorrent Tracker。官方登录页与固定版本的 早期资料 定义均显示其使用 UNIT3D；固定定义标注其北欧定位。公开资料未能充分核实资源细分。",
   "beginner_tips": "公开注册已关闭；不要依据旧信息寻找注册入口。获邀后先阅读站内的分享率、等级和做种要求。",
   "community_profile": null
  },
@@ -15025,7 +13905,7 @@
   ],
   "alias": "蒲公英",
   "url": "https://npupt.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/npupt.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -15052,17 +13932,9 @@
    {
     "name": "NPUBits 官方首页（本次 TLS 证书验证失败）",
     "url": "https://npupt.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/npupt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/npupt.ico"
    }
   ],
-  "features": "NPUBits（蒲公英）是面向中文用户的教育网私有 BitTorrent 站点。PT-Depiler 的固定版本定义将其描述为教育网站点，并标记为历史/停运；该来源未明确其所属高校或高校渊源，故不标注高校站或高校组织类型。",
+  "features": "NPUBits（蒲公英）是面向中文用户的教育网私有 BitTorrent 站点。早期资料 的固定版本定义将其描述为教育网站点，并标记为历史/停运；该来源未明确其所属高校或高校渊源，故不标注高校站或高校组织类型。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率与保种要求。",
   "community_profile": null
  },
@@ -15115,13 +13987,9 @@
    {
     "name": "Nyaa 官方首页",
     "url": "https://nyaa.si/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/nyaa.ts"
    }
   ],
-  "features": "Nyaa 是面向东亚媒体的公开 BitTorrent 索引服务；官网将其描述为聚焦动漫、漫画、音乐等内容的 BitTorrent 社区。未登录首页提供动画、音频、图书、真人影视、图片和软件等分类、搜索、.torrent 下载及磁力链接。PT-Depiler 的固定定义将其 type 标为 public；该服务不是传统私有 Tracker。",
+  "features": "Nyaa 是面向东亚媒体的公开 BitTorrent 索引服务；官网将其描述为聚焦动漫、漫画、音乐等内容的 BitTorrent 社区。未登录首页提供动画、音频、图书、真人影视、图片和软件等分类、搜索、.torrent 下载及磁力链接。早期资料 的固定定义将其 type 标为 public；该服务不是传统私有 Tracker。",
   "beginner_tips": "这是公开索引服务；公开浏览不代表每个条目都可用或可自由传播。下载或分享前请确认当地法律、版权规则与文件安全性。",
   "community_profile": null
  },
@@ -15163,10 +14031,6 @@
     "url": "https://onlyencodes.cc/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/onlyencodes.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/onlyencodes-api.yml"
    },
@@ -15185,7 +14049,7 @@
   "aka": [],
   "alias": "",
   "url": "https://oppaiti.me/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/oppaiti.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "GazelleJSONAPI",
@@ -15223,17 +14087,9 @@
    {
     "name": "Oppaitime 官方首页（原域名，当前已变更）",
     "url": "https://oppaiti.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/oppaiti.ts"
-   },
-   {
-    "name": "PT-Plugin-Plus 历史站点配置",
-    "url": "https://github.com/pt-plugins/PT-Plugin-Plus/blob/fb054aae9f6dc2b87bdbaf2925b19a38d28dd0c9/resource/sites/oppaiti.me/config.json"
    }
   ],
-  "features": "Oppaitime 是历史上的成人动漫私有 BitTorrent Tracker；历史配置列出电影、动画、漫画及游戏分类。PT-Depiler 的固定版本定义标记其已停止运营；2026-09-04 核对时，原官方域名仅展示“OPT Coin Coming Soon”页面，未见原 Tracker 服务。",
+  "features": "Oppaitime 是历史上的成人动漫私有 BitTorrent Tracker；历史配置列出电影、动画、漫画及游戏分类。早期资料 的固定版本定义标记其已停止运营；2026-09-04 核对时，原官方域名仅展示“OPT Coin Coming Soon”页面，未见原 Tracker 服务。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原域名当前内容已与历史 Tracker 不一致。",
   "community_profile": null
  },
@@ -15283,13 +14139,9 @@
    {
     "name": "PixelCove 官方首页",
     "url": "https://www.pixelcove.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pixelcove.ts"
    }
   ],
-  "features": "PixelCove（PxC）是专注游戏资源的私有 BitTorrent 站点。官网当前可访问并显示 Luminance 项目链接；PT-Depiler 的固定版本定义列出 PC、主机、移动和 VR 游戏，以及指南、游戏视频、原声、模组和工具等分类。",
+  "features": "PixelCove（PxC）是专注游戏资源的私有 BitTorrent 站点。官网当前可访问并显示 Luminance 项目链接；早期资料 的固定版本定义列出 PC、主机、移动和 VR 游戏，以及指南、游戏视频、原声、模组和工具等分类。",
   "beginner_tips": "官网公开页未显示注册入口；如获得合法加入方式，请先阅读站内分享率、上传和保种规则。",
   "community_profile": null
  },
@@ -15330,10 +14182,6 @@
     "url": "https://playlet.cc/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/playletpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/playletpt.yml"
    }
@@ -15348,10 +14196,10 @@
   "aka": [],
   "alias": "",
   "url": "https://pornbits.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/pornbits.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
-  "site_engine": "未确认（PT-Depiler 固定定义使用 AbstractPrivateSite）",
+  "site_engine": "未确认（早期资料 固定定义使用 AbstractPrivateSite）",
   "language": "en-US",
   "rank": null,
   "source_category": "用户补充",
@@ -15379,17 +14227,9 @@
    {
     "name": "Pornbits 官方首页（本次连接超时）",
     "url": "https://pornbits.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pornbits.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/pornbits.ico"
    }
   ],
-  "features": "Pornbits 是成人私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运，并列出 pornbits.net 与 pornbits.org 地址；本次连接这两个地址均超时，公开资料不足以确认其当前运营状态。",
+  "features": "Pornbits 是成人私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运，并列出 pornbits.net 与 pornbits.org 地址；本次连接这两个地址均超时，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内成人内容、分享率和保种规则。",
   "community_profile": null
  },
@@ -15444,13 +14284,9 @@
    {
     "name": "PornoLab 官方注册规则页",
     "url": "https://pornolab.net/forum/profile.php?mode=register"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pornolab.ts"
    }
   ],
-  "features": "PornoLab 是俄语成人资源 BitTorrent Tracker。官方论坛公开列出成人影音、图片与杂志、动画与漫画、游戏及软件分区；PT-Depiler 的固定版本定义将其描述为半私有俄语站点。",
+  "features": "PornoLab 是俄语成人资源 BitTorrent Tracker。官方论坛公开列出成人影音、图片与杂志、动画与漫画、游戏及软件分区；早期资料 的固定版本定义将其描述为半私有俄语站点。",
   "beginner_tips": "注册前先阅读俄语规则；加入后注意维持至少 0.3 的分享率，并在完成下载后继续做种。",
   "community_profile": null
  },
@@ -15492,10 +14328,6 @@
     "url": "https://privatehd.to/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/privatehd.ts"
-   },
-   {
     "name": "Private Trackers Spreadsheet",
     "url": "https://github.com/HDVinnie/Private-Trackers-Spreadsheet/blob/6852feeb2dcae7f4296a4209b64aa1c861a7d992/trackers.json"
    }
@@ -15510,7 +14342,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.j99.info/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -15537,14 +14369,6 @@
    {
     "name": "PT99 官方首页（本次访问未能完成 TLS 连接）",
     "url": "https://pt.j99.info/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/pt99.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交 NexusPHP 默认图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/_default_nexusphp.png"
    }
   ],
   "features": "PT99 是综合影视私有 BitTorrent 站点，固定版本定义列出纪录片方向并标记为历史/停运。官网本次无法完成 TLS 连接，公开资料不足以确认其当前运营状态。",
@@ -15559,7 +14383,7 @@
   ],
   "alias": "PT梦想",
   "url": "https://www.ptdream.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ptdream.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP / meanTorrent（历史）",
@@ -15590,17 +14414,9 @@
    {
     "name": "PTDream 官方首页（历史主域名）",
     "url": "https://www.ptdream.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptdream.ts"
-   },
-   {
-    "name": "PT-Plugin-Plus 历史站点移除记录",
-    "url": "https://github.com/pt-plugins/PT-Plugin-Plus/commit/db87ee0843f474d31edb84bbe92f82dafb3236ad"
    }
   ],
-  "features": "PTDream（PT梦想）是历史上的中文综合影视私有 BitTorrent Tracker。PT-Depiler 的固定定义标记其已停止运营；其所引历史移除记录说明 www.ptdream.net 已删库，plus.ptdream.net 已弃用 meanTorrent 架构。2026-09-04 核对时，两个历史官方域名均无法正常访问。",
+  "features": "PTDream（PT梦想）是历史上的中文综合影视私有 BitTorrent Tracker。早期资料 的固定定义标记其已停止运营；其所引历史移除记录说明 www.ptdream.net 已删库，plus.ptdream.net 已弃用 meanTorrent 架构。2026-09-04 核对时，两个历史官方域名均无法正常访问。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；两个历史官方域名当前均不可正常访问。",
   "community_profile": null
  },
@@ -15657,10 +14473,6 @@
    {
     "name": "PTFans 官网",
     "url": "https://ptfans.cc/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptfans.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -15770,13 +14582,9 @@
    {
     "name": "PTLAO 官方首页",
     "url": "https://ptlao.top/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptlao.ts"
    }
   ],
-  "features": "PTLAO 是面向中文用户的综合成人私有 BitTorrent 站点。官网当前可访问，显示 NexusPHP、登录和注册入口；PT-Depiler 的固定版本定义同样将其标记为成人综合 Tracker。",
+  "features": "PTLAO 是面向中文用户的综合成人私有 BitTorrent 站点。官网当前可访问，显示 NexusPHP、登录和注册入口；早期资料 的固定版本定义同样将其标记为成人综合 Tracker。",
   "beginner_tips": "注册前先确认资格和站内规则；加入后留意成人内容、分享率、保种和用户等级要求。",
   "community_profile": null
  },
@@ -15786,7 +14594,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.ptlsp.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ptlsp.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -15812,7 +14620,7 @@
    "音乐视频"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标注该站为历史/停运状态；本次访问官方主页时证书已过期，当前注册或加入渠道无法核实。",
+  "registration": "早期资料标注该站为历史/停运状态；本次访问官方主页时证书已过期，当前注册或加入渠道无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [
    "音乐专辑刮削"
@@ -15823,17 +14631,9 @@
    {
     "name": "PTLSP 官网（本次访问证书已过期）",
     "url": "https://www.ptlsp.com/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptlsp.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ptlsp.ico"
    }
   ],
-  "features": "PTLSP 是中文综合 PT 站。PT-Depiler 固定定义将其描述为覆盖音乐专辑、影视、剧集、游戏、纪录片、动漫与 MV 的资源站，并提及站内曾有音乐专辑刮削制作和压制小组；该定义标记其为历史/停运。",
+  "features": "PTLSP 是中文综合 PT 站。早期资料 固定定义将其描述为覆盖音乐专辑、影视、剧集、游戏、纪录片、动漫与 MV 的资源站，并提及站内曾有音乐专辑刮削制作和压制小组；该定义标记其为历史/停运。",
   "beginner_tips": "不要依据历史邀请、等级或分享率资料判断当前规则；如服务恢复，应以站内公告、分享率和保种说明为准。",
   "community_profile": null
  },
@@ -15845,7 +14645,7 @@
   ],
   "alias": "马杀鸡",
   "url": "https://pt.msg.vg/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ptmsg.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -15870,17 +14670,9 @@
    {
     "name": "PTMSG 官方首页（本次 TLS 证书验证失败）",
     "url": "https://pt.msg.vg/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptmsg.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/ptmsg.ico"
    }
   ],
-  "features": "PTMSG（马杀鸡）是面向中文用户的私有 BitTorrent 站点。PT-Depiler 的固定版本定义标记其为历史/停运；该定义未覆盖具体资源分类，官网本次 TLS 证书验证失败，公开资料不足以确认其当前运营状态。",
+  "features": "PTMSG（马杀鸡）是面向中文用户的私有 BitTorrent 站点。早期资料 的固定版本定义标记其为历史/停运；该定义未覆盖具体资源分类，官网本次 TLS 证书验证失败，公开资料不足以确认其当前运营状态。",
   "beginner_tips": "不要依据历史资料判断当前入站或分享规则；如服务恢复，先阅读站内公告、分享率、保种和用户等级要求。",
   "community_profile": null
  },
@@ -15905,7 +14697,7 @@
   "content_types": [],
   "community_labels": [],
   "registration": "邀请制：2026-09-04 核对时，官方注册页明确显示关闭自由注册，仅允许邀请注册。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前分享率、保种与邀请规则以站内说明为准。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前分享率、保种与邀请规则以站内说明为准。",
   "specialties": [],
   "tags": [],
   "official_groups": [],
@@ -15917,13 +14709,9 @@
    {
     "name": "超科学PT喵官方注册页",
     "url": "https://ptneko.com/signup.php"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ptneko.ts"
    }
   ],
-  "features": "超科学PT喵是中文私有 BitTorrent Tracker。官网当前显示 NexusPHP 登录页与“这里什么也没有”的站点标语；PT-Depiler 的固定版本定义提供其账户等级规则解析。公开资料未能充分核实资源分区。",
+  "features": "超科学PT喵是中文私有 BitTorrent Tracker。官网当前显示 NexusPHP 登录页与“这里什么也没有”的站点标语；早期资料 的固定版本定义提供其账户等级规则解析。公开资料未能充分核实资源分区。",
   "beginner_tips": "公开注册已关闭；获邀后先阅读站内的分享率、等级、保种和邀请规则。",
   "community_profile": null
  },
@@ -16009,10 +14797,6 @@
     "url": "https://bilibili.download/faq.php"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/railgunpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/railgunpt.yml"
    },
@@ -16088,10 +14872,6 @@
    {
     "name": "ReelFliX 官方申请页",
     "url": "https://reelflix.cc/application"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/reelflix.ts"
    }
   ],
   "features": "ReelFliX（RFX）是以电影为主的私有 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0；固定版本定义列出原盘、Remux、Encode、WEB-DL、WEBRip 和 HDTV 等资源规格。",
@@ -16132,7 +14912,7 @@
   ],
   "community_labels": [],
   "registration": "2026-09-04 核对时，官方主页与登录页未能在公开请求中返回页面内容，当前注册或邀请状态未确认；请以站内提示为准。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前分享率、保种与准入规则以站内说明为准。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前分享率、保种与准入规则以站内说明为准。",
   "specialties": [
    "经典影视"
   ],
@@ -16145,13 +14925,9 @@
    {
     "name": "RetroFlix 官方首页",
     "url": "https://retroflix.net/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/retroflix.ts"
    }
   ],
-  "features": "RetroFlix（RF）是面向英文用户的私有 BitTorrent Tracker，固定版本的 PT-Depiler 定义将其描述为经典电影、电视剧与综合资源站点，并列出音乐视频、体育、图书及高品质音频分类。该定义同时列出 retroflix.net 与 retroflix.club 域名。",
+  "features": "RetroFlix（RF）是面向英文用户的私有 BitTorrent Tracker，固定版本的 早期资料 定义将其描述为经典电影、电视剧与综合资源站点，并列出音乐视频、体育、图书及高品质音频分类。该定义同时列出 retroflix.net 与 retroflix.club 域名。",
   "beginner_tips": "当前注册状态未获公开确认；访问站点后先核对加入方式、分享率、等级和保种规则。",
   "community_profile": null
  },
@@ -16215,10 +14991,6 @@
    {
     "name": "Rousi Pro 官方公开分类接口",
     "url": "https://rousi.pro/api/v1/categories"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/rousipro.ts"
    }
   ],
   "features": "Rousi Pro 是中文私有 BitTorrent 分享社区。官网公开接口列出电影、电视剧、纪录片、动漫、音乐、综艺、体育、软件、电子书等分类；固定版本定义说明其已迁移至 PeerGo 后端。固定版本中旧 Rousi 定义已标为停用并注明更新至 Rousi Pro，故本记录以当前 rousi.pro 域名与 PeerGo 后端同旧记录区分。",
@@ -16258,13 +15030,9 @@
    {
     "name": "RuTracker.org 官方首页",
     "url": "https://rutracker.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/rutracker.ts"
    }
   ],
-  "features": "RuTracker.org（RUT）是俄语 BitTorrent 资源社区与 Tracker。官方未登录首页以访客状态公开论坛目录、Tracker 与搜索导航，并提供注册入口；PT-Depiler 的固定版本定义将其描述为半私有俄语文件分享社区。公开请求未能确认匿名下载或注册完成是否需要账号，因此不按传统邀请制私站描述。",
+  "features": "RuTracker.org（RUT）是俄语 BitTorrent 资源社区与 Tracker。官方未登录首页以访客状态公开论坛目录、Tracker 与搜索导航，并提供注册入口；早期资料 的固定版本定义将其描述为半私有俄语文件分享社区。公开请求未能确认匿名下载或注册完成是否需要账号，因此不按传统邀请制私站描述。",
   "beginner_tips": "可先以访客身份阅读公开论坛信息；注册、下载及社区规则以官网当前提示为准，不要假定匿名访问即可完成全部操作。",
   "community_profile": null
  },
@@ -16274,7 +15042,7 @@
   "aka": [],
   "alias": "",
   "url": "https://sanpro.pw/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/sanpro.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "Gazelle",
@@ -16303,14 +15071,6 @@
    {
     "name": "伞官方首页（2026-09-04 TLS 连接失败）",
     "url": "https://sanpro.pw/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sanpro.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/sanpro.png"
    }
   ],
   "features": "伞是固定版本定义收录的中文综合影视私有 BitTorrent 站点，使用 Gazelle 架构。该定义标注站点已停用；2026-09-04 核对时官网域名亦无法建立 TLS 连接。",
@@ -16362,10 +15122,6 @@
     "url": "https://sbpt.link/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sbpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/sbpt.yml"
    }
@@ -16382,7 +15138,7 @@
   ],
   "alias": "SDB",
   "url": "https://sdbits.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/sdbits.png",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "未确认",
@@ -16411,13 +15167,9 @@
    {
     "name": "SDBits 官方首页（历史域名）",
     "url": "https://sdbits.org/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sdbits.ts"
    }
   ],
-  "features": "SDBits（SDB）是历史上的综合影视私有 BitTorrent Tracker。PT-Depiler 的固定版本定义称其为 HDB 的姊妹站并标记已停止运营；2026-09-04 核对时，原官方域名返回 404，未见原服务。",
+  "features": "SDBits（SDB）是历史上的综合影视私有 BitTorrent Tracker。早期资料 的固定版本定义称其为 HDB 的姊妹站并标记已停止运营；2026-09-04 核对时，原官方域名返回 404，未见原服务。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原官方域名当前未提供站点服务。",
   "community_profile": null
  },
@@ -16460,10 +15212,6 @@
    {
     "name": "Secret Cinema 官网",
     "url": "https://secret-cinema.pw/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/secretcinema.ts"
    },
    {
     "name": "Private Trackers Spreadsheet",
@@ -16517,13 +15265,9 @@
    {
     "name": "ShareIsland 官方申请页",
     "url": "https://shareisland.org/application"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/shareisland.ts"
    }
   ],
-  "features": "ShareIsland 是意大利语私有 BitTorrent 站点。官网登录与注册页面显示 Unit3D v9.2.0；PT-Depiler 的固定版本定义将其标为综合、影视站点。",
+  "features": "ShareIsland 是意大利语私有 BitTorrent 站点。官网登录与注册页面显示 Unit3D v9.2.0；早期资料 的固定版本定义将其标为综合、影视站点。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读站内的分享率与保种规则。",
   "community_profile": null
  },
@@ -16533,7 +15277,7 @@
   "aka": [],
   "alias": "",
   "url": "https://sharkpt.net/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/sharkpt.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -16551,7 +15295,7 @@
    "综合资源"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标注该站为历史/停运状态；本次访问主页请求超时，当前注册或加入渠道无法核实。",
+  "registration": "早期资料标注该站为历史/停运状态；本次访问主页请求超时，当前注册或加入渠道无法核实。",
   "difficulty": "公开资料有限；历史分享率、保种和账号规则不应当作当前规则。",
   "specialties": [],
   "tags": [],
@@ -16560,17 +15304,9 @@
    {
     "name": "鲨鱼PT 官网（本次请求超时）",
     "url": "https://sharkpt.net/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sharkpt.ts"
-   },
-   {
-    "name": "PT-Depiler 站点图标（固定提交）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/sharkpt.ico"
    }
   ],
-  "features": "鲨鱼PT是中文综合影视 PT 站。PT-Depiler 固定定义显示其曾使用 NexusPHP，并标注为历史/停运；本次访问主页请求超时，公开资料不足以确认当前运营状态。",
+  "features": "鲨鱼PT是中文综合影视 PT 站。早期资料 固定定义显示其曾使用 NexusPHP，并标注为历史/停运；本次访问主页请求超时，公开资料不足以确认当前运营状态。",
   "beginner_tips": "不要依据历史注册链接、等级或分享率资料判断当前规则；如服务恢复，应以站内公告、分享率和保种说明为准。",
   "community_profile": null
  },
@@ -16613,13 +15349,9 @@
    {
     "name": "Simurg 官方注册页",
     "url": "https://simurg.world/register.php"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/simurg.ts"
    }
   ],
-  "features": "Simurg 是私有数字图书馆型 BitTorrent 站点，官网首页表述为供求知者共享知识的图书馆。PT-Depiler 的固定版本定义将其聚焦于电子书与有声书，并标注为 Gazelle 架构。",
+  "features": "Simurg 是私有数字图书馆型 BitTorrent 站点，官网首页表述为供求知者共享知识的图书馆。早期资料 的固定版本定义将其聚焦于电子书与有声书，并标注为 Gazelle 架构。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读站内资源发布、分享率与保种规则。",
   "community_profile": null
  },
@@ -16654,17 +15386,9 @@
    {
     "name": "Snakepop 官方首页（历史域名）",
     "url": "https://snakepop.art/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/snakepop.ts"
-   },
-   {
-    "name": "PT-Plugin-Plus 历史站点移除记录",
-    "url": "https://github.com/pt-plugins/PT-Plugin-Plus/commit/d9516f1bb5b9551caf251c4c2a6bbd6dcf332f89"
    }
   ],
-  "features": "Snakepop 是历史上的音乐私有 BitTorrent Tracker。PT-Depiler 的固定版本定义与其引用的历史配置均标注音乐定位和 GazelleJSONAPI；固定定义标记其已停止运营。2026-09-04 核对时，原官方域名无法正常访问。",
+  "features": "Snakepop 是历史上的音乐私有 BitTorrent Tracker。早期资料 的固定版本定义与其引用的历史配置均标注音乐定位和 GazelleJSONAPI；固定定义标记其已停止运营。2026-09-04 核对时，原官方域名无法正常访问。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原官方域名当前无法正常访问。",
   "community_profile": null
  },
@@ -16709,10 +15433,6 @@
     "url": "https://skyeysnow.com/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/skyeysnow.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/snowpt.yml"
    }
@@ -16727,7 +15447,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.sts.tw/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/_default_nexusphp.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -16754,16 +15474,8 @@
     "url": "https://www.sts.tw/"
    },
    {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/stspt.ts"
-   },
-   {
     "name": "免费资源频道历史收录（2019 年标为国内 PT 综合新站）",
     "url": "https://t.me/s/freeresource?before=1066"
-   },
-   {
-    "name": "PT-Depiler 固定提交默认 NexusPHP 图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/_default_nexusphp.png"
    }
   ],
   "features": "STSPT 是固定版本定义收录的综合私有 BitTorrent 站点，使用 NexusPHP 架构。该定义标注站点已停用；2026-09-04 核对时官网 HTTPS 无法建立 TLS 连接，HTTP 入口返回 502。",
@@ -16778,7 +15490,7 @@
   ],
   "alias": "SM",
   "url": "https://sugoimusic.me/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/sugoimusic.png",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "GazelleJSONAPI",
@@ -16801,8 +15513,8 @@
    "图片"
   ],
   "community_labels": [],
-  "registration": "固定版本的 PT-Depiler 定义标记站点已停止运营；2026-09-04 核对时，官方主页请求超时，当前注册或邀请状态未确认。",
-  "difficulty": "PT-Depiler 的固定定义列出按奖励点、上传量和发布数量递进的用户等级门槛；当前分享率、保种与准入规则以站内说明为准。",
+  "registration": "固定版本的 早期资料 定义标记站点已停止运营；2026-09-04 核对时，官方主页请求超时，当前注册或邀请状态未确认。",
+  "difficulty": "早期资料 的固定定义列出按奖励点、上传量和发布数量递进的用户等级门槛；当前分享率、保种与准入规则以站内说明为准。",
   "specialties": [
    "亚洲音乐"
   ],
@@ -16815,13 +15527,9 @@
    {
     "name": "SugoiMusic 官方首页",
     "url": "https://sugoimusic.me/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/sugoimusic.ts"
    }
   ],
-  "features": "SugoiMusic（SM）是面向英文用户的亚洲音乐私有 BitTorrent Tracker。PT-Depiler 的固定版本定义将其定位为亚洲音乐站，并列出音乐、演唱会、音乐视频、综艺和剧集等内容；该固定定义标记站点已停止运营。官方域名本次未能在公开请求中返回页面内容。",
+  "features": "SugoiMusic（SM）是面向英文用户的亚洲音乐私有 BitTorrent Tracker。早期资料 的固定版本定义将其定位为亚洲音乐站，并列出音乐、演唱会、音乐视频、综艺和剧集等内容；该固定定义标记站点已停止运营。官方域名本次未能在公开请求中返回页面内容。",
   "beginner_tips": "当前运营和注册状态未获公开确认；如官网恢复访问，先核对加入方式、等级、奖励点和分享规则。",
   "community_profile": null
  },
@@ -16872,10 +15580,6 @@
     "url": "https://www.tangpt.top/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tangpt.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/tangpt.yml"
    }
@@ -16890,7 +15594,7 @@
   "aka": [],
   "alias": "",
   "url": "https://telly.wtf/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/telly.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -16920,14 +15624,6 @@
    {
     "name": "Telly 官方首页（2026-09-04 仅显示提示页）",
     "url": "https://telly.wtf/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/telly.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/telly.ico"
    }
   ],
   "features": "Telly 是固定版本定义收录的印度综合影视私有 BitTorrent 站点，使用 Unit3D 架构。该定义标注原站已停用；2026-09-04 核对时官网仅显示无服务入口的提示页，无法验证追踪器仍在运营。",
@@ -16970,7 +15666,7 @@
   ],
   "community_labels": [],
   "registration": "邀请制：2026-09-04 核对时，官方注册页明确显示关闭自由注册，仅允许邀请注册。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前保种与邀请规则以站内说明为准。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前保种与邀请规则以站内说明为准。",
   "specialties": [
    "韩剧"
   ],
@@ -16987,13 +15683,9 @@
    {
     "name": "Tey 官方注册页",
     "url": "https://pt.tey.cc/signup.php"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tey.ts"
    }
   ],
-  "features": "Tey（太乙）是中文私有 BitTorrent Tracker。官网当前显示 NexusPHP 登录页；PT-Depiler 的固定版本定义列出电影、剧集、纪录片、综艺、动画、体育和音乐等分类，并将韩剧列为站点标签。",
+  "features": "Tey（太乙）是中文私有 BitTorrent Tracker。官网当前显示 NexusPHP 登录页；早期资料 的固定版本定义列出电影、剧集、纪录片、综艺、动画、体育和音乐等分类，并将韩剧列为站点标签。",
   "beginner_tips": "公开注册已关闭；获邀后先阅读站内的分享率、等级、做种积分、保种和邀请规则。",
   "community_profile": null
  },
@@ -17041,10 +15733,6 @@
     "url": "https://thevault.click/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/thevault.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/thevault.yml"
    },
@@ -17063,7 +15751,7 @@
   "aka": [],
   "alias": "",
   "url": "https://www.tokyopt.xyz/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/tokyopt.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17092,7 +15780,7 @@
    "其他"
   ],
   "community_labels": [],
-  "registration": "PT-Depiler 固定定义标记该站已停止；定义所列官网地址在本次核对时跳转后返回 401，当前不存在可核实的 PT 注册入口。",
+  "registration": "早期资料 固定定义标记该站已停止；定义所列官网地址在本次核对时跳转后返回 401，当前不存在可核实的 PT 注册入口。",
   "difficulty": "固定定义标记站点已停止，当前不适用入站或保种难度评价；历史分享率、等级和做种规则不应视为现行要求。",
   "specialties": [],
   "tags": [],
@@ -17101,17 +15789,9 @@
    {
     "name": "Tokyo 历史官网地址（本次跳转后返回 401）",
     "url": "https://www.tokyopt.xyz/"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tokyopt.ts"
-   },
-   {
-    "name": "PT-Depiler TokyoPT 站点图标（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/tokyopt.ico"
    }
   ],
-  "features": "Tokyo 是历史上的中文综合影视 PT 站。PT-Depiler 固定定义将其标记为已停止，并列出电影、电视剧、动漫、音乐、音乐视频及多种影视媒介分类；本次无法通过定义所列官网地址进入站点，当前运营状态与规则均无法由公开页面确认。",
+  "features": "Tokyo 是历史上的中文综合影视 PT 站。早期资料 固定定义将其标记为已停止，并列出电影、电视剧、动漫、音乐、音乐视频及多种影视媒介分类；本次无法通过定义所列官网地址进入站点，当前运营状态与规则均无法由公开页面确认。",
   "beginner_tips": "不要依据历史地址、注册信息或等级规则尝试加入、交换邀请或判断当前要求；如有恢复服务，应仅以可核实的官方公告为准。",
   "community_profile": null
  },
@@ -17121,7 +15801,7 @@
   "aka": [],
   "alias": "",
   "url": "https://torrenthub.club/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/torrenthub.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17137,8 +15817,8 @@
   ],
   "content_types": [],
   "community_labels": [],
-  "registration": "固定版本的 PT-Depiler 定义标记该域名已失效；2026-09-04 核对时，官方主页无法正常访问，当前注册或邀请状态未确认。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前保种与准入规则以站内说明为准。",
+  "registration": "固定版本的 早期资料 定义标记该域名已失效；2026-09-04 核对时，官方主页无法正常访问，当前注册或邀请状态未确认。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前保种与准入规则以站内说明为准。",
   "specialties": [],
   "tags": [
    "影视",
@@ -17150,13 +15830,9 @@
    {
     "name": "TorrentHub 官方首页（历史域名）",
     "url": "https://torrenthub.club/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/torrenthub.ts"
    }
   ],
-  "features": "TorrentHub 是历史上的中文私有 BitTorrent Tracker，固定版本的 PT-Depiler 定义将其标签列为影视、教育和音乐，并标记其域名已失效。2026-09-04 核对时，原官方域名无法正常访问。",
+  "features": "TorrentHub 是历史上的中文私有 BitTorrent Tracker，固定版本的 早期资料 定义将其标签列为影视、教育和音乐，并标记其域名已失效。2026-09-04 核对时，原官方域名无法正常访问。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原官方域名当前无法正常访问。",
   "community_profile": null
  },
@@ -17168,7 +15844,7 @@
   ],
   "alias": "TorrentsCSV",
   "url": "https://torrents-csv.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/torrentscsv.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "未知",
@@ -17182,7 +15858,7 @@
   ],
   "content_types": [],
   "community_labels": [],
-  "registration": "公开服务：PT-Depiler 的固定版本定义将其 type 标为 public，并描述为可自托管的开源种子搜索引擎与数据库，不采用私有 PT 的邀请准入或分享率体系。2026-09-04 核对时官网 HTTPS 无法建立 TLS 连接，HTTP 入口返回 502。",
+  "registration": "公开服务：早期资料 的固定版本定义将其 type 标为 public，并描述为可自托管的开源种子搜索引擎与数据库，不采用私有 PT 的邀请准入或分享率体系。2026-09-04 核对时官网 HTTPS 无法建立 TLS 连接，HTTP 入口返回 502。",
   "difficulty": "不适用：该服务为公开种子搜索/索引服务，不设私有 PT 的会员准入、分享率或保种等级体系。",
   "specialties": [
    "开源自托管"
@@ -17195,14 +15871,6 @@
    {
     "name": "Torrents-CSV 官方首页（2026-09-04 HTTPS TLS 连接失败；HTTP 返回 502）",
     "url": "https://torrents-csv.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/torrentscsv.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/torrentscsv.ico"
    }
   ],
   "features": "Torrents-CSV（TorrentsCSV）是固定版本定义收录的公开、可自托管开源种子搜索引擎与数据库。该定义提供公开搜索接口和磁链生成规则；当前官网入口无法访问，不能据此确认在线服务状态。",
@@ -17217,7 +15885,7 @@
   ],
   "alias": "TS",
   "url": "https://www.torrentseeds.org/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/_default_unit3d.ico",
+  "logo": "",
   "pt_circle": "outer",
   "service_type": "pt_tracker",
   "site_engine": "Unit3D",
@@ -17253,16 +15921,8 @@
     "url": "https://www.torrentseeds.org/"
    },
    {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/torrentseeds.ts"
-   },
-   {
     "name": "Torrends 历史站点目录",
     "url": "https://torrends.to/site/torrentseeds"
-   },
-   {
-    "name": "PT-Depiler 固定提交默认 Unit3D 图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/_default_unit3d.ico"
    }
   ],
   "features": "TorrentSeeds（TS）是固定版本定义收录的 Unit3D 私有 BitTorrent 站点。历史公开目录将其归为 0DAY/综合站，并列出电影、电视剧、音乐和应用类资源；固定定义已标注站点停用，当前运营状态无法从官网核验。",
@@ -17275,7 +15935,7 @@
   "aka": [],
   "alias": "",
   "url": "https://t.tosky.club/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/tosky.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17290,7 +15950,7 @@
   "content_types": [],
   "community_labels": [],
   "registration": "原站已停止运营，当前无法确认注册或邀请状态。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前规则未获公开确认。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前规则未获公开确认。",
   "specialties": [],
   "tags": [
    "综合"
@@ -17300,13 +15960,9 @@
    {
     "name": "ToSky 官方首页（历史域名）",
     "url": "https://t.tosky.club/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tosky.ts"
    }
   ],
-  "features": "ToSky 是历史上的中文综合私有 BitTorrent Tracker。PT-Depiler 的固定版本定义标记其已停止运营，并提供账户等级规则解析；2026-09-04 核对时，原官方域名跳转至与原 Tracker 无关的第三方网址页面。",
+  "features": "ToSky 是历史上的中文综合私有 BitTorrent Tracker。早期资料 的固定版本定义标记其已停止运营，并提供账户等级规则解析；2026-09-04 核对时，原官方域名跳转至与原 Tracker 无关的第三方网址页面。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原官方域名当前未提供原 Tracker 服务。",
   "community_profile": null
  },
@@ -17358,13 +16014,9 @@
    {
     "name": "TU88 官方注册页",
     "url": "https://pt.tu88.men/signup.php"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/tu88.ts"
    }
   ],
-  "features": "TU88 是中文图片资源私有 Tracker。官网称其仅分享图片，适合移动端 PT 客户端直接下载；公开页面显示漫画、绘本与图片定位，并运行 NexusPHP。PT-Depiler 固定定义列出普通区的图集、绘本及特别区的成人漫画、成人游戏、成人图集和真人图片分类。",
+  "features": "TU88 是中文图片资源私有 Tracker。官网称其仅分享图片，适合移动端 PT 客户端直接下载；公开页面显示漫画、绘本与图片定位，并运行 NexusPHP。早期资料列出普通区的图集、绘本及特别区的成人漫画、成人游戏、成人图集和真人图片分类。",
   "beginner_tips": "自由注册当前关闭；不要向不可信来源购买或交换邀请。获邀后先阅读站内图片发布、分享率、保种和账号规则。",
   "community_profile": null
  },
@@ -17416,13 +16068,9 @@
    {
     "name": "ULCX 官方申请页",
     "url": "https://upload.cx/application"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/uploadcx.ts"
    }
   ],
-  "features": "ULCX 是私有影视 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0-dev；PT-Depiler 的固定版本定义列出电影、电视剧、原盘、Remux、Encode、WEB-DL、WEBRip 和 HDTV 等分类及规格。",
+  "features": "ULCX 是私有影视 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0-dev；早期资料 的固定版本定义列出电影、电视剧、原盘、Remux、Encode、WEB-DL、WEBRip 和 HDTV 等分类及规格。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读分享率、保种和 H&R 规则。",
   "community_profile": null
  },
@@ -17450,7 +16098,7 @@
   ],
   "community_labels": [],
   "registration": "邀请制：2026-09-04 核对时，官方注册页明确显示关闭自由注册，仅允许邀请注册。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前保种与邀请规则以站内说明为准。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率、时长与做种积分递进的用户等级门槛；当前保种与邀请规则以站内说明为准。",
   "specialties": [
    "虚拟歌姬"
   ],
@@ -17468,13 +16116,9 @@
    {
     "name": "VC-Lib 官方注册页",
     "url": "https://pt.vclib.online/signup.php"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/vclib.ts"
    }
   ],
-  "features": "VC-Lib 是专注于虚拟歌姬（非虚拟偶像）相关内容的中文私有 BitTorrent Tracker，固定版本的 PT-Depiler 定义明确标注禁止 R18。官网当前显示 NexusPHP 登录页。",
+  "features": "VC-Lib 是专注于虚拟歌姬（非虚拟偶像）相关内容的中文私有 BitTorrent Tracker，固定版本的 早期资料 定义明确标注禁止 R18。官网当前显示 NexusPHP 登录页。",
   "beginner_tips": "公开注册已关闭；获邀后先阅读站内对资源范围、分享率、等级、保种与邀请的规定。",
   "community_profile": null
  },
@@ -17487,7 +16131,7 @@
   ],
   "alias": "WHUPT / 珞樱",
   "url": "https://whu.pt/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/whupt.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17514,14 +16158,6 @@
    {
     "name": "珞樱-WHUPT 官方首页（2026-09-04 HTTPS TLS 连接失败；HTTP 返回 502）",
     "url": "https://whu.pt/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/whupt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/whupt.ico"
    }
   ],
   "features": "珞樱-WHUPT 是武汉大学校园资源共享平台。固定版本定义说明其硬件由武汉大学网络中心支持、由学生自主运行与管理；该定义同时注明站点已于 2019-12-31 正式关站。",
@@ -17534,7 +16170,7 @@
   "aka": [],
   "alias": "",
   "url": "https://wukongwendao.top/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/wukongwendao.png",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17550,8 +16186,8 @@
    "人工智能相关内容"
   ],
   "community_labels": [],
-  "registration": "固定版本的 PT-Depiler 定义标记站点已停止运营；2026-09-04 核对时，官方主页要求 JavaScript 验证，当前注册或邀请状态未确认。",
-  "difficulty": "PT-Depiler 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前保种与准入规则以站内说明为准。",
+  "registration": "固定版本的 早期资料 定义标记站点已停止运营；2026-09-04 核对时，官方主页要求 JavaScript 验证，当前注册或邀请状态未确认。",
+  "difficulty": "早期资料 的固定定义列出按下载量、分享率与时长递进的用户等级门槛；当前保种与准入规则以站内说明为准。",
   "specialties": [
    "人工智能"
   ],
@@ -17563,13 +16199,9 @@
    {
     "name": "悟空问道官方首页",
     "url": "https://wukongwendao.top/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/wukongwendao.ts"
    }
   ],
-  "features": "悟空问道是历史上的中文人工智能主题私有 BitTorrent Tracker，固定版本的 PT-Depiler 定义以“探索未知、持续学习”描述并标记其已停止运营。官方主页本次仅返回 JavaScript 验证跳转，未能公开核实当前服务内容。",
+  "features": "悟空问道是历史上的中文人工智能主题私有 BitTorrent Tracker，固定版本的 早期资料 定义以“探索未知、持续学习”描述并标记其已停止运营。官方主页本次仅返回 JavaScript 验证跳转，未能公开核实当前服务内容。",
   "beginner_tips": "当前运营和注册状态未获公开确认；如官网恢复可访问状态，先核对加入方式、分享率、等级和保种规则。",
   "community_profile": null
  },
@@ -17610,10 +16242,6 @@
    {
     "name": "杏坛官网",
     "url": "https://xingtan.one/"
-   },
-   {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/xingtan.ts"
    },
    {
     "name": "Prowlarr Indexers 定义",
@@ -17680,15 +16308,11 @@
     "url": "https://xingwan.cc/"
    },
    {
-    "name": "PT-Depiler 站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/xingwan.ts"
-   },
-   {
     "name": "Prowlarr Indexers 定义",
     "url": "https://github.com/Prowlarr/Indexers/blob/95697ef8430e84a05701ca433146440cb67943d4/definitions/v11/xingwan.yml"
    }
   ],
-  "features": "星湾（Xingwan）是中文综合 PT 站，公开定义覆盖影视、动漫、漫画、音乐、体育、游戏、软件和电子书；PT-Depiler 将中文字幕资源列为其方向。",
+  "features": "星湾（Xingwan）是中文综合 PT 站，公开定义覆盖影视、动漫、漫画、音乐、体育、游戏、软件和电子书；早期资料 将中文字幕资源列为其方向。",
   "beginner_tips": "加入后先阅读字幕、命名、分享率与保种规则，避免只下载而无法长期做种。",
   "community_profile": null
  },
@@ -17698,7 +16322,7 @@
   "aka": [],
   "alias": "",
   "url": "https://pt.hdbd.us/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/ydypt.jpg",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17727,14 +16351,6 @@
    {
     "name": "伊甸园官方首页（2026-09-04 HTTPS 证书无法验证；HTTP 返回 502）",
     "url": "https://pt.hdbd.us/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/ydypt.ts"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点图标（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/public/icons/site/ydypt.jpg"
    }
   ],
   "features": "伊甸园是固定版本定义收录的中文综合私有 BitTorrent 站点，使用 NexusPHP 架构；该定义包含 XXX 标签并标注站点已停用。2026-09-04 核对时，官网 HTTPS 证书无法验证，HTTP 入口返回 502。",
@@ -17752,7 +16368,7 @@
   ],
   "alias": "影客PT / YingkPT / 美盒子 / MeiHeZi",
   "url": "https://yingk.com/",
-  "logo": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/public/icons/site/yingk.ico",
+  "logo": "",
   "pt_circle": "inner",
   "service_type": "pt_tracker",
   "site_engine": "NexusPHP",
@@ -17791,17 +16407,9 @@
    {
     "name": "影客官方首页（历史域名，当前已变更）",
     "url": "https://yingk.com/"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/yingk.ts"
-   },
-   {
-    "name": "PT-Plugin-Plus 历史站点移除记录",
-    "url": "https://github.com/pt-plugins/PT-Plugin-Plus/commit/2c9591371523ad237f5c6f34335cb118738ea9ba"
    }
   ],
-  "features": "影客（原美盒子）是历史上的中文综合影视私有 BitTorrent Tracker。PT-Depiler 的固定版本定义标记其已停止运营；其所引历史移除记录列出电影、电视剧、综艺、动画、纪录片、音乐和学习等分区。2026-09-04 核对时，原官方域名已跳转至与原 Tracker 无关的“映客网”资源导航页面。",
+  "features": "影客（原美盒子）是历史上的中文综合影视私有 BitTorrent Tracker。早期资料 的固定版本定义标记其已停止运营；其所引历史移除记录列出电影、电视剧、综艺、动画、纪录片、音乐和学习等分区。2026-09-04 核对时，原官方域名已跳转至与原 Tracker 无关的“映客网”资源导航页面。",
   "beginner_tips": "不要依据历史资料判断站点可用性或注册方式；原官方域名当前未提供原 Tracker 服务。",
   "community_profile": null
  },
@@ -17863,13 +16471,9 @@
    {
     "name": "樱花官方注册页",
     "url": "https://pt.ying.us.kg/signup.php"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/yinguskg.ts"
    }
   ],
-  "features": "樱花（YingUSKG）是中文综合私有 BitTorrent 站点。官网登录页显示 NexusPHP；PT-Depiler 的固定版本定义列出电影、电视剧、综艺、动漫、纪录片、体育、音乐、软件和游戏等分类，以及多种视频规格。",
+  "features": "樱花（YingUSKG）是中文综合私有 BitTorrent 站点。官网登录页显示 NexusPHP；早期资料 的固定版本定义列出电影、电视剧、综艺、动漫、纪录片、体育、音乐、软件和游戏等分类，以及多种视频规格。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读站内分享率、保种和账号规则。",
   "community_profile": null
  },
@@ -17930,13 +16534,9 @@
    {
     "name": "YUSCENE 官方申请页",
     "url": "https://yu-scene.net/application"
-   },
-   {
-    "name": "PT-Depiler 固定提交站点定义（Raw）",
-    "url": "https://raw.githubusercontent.com/pt-plugins/PT-depiler/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/yuscene.ts"
    }
   ],
-  "features": "YUSCENE（YS）是综合私有 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0；PT-Depiler 的固定版本定义列出电影、电视剧、游戏、音乐、应用、音乐视频、体育、电子书和有声书等分类。",
+  "features": "YUSCENE（YS）是综合私有 BitTorrent 站点。官网登录页显示 Unit3D v9.2.0；早期资料 的固定版本定义列出电影、电视剧、游戏、音乐、应用、音乐视频、体育、电子书和有声书等分类。",
   "beginner_tips": "当前加入需邀请；不要索取或传播邀请码。获合法邀请后，应先阅读分享率、保种和 H&R 规则。",
   "community_profile": null
  },
@@ -17987,13 +16587,9 @@
    {
     "name": "YzYY 官方注册页",
     "url": "https://www.yzyy.org/member.php?mod=zhuce"
-   },
-   {
-    "name": "PT-Depiler 站点定义（固定提交）",
-    "url": "https://github.com/pt-plugins/PT-depiler/blob/e9fae952f8200ed06a0822baae6f6f6ae84b2f5a/src/packages/site/definitions/yzyy.ts"
    }
   ],
-  "features": "YzYY 是中文综合影视音乐 PT 资源站。官网显示其为“高清视频修复论坛”，使用 Discuz! X3.5；PT-Depiler 固定定义说明该站通过自定义 torrents.php 聚合种子，并列出电影、电视剧、音乐、软件及高清视频修复分区，且标注 YzYY 为官方发布组。",
+  "features": "YzYY 是中文综合影视音乐 PT 资源站。官网显示其为“高清视频修复论坛”，使用 Discuz! X3.5；早期资料 固定定义说明该站通过自定义 torrents.php 聚合种子，并列出电影、电视剧、音乐、软件及高清视频修复分区，且标注 YzYY 为官方发布组。",
   "beginner_tips": "仅通过官网当前允许的方式加入，不要使用来源不明的邀请码或服务；获得账号后先阅读论坛与种子区的分享、保种、发布和转载规则。",
   "community_profile": null
  }

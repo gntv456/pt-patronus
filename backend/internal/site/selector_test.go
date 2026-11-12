@@ -111,8 +111,8 @@ func TestParseBytes(t *testing.T) {
 	}
 }
 
-// TestApplyFiltersPTDepiler 覆盖为 PT-depiler 移植新增的三个 filter：parse_size / queryparam / parse_time。
-func TestApplyFiltersPTDepiler(t *testing.T) {
+// TestApplyFiltersUpstream 覆盖选择器引擎的三个 filter：parse_size / queryparam / parse_time。
+func TestApplyFiltersUpstream(t *testing.T) {
 	// parse_size：复用 ParseBytes，转字节数字符串
 	want := strconv.FormatInt(int64(1.5*float64(1<<40)), 10) // 1.5 TB = 1.5 * 2^40
 	if got := ApplyFilters("1.5 TB", []Filter{{Name: "parse_size"}}); got != want {

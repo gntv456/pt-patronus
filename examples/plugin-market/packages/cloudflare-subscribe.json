@@ -14,7 +14,7 @@
     "host.api.notice.write"
   ],
   "author": "PTPatronus Community",
-  "description": "定时拉取订阅源并更新本地 hosts 片段（迁移自 MoviePilot）。",
+  "description": "定时拉取订阅源并更新本地 hosts 片段。",
   "license": "MIT",
   "keywords": [
     "cloudflare",

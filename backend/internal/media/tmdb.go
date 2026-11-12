@@ -356,7 +356,7 @@ type CalendarEpisode struct {
 	PosterURL string `json:"poster_url,omitempty"`
 }
 
-// Calendar 开播日历（对标 MSaber 开播日历）：TMDB discover 按首播/上映日期窗口聚合。
+// Calendar 开播日历：TMDB discover 按首播/上映日期窗口聚合。
 // kind=tv → /discover/tv with first_air_date.gte/lte（每集粒度用 season 信息近似：仅标 S 首播）；
 // kind=movie → /discover/movie with primary_release_date.gte/lte。
 // days 覆盖 [today, today+days)，按日期分组返回（map[date]→items）。

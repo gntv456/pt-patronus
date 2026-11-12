@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package workflow 实现可视化节点图工作流引擎：节点契约 + 注册表 + DAG 执行器。
-// 借鉴 MoviePilot 的 Workflow（节点+边 JSON、拓扑执行、共享 Context），单 goroutine 顺序执行
+// 工作流引擎（节点+边 JSON、拓扑执行、共享 Context），单 goroutine 顺序执行
 // （SQLite 单写、避免竞态，不抄线程池）。节点图 JSON 形状（GraphNode/GraphEdge）是 Web/Flutter 共用契约。
 package workflow
 

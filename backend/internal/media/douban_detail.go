@@ -91,7 +91,7 @@ func (d *Douban) Trending(ctx context.Context, category string, page int) ([]Med
 // 单页失败跳过；全部失败才返回错误（由 RecommendChain 标记源不可用）。
 //
 // 该接口每条只有 id/title/rate/cover——缺年份/类型/产地，卡片比其他推荐源少一整行
-// 字段（对标电影 Top250 的 card_subtitle）。故入围前 20 后并发调 frodo Detail 富化
+// 字段（同 Top250 的 card_subtitle）。故入围前 20 后并发调 frodo Detail 富化
 // （带 6s 条目超时 + 整体上限，单条失败保留裸数据不拖垮整页）。
 func (d *Douban) trendingTopTv(ctx context.Context, page int) ([]MediaInfo, error) {
 	const perPage, maxPages = 50, 5

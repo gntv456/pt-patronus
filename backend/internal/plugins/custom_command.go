@@ -14,7 +14,7 @@ import (
 
 // custom-command：定时在宿主机上执行一组 shell 命令并按结果推送通知。
 // 与工作流 ssh_command（面向 agent 远程 SSH）互补：本插件面向宿主机本机命令编排。
-// 对标 MoviePilot 自定义命令增强（thsrite）。
+//
 //
 // 设计取舍：插件 Schedule 由 manifest 静态声明，无法为用户输入的 N 条命令各自注册 cron，
 // 故采用「单一全局 cron 触发 + 一次运行全部已启用命令」模型（per-command 独立 cron 留工作流）。

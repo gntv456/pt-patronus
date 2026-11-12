@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Docker 应用模板库 —— 预置常用应用，一键填充创建向导。
-// 对标飞牛/绿联/极空间 NAS 应用商店：小白用户选模板 → 微调 → 创建。
+// 容器模板库（应用商店式）：小白用户选模板 → 微调 → 创建。
 
 export interface DockerTemplatePort {
   host: number

@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   })
 
-  // ================= 凭据管理（对标 MoviePilot-Tools 凭据库） =================
+  // ================= 凭据管理 =================
   // 与 TOTP 同套加密：PIN → PBKDF2×310k → AES-256-GCM，存 chrome.storage.local.ptp_credentials。
   // 会话缓存：解锁后明文条目写 storage.session.cred_entries，供 content 自动填充
   // （经 background 消息取——页面不直接触碰 storage；锁定即清，语义与 TOTP 一致）。
@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ready = !!(saved.aiGateway.token && cfg.server)
     $('aiChat').style.display = ready ? '' : 'none'
     $('aiConfig').style.display = ready ? 'none' : ''
-    // 会话本地持久化：刷新/重开设置页不丢（对标 MP 会话管理;存最近 200 条）。
+    // 会话本地持久化：刷新/重开设置页不丢（存最近 200 条）。
     if (ready && !aiHistory.length) {
       const kept = await chrome.storage.local.get({ aiHistory: [] })
       aiHistory = Array.isArray(kept.aiHistory) ? kept.aiHistory.slice(-200) : []
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ================= 插件管理（对标 MoviePilot-Tools 插件页嵌入） =================
+  // ================= 插件管理 =================
   // 后端：GET /plugins（列表，登录可用）、POST /plugins/:id/{enable,disable}（管理员）。
   // 视图：contributes.views[] 的 path 指向插件静态资产；直接嵌 Web 端路由
   // /plugins/view/:pluginId/:viewId（iframe src 指向自建服务器，登录态由
@@ -830,7 +830,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       </tr>`
     }).join('') : '<tr><td colspan="7" class="empty">该筛选下无站点</td></tr>'
 
-    // 差异汇总条（对标 MP 七项筛选的可读版）：一眼看清整体健康度与待办，
+    // 差异汇总条（七项筛选的可读版）：一眼看清整体健康度与待办，
     // 点分段词直接切到对应筛选——发现问题的路径从「逐行扫表」变「看汇总→点」。
     const active = rows.filter((r) => r.s.is_active)
     const diffNames = rows.filter((r) => r.state === 'diff').map((r) => esc(r.s.name))

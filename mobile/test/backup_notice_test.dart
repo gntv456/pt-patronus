@@ -58,7 +58,7 @@ void main() {
       expect(n, isNot(contains('导入完成')));
     });
 
-    // #257：MoviePilot / .ptd 两条路径只导站点，后端不给下载器维度。
+    // #257：外部格式两条路径只导站点，后端不给下载器维度。
     test('站点单维路径不许写出「下载器 0」这种误导数字', () {
       final n = importOutcomeNotice(
         const ImportResult(sites: 3, downloaders: 0, sitesSkipped: 2),

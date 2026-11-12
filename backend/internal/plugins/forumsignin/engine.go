@@ -168,7 +168,7 @@ func parseForums(text string) []ForumCred {
 	return out
 }
 
-// —— 失败重试（KV 持久化 + time.AfterFunc 一次性递归，对标 groupchat）——
+// —— 失败重试（KV 持久化 + time.AfterFunc 一次性递归，同 groupchat）——
 
 const kvFailed = "failed_forums"
 

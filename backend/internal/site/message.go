@@ -196,7 +196,7 @@ func parseMessagesDivRows(doc *goquery.Document, mailbox MailboxType, now time.T
 //	    <td class=rowfollow>已回复</td><td class=rowfollow><input name="setanswered[]" value="ID"></td></tr>
 //
 // 链接为 viewpm 而非 viewmessage、itemId 来自 setanswered[]，故 ParseMessages 的通用选择器
-// 匹配不到——移植自旧版 PTPatronus（Kotlin）parseStaffboxMessages。
+// 匹配不到——兜底分支。
 func parseStaffboxMessages(doc *goquery.Document, mailbox MailboxType, now time.Time) []Message {
 	rows := doc.Find(`table tr`).FilterFunction(func(_ int, tr *goquery.Selection) bool {
 		return tr.Find("td.rowfollow").Length() >= 4 && tr.Find(`a[href*="viewpm"]`).Length() > 0

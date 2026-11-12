@@ -146,10 +146,17 @@ func logErr(c *gin.Context, e *Error) {
 		if c.Request != nil {
 			path = c.Request.URL.Path
 		}
+		// req_id 与访问日志（middleware.AccessLog）对上号：一条 500 才能定位到
+		// 具体请求的耗时/IP/状态行，否则只能靠时间戳猜。键值必须与
+		// middleware.RequestIDKey 一致——middleware 已 import 本包，反向引用成环，
+		// 故此处只能字面量同步（两处均有注释互指）。
+		reqID, _ := c.Get("request_id")
 		if e.HTTP >= http.StatusInternalServerError {
-			slog.Warn("api error", "code", e.Code, "path", path, "err", e.Err)
+			slog.Warn("api error", "code", e.Code, "path", path,
+				"req_id", reqID, "err", e.Err)
 		} else {
-			slog.Debug("api error", "code", e.Code, "path", path, "err", e.Err)
+			slog.Debug("api error", "code", e.Code, "path", path,
+				"req_id", reqID, "err", e.Err)
 		}
 	}
 }

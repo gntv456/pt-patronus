@@ -23,7 +23,7 @@ import (
 
 // runSnapshot 聚合站点快照任务：把原 stats / hr / freeleech / announcement / messages /
 // cookie-keepalive 6 个任务对同站的分散请求，收敛为 SiteChain.SnapshotSite 一次串行抓取，
-// 降低站点感知的请求频率（对齐 MoviePilot 6h 串行哲学）。每站抓取后：
+// 降低站点感知的请求频率（串行低频抓取）。每站抓取后：
 //   - 用其 uid 跑一次 assessment（AssessSiteWithUID 复用 uid，访问 userdetails.php?id=<uid>，
 //     不再像原 assessment-refresh 那样每整小时裸访 userdetails.php——52movie 警告根因）
 //   - dispatchSnapshotSite 分派 stats 落库 / cookie 轮换 / H&R / 站免 / 公告 / 新邮件 通知

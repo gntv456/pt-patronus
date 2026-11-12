@@ -72,3 +72,6 @@ ohos/.hvigor/
 frontend/public/jessibuca/jessibuca.js
 frontend/public/jessibuca/decoder.js
 frontend/public/jessibuca/decoder.wasm
+
+# 本地体验测试用的空库演示实例（UX 评估期间起过，勿入库）
+backend/data-demo/

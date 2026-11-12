@@ -3,7 +3,7 @@
 
 package chain
 
-// 工作台聚合（对标 MSaber「天序工作台」）：一次拉取仪表盘首屏所需的今日域指标——
+// 工作台聚合（天序工作台）：一次拉取仪表盘首屏所需的今日域指标——
 // 流转节点（站点/订阅/下载/整理/媒体库/观影六域计数）、今日待办、今日动态、今日摘要、
 // 媒体库态势与体检分。纯 DB 聚合（媒体库计数除外，走默认媒体服务器 Libraries + 缓存），
 // 单接口返回避免前端六次串行请求。
@@ -317,59 +317,4 @@ func (c *DashboardChain) Workbench(ctx context.Context, msLibraries func(ctx con
 // replaceCount 把 Detail 里的 "N" 占位替换为实际数。
 func replaceCount(s string, n int) string {
 	return strings.Replace(s, "N", strconv.Itoa(n), 1)
-}
-
-// MediaLibraryOverview 枚举全部媒体服务器库计数（DashboardChain.Workbench 的
-// msLibraries 回调实现；单服务器失败跳过不阻断，Emby/JF 按 LibraryItems.Type 聚合）。
-func (c *MediaServerChain) MediaLibraryOverview(ctx context.Context) WorkbenchMediaLibrary {
-	out := WorkbenchMediaLibrary{Configured: false, Servers: []MediaLibraryStat{}}
-	servers, err := c.List()
-	if err != nil {
-		// 读不出来 ≠ 没配置：不区分的话首屏会对一个配了 Emby/Plex 的库显示「未配置媒体库，去添加」，
-		// 用户顺着去新建一遍，反而造成重复配置。
-		slog.Warn("workbench: list media servers failed", "err", err)
-		out.Error = "媒体服务器列表读取失败: " + err.Error()
-		return out
-	}
-	if len(servers) == 0 {
-		return out
-	}
-	out.Configured = true
-	for _, s := range servers {
-		stat := MediaLibraryStat{ServerID: s.ID, ServerName: s.Name, Type: s.Type, SyncedAt: time.Now()}
-		cli, _, err := c.client(s.ID)
-		if err != nil {
-			slog.Debug("workbench: media server client failed", "server", s.Name, "err", err)
-			out.Servers = append(out.Servers, stat)
-			continue
-		}
-		libs, err := cli.Libraries(ctx)
-		if err != nil {
-			// 一台媒体的库列表读不出，界面上它是「0 个库」而不是「这次没读到」——
-			// Debug 级在默认日志级别下等于没有留痕，必须 Warn。
-			slog.Warn("workbench: media server libraries failed", "server", s.Name, "err", err)
-			out.Servers = append(out.Servers, stat)
-			continue
-		}
-		stat.LibraryCnt = len(libs)
-		for _, lib := range libs {
-			items, err := cli.LibraryItems(ctx, lib.ID)
-			if err != nil {
-				// 单个库读不出就裸 continue ⇒ 总数被静默少算一个库，
-				// 与「那个库真的是空的」在界面上同形（工作台是看全局的地方）。
-				slog.Warn("workbench: library items failed, library skipped",
-					"server", s.Name, "library", lib.ID, "name", lib.Name, "err", err)
-				continue
-			}
-			for _, it := range items {
-				if it.Type == "movie" {
-					stat.Movies++
-				} else if it.Type == "series" {
-					stat.Series++
-				}
-			}
-		}
-		out.Servers = append(out.Servers, stat)
-	}
-	return out
 }

@@ -5,9 +5,9 @@
 // 首次挂载探测本机可用性并启动轮询、模式切换/刷新时重新探测并重启统计。
 // 从 OpsDocker.vue 迁出。
 import { onMounted, type Ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import type { DockerTemplate } from '@/data/dockerTemplates'
 import type { ComposeTemplate } from '@/data/composeTemplates'
+import { copyText } from '@/utils/clipboard'
 
 export function useDockerOpsInit(opts: {
   mode: Ref<'local' | 'remote'>
@@ -45,12 +45,10 @@ export function useDockerOpsInit(opts: {
   }
 
   function copyDockerSockHint() {
-    navigator.clipboard
-      .writeText('- /var/run/docker.sock:/var/run/docker.sock')
-      .then(() => {
-        ElMessage.success(opts.t('opsdocker.copied'))
-      })
-      .catch(() => {})
+    // 走 utils/clipboard：纯 HTTP 局域网部署下 navigator.clipboard 为 undefined，
+    // 直调会同步抛错并被全局错误浮层接住（白屏级报错）；copyText 自带回退与提示。
+    const sockHint = '- /var/run/docker.sock:/var/run/docker.sock'
+    void copyText(sockHint, opts.t('opsdocker.copied'))
   }
 
   onMounted(async () => {

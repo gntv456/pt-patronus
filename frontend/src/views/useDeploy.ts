@@ -5,6 +5,7 @@
 // 耦合最重:读 config 的 opsConfigs、驱动的 exec 的执行能力、组件的 sshTargets/选中目标/面板滚动/工作区切换,
 // 故用依赖对象显式注入。deployForm/Visible/ConfigId 及 deployProfiles/runs/steps 由本 composable 持有。
 import { ref, computed, nextTick, type ComputedRef, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { opsConfigApi, type CommandRun, type MonitorTarget, type OpsConfig, type OpsConfigInput } from '@/api/monitor'
 import { basenameOf, shQuote } from './nasServerHelpers'
@@ -19,6 +20,8 @@ type DeployForm = {
   backupDir: string
   grayFirst: boolean
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useDeploy(deps: {
   sshTargets: ComputedRef<MonitorTarget[]>
@@ -80,13 +83,13 @@ export function useDeploy(deps: {
         grayFirst: parsed.grayFirst !== false,
       }
     } catch {
-      ElMessage.error('部署模板 JSON 格式错误')
+      ElMessage.error(t('opusedeploy.k1'))
     }
   }
 
   async function saveDeployProfile() {
     if (!deployForm.value.repoUrl.trim() || !deployForm.value.projectDir.trim()) {
-      ElMessage.warning('请先填写 Git 仓库和项目目录')
+      ElMessage.warning(t('opusedeploy.k2'))
       return
     }
     const keyBase =
@@ -109,9 +112,9 @@ export function useDeploy(deps: {
         deployConfigId.value = created.id
       }
       deps.opsConfigs.value = await opsConfigApi.list()
-      ElMessage.success('发布模板已保存')
+      ElMessage.success(t('opusedeploy.k3'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存发布模板失败')
+      ElMessage.error((e as Error).message || t('opusedeploy.k4'))
     }
   }
 
@@ -169,20 +172,20 @@ export function useDeploy(deps: {
 
   async function runDeployCommand(kind: 'deploy' | 'rollback') {
     if (!deployForm.value.targetIds.length) {
-      ElMessage.warning('请选择部署服务器')
+      ElMessage.warning(t('opusedeploy.k5'))
       return
     }
     if (!deployForm.value.projectDir.trim()) {
-      ElMessage.warning('请填写项目目录')
+      ElMessage.warning(t('opusedeploy.k6'))
       return
     }
     if (kind === 'deploy' && !deployForm.value.repoUrl.trim()) {
-      ElMessage.warning('请填写 Git 仓库地址')
+      ElMessage.warning(t('opusedeploy.k7'))
       return
     }
     const ids = deployTargets()
     if (!ids.length) {
-      ElMessage.warning('没有可部署的 SSH 主机')
+      ElMessage.warning(t('opusedeploy.k8'))
       return
     }
     deps.execTargetIds.value = ids

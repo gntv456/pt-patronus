@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package oper 实现数据访问层（Oper 模式）：每个领域一个操作类，封装 GORM 事务
-// 与敏感字段的加解密。借鉴 MoviePilot 的 Oper 模式。
+// 与敏感字段的加解密。Oper 数据访问模式。
 package oper
 
 import (
@@ -105,7 +105,7 @@ func isDuplicateKeyErr(err error) bool {
 
 // Create 创建站点。
 //
-// 按注册域（eTLD+1）去重：同注册域视为同一站点，拒绝添加——对齐 MoviePilot「一站点一账号」。
+// 按注册域（eTLD+1）去重：同注册域视为同一站点，拒绝添加——
 // 无论 name / 子域 / path / trailing-slash 写法如何，同站只能有一条；杜绝重复站点导致的仪表盘
 // 聚合双计（上传/做种翻倍）与搜索结果重复。CreateMany 同样按注册域跳过（见下）。
 func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
@@ -149,7 +149,7 @@ func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 		}
 		return nil, err
 	}
-	// GORM default:true 会把 IsActive=false 当零值吞为 true（导入 PT-Depiler isOffline
+	// GORM default:true 会把 IsActive=false 当零值吞为 true（导入 .ptd isOffline
 	// 站时本应停用却变启用）→ 显式写回。Update 走 Save 写全字段，不受此影响。
 	if !in.IsActive {
 		if err := db.Model(s).Update("is_active", false).Error; err != nil {
@@ -162,8 +162,7 @@ func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 // CreateMany 单事务批量创建站点。逐条 INSERT 以保留「单条失败跳过、其余继续」语义，
 // 但全部包在一个事务内——把 N 次 fsync 压成 1 次（慢盘上 200 站从数十秒降到 <1s）。
 //
-// 按注册域去重：库内已存在 或 本批次已处理的注册域 → 跳过（对齐 MoviePilot，防备份导入产生
-// 重复站点/重复账号）。非法 base_url（非 http/https）与 Create 同口径校验后跳过。
+// 按注册域去重：库内已存在 或 本批次已处理的注册域 → 跳过。非法 base_url（非 http/https）与 Create 同口径校验后跳过。
 // 单条其他错误同样跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
 // 返回成功创建的条数（调用方用 len(ins)-n 自算跳过数）。
 func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
@@ -186,7 +185,7 @@ func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
 			if dom != "" && seen[dom] {
 				continue // 同注册域已存在/已处理 → 跳过
 			}
-			// 与 Create 对齐的入口校验：导入路径（自身备份/PT-Depiler/MoviePilot）此前
+			// 与 Create 对齐的入口校验：导入路径（自身备份/.ptd/MoviePilot 备份）此前
 			// 绕过 validateBaseURL，javascript:/file:/相对路径可入库（见 Create 注释）；
 			// 非法条目跳过，调用方按成功数差异计为跳过。
 			if err := validateBaseURL(in.BaseURL); err != nil {

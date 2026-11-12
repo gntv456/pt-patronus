@@ -180,12 +180,12 @@ function selectCategory(k: string) {
   load()
 }
 
-// 卡片点击 → 进入媒体详情页（对标 MoviePilot），与搜索页影视卡片一致。
+// 卡片点击 → 进入媒体详情页，与搜索页影视卡片一致。
 function openMediaDetail(m: MediaInfo) {
   router.push({ path: '/media-detail', query: { source: m.source, id: m.source_id } })
 }
 
-// ---- 开播日历 / 订阅日历（对标 MSaber 开播日历；第三视图，与信息流/搜索并列） ----
+// ---- 开播日历 / 订阅日历（第三视图，与信息流/搜索并列） ----
 const calMode = ref<'' | 'tv' | 'movie' | 'mine'>('')
 const calLoading = ref(false)
 const calData = ref<Record<string, CalendarEpisode[]>>({})

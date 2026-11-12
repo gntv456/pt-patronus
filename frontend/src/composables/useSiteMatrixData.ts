@@ -5,13 +5,17 @@
  * 站点运营矩阵的数据加载 / 排序 / 过滤 / 格式化（从 SiteOperationsMatrix.vue 抽出）。
  * 行为不变：overview 加载 → 搜索/状态过滤 → 列头排序 → 分页。
  */
-import { ref, computed, type ComputedRef, type Ref } from 'vue'
+import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
+import { i18n } from '@/i18n'
+import { useUserPrefs } from '@/composables/useUserPrefs'
 import { dashboardApi, type SiteHistoryPoint, type SiteStatItem } from '@/api/dashboard'
 import type { Site, SiteConnectivityStatus } from '@/api/site'
 import { safeUrl } from '@/utils/safeUrl'
 
 export type MatrixFilter = 'all' | 'issues' | 'connected' | 'disabled'
 export type MatrixLayout = 'wide' | 'balanced' | 'compact'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function fmtBytes(value: number) {
   if (!value) return '0 B'
@@ -57,13 +61,31 @@ export function useSiteMatrixData(props: {
   const syncing = ref(false)
   const loadError = ref('')
   const refreshing = ref(new Set<number>())
-  const siteQuery = ref('')
-  const matrixFilter = ref<MatrixFilter>('all')
+  // 筛选/排序/分页持久化（localStorage 即时 + 登录后服务端同步）：切页回来筛选不丢。
+  // 回填只取已知安全的字段，坏数据（如非法 filter 值）走默认，不让旧偏好炸渲染。
+  const { prefs: matrixPrefs, update: updateMatrixPrefs } = useUserPrefs('sites.matrix')
+  const savedFilters = (matrixPrefs.value ?? {}) as Record<string, unknown>
+  const validFilters = ['all', 'issues', 'connected', 'disabled']
+  const siteQuery = ref(typeof savedFilters.q === 'string' ? savedFilters.q : '')
+  const matrixFilter = ref<MatrixFilter>(
+    validFilters.includes(savedFilters.filter as string) ? (savedFilters.filter as MatrixFilter) : 'all',
+  )
   // 列头点击排序：sortKey=字段名(对齐 el-table-column prop)，sortDir=方向。默认按更新时间降序。
-  const sortKey = ref<string>('updated_at')
-  const sortDir = ref<'asc' | 'desc'>('desc')
+  const sortKey = ref<string>(typeof savedFilters.sortKey === 'string' ? savedFilters.sortKey : 'updated_at')
+  const sortDir = ref<'asc' | 'desc'>(
+    savedFilters.sortDir === 'asc' || savedFilters.sortDir === 'desc' ? savedFilters.sortDir : 'desc',
+  )
   const currentPage = ref(1)
-  const pageSize = ref(8)
+  const pageSize = ref(typeof savedFilters.pageSize === 'number' ? savedFilters.pageSize : 8)
+  watch([siteQuery, matrixFilter, sortKey, sortDir, pageSize], () => {
+    updateMatrixPrefs({
+      q: siteQuery.value,
+      filter: matrixFilter.value,
+      sortKey: sortKey.value,
+      sortDir: sortDir.value,
+      pageSize: pageSize.value,
+    })
+  })
 
   const historyVisible = ref(false)
   const historyLoading = ref(false)
@@ -232,9 +254,9 @@ export function useSiteMatrixData(props: {
       : ''
     try {
       rows.value = (await dashboardApi.sync()).sites ?? []
-      ElMessage.success('站点统计已刷新')
+      ElMessage.success(t('opusesitematrixdata.k1'))
     } catch (error: unknown) {
-      ElMessage.error((error as Error).message || '站点统计刷新失败')
+      ElMessage.error((error as Error).message || t('opusesitematrixdata.k2'))
     } finally {
       syncing.value = false
       syncProgress.value = null
@@ -267,7 +289,7 @@ export function useSiteMatrixData(props: {
         ElMessage.warning(`该站点 ${res.days} 天内共 ${res.total} 个快照，仅显示最近 ${res.points.length} 个`)
       }
     } catch (error: unknown) {
-      ElMessage.error((error as Error).message || '历史数据加载失败')
+      ElMessage.error((error as Error).message || t('opusesitematrixdata.k3'))
     } finally {
       historyLoading.value = false
     }

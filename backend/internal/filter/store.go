@@ -15,7 +15,7 @@ import (
 )
 
 // reCache 缓存编译后的正则（含 (?i) IGNORECASE）。热路径上每个 pattern 仅编译一次。
-// 对齐 MP-2 _compile_ignorecase 的 lru_cache(1024)。
+// 正则编译缓存 1024 条。
 var reCache sync.Map // pattern(string) → *regexp.Regexp
 
 // astCache 缓存 rule_string 解析后的 AST（组定义不常变，Filter 每组每次重解析纯浪费）。
@@ -162,7 +162,7 @@ func (s *Store) UpdateCustomRule(oldID string, in CustomRuleInput) (Rule, error)
 	return r, nil
 }
 
-// DeleteCustomRule 删除；若被任一规则组引用则拒绝（对齐 MP-2 delete_custom_filter_rule）。
+// DeleteCustomRule 删除；若被任一规则组引用则拒绝。
 func (s *Store) DeleteCustomRule(id string) error {
 	id = strings.TrimSpace(id)
 	groups, err := s.GetGroups()

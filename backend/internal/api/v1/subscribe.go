@@ -5,11 +5,13 @@ package v1
 
 import (
 	"context"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
 
@@ -209,7 +211,7 @@ func (h *SubscribeHandler) Check(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "pushed": n})
 }
 
-// ---- 批量操作（对标 MSaber 订阅批量操作：批量编辑 / 重新搜索 / 取消） ----
+// ---- 批量操作（批量编辑 / 重新搜索 / 取消） ----
 
 // batchReq 批量操作请求。ids 必填；op ∈ update | check | delete。
 // update 的 patch 里仅显式提供的字段会被应用（与单个 Update 语义一致：nil/空=不改）。
@@ -219,8 +221,7 @@ type batchReq struct {
 	Patch *subReq `json:"patch"`
 }
 
-// Batch 批量操作订阅（POST /subscribe/batch）。逐条执行、单条失败不影响其余，
-// 汇总返回成功/失败计数与失败明细（对标 MSaber「逐条执行显示进度，结束后汇总」）。
+// Batch 批量操作订阅（POST /subscribe/batch）：单条失败不影响其余，汇总成败计数与明细。
 func (h *SubscribeHandler) Batch(c *gin.Context) {
 	var in batchReq
 	if err := c.ShouldBindJSON(&in); err != nil {
@@ -237,23 +238,48 @@ func (h *SubscribeHandler) Batch(c *gin.Context) {
 	}
 	var failed []failure
 	succeeded := 0
-	for _, id := range in.IDs {
-		var err error
-		switch in.Op {
-		case "update":
-			err = h.applyPatch(c.Request.Context(), id, in.Patch)
-		case "check":
-			var s *models.Subscription
-			if s, err = h.subCh.Get(id); err == nil {
-				_, err = h.subCh.Check(c.Request.Context(), s)
-			}
-		case "delete":
-			err = h.subCh.Delete(id)
+	if in.Op == "check" {
+		// 批量「检查」并发执行：单个 Check 是一次跨全部启用站点的搜索（秒级），
+		// 原串行 for 勾 20 个订阅前端必超时（axios 15s 上限），重复点击还会叠加
+		// 推送。同一订阅的互斥由 chain 层 per-sub 锁串行化（subscribe_test 覆盖），
+		// 这里只需锁结果聚合。
+		var mu sync.Mutex
+		sem := make(chan struct{}, 8) // 口径同 CheckinAll
+		var wg sync.WaitGroup
+		for _, id := range in.IDs {
+			wg.Add(1)
+			safego.Go("subscribe:batch-check", func() {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				s, err := h.subCh.Get(id)
+				if err == nil {
+					_, err = h.subCh.Check(c.Request.Context(), s)
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				if err != nil {
+					failed = append(failed, failure{ID: id, Error: userErrText(err)})
+					return
+				}
+				succeeded++
+			})
 		}
-		if err != nil {
-			failed = append(failed, failure{ID: id, Error: userErrText(err)})
-		} else {
-			succeeded++
+		wg.Wait()
+	} else { // update/delete 本地 DB 操作：无需并发，保持串行
+		for _, id := range in.IDs {
+			var err error
+			switch in.Op {
+			case "update":
+				err = h.applyPatch(c.Request.Context(), id, in.Patch)
+			case "delete":
+				err = h.subCh.Delete(id)
+			}
+			if err != nil {
+				failed = append(failed, failure{ID: id, Error: userErrText(err)})
+			} else {
+				succeeded++
+			}
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"total": len(in.IDs), "succeeded": succeeded,

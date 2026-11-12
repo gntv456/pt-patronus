@@ -5,7 +5,7 @@ import { ref, watch, type Ref } from 'vue'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
-// 用户偏好跨浏览器同步（对标 MSaber「偏好随账号同步」）：
+// 用户偏好跨浏览器同步：
 // localStorage 即时生效（离线可用），登录后与服务端 /auth/preferences/{key} 双向同步——
 // 本地新于服务端则推，服务端新于本地则拉（简单策略：登录时拉一次覆盖本地缺失域，
 // 之后每次变更 debounce 推送；单账号多浏览器以后写为准）。
@@ -48,8 +48,13 @@ export function useUserPrefs(key: string) {
   const prefs = prefCache[key]
 
   async function loadFromServer() {
-    const auth = useAuthStore()
-    if (!auth.token) return
+    let token: string | null = null
+    try {
+      token = useAuthStore().token
+    } catch {
+      return // 无 active Pinia（单测环境）：沿用本地偏好
+    }
+    if (!token) return
     try {
       const res = await authApi.getPreferences(key)
       const remote = JSON.parse(res.value || '{}')
@@ -64,8 +69,13 @@ export function useUserPrefs(key: string) {
   }
 
   function pushToServer() {
-    const auth = useAuthStore()
-    if (!auth.token) {
+    let token: string | null = null
+    try {
+      token = useAuthStore().token
+    } catch {
+      return // 无 active Pinia（单测环境）：跳过推送
+    }
+    if (!token) {
       // 未登录（token 尚未到位）：记脏标记，登录后由下方 watch 补推。
       dirtyKeys.add(key)
       return
@@ -80,15 +90,21 @@ export function useUserPrefs(key: string) {
   pushFns[key] = pushToServer
 
   // token 从空变有值（登录完成）且该域有脏标记：补推一次（每域只挂一个 watch）。
+  // 无 Pinia 环境（单测直接挂组件、未 app.use(pinia)）跳过挂 watch——该路径只影响
+  // 「未登录期间改动、登录后补推」，测试环境无此场景。
   if (!pushWatched[key]) {
-    const auth = useAuthStore()
     pushWatched[key] = true
-    watch(
-      () => auth.token,
-      (token, prev) => {
-        if (token && !prev && dirtyKeys.has(key)) pushFns[key]()
-      },
-    )
+    try {
+      const auth = useAuthStore()
+      watch(
+        () => auth.token,
+        (token, prev) => {
+          if (token && !prev && dirtyKeys.has(key)) pushFns[key]()
+        },
+      )
+    } catch {
+      /* 无 active Pinia：跳过（见上） */
+    }
   }
 
   function update(patch: Record<string, any>) {

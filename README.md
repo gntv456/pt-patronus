@@ -4,7 +4,7 @@ PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署�
 
 > **版本号单一真源**：后端 `backend/internal/version/version.go`，经 `GET /api/v1/system/info` 暴露（构建时可用 `-ldflags "-X .../version.Version=x.y.z"` 覆盖）；前端（设置·关于）与移动端（账户页）**运行时读取后端版本显示**，各自仅保留离线兜底常量，本 README 不手抄具体版本号（历史上曾滞后）。`pubspec.yaml` 的 `version:` 是发布构建元数据（Android versionCode / iOS build），与显示版本解耦，仅发布时更新。**日常升版只需改后端一处**（`version.go`），重启后端后三端立即生效。
 
-> 架构借鉴 MoviePilot（Chain/Module/Event + Oper）、PT-depiler（站点 Schema/Definition 两层 + 286 站 YAML）、pt_mate（SiteAdapter 接口 + CookieCloud）、qBitController（rid 增量同步）。账号体系为**本地用户名密码**（空库首次登录自动建号并成为管理员），不依赖任何外部站点 VIP 准入。
+> 架构：Chain/Module/Event + Oper 业务编排、站点 Schema/Definition 两层抽象、rid 增量同步。账号体系为**本地用户名密码**（空库首次登录自动建号并成为管理员），不依赖任何外部站点 VIP 准入。
 
 架构与各模块设计见 [README/00-项目总览.md](README/00-项目总览.md) 与 [README/01-架构设计.md](README/01-架构设计.md)。
 
@@ -141,7 +141,7 @@ PT 工具核心价值 = 账号不被封。签到防过期、H&R 防警告、cook
 
 ### 可视化工作流引擎与节点库（已完成 ✅）
 
-节点图工作流引擎（借鉴 MoviePilot：节点+边 JSON、拓扑执行、共享 Context、条件分支、每节点循环重试），触发方式：手动 / 定时(cron) / 事件总线。Web=VueFlow、Flutter 自绘画布，**节点库目录与配置表单均由后端 `/workflows/actions` 动态驱动**——加节点零前端改动。节点 **全部封装已存在的 chain/oper 方法**，非空壳。当前 **59 个节点 / 8 类 / 7 个内置模板**：
+节点图工作流引擎（节点+边 JSON、拓扑执行、共享 Context、条件分支、每节点循环重试），触发方式：手动 / 定时(cron) / 事件总线。Web=VueFlow、Flutter 自绘画布，**节点库目录与配置表单均由后端 `/workflows/actions` 动态驱动**——加节点零前端改动。节点 **全部封装已存在的 chain/oper 方法**，非空壳。当前 **59 个节点 / 8 类 / 7 个内置模板**：
 
 - **资源(8)**：RSS 获取 / 搜索资源 / 跨站搜索 / 种子详情 / 站点数据 / 排序 / 去重 / 择优
 - **过滤(4)**：过滤资源 / 取前 N / 随机抽取（+ 条件分支归逻辑类）

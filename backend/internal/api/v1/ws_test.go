@@ -70,3 +70,60 @@ func TestWS_OriginFailClosedRelease(t *testing.T) {
 		t.Fatal("non-browser (no Origin) must always pass")
 	}
 }
+
+// TestWS_SameOriginAlwaysAllowed same-origin 自动放行：IP 直连、反代域名+非标端口
+// 等自部署主流形态零配置可连（#issue）。即使 release+空白名单（fail-closed）也放行——
+// CSWSH 场景下攻击者页面的 Origin host 永远对不上受害站点的 Host。
+func TestWS_SameOriginAlwaysAllowed(t *testing.T) {
+	h := NewWSHandler(nil, auth.NewTicketStore(), nil, true) // release + 空白名单：最严组合
+	cases := []struct{ name, origin, host string }{
+		{"反代域名+非标端口", "https://ptp.example.xyz:12345", "ptp.example.xyz:12345"},
+		{"IP 直连+端口", "http://192.168.1.10:8088", "192.168.1.10:8088"},
+		{"https 默认端口归一（Origin 省端口）", "https://pt.example.com", "pt.example.com:443"},
+		{"http 默认端口归一（Host 带显式 80）", "http://pt.example.com:80", "pt.example.com"},
+		{"host 大小写不敏感", "https://PT.Example.COM:12345", "pt.example.com:12345"},
+		{"IPv6 直连", "http://[::1]:8088", "[::1]:8088"},
+	}
+	for _, c := range cases {
+		req := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+		req.Header.Set("Origin", c.origin)
+		req.Host = c.host
+		if !h.checkOrigin(req) {
+			t.Errorf("%s: same-origin 被拒 origin=%s host=%s", c.name, c.origin, c.host)
+		}
+	}
+}
+
+// TestWS_CrossOriginStillRejected 跨域来源（host 对不上）在 release+空白名单下仍全拒，
+// 且配置白名单后仅放行命中项——same-origin 分支不能成为跨域旁路。
+func TestWS_CrossOriginStillRejected(t *testing.T) {
+	empty := NewWSHandler(nil, auth.NewTicketStore(), nil, true)
+	req := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	req.Host = "pt.example.com:12345"
+	if empty.checkOrigin(req) {
+		t.Fatal("cross-origin must stay rejected with empty whitelist in release")
+	}
+
+	wl := NewWSHandler(nil, auth.NewTicketStore(), []string{"https://allowed.example"}, true)
+	ok := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	ok.Header.Set("Origin", "https://allowed.example")
+	ok.Host = "pt.example.com:12345"
+	if !wl.checkOrigin(ok) {
+		t.Fatal("whitelisted cross-origin must pass")
+	}
+	bad := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	bad.Header.Set("Origin", "https://other.example")
+	bad.Host = "pt.example.com:12345"
+	if wl.checkOrigin(bad) {
+		t.Fatal("non-whitelisted cross-origin must be rejected")
+	}
+	// debug 模式空白名单：跨域放行（旧行为保持）
+	dbg := NewWSHandler(nil, auth.NewTicketStore(), nil, false)
+	d := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	d.Header.Set("Origin", "https://evil.example")
+	d.Host = "pt.example.com:12345"
+	if !dbg.checkOrigin(d) {
+		t.Fatal("debug + empty whitelist: cross-origin should stay permissive (legacy behavior)")
+	}
+}

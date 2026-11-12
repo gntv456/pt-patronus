@@ -35,7 +35,7 @@ func (h *TransferHandler) SetSharedRepos(c *gin.Context) {
 }
 
 // FetchSharedRepo POST /transfer/identify-words/repos/preview —— 拉取仓库词表预览
-// （不落库：先看会合并进哪些新词，确认后再导入；与 MSaber「云端协作共享」同流程）。
+// （不落库：先看会合并进哪些新词，确认后再导入）。
 func (h *TransferHandler) FetchSharedRepo(c *gin.Context) {
 	var in struct {
 		URL string `json:"url" binding:"required,url"`

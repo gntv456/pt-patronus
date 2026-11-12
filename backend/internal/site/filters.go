@@ -181,7 +181,7 @@ func ApplyFilters(raw string, fs []Filter) string {
 			}
 			s = strconv.FormatFloat(total, 'f', -1, 64)
 		case "queryparam":
-			// args=参数名；从 s（URL/含 query 串）取该参数值（替代 PT-depiler querystring filter）。
+			// args=参数名；从 s（URL/含 query 串）取该参数值。
 			s = queryParam(s, f.Args)
 		case "parse_time":
 			// 解析时间串为 YYYY-MM-DD；支持 ISO/常见绝对格式与相对时间，无法识别保留原值。

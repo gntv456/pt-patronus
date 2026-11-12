@@ -15,7 +15,7 @@ import (
 )
 
 // FilterRuleHandler 处理资源过滤规则的 CRUD / 全局绑定 / 规则测试。
-// 对标 MoviePilot-2 app/modules/filter + agent/tools/impl/*filter_rule*。
+// 规则模型见 internal/filter。。
 type FilterRuleHandler struct {
 	store *filter.Store
 	eng   *filter.Engine

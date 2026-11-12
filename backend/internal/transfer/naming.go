@@ -11,7 +11,7 @@ import (
 	"text/template"
 )
 
-// namingCtx 是命名模板的上下文（对齐 MP 的 RENAME_FORMAT 变量集，精简）。
+// namingCtx 是命名模板的上下文（精简版变量集）。
 type namingCtx struct {
 	Title         string
 	Year          int

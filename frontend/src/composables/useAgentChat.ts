@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, nextTick, onUnmounted } from 'vue'
+import { i18n } from '@/i18n'
 import { agentApi, streamAgentChat, type AgentConversation, type AgentMessage } from '@/api/agent'
 
 // 渲染分组类型：把 user/assistant/tool 还原成展示单元。
@@ -20,6 +21,9 @@ export type Unit = { id: string; data: Bubble | ToolStep }
 // AI 助手会话与流式聊天逻辑：会话列表、消息加载、渲染分组、流式发送/停止、危险工具二次确认。
 // 抽出为 composable 收敛 Assistant.vue 脚本体积。
 // 需传入 scroller 的 ref getter 以实现自动滚动到底；ElMessage / ElMessageBox 依赖 unplugin-auto-import。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function useAgentChat(getScroller: () => HTMLElement | null) {
   // —— 会话 ——
   const conversations = ref<AgentConversation[]>([])
@@ -49,7 +53,7 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
       }
       if (!activeId.value && conversations.value.length) await selectConversation(conversations.value[0].id)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载会话失败')
+      ElMessage.error((e as Error).message || t('opuseagentchat.k1'))
     }
   }
   // 会话消息请求序号：快速连续切会话时丢弃过期响应，避免旧会话消息串进新会话。
@@ -66,7 +70,7 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
       scrollToBottom()
     } catch (e: unknown) {
       if (seq !== msgSeq || activeId.value !== id) return
-      ElMessage.error((e as Error).message || '加载消息失败')
+      ElMessage.error((e as Error).message || t('opuseagentchat.k2'))
     } finally {
       if (seq === msgSeq) loadingMsgs.value = false
     }
@@ -78,14 +82,14 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
   }
   async function deleteConversation(id: number) {
     try {
-      await ElMessageBox.confirm('删除该会话？', '确认', { type: 'warning' })
+      await ElMessageBox.confirm(t('opuseagentchat.k3'), t('common.confirm'), { type: 'warning' })
     } catch {
       return
     }
     try {
       await agentApi.deleteConversation(id)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除会话失败')
+      ElMessage.error((e as Error).message || t('opuseagentchat.k4'))
       return
     }
     if (activeId.value === id) newConversation()
@@ -236,9 +240,9 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
     let approved = false
     try {
       await ElMessageBox.confirm(
-        `${d.summary || 'AI 想执行一个不可逆操作'}\n工具：${d.name}${args}`,
-        '⚠️ 危险操作确认',
-        { type: 'warning', confirmButtonText: '允许执行', cancelButtonText: '拒绝', distinguishCancelAndClose: true },
+        `${d.summary || t('opuseagentchat.k5')}\n工具：${d.name}${args}`,
+        t('opuseagentchat.k6'),
+        { type: 'warning', confirmButtonText: t('opuseagentchat.k7'), cancelButtonText: t('opuseagentchat.k8'), distinguishCancelAndClose: true },
       )
       approved = true
     } catch {
@@ -247,7 +251,7 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
     try {
       if (activeId.value) await agentApi.confirmDecision(activeId.value, d.id, approved)
     } catch (e: unknown) {
-      ElMessage.error('确认回传失败：' + ((e as Error).message || ''))
+      ElMessage.error(t('opuseagentchat.k9') + ((e as Error).message || ''))
     }
   }
 

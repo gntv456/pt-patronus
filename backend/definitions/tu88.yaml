@@ -1,4 +1,3 @@
-# tu88 — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 
 description: 僅分享圖片,適合手機平板PT客戶端直接下載

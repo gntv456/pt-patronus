@@ -4,6 +4,7 @@
 // Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
 // 依赖: pluginApi + ElMessage/ElMessageBox + pluginsHelpers。
 import { computed, h, onMounted, ref, watch, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { usePluginMarketOps } from './usePluginMarketOps'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -58,6 +59,9 @@ export interface UsePluginsOptions {
   openPluginView: (p: PluginInfo, view: PluginViewContribution) => void
 }
 
+
+const t = (k: string) => i18n.global.t(k)
+
 export function usePlugins(options: UsePluginsOptions) {
   const plugins = ref<PluginInfo[]>([])
   const logs = ref<PluginLog[]>([])
@@ -77,7 +81,7 @@ export function usePlugins(options: UsePluginsOptions) {
   const configVisible = ref(false)
   const configTarget = ref<PluginInfo | null>(null)
   const configForm = ref<Record<string, any>>({})
-  // 配置弹窗折叠面板当前展开的分组名(默认全展开,对标 MoviePilot)。
+  // 配置弹窗折叠面板当前展开的分组名(默认全展开)。
   const configExpanded = ref<string[]>([])
   const savingConfig = ref(false)
 
@@ -143,7 +147,7 @@ export function usePlugins(options: UsePluginsOptions) {
       plugins.value = (await pluginApi.list()).map(normalizePlugin)
       await loadLogs()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载插件失败')
+      ElMessage.error((e as Error).message || t('opuseplugins.k1'))
     } finally {
       loading.value = false
     }
@@ -158,7 +162,7 @@ export function usePlugins(options: UsePluginsOptions) {
       const notice = pluginLogsNotice({ shown: page.logs.length, total: page.total, truncated: page.truncated })
       if (notice) ElMessage.warning(notice)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载插件日志失败')
+      ElMessage.error((e as Error).message || t('opuseplugins.k2'))
     } finally {
       logsLoading.value = false
     }
@@ -183,7 +187,7 @@ export function usePlugins(options: UsePluginsOptions) {
       // 不传 source → 后端聚合全部已配置市场源
       market.value = normalizeMarket(await pluginApi.market())
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载插件市场失败')
+      ElMessage.error((e as Error).message || t('opuseplugins.k3'))
     } finally {
       marketLoading.value = false
     }
@@ -230,7 +234,7 @@ export function usePlugins(options: UsePluginsOptions) {
   function openConfig(p: PluginInfo) {
     configTarget.value = p
     configForm.value = { ...defaultsFromSchema(p.config_schema), ...(p.config || {}) }
-    // 默认展开所有有标题分组(对标 MP:全部可见、可手动收起)。
+    // 默认展开所有有标题分组(默认全部可见、可手动收起)。
     configExpanded.value = configGroups(p.config_schema)
       .filter((g) => g.name)
       .map((g) => g.name)
@@ -257,10 +261,10 @@ export function usePlugins(options: UsePluginsOptions) {
     try {
       await pluginApi.saveConfig(configTarget.value.id, configForm.value)
       configVisible.value = false
-      ElMessage.success('配置已保存')
+      ElMessage.success(t('opuseplugins.k4'))
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || t('common.saveFailed'))
     } finally {
       savingConfig.value = false
     }
@@ -288,7 +292,7 @@ export function usePlugins(options: UsePluginsOptions) {
       try {
         input = JSON.parse(actionInputText.value || '{}')
       } catch {
-        ElMessage.warning('动作输入不是合法 JSON')
+        ElMessage.warning(t('opuseplugins.k5'))
         return
       }
     }
@@ -296,10 +300,10 @@ export function usePlugins(options: UsePluginsOptions) {
     try {
       const res = await pluginApi.action(actionTarget.value.id, actionSpec.value.name, input)
       actionOutput.value = JSON.stringify(res.output || {}, null, 2)
-      ElMessage.success('动作执行完成')
+      ElMessage.success(t('opuseplugins.k6'))
       await loadLogs()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '动作执行失败')
+      ElMessage.error((e as Error).message || t('opuseplugins.k7'))
     } finally {
       actionRunning.value = false
     }
@@ -312,10 +316,10 @@ export function usePlugins(options: UsePluginsOptions) {
         message: '插件测试事件',
         at: new Date().toISOString(),
       })
-      ElMessage.success('测试事件已发布')
+      ElMessage.success(t('opuseplugins.k8'))
       setTimeout(loadLogs, 300)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '发布失败')
+      ElMessage.error((e as Error).message || t('opuseplugins.k9'))
     }
   }
 

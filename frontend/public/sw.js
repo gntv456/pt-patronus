@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // PWA Service Worker：仅做「安装到桌面」+ 基础离线壳（cache-first 静态资源，API 永不缓存）。
-// 版本号变更时 bump CACHE 以触发旧缓存清理。对标 MoviePilot WebPush/PWA 体验。
+// 版本号变更时 bump CACHE 以触发旧缓存清理。
 const CACHE = 'ptpatronus-pwa-v1'
 
 self.addEventListener('install', (event) => {

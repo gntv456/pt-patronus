@@ -46,7 +46,7 @@ func (b *lsblkBool) UnmarshalJSON(data []byte) error {
 }
 
 // diskBlockDevice 对应 lsblk 输出中的一个块设备节点（磁盘或分区）。
-// 与 1Panel 磁盘管理对齐：系统盘/未分区/普通盘三类，含分区、文件系统、挂载点等。
+// 系统盘/未分区/普通盘三类，含分区、文件系统、挂载点等。
 type diskBlockDevice struct {
 	Name       string            `json:"name"`                 // 内核设备名 sda / sda1 / nvme0n1
 	Path       string            `json:"path"`                 // /dev/sda
@@ -110,7 +110,7 @@ type diskPartition struct {
 	UsagePercent float64 `json:"usage_percent,omitempty"`
 }
 
-// diskPartitionRequest 分区并格式化请求体（对应 1Panel"分区并挂载"）。
+// diskPartitionRequest 分区并格式化请求体（分区并挂载）。
 type diskPartitionRequest struct {
 	Device      string `json:"device" binding:"required"`     // /dev/sdb（整盘）
 	FSType      string `json:"fstype" binding:"required"`     // ext4 | xfs

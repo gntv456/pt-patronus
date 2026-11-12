@@ -3,7 +3,7 @@
 
 // Package transfer —— 目录同步任务：本地目录间按 硬链/软链/复制/移动/STRM 同步。
 //
-// 对标 MSaber 目录同步。任务持久化（SystemConfig transfer.dir_sync）+ 手动触发执行
+// 任务持久化（SystemConfig transfer.dir_sync）+ 手动触发执行
 // （cron 由 scheduler 挂接，见 app_cron）。过滤：扩展名白名单（媒体默认）。
 package transfer
 

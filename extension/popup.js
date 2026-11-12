@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isConfigured(cfg)) loadHome(cfg)
   renderQuick(cfg)
 
-  // 启动时带入当前选中词（对标 MP「快速搜索选中关键词」）。
+  // 启动时带入当前选中词。
   const sel = (await currentSelection()).trim()
   if (sel) {
     $('keyword').value = sel.slice(0, 200)

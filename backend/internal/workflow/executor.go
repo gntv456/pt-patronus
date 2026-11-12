@@ -132,7 +132,7 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 			continue
 		}
 
-		// 每节点循环（参考 MoviePilot loop/loop_interval）：loop=true 时按 loop_times 重试，成功即停。
+		// 每节点循环（
 		runOnce := func() (runErr error) {
 			octx, ocancel := context.WithTimeout(ctx, nodeExecutionTimeout(gnode.Params))
 			defer ocancel()

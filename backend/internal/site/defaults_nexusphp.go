@@ -121,7 +121,7 @@ func DefaultNexusPHPUserInfo() UserInfoDef {
 					`td[class*="rowhead"]:contains("用戶名") + td`,
 				},
 			},
-			// 魔力/积分与上传/下载/分享率兜底（PT-depiler 方案：统计行在 userdetails.php
+			// 魔力/积分与上传/下载/分享率兜底（统计行在 userdetails.php
 			// rowhead 的站从此处补抓）。锚点对齐 NexusPHP 官方语言包 row_karma_points +
 			// 常见货币别名；ParseUserDetail 只补基础页缺失的统计，不覆盖已得值。
 			// seeding/seeding_size 不在此默认：它们由 fillSeedingFromDetail 同源补齐

@@ -125,7 +125,7 @@ func TestNexusPHPFetchPTSBaoPTSKITPTTimePTZoneUserInfoFromMigratedDefinitions(t 
 					case "seeding":
 						// PTTime 的 getusertorrentlist.php 用 #outer>span 聚合格式（非标准 ajax），
 						// 子元素序：h1 / span(用户名) / span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...
-						// 对应 PT-depiler #outer > span:nth-child(3)（做种数）/ :nth-child(4)（做种体积）。
+						// 对应 #outer > span:nth-child(3)（做种数）/ :nth-child(4)（做种体积）。
 						// 其余 NexusPHP 站走标准 ajax「N | SIZE」汇总。
 						if tc.id == "pttime" {
 							_, _ = w.Write([]byte(fmt.Sprintf(

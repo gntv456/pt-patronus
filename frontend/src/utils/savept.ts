@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// PT监护室前端工具函数：从 MoviePilot savept 插件迁移并适配 PTPatronus Go 契约。
+// PT监护室前端工具函数，适配 PTPatronus Go 契约。
 // 主要差异：mp 状态从 match_type 派生（后端不冗余 mp_status）；alert type(danger/obituary/
 // warning/info/celebration) 映射到 4 个公告分区(critical/success/info/error)。
 import type { AlertType, MatchType, SaveptAlert, SaveptSiteCard, SiteHealthStatus } from '@/api/savept'

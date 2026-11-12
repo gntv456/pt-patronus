@@ -16,7 +16,7 @@ const categoryConfigKey = "transfer.categories"
 
 // CategoryRule 单条分类匹配条件。所有非空字段为 AND（同时满足）；任一字段支持 "!" 前缀表排除。
 // 适配 PTPatronus MediaInfo 可用字段：Genres（类型名）/Countries（国家代码或名）/Year。
-// （MP-2 用 TMDB genre_ids + original_language，本仓库 MediaInfo 不含这两项，故按名匹配；
+// （按名匹配（MediaInfo 不含 genre_ids/original_language 两项；
 // 常见分类——动漫/华语/日剧/韩剧/欧美剧——按 genre 名 + 国家即可覆盖。）
 type CategoryRule struct {
 	Genres    []string `json:"genres,omitempty"`    // 任一命中即可（OR）；"!X" 表不得含 X
@@ -44,7 +44,7 @@ func (c CategoryConfig) rulesFor(typ media.MediaType) []NamedRule {
 	return c.Movie
 }
 
-// DefaultCategoryConfig 出厂规则（参考 MP-2 category.yaml，按 MediaInfo 可匹配字段精简）。
+// DefaultCategoryConfig 出厂规则（
 // 顺序即优先级：动漫优先于按国家分类，避免日本动画被分进日剧。
 func DefaultCategoryConfig() CategoryConfig {
 	return CategoryConfig{

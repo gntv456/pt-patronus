@@ -5,6 +5,7 @@
 // 依赖注入：sshTargets（SSH 主机列表 computed）/ focusExecPanel（执行面板滚动回调，组件持有）。
 // commandRuns / execTargetIds 等由本 composable 持有并 return；loadAll / 部署簇用解构回的 ref。
 import { ref, computed, type ComputedRef } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { commandRunApi, type CommandRun, type MonitorTarget } from '@/api/monitor'
 import { useAuthStore } from '@/stores/auth'
@@ -16,6 +17,9 @@ import {
   type ExecLog,
   type ExecStatus,
 } from './nasServerHelpers'
+
+
+const t = (k: string, params?: Record<string, unknown>) => i18n.global.t(k, params ?? {})
 
 export function useCommandExec(sshTargets: ComputedRef<MonitorTarget[]>, focusExecPanel: () => void) {
   const auth = useAuthStore()
@@ -72,7 +76,7 @@ export function useCommandExec(sshTargets: ComputedRef<MonitorTarget[]>, focusEx
     input.value = ''
     if (!file) return
     if (file.size > 256 * 1024) {
-      ElMessage.warning('脚本文件不能超过 256KB')
+      ElMessage.warning(t('opusecommandexec.k1'))
       return
     }
     execCommand.value = await file.text()
@@ -84,21 +88,21 @@ export function useCommandExec(sshTargets: ComputedRef<MonitorTarget[]>, focusEx
     if (risk.level === 'high') {
       await ElMessageBox.prompt(
         `检测到高风险操作：${risk.reason}。将在 ${targetCount} 台服务器执行${sourceText}，请输入“我确认”继续。`,
-        '高风险确认',
+        t('opusecommandexec.k2'),
         {
           type: 'error',
-          confirmButtonText: '确认执行',
-          cancelButtonText: '取消',
+          confirmButtonText: t('opusecommandexec.k3'),
+          cancelButtonText: t('common.cancel'),
           inputPattern: /^我确认$/,
-          inputErrorMessage: '请输入：我确认',
+          inputErrorMessage: t('opusecommandexec.k4'),
         },
       )
       return
     }
     await ElMessageBox.confirm(
-      `将在 ${targetCount} 台服务器执行${sourceText}${risk.level === 'medium' ? `，风险提示：${risk.reason}` : ''}，请确认。`,
-      risk.level === 'medium' ? '风险命令确认' : '批量执行',
-      { type: risk.level === 'medium' ? 'warning' : 'info', confirmButtonText: '开始执行', cancelButtonText: '取消' },
+      t('opusecommandexec.execConfirm', { n: targetCount, source: sourceText, risk: risk.level === 'medium' ? t('opusecommandexec.riskNote', { reason: risk.reason }) : '' }),
+      risk.level === 'medium' ? t('opusecommandexec.k5') : t('opusecommandexec.k6'),
+      { type: risk.level === 'medium' ? 'warning' : 'info', confirmButtonText: t('opusecommandexec.k7'), cancelButtonText: t('common.cancel') },
     )
   }
 
@@ -115,16 +119,16 @@ export function useCommandExec(sshTargets: ComputedRef<MonitorTarget[]>, focusEx
 
   async function runBatchCommand(source = 'batch', note = '') {
     if (!auth.isAdmin) {
-      ElMessage.warning('只有管理员可以执行命令')
+      ElMessage.warning(t('opusecommandexec.k8'))
       return
     }
     const command = execCommand.value.trim()
     if (!command) {
-      ElMessage.warning('请输入要执行的命令')
+      ElMessage.warning(t('opusecommandexec.k9'))
       return
     }
     if (!selectedExecTargets.value.length) {
-      ElMessage.warning('请选择 SSH 主机')
+      ElMessage.warning(t('opusecommandexec.k10'))
       return
     }
     const startedTargets = [...selectedExecTargets.value]

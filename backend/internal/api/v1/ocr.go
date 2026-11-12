@@ -15,7 +15,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/ocr"
 )
 
-// OCRHandler OCR 服务配置（对标 MSaber OCR 周边服务）：读写 SystemConfig 的
+// OCRHandler OCR 服务配置：读写 SystemConfig 的
 // ocr.endpoint / ocr.api_key / ocr.mode。登录验证码自动识别用；未配置时回退人工输入。
 type OCRHandler struct {
 	cfgOp systemConfigGetter

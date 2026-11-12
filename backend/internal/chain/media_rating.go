@@ -130,7 +130,7 @@ type ratingCacheEntry struct {
 // 用于「订阅低分保护」与「媒体质量」预览页。外部源查询失败静默跳过（不阻断聚合）；
 // 但全部源失败时返回错误（调用方 fail-open 放行 + 短 TTL 后重试），不得混入
 // 「查询成功但无评分」的摘要（后者 Passed=false 是真实闸门判定）。
-// mtype: "" / "movie" / "tv"，透传给各源做类型过滤（参考 media.TypeMatches）。
+// mtype: "" / "movie" / "tv"，透传给各源做类型过滤（同 media.TypeMatches）。
 func (c *MediaChain) AggregatedRating(ctx context.Context, title string, year int, mtype string) (*RatingSummary, error) {
 	key := strings.ToLower(strings.TrimSpace(title)) + "|" + strconv.Itoa(year) + "|" + mtype
 

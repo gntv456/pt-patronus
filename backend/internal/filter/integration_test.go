@@ -169,7 +169,7 @@ func contains(s []string, v string) bool {
 }
 
 // TestSitePriorityTieBreak 站点优先级参与择优：同层（PriOrder 相同）候选按来源站
-// Priority 降序稳定排序（对齐 MP 站点优先级择优）；不同层仍以 PriOrder 为准。
+// Priority 降序稳定排序（站点优先级择优）；不同层仍以 PriOrder 为准。
 func TestSitePriorityTieBreak(t *testing.T) {
 	store := setupTestStore(t)
 	eng := NewEngine(store)

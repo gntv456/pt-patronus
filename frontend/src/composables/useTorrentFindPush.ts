@@ -6,6 +6,7 @@
  * 行为不变：打开→加载下载器→选默认→推送→显示成功态→可跳下载器任务。
  */
 import { ref, computed, watch } from 'vue'
+import { i18n } from '@/i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { downloaderApi, type Downloader } from '@/api/downloader'
@@ -14,6 +15,8 @@ import type { FindRow } from '@/components/SiteTorrentFindDialog.vue'
 function openDetail(row: FindRow) {
   if (row.detail_url) window.open(row.detail_url, '_blank', 'noopener')
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useTorrentFindPush(title: () => string) {
   const router = useRouter()
@@ -59,7 +62,7 @@ export function useTorrentFindPush(title: () => string) {
         openDetail(r)
         return
       }
-      ElMessage.warning('该站点暂不支持直接下载')
+      ElMessage.warning(t('opusetorrentfindpush.k1'))
       return
     }
     row.value = r
@@ -76,13 +79,13 @@ export function useTorrentFindPush(title: () => string) {
     try {
       downloaders.value = await downloaderApi.list()
       if (!downloaders.value.length) {
-        ElMessage.warning('请先在「下载器」添加一个')
+        ElMessage.warning(t('opusetorrentfindpush.k2'))
       } else {
         const def = downloaders.value.find((d) => d.is_default)
         selectedDl.value = def ? def.id : downloaders.value[0].id
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载下载器失败')
+      ElMessage.error((e as Error).message || t('opusetorrentfindpush.k3'))
     } finally {
       loading.value = false
     }
@@ -99,14 +102,14 @@ export function useTorrentFindPush(title: () => string) {
         paused: paused.value || undefined,
       })
       if (r.ok) {
-        ElMessage.success(`已推送到 ${dl?.name ?? '下载器'}`)
+        ElMessage.success(`已推送到 ${dl?.name ?? t('opusetorrentfindpush.k4')}`)
         pushedDlName.value = dl?.name ?? '下载器'
         pushedDlId.value = selectedDl.value
       } else {
-        ElMessage.warning(r.error || '推送失败')
+        ElMessage.warning(r.error || t('opusetorrentfindpush.k5'))
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '推送失败')
+      ElMessage.error((e as Error).message || t('opusetorrentfindpush.k5'))
     } finally {
       loading.value = false
     }

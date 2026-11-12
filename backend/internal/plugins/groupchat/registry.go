@@ -9,7 +9,7 @@ var registry []Handler
 func register(h Handler) { registry = append(registry, h) }
 
 // Dispatch 返回首个 Match 命中的 handler；无匹配返回 nil。
-// 引擎层调用此函数完成"站 → handler"派发(对标原版 get_site_handler 线性扫描)。
+// 引擎层调用此函数完成"站 → handler"派发(线性扫描派发)。
 func Dispatch(s SiteRef) Handler {
 	for _, h := range registry {
 		if h.Match(s) {

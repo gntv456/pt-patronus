@@ -328,7 +328,7 @@ func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 
 // Direct 302 直链改写（公开：GET /mediaserver/:id/direct/*path）。
 // 读取服务器配置，开启直链则 302 到 {DirectLinkBase}/{path}；未开启返 404。
-// 不泄露 Token——仅做静态 URL 改写，让播放器直连高带宽 CDN（对标 Emby 302 反代直链）。
+// 不泄露 Token——仅做静态 URL 改写，让播放器直连高带宽 CDN（302 反代直链）。
 func (h *MediaServerHandler) Direct(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {

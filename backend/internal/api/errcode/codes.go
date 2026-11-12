@@ -285,6 +285,10 @@ var (
 	// 报 500 会让用户以为存储坏了，报 200 又谎称删除成功。
 	FileNotFound       = New("file_not_found", errtext.FileMissing, http.StatusNotFound)
 	ComposeWriteFailed = New("compose_write_failed", "写入 compose 文件失败", http.StatusInternalServerError)
+	// compose 动作（up/down/restart/pull）执行失败：CLI 的 stdout/stderr 原文经
+	// RespondWithFields 的 output 字段下发（前端展示在输出面板）；原 HTTP 200+ok:false
+	// 形态会让通用拦截器把失败当成功，且英文原文直出。
+	ComposeActionFailed = New("compose_action_failed", "compose 动作失败", http.StatusInternalServerError)
 
 	// —— PR-6 五批（收尾）：散字面量按域归并 ——
 	BackupFileInvalid    = New("backup_file_invalid", "请上传 .ptd 备份文件", http.StatusBadRequest)

@@ -10,7 +10,7 @@ import { useI18n } from 'vue-i18n'
  *  - 种子：跨站 SSE 流式聚合 + 前端筛选排序；结果表/失败容错见 TorrentResultsTable；
  *    下载推送见 SearchPushDialog；详情抽屉见 TorrentDetailDrawer。
  *  - 影视：豆瓣/TMDB/Bangumi 元数据 + 海报卡片（MediaResultsGrid）。后端默认按 movie+tv 过滤，
- *    不含音乐（与 MoviePilot 媒体搜索一致）。
+ *    不含音乐。
  * 本文件仅做编排：搜索状态/请求 + 生命周期 + 顶部搜索栏，具体 UI 拆到子组件。
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
@@ -169,7 +169,7 @@ async function openTorrentDetail(row: { site_id: number; detail_url?: string }) 
 const mediaResults = ref<MediaInfo[]>([])
 const year = ref<number | undefined>(undefined)
 
-// 卡片点击 → 进入媒体详情页（对标 MoviePilot），不再跳外站。
+// 卡片点击 → 进入媒体详情页，不再跳外站。
 function openMediaDetail(m: MediaInfo) {
   router.push({ path: '/media-detail', query: { source: m.source, id: m.source_id } })
 }

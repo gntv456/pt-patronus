@@ -393,7 +393,7 @@ func TestGazelleJSONAPIRedactedDefinitionCommunityStatsSeedingSize(t *testing.T)
 	}
 }
 
-// TestGazelleJSONAPIAuthFailure：status:failure + 鉴权类 error → ErrNotLoggedIn（改进 PT-depiler 静默返空）。
+// TestGazelleJSONAPIAuthFailure：status:failure + 鉴权类 error → ErrNotLoggedIn（不静默返空）。
 func TestGazelleJSONAPIAuthFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

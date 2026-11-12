@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// 奖励类型 → emoji(对标原版 NotificationIcons)。
+// 奖励类型 → emoji(NotificationIcons 映射)。
 var rewardIcons = map[string]string{
 	"上传量":  "⬆️",
 	"下载量":  "⬇️",
@@ -57,7 +57,7 @@ type ReportInput struct {
 	ZhImengNext *time.Time // 织梦下次预计时间(展示倒计时用)，nil 不显示
 }
 
-// ComposeReport 组合"全报告"模式通知正文(对标原版 _send_notification 默认分支)。
+// ComposeReport 组合"全报告"模式通知正文(默认「全报告」分支)。
 func ComposeReport(in ReportInput) string {
 	var b strings.Builder
 	var siteNames []string
@@ -122,7 +122,7 @@ func ComposeReport(in ReportInput) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-// ComposeRetryNotice 重试排程通知(对标原版 _send_retry_notification)。
+// ComposeRetryNotice 重试排程通知(重试排程通知)。
 func ComposeRetryNotice(failed []FailedMessage, next time.Time) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "🔄 喊话失败将重试\n下次重试：%s\n失败 %d 条：\n", next.Format("15:04:05"), len(failed))

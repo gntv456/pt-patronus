@@ -1,4 +1,4 @@
-# ehentai — 搜索 selector 已按 PT-depiler 结构迁移，并由 GenericHTML mock 覆盖；torrent 弹窗下载仍建议 live smoke。
+# ehentai — 搜索 selector 已按 上游定义 结构迁移，并由 GenericHTML mock 覆盖；torrent 弹窗下载仍建议 live smoke。
 
 aka:
     - EH

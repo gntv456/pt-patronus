@@ -221,4 +221,4 @@ func myanonamouseSizeSum(raw string, keys ...string) int64 {
 }
 
 // relativeTimeTokenRe 英文相对时间片段：N min(s)/hour(s)/day(s)/week(s)。
-// 支持 "1.5 hours ago"、"1 hour and 50 minutes ago" 等 PT-depiler parseTTL 常见输出。
+// 支持 "1.5 hours ago"、"1 hour and 50 minutes ago" 等 常见相对时间输出。

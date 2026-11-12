@@ -10,9 +10,12 @@
 package chain
 
 import (
+	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -55,5 +58,26 @@ func BuildSiteStat(siteID uint, ui *site.UserInfo) *models.SiteStat {
 func (c *DashboardChain) recordStat(st *models.Site, ui *site.UserInfo) {
 	if err := c.db.Create(BuildSiteStat(st.ID, ui)).Error; err != nil {
 		slog.Warn("dashboard record stat failed", "site", st.Name, "err", err)
+	}
+}
+
+// syncSiteStat 抓单站统计并落快照（成功/失败都记 bizmetrics 与日志），并推进
+// 全站同步进度（失败也计入：同步不因单站失败中断，进度条必须能走满）。
+// 从 SyncAll 内联抽出：并发化后每站的「抓取+落库+进度」自成一个单元。
+func (c *DashboardChain) syncSiteStat(
+	ctx context.Context, st *models.Site, total int, done *atomic.Int64,
+) {
+	ui, err := c.siteCh.UserInfo(ctx, st)
+	if err != nil {
+		bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
+		slog.Warn("dashboard sync site failed", "site", st.Name, "err", err)
+	} else {
+		bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
+		c.recordStat(st, ui)
+		slog.Info("dashboard synced", "site", st.Name,
+			"uploaded", ui.Uploaded, "ratio", ui.Ratio)
+	}
+	if c.emitProgress != nil {
+		c.emitProgress(int(done.Add(1)), total, st.Name)
 	}
 }

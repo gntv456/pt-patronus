@@ -2,10 +2,13 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { computed, ref, watch } from 'vue'
+import { i18n } from '@/i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { mediaApi, type MediaInfo, type CreditPerson, type CelebrityProfile } from '@/api/media'
 import { subscribeApi } from '@/api/subscribe'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useMediaDetail() {
   const route = useRoute()
@@ -74,9 +77,9 @@ export function useMediaDetail() {
         category: detail.value.type === 'tv' ? 'tv' : 'movie',
         poster_url: detail.value.poster_url,
       })
-      ElMessage.success('已订阅，将自动搜索并下载到默认下载器')
+      ElMessage.success(t('opusemediadetail.k1'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '订阅失败')
+      ElMessage.error((e as Error).message || t('opusemediadetail.k2'))
     } finally {
       subscribing.value = false
     }
@@ -100,7 +103,7 @@ export function useMediaDetail() {
     try {
       celProfile.value = await mediaApi.celebrity(detail.value.source, p.id)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载演员简介失败')
+      ElMessage.error((e as Error).message || t('opusemediadetail.k3'))
       celVisible.value = false
     } finally {
       celLoading.value = false

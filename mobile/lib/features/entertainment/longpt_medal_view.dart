@@ -237,7 +237,8 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
           child: Stack(clipBehavior: Clip.none, children: [
             Center(
               child: n.imageUrl.isNotEmpty
-                  ? Image.network(n.imageUrl, width: 48, height: 48, color: n.owned ? null : Colors.grey, errorBuilder: (_, _, _) => Text('☯', style: TextStyle(fontSize: 32, color: context.dimText)))
+                  // 未拥有滤镜用 dimText（Colors.grey 固定色在暗色下对比度差）
+                  ? Image.network(n.imageUrl, width: 48, height: 48, color: n.owned ? null : context.dimText.withValues(alpha: 0.6), errorBuilder: (_, _, _) => Text('☯', style: TextStyle(fontSize: 32, color: context.dimText)))
                   : Text('☯', style: TextStyle(fontSize: 32, color: context.dimText)),
             ),
             if (n.owned)

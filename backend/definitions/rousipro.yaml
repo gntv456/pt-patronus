@@ -1,4 +1,3 @@
-# rousipro — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: rousi。2026-08 站点已重构为 PeerGo（rousi.pro 同域）：适配器先走 PeerGo
 # /api/v1/torrents（query/category/limit/offset，匿名可搜）+ /api/v1/me/profile|economy
 # （会话 cookie 认证），旧版 Bearer passkey /api/v1/search|profile 端点 404 时自动回退。

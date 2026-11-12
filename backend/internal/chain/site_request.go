@@ -16,7 +16,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-// ---- 站点求种请求（对标 MSaber「站点请求」模块） ----
+// ---- 站点求种请求 ----
 
 // RequestResult 单站求种列表抓取结果。
 type RequestResult struct {

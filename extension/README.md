@@ -1,6 +1,6 @@
 # PTPatronus 浏览器扩展（Chrome / Edge MV3）
 
-对标 PT-depiler、MoviePilot-Tools、MSaber、CookieCloud：跨站流式搜索、站点数据仪表（JSON/CSV/PNG 导出）、下载任务管理（剩余空间）、Cookie 台账（多域名归并 + 状态筛选）、TOTP 验证器 + 加密备份、本地凭据库（Bitwarden 导入 + 登录页自动填充）、AI 助手（LLM 网关流式对话）、插件管理（启停 + 视图嵌入）、WebDAV 全量备份、CookieCloud 协议互通、跨站收藏与下载历史、隐私模式、拖放链接衔接、豆瓣/IMDb 注入、omnibox。
+浏览器扩展（配套 PTPatronus，兼容 CookieCloud 协议）：跨站流式搜索、站点数据仪表（JSON/CSV/PNG 导出）、下载任务管理（剩余空间）、Cookie 台账（多域名归并 + 状态筛选）、TOTP 验证器 + 加密备份、本地凭据库（Bitwarden 导入 + 登录页自动填充）、AI 助手（LLM 网关流式对话）、插件管理（启停 + 视图嵌入）、WebDAV 全量备份、CookieCloud 协议互通、跨站收藏与下载历史、隐私模式、拖放链接衔接、豆瓣/IMDb 注入、omnibox。
 
 ## 设计语言 v1.03.19（成熟工具型）
 
@@ -18,7 +18,7 @@
 账号登录、站点数据、Cookie 台账、下载任务、收藏与历史、两步验证器、凭据、插件、AI 助手、同步备份、关于——
 不再弹出独立小窗，所有工具在同一页面内按需懒加载。
 
-### 凭据管理（⭐ v1.03.19 新增，对标竞品凭据库）
+### 凭据管理（⭐ v1.03.19 新增）
 - 网站账号密码本地加密保管：PIN（PBKDF2-SHA256 ×310k → AES-256-GCM）后存 `chrome.storage.local`，与 TOTP 保险库同一套模式、独立 PIN
 - 条目增删/编辑/复制用户名/复制密码；自由分组（内网 / PT / 自定义）+ 搜索框过滤
 - **Bitwarden JSON 导入**（明文导出格式）：folders → 分组，login.totp 一并带入，按标题+URL 去重合并
@@ -34,14 +34,14 @@
 - 控制台「插件」页：服务器已装插件列表（名称/版本/启停状态）
 - 一键启用/停用（管理员；`POST /plugins/:id/{enable,disable}`）
 - 带 `contributes.views` 的插件出现「◨ 视图名」按钮——点击后**扩展内全屏 iframe 嵌入服务器插件页面**
-  （Web 端 `/plugins/view/:id/:viewId` 路由，与 MoviePilot-Tools 的插件嵌入同形态；登出态时按服务器页面自身引导登录）
+  （Web 端 `/plugins/view/:id/:viewId` 路由，与服务端插件嵌入同形态；登出态时按服务器页面自身引导登录）
 
 ### Cookie 台账 · 状态筛选（⭐ v1.03.19 新增）
 - segmented 筛选：全部 / 一致 / 不一致 / 未登录，各档带计数徽标
 - 行首 2px 语义色条（绿=一致、黄=差异/缺失）一眼扫出问题站
 
 ### 站点数据 · PNG 导出（⭐ v1.03.19 新增）
-- 汇总卡 + 明细表离屏 Canvas 渲染为 1080px 宽 PNG（对标竞品图片导出）
+- 汇总卡 + 明细表离屏 Canvas 渲染为 1080px 宽 PNG
 - JSON / CSV（带 BOM，Excel 直开）沿用
 
 ### 收藏与历史 · 清空（⭐ v1.03.19 新增）

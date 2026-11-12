@@ -10,11 +10,11 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
-// ruleIDRe 规则 id 仅限字母数字（对齐 MP-2 校验，保证可安全出现在 rule_string 表达式中）。
+// ruleIDRe 规则 id 仅限字母数字（保证可安全出现在 rule_string 表达式中）。
 var ruleIDRe = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 
 // CustomRuleInput 自定义规则 CRUD 请求体。
-// include/exclude 为单个正则字符串（对齐 MP-2 CustomRule：用户在 UI 输入一段正则）；
+// include/exclude 为单个正则字符串（用户在 UI 输入一段正则）；
 // 需要多 alternation 时直接在串里写 a|b。
 type CustomRuleInput struct {
 	ID          string `json:"id" binding:"required"`

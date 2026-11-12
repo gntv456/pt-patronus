@@ -43,7 +43,7 @@ extension on _DashboardPageState {
             color: s.ratio <= 0
                 ? (Theme.of(ctx).brightness == Brightness.dark
                       ? Colors.white38
-                      : Colors.black38)
+                      : context.dimText) // 排序箭头：black38 在暗色背景上几乎不可见
                 : (s.ratio >= 1 ? PTColors.success : PTColors.danger),
             fontWeight: FontWeight.w600,
           ),

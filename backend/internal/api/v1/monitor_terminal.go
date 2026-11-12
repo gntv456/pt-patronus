@@ -39,16 +39,9 @@ func NewMonitorTerminalHandler(svc *monitor.Service, tickets *auth.TicketStore, 
 }
 
 func (h *MonitorTerminalHandler) checkOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true // 非浏览器客户端无 Origin，不适用 CSWSH
-	}
-	if len(h.allowedOrigins) == 0 {
-		// 未配置白名单：debug 保持旧行为（全放行）；release fail-closed——
-		// 与 ws.go checkOrigin 一致（终端是命令执行级能力，不能默认敞开）。
-		return gin.Mode() != gin.ReleaseMode
-	}
-	return h.allowedOrigins[origin]
+	// 统一口径见 origin.go：same-origin 放行 + 跨域白名单 + release 空白名单 fail-closed
+	// （终端是命令执行级能力，不能默认敞开）。
+	return originAllowed(h.allowedOrigins, gin.Mode() == gin.ReleaseMode, r)
 }
 
 func (h *MonitorTerminalHandler) Handle(c *gin.Context) {

@@ -154,7 +154,7 @@ func TestValidateStrmOutputDirWindowsCaseInsensitive(t *testing.T) {
 	}
 }
 
-// ---- 规则级过滤 + 内外网双地址（对标 MSaber STRM 规则） ----
+// ---- 规则级过滤 + 内外网双地址 ----
 
 func TestGenerateStrmIncludeExtsFilter(t *testing.T) {
 	dir := t.TempDir()

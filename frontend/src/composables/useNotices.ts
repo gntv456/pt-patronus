@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, readonly } from 'vue'
+import { i18n } from '@/i18n'
 import { useWs } from '@/composables/useWs'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 // ElMessage 依赖 unplugin-auto-import（与 useAgentChat 等一致）。
@@ -27,6 +28,8 @@ const urgentSources = new Set<NoticeSource>(['assess_fail', 'host_offline', 'nas
 // 后端信封里的中文原因优先（#204/#205 之后「标/删一条已经不存在的通知」是 404 + 一句
 // 「通知不存在，可能已被删除，请刷新通知列表」），泛化文案只作兜底。
 // 收件箱页与铃铛抽屉共用这一个判据，别在第二处重抄。
+const t = (k: string) => i18n.global.t(k)
+
 export function noticeFailReason(e: unknown, fallback: string): string {
   const why = (e as Error)?.message
   return why || fallback
@@ -82,7 +85,7 @@ export function useNotices() {
       if (t) t.read = true
       return true
     } catch (e) {
-      if (!quiet) ElMessage.warning(noticeFailReason(e, '标记已读失败'))
+      if (!quiet) ElMessage.warning(noticeFailReason(e, t('opusenotices.k1')))
       return false
     }
   }
@@ -92,7 +95,7 @@ export function useNotices() {
       notices.value.forEach((n) => (n.read = true))
       serverUnread.value = 0
     } catch (e) {
-      ElMessage.warning(noticeFailReason(e, '全部已读失败'))
+      ElMessage.warning(noticeFailReason(e, t('opusenotices.k2')))
     }
   }
   async function removeOne(id: number) {
@@ -101,7 +104,7 @@ export function useNotices() {
       dropUnread(notices.value.find((n) => n.id === id))
       notices.value = notices.value.filter((n) => n.id !== id)
     } catch (e) {
-      ElMessage.error(noticeFailReason(e, '删除通知失败'))
+      ElMessage.error(noticeFailReason(e, t('opusenotices.k3')))
     }
   }
   async function clearAll() {
@@ -111,7 +114,7 @@ export function useNotices() {
       serverUnread.value = 0
       inboxWindow.value = { shown: 0, total: 0, truncated: false }
     } catch (e) {
-      ElMessage.error(noticeFailReason(e, '清空通知失败'))
+      ElMessage.error(noticeFailReason(e, t('opusenotices.k4')))
     }
   }
 

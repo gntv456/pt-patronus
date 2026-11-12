@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// 下载任务面板数据层（对标 PT-depiler「下载器任务管理」）：
+// 下载任务面板数据层：
 // 多下载器切换、任务列表（hash/name/progress/state/速度）、暂停/继续/删除、多来源添加。
 // 后端已有完整代理端点：GET /downloaders、GET /downloaders/:id/torrents、
 // POST /downloaders/:id/{pause,resume,remove}、POST /downloaders/:id/torrents。

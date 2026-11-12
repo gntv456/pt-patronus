@@ -1,4 +1,4 @@
-# hares - NexusRabbit user_info selectors migrated from MoviePilot and covered by mock tests; dead site retained.
+# hares - NexusRabbit user_info 选择器经 mock 测试覆盖；死站保留展示。
 # schema: nexusphp-compatible; detail page uses user.php?id.
 
 aka:

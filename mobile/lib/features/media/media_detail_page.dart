@@ -20,7 +20,7 @@ part 'media_detail_panes.dart';
 part 'media_detail_recs.dart';
 part 'media_detail_widgets.dart';
 
-// 媒体详情页（对标 MoviePilot / Web MediaDetail）：点海报卡片进入，展示
+// 媒体详情页（对齐 Web MediaDetail）：点海报卡片进入，展示
 
 // 背景图/海报/简介/演职/推荐，并提供「搜索资源」一键跳种子搜索（按标题在站点找片）。
 

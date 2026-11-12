@@ -6,6 +6,7 @@
  * 行为不变：打开→加载下载器→选默认→推送→显示成功态→可跳下载器任务。
  */
 import { ref, computed, watch } from 'vue'
+import { i18n } from '@/i18n'
 import { useRouter } from 'vue-router'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import type { SiteTorrent } from '@/api/search'
@@ -24,6 +25,8 @@ const dlTypeLabel: Record<string, string> = {
   fl: 'Flood',
 }
 export { dlTypeLabel }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useSearchPush() {
   const router = useRouter()
@@ -65,7 +68,7 @@ export function useSearchPush() {
 
   async function start(r: PushRow) {
     if (!r.download_url) {
-      ElMessage.warning('该站点暂不支持直接下载')
+      ElMessage.warning(t('opusesearchpush.k1'))
       return
     }
     row.value = r
@@ -88,7 +91,7 @@ export function useSearchPush() {
         selectedDl.value = def ? def.id : downloaders.value[0].id
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载下载器失败')
+      ElMessage.error((e as Error).message || t('opusesearchpush.k2'))
     } finally {
       loading.value = false
     }
@@ -105,14 +108,14 @@ export function useSearchPush() {
         paused: paused.value || undefined,
       })
       if (r.ok) {
-        ElMessage.success(`已推送到 ${dl?.name ?? '下载器'}`)
+        ElMessage.success(`已推送到 ${dl?.name ?? t('opusesearchpush.k3')}`)
         pushedDlName.value = dl?.name ?? '下载器'
         pushedDlId.value = selectedDl.value
       } else {
-        ElMessage.warning(r.error || '推送失败')
+        ElMessage.warning(r.error || t('opusesearchpush.k4'))
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '推送失败')
+      ElMessage.error((e as Error).message || t('opusesearchpush.k4'))
     } finally {
       loading.value = false
     }

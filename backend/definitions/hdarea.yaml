@@ -1,4 +1,4 @@
-# hdarea - core fields migrated from PT-depiler/PT-manager; live smoke still recommended.
+# hdarea - 用户字段按上游定义校准迁移；建议 live smoke 复核。
 aka:
     - HDArea
     - 好大

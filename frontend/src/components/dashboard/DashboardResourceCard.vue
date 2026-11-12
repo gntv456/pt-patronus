@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
 import { fmtBytes } from '@/utils/format'
+import { registerPolling } from '@/composables/usePolling'
 import MetricBar from '@/components/monitor/MetricBar.vue'
 
 // DashboardResourceCard — 区②系统资源：即时采集本机 CPU/内存/磁盘/负载，30s 轮询。
@@ -17,7 +18,7 @@ const { t } = useI18n()
 const metrics = ref<SystemMetrics | null>(null)
 const forbidden = ref(false)
 const errorMsg = ref('')
-let timer: ReturnType<typeof setInterval> | undefined
+let stopPolling: (() => void) | null = null
 
 async function load() {
   try {
@@ -28,7 +29,7 @@ async function load() {
     const err = e as { response?: { status?: number } }
     if (err.response?.status === 403) {
       forbidden.value = true
-      if (timer) clearInterval(timer) // 非管理员不再轮询
+      stopPolling?.() // 非管理员不再轮询
     } else {
       errorMsg.value = (e as Error).message || t('drsc.collectFailed')
     }
@@ -37,10 +38,11 @@ async function load() {
 
 onMounted(() => {
   void load()
-  timer = setInterval(load, 30000)
+  // 统一轮询调度器：后台标签页暂停、切回补拉（原裸 setInterval 后台照跑）。
+  stopPolling = registerPolling(load, 30_000, { runOnShow: true })
 })
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+  stopPolling?.()
 })
 
 const disks = computed(() => metrics.value?.disks ?? [])

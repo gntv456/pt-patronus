@@ -42,6 +42,7 @@ func registerCronJobs(
 	cloudCh *chain.CloudChain,
 	rssItemOp *oper.RssItemOper,
 	pluginLogOp *oper.PluginOper,
+	transferHistOp *oper.TransferHistoryOper,
 	backupSvc *backup.Service,
 ) {
 	// 二轮 P2-1：cron 注册对账——此前 19 处 `_ = sched.AddFunc` 静默丢弃错误，
@@ -150,6 +151,18 @@ func registerCronJobs(
 			slog.Warn("plugin log cleanup failed", "err", err)
 		} else if n > 0 {
 			slog.Info("plugin log cleanup done", "pruned", n)
+		}
+	})
+
+	// 每日 3 点清理 180 天前的整理历史（每次下载完成落一行、含 Files JSON，
+	// 无 TTL 会无限膨胀；180 天远超现实回看窗口，Sweep 成功去重不受影响，
+	// 详见 oper.TransferHistoryOper.Cleanup 注释）。
+	mustCron("transfer-history-cleanup", "0 3 * * *", func() {
+		deadline := time.Now().Add(-180 * 24 * time.Hour)
+		if n, err := transferHistOp.Cleanup(deadline); err != nil {
+			slog.Warn("transfer history cleanup failed", "err", err)
+		} else if n > 0 {
+			slog.Info("transfer history cleanup done", "pruned", n)
 		}
 	})
 

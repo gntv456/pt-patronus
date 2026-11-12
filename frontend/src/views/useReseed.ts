@@ -2,11 +2,15 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, onMounted, watch } from 'vue'
+import { i18n } from '@/i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { reseedApi, type ReseedTask, type ReseedSetting, type MissingSummary } from '@/api/reseed'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { siteApi, type Site } from '@/api/site'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useReseed() {
   const config = ref<{
@@ -63,23 +67,23 @@ export function useReseed() {
       }
       torznabUrl.value = c.torznab_url || ''
     } catch {
-      ElMessage.warning('辅种配置加载失败')
+      ElMessage.warning(t('opusereseed.k1'))
     }
   }
 
   async function saveToken() {
     if (!tokenInput.value.trim()) {
-      ElMessage.warning('请输入 IYUU token')
+      ElMessage.warning(t('opusereseed.k2'))
       return
     }
     savingToken.value = true
     try {
       await reseedApi.setConfig({ iyuu_token: tokenInput.value.trim() })
       tokenInput.value = ''
-      ElMessage.success('IYUU token 已保存')
+      ElMessage.success(t('opusereseed.k3'))
       await loadConfig()
     } catch {
-      ElMessage.warning('保存失败')
+      ElMessage.warning(t('common.saveFailed'))
     } finally {
       savingToken.value = false
     }
@@ -94,10 +98,10 @@ export function useReseed() {
         set_torznab: true,
       })
       torznabKey.value = ''
-      ElMessage.success('Torznab 配置已保存')
+      ElMessage.success(t('opusereseed.k4'))
       await loadConfig()
     } catch {
-      ElMessage.warning('Torznab 保存失败')
+      ElMessage.warning(t('opusereseed.k5'))
     } finally {
       savingTorznab.value = false
     }
@@ -108,7 +112,7 @@ export function useReseed() {
       downloaders.value = await downloaderApi.list()
       if (downloaders.value.length && selectedDl.value === null) selectedDl.value = downloaders.value[0].id
     } catch {
-      ElMessage.warning('下载器列表加载失败')
+      ElMessage.warning(t('opusereseed.k6'))
     }
   }
 
@@ -120,7 +124,7 @@ export function useReseed() {
       taskTotal.value = res.total
       tasksTruncated.value = res.truncated
     } catch {
-      ElMessage.warning('任务列表加载失败')
+      ElMessage.warning(t('opusereseed.k7'))
       tasks.value = []
       taskTotal.value = null
       tasksTruncated.value = false
@@ -134,7 +138,7 @@ export function useReseed() {
     try {
       setting.value = await reseedApi.getSetting(selectedDl.value)
     } catch {
-      ElMessage.warning('辅种设置加载失败，显示为默认值')
+      ElMessage.warning(t('opusereseed.k8'))
     }
   }
 
@@ -145,7 +149,7 @@ export function useReseed() {
       setting.value.downloader_id = selectedDl.value
       await reseedApi.setSetting(setting.value)
     } catch {
-      ElMessage.warning('设置保存失败')
+      ElMessage.warning(t('opusereseed.k9'))
     } finally {
       savingSetting.value = false
     }
@@ -153,7 +157,7 @@ export function useReseed() {
 
   async function startReseed() {
     if (!selectedDl.value) {
-      ElMessage.warning('请选择下载器')
+      ElMessage.warning(t('opusereseed.k10'))
       return
     }
     reseeding.value = true
@@ -170,7 +174,7 @@ export function useReseed() {
       statusFilter.value = 'pending'
       await loadTasks()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '辅种失败')
+      ElMessage.error((e as Error).message || t('opusereseed.k11'))
     } finally {
       reseeding.value = false
     }
@@ -185,11 +189,11 @@ export function useReseed() {
 
   async function openMissing() {
     if (selectedDl.value === null) {
-      ElMessage.warning('请选择下载器')
+      ElMessage.warning(t('opusereseed.k10'))
       return
     }
     if (!config.value.configured) {
-      ElMessage.warning('请先保存 IYUU token')
+      ElMessage.warning(t('opusereseed.k12'))
       return
     }
     if (!sites.value.length) {
@@ -206,14 +210,14 @@ export function useReseed() {
   async function checkMissing() {
     if (selectedDl.value === null) return
     if (!missingTargets.value.length) {
-      ElMessage.warning('请选择目标站点')
+      ElMessage.warning(t('opusereseed.k13'))
       return
     }
     checking.value = true
     try {
       missingResult.value = await reseedApi.missing(selectedDl.value, missingTargets.value)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '检查失败')
+      ElMessage.error((e as Error).message || t('opusereseed.k14'))
     } finally {
       checking.value = false
     }
@@ -223,10 +227,10 @@ export function useReseed() {
     resolving.value.add(row.id)
     try {
       await reseedApi.resolve(row.id, action)
-      ElMessage.success(action === 'add' ? '已添加辅种' : '已跳过')
+      ElMessage.success(action === 'add' ? t('opusereseed.k15') : t('opusereseed.k16'))
       await loadTasks()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || t('common.actionFailed'))
     } finally {
       resolving.value.delete(row.id)
     }

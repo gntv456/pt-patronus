@@ -10,7 +10,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/doctor"
 )
 
-// buildDoctorBusinessChecks 组装业务体检六类检查（对标 MSaber 系统体检）：
+// buildDoctorBusinessChecks 组装业务体检六类检查：
 // 站点 / 下载器 / 媒体服务器 / 云盘 / 网络 / 云任务队列。探活复用各 chain 既有 Test 入口，
 // doctor 包保持叶子（Target/ProbeFunc 闭包注入，不 import 业务包）。
 func buildDoctorBusinessChecks(d runtimeDeps) []doctor.Check {

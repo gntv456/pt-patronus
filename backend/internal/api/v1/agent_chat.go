@@ -26,7 +26,7 @@ type AgentChatHandler struct {
 	convCreate func(*models.AgentConversation) error
 	convDelete func(uint) error
 	convGet    func(uint) (*models.AgentConversation, error)
-	msgList    func(uint) ([]models.AgentMessage, error)
+	msgList    func(uint, int) ([]models.AgentMessage, error)
 	kv         aiagent.KVStore
 	crypto     aiagent.Crypto
 }
@@ -38,7 +38,7 @@ func NewAgentChatHandler(agent *aiagent.Agent,
 	convCreate func(*models.AgentConversation) error,
 	convDelete func(uint) error,
 	convGet func(uint) (*models.AgentConversation, error),
-	msgList func(uint) ([]models.AgentMessage, error),
+	msgList func(uint, int) ([]models.AgentMessage, error),
 	kv aiagent.KVStore, crypto aiagent.Crypto,
 ) *AgentChatHandler {
 	return &AgentChatHandler{agent: agent, convList: convList, convCount: convCount, convCreate: convCreate, convDelete: convDelete, convGet: convGet, msgList: msgList, kv: kv, crypto: crypto}
@@ -186,12 +186,15 @@ func (h *AgentChatHandler) Messages(c *gin.Context) {
 	if !ok {
 		return
 	}
-	ms, err := h.msgList(id)
+	// 上限 200 条：长会话（工具循环多轮、reasoning/tool_calls 大文本）全量返回
+	// 可达数 MB，前端渲染卡；LLM 侧历史另有 token 裁剪（trimMessages），不受影响。
+	const msgLimit = 200
+	ms, err := h.msgList(id, msgLimit)
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"messages": ms})
+	c.JSON(http.StatusOK, gin.H{"messages": ms, "truncated": len(ms) >= msgLimit})
 }
 
 // DeleteConversation 删会话。

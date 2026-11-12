@@ -3,7 +3,7 @@
 
 // Package keepseed 实现辅种候选匹配：跨站按 名称相似度 + 大小接近度 评分筛选候选。
 // 对接 IYUU 的精确 infoHash 匹配作为后续增强（站点 HTML 搜索不暴露 infohash）。
-// 增强：字节级体积一致 / 文件树 token 重叠 / IMDb·TMDB ID 一致抬分（对标 cross-seed 数据块+元数据思路）。
+// 增强：字节级体积一致 / 文件树 token 重叠 / IMDb·TMDB ID 一致抬分（数据块+元数据思路）。
 package keepseed
 
 import (

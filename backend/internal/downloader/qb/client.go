@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package qb 是 qBittorrent WebUI 客户端：登录(403 自动重登)、版本感知、
-// rid 增量同步、种子增删改。借鉴 qBitController 的三层设计。
+// rid 增量同步、种子增删改。三层设计。
 //
 // 文件组织：
 //   - client.go  Client 结构、登录/请求编排、版本、同步（本文件）
@@ -204,7 +204,7 @@ func (c *Client) ge5() bool {
 	verMaj := c.verMaj
 	c.verMu.RUnlock()
 	if version == "" {
-		return true // 未知版本按最新处理（qBitController 的 MAX 策略）
+		return true // 未知版本按最新处理（按最新处理）
 	}
 	return verMaj >= 5
 }

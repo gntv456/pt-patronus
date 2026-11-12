@@ -11,6 +11,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 part 'haremopsmixin.dart';
 part 'harem_widgets.dart';

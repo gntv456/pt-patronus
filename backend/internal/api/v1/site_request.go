@@ -12,7 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
-// RequestHandler 站点求种请求（对标 MSaber「站点请求」）。
+// RequestHandler 站点求种请求。
 type RequestHandler struct {
 	ch *chain.SiteChain
 }

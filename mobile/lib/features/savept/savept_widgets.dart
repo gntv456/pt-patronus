@@ -265,7 +265,7 @@ extension on _SaveptPageState {
     );
   }
 
-  // 公告正文：按站点名切片，命中站点名着色成 inline tag（移植自 Web utils/savept.ts 的 tokenizeNoticeText）。
+  // 公告正文：按站点名切片，命中站点名着色成 inline tag（与 Web utils/savept.ts 同实现）。
   Widget _noticeRichText(String text) {
     final tokens = _tokenizeNoticeText(text, _siteNames);
     if (tokens.isEmpty) {

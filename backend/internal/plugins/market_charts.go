@@ -22,7 +22,7 @@ func MarshalConfigMap(cfg map[string]any) (string, error) {
 	return string(b), nil
 }
 
-// ---- 插件市场运营层（对标 MSaber 秘术宝阁：百鸟朝凤/百宝袋/分神/天序） ----
+// ---- 插件市场运营层（百鸟朝凤/百宝袋/分神/天序） ----
 
 // currentMarketUserID 收藏归属用户（当前单管理员部署形态恒 0；多用户后接 auth uid）。
 func currentMarketUserID() uint { return 0 }

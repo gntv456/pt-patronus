@@ -40,7 +40,7 @@ const (
 //
 // 设计权衡：源（TMDB/Douban/Bangumi）在构造时捕获 key/domain/token，不会按请求重读，
 // 故「写后即生效」靠 rebuild 整个切片实现（廉价：4 个轻量结构体 + http.Client），
-// 而非给每个源加动态重读（侵入大、并发复杂）。参考 IYUU token「用时即读」的更简范式不适用此处，
+// 而非给每个源加动态重读（侵入大、并发复杂）。IYUU token「用时即读」范式不适用此处，
 // 因源把凭据烤进了构造器。
 type MediaSourceProvider struct {
 	cfg      *oper.SystemConfigOper

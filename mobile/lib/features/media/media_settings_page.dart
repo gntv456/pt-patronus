@@ -6,7 +6,7 @@ import 'package:ptpatronus/api/media.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 
-// 媒体源设置（对标 Web MediaSettings）：TMDB/豆瓣/Bangumi 凭据。
+// 媒体源设置（对齐 Web MediaSettings）：TMDB/豆瓣/Bangumi 凭据。
 // secret 回显脱敏 + configured 标记；提交时空字段=不修改（可只改部分）。保存即时 rebuild，无需重启。
 class MediaSettingsPage extends StatefulWidget {
   const MediaSettingsPage({super.key});

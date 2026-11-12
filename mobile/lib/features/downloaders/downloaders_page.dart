@@ -15,6 +15,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 part 'sheets/add_torrent_sheet.dart';
 part 'sheets/downloader_form_sheet.dart';
@@ -69,7 +70,7 @@ class _DownloadersPageState extends State<DownloadersPage> {
     } catch (e) {
       // 保留已加载的旧数据；首次加载（_list 空）时展示错误态 + 重试，而非空白
       if (_list.isEmpty) {
-        _error = e.toString();
+        _error = errTextOf(e) ?? '加载失败，请检查网络';
       } else {
         _toast(e.toString());
       }

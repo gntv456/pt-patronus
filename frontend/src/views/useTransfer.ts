@@ -3,6 +3,7 @@
 
 // Transfer（媒体整理）页面状态与操作 —— 从 Transfer.vue 抽出的核心逻辑。
 import { ref, computed, onMounted } from 'vue'
+import { i18n } from '@/i18n'
 import { useTransferRules } from './useTransferRules'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -21,6 +22,9 @@ import { downloaderApi } from '@/api/downloader'
 import { useTransferOrganize, MODE_LABEL, RENAME_VARS, previewRename as previewRenameImpl } from './useTransferOrganize'
 import { useTransferHistoryOps } from './useTransferHistoryOps'
 import { cloudApi, type CloudDrive } from '@/api/cloud'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useTransfer() {
   const route = useRoute()
@@ -91,10 +95,10 @@ export function useTransfer() {
         debounce_ms: dwForm.value.debounce_ms,
         poll_interval_sec: dwForm.value.poll_interval_sec,
       })
-      ElMessage.success('已保存（重启进程生效）')
+      ElMessage.success(t('opusetransfer.k1'))
       showDirwatch.value = false
     } catch {
-      ElMessage.error('保存失败')
+      ElMessage.error(t('common.saveFailed'))
     } finally {
       dwSaving.value = false
     }
@@ -188,10 +192,10 @@ export function useTransfer() {
         .map((m) => ({ ...m, remote_path: m.remote_path.trim(), local_path: m.local_path.trim() }))
         .filter((m) => m.remote_path && m.local_path)
       await transferApi.setConfig(cfg.value)
-      ElMessage.success('配置已保存')
+      ElMessage.success(t('opusetransfer.k2'))
       showConfig.value = false
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || t('common.saveFailed'))
     } finally {
       savingCfg.value = false
     }
@@ -236,10 +240,10 @@ export function useTransfer() {
       const movie = JSON.parse(catMovieText.value || '[]')
       const tv = JSON.parse(catTVText.value || '[]')
       await transferApi.setCategoriesConfig({ movie, tv })
-      ElMessage.success('分类规则已保存')
+      ElMessage.success(t('opusetransfer.k3'))
       showCategories.value = false
     } catch (e: unknown) {
-      ElMessage.error('JSON 解析失败：' + (e as Error).message)
+      ElMessage.error(t('opusetransfer.k4') + (e as Error).message)
     } finally {
       catSaving.value = false
     }

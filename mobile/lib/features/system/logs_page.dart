@@ -10,6 +10,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 /// 运行日志页（对齐 Web Settings 日志 tab）：展示后端环形缓冲日志，
 /// 支持级别过滤、刷新与清空。后端 API：GET/DELETE /system/logs。
@@ -41,7 +42,7 @@ class _LogsPageState extends State<LogsPage> {
     try {
       _entries = await _api.list(level: _level);
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
     } finally {
       if (mounted) setState(() => _loading = false);
     }

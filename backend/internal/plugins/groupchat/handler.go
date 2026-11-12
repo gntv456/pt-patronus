@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package groupchat 实现 14 站 PT 喊话(群聊区)自动化，移植自 MoviePilot groupchatzone 插件。
+// Package groupchat 实现 14 站 PT 喊话(群聊区)自动化，
 //
 // 架构：站点 handler 注册表 + 复用站点系统基础设施(httpclient + cookie 解密)。
 // 14/14 站点纯 HTTP(原版 Playwright 路径是死代码)。NexusPHP 基类提供默认 Send/FetchFeedback，

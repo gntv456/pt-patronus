@@ -4,7 +4,7 @@
 -->
 
 <script setup lang="ts">
-// 快捷工具（对标 MSaber 快捷工具面板）：TOTP 两步验证码、AES-128/256 密钥、
+// 快捷工具：TOTP 两步验证码、AES-128/256 密钥、
 // 网络连通性测试（多目标 ping）、种子名称识别（转 /transfer 识别测试已有入口）。
 // 全部纯前端实现（TOTP 用 WebCrypto HMAC；AES 密钥 crypto.getRandomValues；连通性 fetch HEAD 计时）。
 import { useI18n } from 'vue-i18n'

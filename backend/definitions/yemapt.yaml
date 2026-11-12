@@ -1,4 +1,3 @@
-# yemapt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: yemapt。已接入通用/专用适配器，待真实站点校准。
 description: YemaPT 是一个由全新技术架构构建而来的综合类资源PT站点。有分享率和登录要求，可访问 wiki.yemapt.org 查看。
 id: yemapt

@@ -1,4 +1,4 @@
-# gazellegames - PT-depiler API behavior covered by mock tests; live smoke still recommended.
+# gazellegames - 上游定义 API behavior covered by mock tests; live smoke still recommended.
 # schema: gazelle_jsonapi; uses X-API-Key with /api.php quick_user/search/user.
 
 aka:

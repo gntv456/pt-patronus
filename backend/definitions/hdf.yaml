@@ -1,4 +1,3 @@
-# hdf — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: gazelle。已由本项目运行时 schema adapter 支持。
 aka:
     - HD-F

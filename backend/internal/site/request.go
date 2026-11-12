@@ -13,9 +13,9 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// ---- 站点求种请求（Request / 求种专区，对标 MSaber「站点请求」） ----
+// ---- 站点求种请求（Request / 求种专区，） ----
 // NexusPHP 系：viewsrequests.php（求种列表页，分 fulfilled / outstanding 两段）。
-// Unit3D 系：requests 页（结构差异大，暂只支持 NexusPHP——与 MSaber 同覆盖面起步）。
+// Unit3D 系：requests 页（结构差异大，暂只支持 NexusPHP）。
 
 // SiteRequest 一条求种请求。
 type SiteRequest struct {

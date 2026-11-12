@@ -1,5 +1,5 @@
-# ptchina - primary categories migrated from PT-depiler; dead site retained for display/history.
-# schema: nexusphp; advanced PT-depiler filters are not represented by current YAML category model.
+# ptchina - primary categories 按上游定义校准迁移; dead site retained for display/history.
+# schema: nexusphp; advanced 上游定义 filters are not represented by current YAML category model.
 
 aka:
     - 铂金学院

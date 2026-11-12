@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Cookie 自动同步引擎（对标 CookieCloud 扩展的自动推送，闭环本站生态）：
+// Cookie 自动同步引擎（CookieCloud 协议自动推送，闭环本站生态）：
 //   浏览器启动 + 每 N 小时（chrome.alarms）跑一轮 syncNow：
 //   1. → 上行：浏览器侧指纹 ≠ 服务器侧指纹的站点，把浏览器 cookie 推给服务器
 //      （你刚在浏览器登录过的站自动被服务器接管保活；服务器每小时 KeepAlive 会

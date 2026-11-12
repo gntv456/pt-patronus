@@ -322,7 +322,7 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 		}
 		kept = append(kept, tr)
 	}
-	// 总体积上限：超出后按「上传最慢 → 最久未活跃」淘汰（对标 autoremove free-space/max-size 思路）
+	// 总体积上限：超出后按「上传最慢 → 最久未活跃」淘汰（free-space/max-size 思路）
 	if task.MaxTotalSizeGB > 0 {
 		limit := int64(task.MaxTotalSizeGB * float64(1<<30))
 		evict, remain := bfEvictBySize(kept, limit)

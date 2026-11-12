@@ -5,10 +5,10 @@ package filter
 
 import "github.com/hxpt/ptpatronus/internal/site"
 
-// BuiltinRuleSet 是 22 条内置规则（对齐 MP-2 app/modules/filter/builtin_rules.py BUILTIN_RULE_SET）。
+// BuiltinRuleSet 是 22 条内置规则（与既定 22 条规则集一致）。
 //
-// regex 字符串均不含 (?i) 前缀——引擎在编译时统一加 IGNORECASE（对齐 MP-2 _compile_ignorecase）。
-// RE2 不支持 lookahead/lookbehind/空交替，以下两处相对 MP-2 原文做了等价改写（fixture 测试钉死）：
+// regex 字符串均不含 (?i) 前缀——引擎在编译时统一加 IGNORECASE（引擎编译时统一加 IGNORECASE）。
+// RE2 不支持 lookahead/lookbehind/空交替，以下两处做了 RE2 等价改写（fixture 测试钉死）：
 //   - BLU.exclude: \b(?<!WEB-|HDTV)RIP\b → \bRIP\b（exclude 为 OR，WEB/HDTV 的 RIP 已被各自项覆盖；
 //     裸 RIP 命中范围更广，方向与「蓝光原盘规则排除一切 RIP」一致）。
 //   - CNSUB.include 两段：

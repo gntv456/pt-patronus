@@ -4,7 +4,7 @@
 
 /* ───────────────────────────────────────────────────────────
    PTPatronus 液态玻璃（Liquid Glass）设计系统
-   借鉴参考仪表盘 + iOS 26 液态玻璃：通透、大圆角、柔和阴影、渐变背景
+   视觉基调：iOS 26 液态玻璃——通透、大圆角、柔和阴影、渐变背景
 
    Token 阶梯（间距 / 字号 / 圆角）供全站复用，避免每页 scoped CSS 里
    重新发明轮子。新增页面优先使用 var(--sp-*) / var(--fs-*) / var(--radius-*)
@@ -834,7 +834,7 @@ body.glass-reduced .glass::before {
 }
 
 /* ───────────────────────────────────────────────────────────
-   界面定制（对标 MSaber 界面自定义面板）：
+   界面定制：
    ① 主题色预设 —— body[data-theme-accent="..."] 重映射 --pt-primary 族 + 派生 tint/shadow；
    ② 风格 —— body[data-ui-style="modern"] 关闭磨砂改实体面（玻璃=默认）；
    ③ 壁纸 —— body[data-wallpaper] 设置背景图 + --wallpaper-mask 遮罩浓度；

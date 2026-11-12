@@ -11,7 +11,7 @@ import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 part 'notificationopsmixin.dart';
 part 'notification_settings_widgets.dart';
 
-// 通知通道设置（对标 Web Settings→通知）：Telegram / 微信 ClawBot / QQ / Bark / Webhook。
+// 通知通道设置（对齐 Web Settings→通知）：Telegram / 微信 ClawBot / QQ / Bark / Webhook。
 // DB+UI 热更新，保存即时 rebuild；微信 ClawBot 走扫码登录。secret 留空=不修改。
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});

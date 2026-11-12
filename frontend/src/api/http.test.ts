@@ -150,11 +150,13 @@ describe('鉴权失效：清 token + 回登录', () => {
     expect(window.location.href).toContain('/login')
   })
 
-  it('403 VIP 失效（vip_expired）清 token', async () => {
+  it('403 VIP 失效（vip_expired）不清 token（VIP 闸门已退役，403 统一按权限错误）', async () => {
+    // 好学站点关闭后 vip_expired 不再出现（http.ts 注释：不再有 VIP 类 403 需要清会话）。
+    // 行为对齐：403 一律不清 token——vip_expired 若真出现也按权限错误提示，不踢会话。
     localStorage.setItem('token', 'stale')
     rejectWith(axiosErr({ status: 403, data: { code: 'vip_expired' } }))
     await expect(http.get('/x')).rejects.toBeDefined()
-    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem('token')).toBe('stale')
   })
 
   it('403 非 VIP 类（如 forbidden）不清 token', async () => {

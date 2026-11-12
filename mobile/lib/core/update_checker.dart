@@ -20,7 +20,7 @@ String currentUpdatePlatform() => caps.currentUpdatePlatform();
 
 /// 检查在线更新（客户端 + 后端双端状态）。
 ///   - 客户端：发本机版本号，按客户端平台对比清单；有新版则：
-///     · Android 且 downloadUrl 是 APK 直链 → 应用内 OTA（下载 + sha256 校验 + 系统安装，pt_mate 式）
+///     · Android 且 downloadUrl 是 APK 直链 → 应用内 OTA（下载 + sha256 校验 + 系统安装）
 ///     · 否则（桌面 / 非直链）→ 外链浏览器下载（兜底）
 ///   - 后端：手动检查（silent=false）时顺带查后端版本是否落后，提示在服务端更新。
 /// silent=true（启动场景）仅查客户端、不打扰「均最新」；设置页手动检查传 silent=false。
@@ -108,7 +108,7 @@ bool _canInAppOta(UpdateCheckResult r) {
   return url.endsWith('.apk') && url.startsWith('https://') && r.sha256.isNotEmpty;
 }
 
-/// 应用内 OTA：下载进度 + sha256 校验 + 系统安装（pt_mate 式，补 sha256）。
+/// 应用内 OTA：下载进度 + sha256 校验 + 系统安装。
 void _showOtaDialog(BuildContext context, UpdateCheckResult r) {
   showDialog<void>(
     context: context,

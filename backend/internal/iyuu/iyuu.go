@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package iyuu 对接 IYUU（api.iyuu.cn）精确辅种接口：按 infohash 跨站匹配 + 站点目录。
-// 协议参考 Go 实现 goreseed：sign 字段即 IYUU token（无额外签名）；下载 URL 客户端按平台规则拼 passkey。
+// 协议：sign 字段即 IYUU token（无额外签名）；下载 URL 客户端按平台规则拼 passkey。
 package iyuu
 
 import (
@@ -117,7 +117,7 @@ func (c *Client) Sites(ctx context.Context, token string) ([]SiteInfo, error) {
 	return resp.Data.Sites, nil
 }
 
-// postForm 以 multipart/form-data 发送（IYUU 按 goreseed 接 multipart；PHP $_POST 兼容）。
+// postForm 以 multipart/form-data 发送（IYUU 接 multipart；PHP $_POST 兼容）。
 // sign 固定为 token；extra 为额外字段。
 func (c *Client) postForm(ctx context.Context, rawURL, token string, extra map[string]string) ([]byte, error) {
 	var buf bytes.Buffer
@@ -138,7 +138,7 @@ func (c *Client) postForm(ctx context.Context, rawURL, token string, extra map[s
 }
 
 // BuildDownloadURL 按 IYUU 站点目录 + torrent_id + 本地 passkey 拼出可直接添加的下载链接。
-// 移植 goreseed getTorrentUrl 的平台分支（默认 NexusPHP download.php?id=&passkey=）。
+// 按平台分支（默认 NexusPHP download.php?id=&passkey=）。
 func BuildDownloadURL(s SiteInfo, torrentID int, passkey string) string {
 	scheme := "http://"
 	if s.IsHTTPS == 1 {

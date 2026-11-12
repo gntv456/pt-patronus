@@ -34,7 +34,7 @@ func newSyncState() *SyncState {
 	}
 }
 
-// merge 把一次响应合并进状态。语义（移植自 qBitController MainData.merge）：
+// merge 把一次响应合并进状态。语义：
 //   - full_update=true：用响应整体替换
 //   - 响应 rid < 当前 rid：过期响应，丢弃
 //   - 否则：字段级合并增量 + 按 *_removed 删除

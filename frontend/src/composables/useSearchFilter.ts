@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 /**
- * 站点搜索结果筛选 composable（对标 MoviePilot useTorrentFilter / PT-depiler 高级过滤）。
+ * 站点搜索结果筛选 composable。
  * 纯前端过滤：选项从结果集动态提取，过滤/排序在内存 computed 完成，适配 SSE 逐站追加。
  * Search.vue（表格，筛+排）与 SiteTorrentFindDialog.vue（卡片弹窗，仅筛）共用。
  */

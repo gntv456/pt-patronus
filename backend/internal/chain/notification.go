@@ -10,7 +10,7 @@ import (
 )
 
 // NotificationChain 统一通知入口：渲染 → 广播事件 → 多通道扇出。
-// 借鉴 MoviePilot 的 post_message。
+// 消息总线式 post_message。
 type NotificationChain struct {
 	Base
 	mgr *notification.Manager

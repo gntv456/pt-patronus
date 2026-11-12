@@ -1,4 +1,3 @@
-# nebulance — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: gazelle。已接入通用/专用适配器，待真实站点校准。
 aka:
     - NBL

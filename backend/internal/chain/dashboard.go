@@ -6,6 +6,7 @@ package chain
 import (
 	"context"
 	"github.com/hxpt/ptpatronus/internal/bizmetrics"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/errtext"
 	"log/slog"
 	"sync"
@@ -281,27 +282,24 @@ func (c *DashboardChain) SyncAll(ctx context.Context) (*DashboardOverview, error
 		return nil, err
 	}
 	total := len(sites)
-	done := 0
 	if c.emitProgress != nil {
 		c.emitProgress(0, total, "")
 	}
+	// 并发抓取（有界 8，同 CheckinAll 口径）：原串行 for 在 50 站规模要 2-3 分钟，
+	// 「全站刷新」进度条龟速是最直观的差评点。失败也计入进度（进度条必须能走满）。
+	var done atomic.Int64
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
 	for i := range sites {
-		st := &sites[i]
-		ui, e := c.siteCh.UserInfo(ctx, st)
-		done++
-		if e != nil {
-			bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
-			slog.Warn("dashboard sync site failed", "site", st.Name, "err", e)
-		} else {
-			bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
-			c.recordStat(st, ui)
-			slog.Info("dashboard synced", "site", st.Name, "uploaded", ui.Uploaded, "ratio", ui.Ratio)
-		}
-		// 失败也计入进度：同步不会因单站失败中断，进度条必须能走满。
-		if c.emitProgress != nil {
-			c.emitProgress(done, total, st.Name)
-		}
+		wg.Add(1)
+		safego.Go("dashboard:sync-all", func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			c.syncSiteStat(ctx, &sites[i], total, &done)
+		})
 	}
+	wg.Wait()
 	return c.Overview(ctx)
 }
 

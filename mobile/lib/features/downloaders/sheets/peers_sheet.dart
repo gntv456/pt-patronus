@@ -37,7 +37,7 @@ class _PeersSheetState extends State<_PeersSheet> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted) setState(() { _loading = false; _error = errTextOf(e) ?? '加载失败，请检查网络'; });
     }
   }
 

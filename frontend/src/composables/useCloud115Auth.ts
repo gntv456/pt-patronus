@@ -2,12 +2,15 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, onUnmounted } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { cloudApi } from '@/api/cloud'
 
 // useCloud115Auth 115 开放平台扫码授权（自 Cloud.vue 拆出）：
 // 发起 → 轮询（2.5s×120 上限）→ 确认后自动建盘。组件卸载/重新发起时中止轮询。
 // onDrivesChanged：授权成功建盘后回调（Cloud.vue 里刷新网盘列表）。
+const t = (k: string) => i18n.global.t(k)
+
 export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
   const showAuth115 = ref(false)
   const authAppId = ref('')
@@ -40,7 +43,7 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
 
   async function startAuth115() {
     if (!authAppId.value.trim()) {
-      ElMessage.warning('请填 115 开放平台 AppID')
+      ElMessage.warning(t('opusecloud115auth.k1'))
       return
     }
     authStarting.value = true
@@ -52,7 +55,7 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
       authStatusText.value = '请用 115 App 扫码并确认'
       pollAuth115()
     } catch (e) {
-      ElMessage.error((e as Error).message || '发起授权失败')
+      ElMessage.error((e as Error).message || t('opusecloud115auth.k2'))
     } finally {
       authStarting.value = false
     }
@@ -74,7 +77,7 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
             token: r.token,
             root_path: '/',
           })
-          ElMessage.success('115 开放平台已授权并添加网盘')
+          ElMessage.success(t('opusecloud115auth.k3'))
           showAuth115.value = false
           authPolling.value = false
           await onDrivesChanged()

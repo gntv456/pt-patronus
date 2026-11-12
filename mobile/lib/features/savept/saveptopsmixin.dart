@@ -52,7 +52,7 @@ mixin SaveptOpsMixin on State<SaveptPage> {
         ).showSnackBar(const SnackBar(content: Text('数据已刷新')));
       }
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
       if (refresh && mounted) {
         ScaffoldMessenger.of(
           context,

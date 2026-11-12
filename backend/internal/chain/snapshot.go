@@ -14,7 +14,7 @@ import (
 
 // SnapshotResult 是单站聚合快照结果（site-snapshot 任务抓取一次，供 automation 层消费 + 分派通知）。
 // 把原 stats / hr / freeleech / announcement / messages / cookie-keepalive 6 个任务对同站的分散请求，
-// 收敛为一次串行抓取，降低站点感知的请求频率与多端点密集访问（对齐 MoviePilot 6h 串行哲学）。
+// 收敛为一次串行抓取，降低站点感知的请求频率与多端点密集访问（串行低频抓取）。
 type SnapshotResult struct {
 	SiteID   uint
 	SiteName string

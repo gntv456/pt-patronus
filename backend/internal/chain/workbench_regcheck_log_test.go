@@ -17,7 +17,10 @@ import (
 // 判据取自同文件兄弟分支的留痕方式（A/B），不是我以为「应该有日志」。
 
 func TestWorkbenchLibraryReadFailureIsLogged(t *testing.T) {
-	body := guardFuncBody(t, "dashboard_workbench.go", "func (c *MediaServerChain) MediaLibraryOverview")
+	// #审计 B1：抓取体已搬到 fetchMediaLibraryOverview（MediaLibraryOverview 现为
+	// TTL 缓存壳），守卫判据跟着指向真实抓取函数。
+	// #B1 拆分：抓取体搬到 dashboard_workbench_medialib.go（原文件触及 400 行门禁）。
+	body := guardFuncBody(t, "dashboard_workbench_medialib.go", "func (c *MediaServerChain) fetchMediaLibraryOverview")
 
 	i := strings.Index(body, "libs, err := cli.Libraries(ctx)")
 	if i < 0 {
@@ -29,13 +32,13 @@ func TestWorkbenchLibraryReadFailureIsLogged(t *testing.T) {
 		t.Errorf("整台媒体的库读不出必须 Warn（Debug 级默认看不见，界面只会显示 0 个库）：%q", firstCodeLines(outer, 3))
 	}
 
-	j := strings.Index(body, "items, err := cli.LibraryItems(ctx, lib.ID)")
+	j := strings.Index(body, "cnt, err := cli.LibraryItemCount(ctx, lib)")
 	if j < 0 {
-		t.Fatalf("找不到 LibraryItems 读取那一支")
+		t.Fatalf("找不到 LibraryItemCount 读取那一支")
 	}
 	inner := body[j:]
 	inner = inner[:min(320, len(inner))]
-	if !strings.Contains(inner, `slog.Warn("workbench: library items failed`) {
+	if !strings.Contains(inner, `slog.Warn("workbench: library count failed`) {
 		t.Errorf("单个库读不出必须 Warn（否则总数被静默少算一个库，与空库同形）：%q", firstCodeLines(inner, 3))
 	}
 	if strings.Contains(inner, "if err != nil {\n\t\t\t\tcontinue") {

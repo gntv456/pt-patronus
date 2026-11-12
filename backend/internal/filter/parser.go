@@ -25,7 +25,7 @@ type notExpr struct{ x expr }
 func (n *notExpr) eval(m func(string) bool) bool { return !n.x.eval(m) }
 
 // binaryExpr 同时表达 and/or；op 为 "and"|"or"。
-// 对齐 MP-2 pyparsing infix_notation：'&' 与 '|' **同优先级、左结合**。
+// 语义：'&' 与 '|' **同优先级、左结合**。
 type binaryExpr struct {
 	op   string
 	l, r expr
@@ -39,7 +39,7 @@ func (b *binaryExpr) eval(m func(string) bool) bool {
 }
 
 // tokenRe 匹配规则 id：字母开头后跟字母数字，或 数字开头+字母+字母数字（兼容 4K / 1080P）。
-// 对齐 MP-2 Combine(Word(alphas, alphanums) | (Word(nums) + Word(alphas, alphanums)))。
+// 标识符=字母开头字母数字串 或 数字前缀+字母数字串。
 // 不加 ^ 锚定——parser 逐位置扫描时用 loc[0]==0 约束「当前位置即 token 开头」，
 // extractTokens 则用 FindAllString 在整条 rule_string 上抓全部 id。
 var tokenRe = regexp.MustCompile(`[A-Za-z][A-Za-z0-9]*|[0-9]+[A-Za-z][A-Za-z0-9]*`)

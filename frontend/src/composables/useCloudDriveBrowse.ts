@@ -2,7 +2,10 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useCloudDriveBrowse() {
   const showBrowse = ref(false)
@@ -24,7 +27,7 @@ export function useCloudDriveBrowse() {
       browseFiles.value = files
     } catch (e: any) {
       if (seq !== browseSeq) return
-      ElMessage.error(e?.message || '浏览失败')
+      ElMessage.error(e?.message || t('opuseclouddrivebrowse.k1'))
       browseFiles.value = []
     } finally {
       if (seq === browseSeq) browseLoading.value = false

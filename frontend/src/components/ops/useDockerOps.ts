@@ -2,12 +2,14 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { dockerApi, type DockerImage, type DockerVolume, type DockerNetwork } from '@/api/docker'
 
 // OpsDocker 的扩展操作：拉取镜像、清理、卷/网络管理。
 // 从 OpsDocker.vue 抽出以控制文件行数（≤400 门禁）。
 export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote', selectedTarget: () => number) {
+  const { t } = useI18n()
   // 拉取镜像
   const pullDialog = ref(false)
   const pullRef = ref('')
@@ -22,7 +24,7 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
 
   async function doPull() {
     if (!pullRef.value.trim()) {
-      ElMessage.warning('请输入镜像名')
+      ElMessage.warning(t('opusedockerops.k1'))
       return
     }
     pullLoading.value = true
@@ -31,9 +33,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       const res = await dockerApi.localPull(pullRef.value.trim())
       pullResult.value = res.progress || (res.ok ? '拉取成功' : '拉取失败')
       if (res.ok) {
-        ElMessage.success('镜像拉取完成')
+        ElMessage.success(t('opusedockerops.k2'))
         refresh()
-      } else ElMessage.error(res.error || '拉取失败')
+      } else ElMessage.error(res.error || t('opusedockerops.k3'))
     } catch (e: any) {
       pullResult.value = e.message
       ElMessage.error(e.message)
@@ -51,7 +53,7 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       network: '无用网络',
     }
     try {
-      await ElMessageBox.confirm(`确定要清理${labels[type]}吗？此操作不可撤销。`, '清理确认', { type: 'warning' })
+      await ElMessageBox.confirm(`确定要清理${labels[type]}吗？此操作不可撤销。`, t('opusedockerops.k4'), { type: 'warning' })
       const res = await dockerApi.localPrune(type)
       const space = res.result?.SpaceReclaimed as number | undefined
       const msg = space ? `已清理，释放 ${(Number(space) / 1073741824).toFixed(2)} GB` : '清理完成'
@@ -65,10 +67,10 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
   // 卷操作
   async function createVolume() {
     try {
-      const { value } = await ElMessageBox.prompt('输入卷名', '创建卷', { confirmButtonText: '创建' })
+      const { value } = await ElMessageBox.prompt(t('opusedockerops.k5'), t('opusedockerops.k6'), { confirmButtonText: t('opusedockerops.k7') })
       if (!value) return
       await dockerApi.localVolumeCreate(value)
-      ElMessage.success('卷已创建')
+      ElMessage.success(t('opusedockerops.k8'))
       refresh()
     } catch (e: any) {
       if (e !== 'cancel') ElMessage.error(e.message)
@@ -77,9 +79,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
 
   async function removeVolume(v: DockerVolume) {
     try {
-      await ElMessageBox.confirm(`确定删除卷「${v.Name}」吗？`, '危险操作', { type: 'error' })
+      await ElMessageBox.confirm(`确定删除卷「${v.Name}」吗？`, t('opusedockerops.k9'), { type: 'error' })
       await dockerApi.localVolumeRemove(v.Name)
-      ElMessage.success('卷已删除')
+      ElMessage.success(t('opusedockerops.k10'))
       refresh()
     } catch (e: any) {
       if (e !== 'cancel') ElMessage.error(e.message)
@@ -89,10 +91,10 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
   // 网络操作
   async function createNetwork() {
     try {
-      const { value } = await ElMessageBox.prompt('输入网络名', '创建网络', { confirmButtonText: '创建' })
+      const { value } = await ElMessageBox.prompt(t('opusedockerops.k11'), t('opusedockerops.k12'), { confirmButtonText: t('opusedockerops.k7') })
       if (!value) return
       await dockerApi.localNetworkCreate(value)
-      ElMessage.success('网络已创建')
+      ElMessage.success(t('opusedockerops.k13'))
       refresh()
     } catch (e: any) {
       if (e !== 'cancel') ElMessage.error(e.message)
@@ -101,9 +103,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
 
   async function removeNetwork(n: DockerNetwork) {
     try {
-      await ElMessageBox.confirm(`确定删除网络「${n.Name}」吗？`, '危险操作', { type: 'error' })
+      await ElMessageBox.confirm(`确定删除网络「${n.Name}」吗？`, t('opusedockerops.k9'), { type: 'error' })
       await dockerApi.localNetworkRemove(n.Name)
-      ElMessage.success('网络已删除')
+      ElMessage.success(t('opusedockerops.k14'))
       refresh()
     } catch (e: any) {
       if (e !== 'cancel') ElMessage.error(e.message)
@@ -124,7 +126,7 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
 
   async function composeAction(action: 'up' | 'down') {
     if (!composePath.value.trim()) {
-      ElMessage.warning('请输入 compose 文件所在目录')
+      ElMessage.warning(t('opusedockerops.k15'))
       return
     }
     composeLoading.value = true
@@ -132,9 +134,10 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
     try {
       const fn = action === 'up' ? dockerApi.composeUp : dockerApi.composeDown
       const res = await fn(selectedTarget(), composePath.value.trim(), action === 'down')
-      composeOutput.value = res.output || (res.ok ? '成功' : '失败')
+      composeOutput.value = res.output || t('opsdocker.composeActionOk')
     } catch (e: any) {
-      composeOutput.value = e.message
+      // 失败已是 errcode 信封（compose_action_failed）：CLI 原文在 output 字段。
+      composeOutput.value = e?.response?.data?.output || e.message
     } finally {
       composeLoading.value = false
     }

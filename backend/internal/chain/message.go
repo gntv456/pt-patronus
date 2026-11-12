@@ -233,7 +233,7 @@ func (c *SiteChain) fetchMessages(ctx context.Context, s *models.Site, mailbox s
 	return msgSFResult{messages: msgs, errMsg: errMsg}
 }
 
-// fetchMessagesOnce 占一个 sem 槽 + 独立超时后抓取（同步路径限流，对标 fetchAnnouncementOnce）。
+// fetchMessagesOnce 占一个 sem 槽 + 独立超时后抓取（同步路径限流，同 fetchAnnouncementOnce）。
 func (c *SiteChain) fetchMessagesOnce(ctx context.Context, sem chan struct{}, s *models.Site, mailbox site.MailboxType) msgSFResult {
 	sem <- struct{}{}
 	defer func() { <-sem }()

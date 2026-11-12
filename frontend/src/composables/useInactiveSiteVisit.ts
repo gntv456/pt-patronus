@@ -6,6 +6,7 @@
  * 依次在弹窗里打开超过 30 天未访问的启用站点，间隔 8 秒，支持取消。
  */
 import { onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import type { ComputedRef } from 'vue'
 import type { Site } from '@/api/site'
 import { safeUrl } from '@/utils/safeUrl'
@@ -15,6 +16,8 @@ type InactiveTarget = { row: { site_id: number; site_name: string; last_access_a
 function wait(duration: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, duration))
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useInactiveSiteVisit(
   inactiveSites: ComputedRef<InactiveTarget[]>,
@@ -28,13 +31,13 @@ export function useInactiveSiteVisit(
   ): Promise<number> {
     const targets = [...inactiveSites.value]
     if (!targets.length) {
-      ElMessage.info('没有最后访问超过 30 天的启用站点')
+      ElMessage.info(t('opuseinactivesitevisit.k1'))
       return 0
     }
 
     const popup = window.open('about:blank', 'ptpatronus_inactive_sites')
     if (!popup) {
-      ElMessage.error('浏览器阻止了访问窗口，请允许本站打开弹窗后重试')
+      ElMessage.error(t('opuseinactivesitevisit.k2'))
       return 0
     }
 

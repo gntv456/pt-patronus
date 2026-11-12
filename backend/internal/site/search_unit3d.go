@@ -13,7 +13,7 @@ import (
 )
 
 // unit3dTorrentIDRe 匹配 UNIT3D 种子详情/下载链接里的 /torrents/<digits>，
-// 用于 ParseUnit3DSearch 丢弃表头/广告等非种子行（PT-depiler rows.filter 的等价实现）。
+// 用于 ParseUnit3DSearch 丢弃表头/广告等非种子行。
 var unit3dTorrentIDRe = regexp.MustCompile(`/torrents/\d+`)
 
 // BuildUnit3DSearchURL 构造 UNIT3D 搜索请求 URL：/torrents?name=<kw>&perPage=100[&page=<n>]。

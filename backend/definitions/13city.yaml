@@ -1,4 +1,4 @@
-# 13city - user fields migrated from PT-manager/PT-depiler; live smoke still recommended.
+# 13city - 用户字段按上游定义校准迁移；建议 live smoke 复核。
 
 aka:
     - 13城

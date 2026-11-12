@@ -2,11 +2,15 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { cloudApi, type CloudDrive, type StrmRule, type StrmRecord, type StrmResult } from '@/api/cloud'
 
 // generateAllOutcome 把「全部规则生成」的跨规则汇总翻译成用户看到的那一句。
 // 回归：以前不管结果如何都弹「已触发全部规则生成」，全部规则失败（凭据过期、目录不存在）
 // 也显示成功，用户以为 .strm 已落地。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function generateAllOutcome(s?: {
   rules: number
   generated: number
@@ -75,14 +79,14 @@ export function useCloudStrmRules(
     try {
       rules.value = await cloudApi.listRules()
     } catch (e: any) {
-      ElMessage.error(e?.message || '加载规则失败')
+      ElMessage.error(e?.message || t('opusecloudstrmrules.k1'))
     }
   }
   async function loadRecords() {
     try {
       records.value = await cloudApi.listRecords()
     } catch (e: any) {
-      ElMessage.error(e?.message || '加载记录失败')
+      ElMessage.error(e?.message || t('opusecloudstrmrules.k2'))
     }
   }
 
@@ -117,7 +121,7 @@ export function useCloudStrmRules(
   function ruleBrowse() {
     const d = drives.value.find((x) => x.id === ruleForm.value.drive_id)
     if (!d) {
-      ElMessage.warning('请先选择网盘')
+      ElMessage.warning(t('opusecloudstrmrules.k3'))
       return
     }
     openBrowse(d, (p) => (ruleForm.value.cloud_path = p))
@@ -127,22 +131,22 @@ export function useCloudStrmRules(
     const f = ruleForm.value
     // 目录标签优先：填了 output_tag 时 output_dir 可留空（后端解析标签路径）。
     if (!f.name || !f.drive_id || !f.cloud_path || (!f.output_dir && !f.output_tag)) {
-      ElMessage.warning('名称/网盘/云盘目录必填，输出目录与目录标签至少填一项')
+      ElMessage.warning(t('opusecloudstrmrules.k4'))
       return
     }
     ruleSaving.value = true
     try {
       if (editingRule.value) {
         await cloudApi.updateRule(editingRule.value.id, f)
-        ElMessage.success('已更新')
+        ElMessage.success(t('common.updated'))
       } else {
         await cloudApi.createRule(f)
-        ElMessage.success('已创建')
+        ElMessage.success(t('common.created'))
       }
       showRuleForm.value = false
       await loadRules()
     } catch (e: any) {
-      ElMessage.error(e?.message || '保存失败')
+      ElMessage.error(e?.message || t('common.saveFailed'))
     } finally {
       ruleSaving.value = false
     }
@@ -150,16 +154,16 @@ export function useCloudStrmRules(
   async function removeRule(r: StrmRule) {
     // 删除前确认（取消即中止，不再走全局 catch）。
     try {
-      await ElMessageBox.confirm(`确定删除规则「${r.name}」？`, '提示', { type: 'warning' })
+      await ElMessageBox.confirm(`确定删除规则「${r.name}」？`, t('common.tip'), { type: 'warning' })
     } catch {
       return // 用户取消
     }
     try {
       await cloudApi.removeRule(r.id)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await loadRules()
     } catch (e: any) {
-      ElMessage.error(e?.message || '删除失败')
+      ElMessage.error(e?.message || t('common.deleteFailed'))
     }
   }
 
@@ -182,7 +186,7 @@ export function useCloudStrmRules(
       report(res, r.name)
       await loadRecords()
     } catch (e: any) {
-      ElMessage.error(e?.message || '生成失败')
+      ElMessage.error(e?.message || t('opusecloudstrmrules.k5'))
     } finally {
       generating.value = null
     }
@@ -195,7 +199,7 @@ export function useCloudStrmRules(
       ElMessage[outcome.kind](outcome.text)
       setTimeout(loadRecords, 1500)
     } catch (e: any) {
-      ElMessage.error(e?.message || '请求失败')
+      ElMessage.error(e?.message || t('common.requestFailed'))
     } finally {
       generatingAll.value = false
     }
@@ -207,7 +211,7 @@ export function useCloudStrmRules(
       const outcome = subSyncOutcome(await cloudApi.syncSubscriptions())
       ElMessage[outcome.kind](outcome.text)
     } catch (e: any) {
-      ElMessage.error(e?.message || '请求失败')
+      ElMessage.error(e?.message || t('common.requestFailed'))
     } finally {
       subsSyncing.value = false
     }
@@ -216,7 +220,7 @@ export function useCloudStrmRules(
     // 删除 STRM 记录前确认（W1：此前无确认直接删——记录是 302 直链与订阅追更的索引，
     // 误删后需重新生成）。与 removeRule 同形态。
     try {
-      await ElMessageBox.confirm(`确定删除记录「${r.cloud_path}」？删除后需重新生成 STRM。`, '提示', {
+      await ElMessageBox.confirm(`确定删除记录「${r.cloud_path}」？删除后需重新生成 STRM。`, t('common.tip'), {
         type: 'warning',
       })
     } catch {
@@ -226,7 +230,7 @@ export function useCloudStrmRules(
       await cloudApi.removeRecord(r.id)
       await loadRecords()
     } catch (e: any) {
-      ElMessage.error(e?.message || '删除失败')
+      ElMessage.error(e?.message || t('common.deleteFailed'))
     }
   }
 

@@ -90,14 +90,14 @@ func New(cfg *config.Config) (*App, error) {
 	// 签到图形验证码 OCR：SystemConfig 热改即生效（详见 wireOCRConfig）。
 	wireOCRConfig(registry, cfgOp)
 	siteCh := chain.NewSiteChain(base, siteOp, registry)
-	// 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用，对标 MoviePilot）。
+	// 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用，）。
 	siteCh.SetHTTPClient(hc)
 	// 签到历史落库：chain.Checkin 统一记录（cron 自动 + 手动触发均覆盖），未注入则不落库。
 	checkinRecordOp := oper.NewCheckinRecordOper(database)
 	siteCh.SetRecordOper(checkinRecordOp)
 
 	// 站点限流同步：LimitInterval>0 的站点按 host 下发 per-host 最小请求间隔
-	// （对标 MP 站点流控；启动时全量同步一次，站点增改后由 API 层再次同步）。
+	// （站点流控；启动时全量同步一次，站点增改后由 API 层再次同步）。
 	if allSites, err := siteOp.List(); err == nil {
 		siteCh.SyncHostLimits(allSites, hc)
 	}
@@ -198,7 +198,7 @@ func New(cfg *config.Config) (*App, error) {
 	// 媒体订阅：cron 跨站搜种子→推送默认下载器+通知。复用 siteCh(搜)、dlCh/dlOp(下载)、noticeSvc(通知)。
 	// mediaCh 注入多评分低分保护闸门（订阅 EnableRatingGuard 或全局 MediaQualityConfig.Enabled）。
 	subOp := oper.NewSubscriptionOper(database)
-	// 资源过滤规则引擎（对标 MP-2 filter module）：规则/组存 SystemConfig KV；引擎无状态。
+	// 资源过滤规则引擎：规则/组存 SystemConfig KV；引擎无状态。
 	// 订阅/刷流/RSS/工作流/Agent 共用，破除 workflow/nodes 复制 matchResolution 的循环 import 根因。
 	filterStore := filter.NewStore(cfgOp)
 	filterEng := filter.NewEngine(filterStore)

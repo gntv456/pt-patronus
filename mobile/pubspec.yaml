@@ -59,8 +59,8 @@ dependencies:
   package_info_plus: ^9.0.0
   # 在线更新：浏览器打开下载页（外链兜底，downloadUrl 非直链/桌面平台时）
   url_launcher: ^6.3.1
-  # 在线更新应用内 OTA（pt_mate 式）：dio 下载 APK(进度/取消) + crypto sha256 校验
-  # (补 pt_mate 短板) + open_filex 拉起系统安装器 + path_provider 临时目录
+  # 在线更新应用内 OTA：dio 下载 APK(进度/取消) + crypto sha256 校验
+  # + open_filex 拉起系统安装器 + path_provider 临时目录
   dio: ^5.7.0
   open_filex: ^4.5.0
   path_provider: ^2.1.0

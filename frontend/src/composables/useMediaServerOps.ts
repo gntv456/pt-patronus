@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, onBeforeUnmount } from 'vue'
+import { i18n } from '@/i18n'
 import {
   mediaServerApi,
   type MediaServer,
@@ -9,6 +10,8 @@ import {
   type PlaybackReport,
   type DuplicateGroup,
 } from '@/api/mediaServer'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useMediaServerOps() {
   // ---- 库管理 + 封面预览 ----
@@ -27,7 +30,7 @@ export function useMediaServerOps() {
     try {
       libs.value = await mediaServerApi.libraries(s.id)
     } catch (e: any) {
-      ElMessage.error(e?.message || '拉取库失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k1'))
     } finally {
       libsLoading.value = false
     }
@@ -39,7 +42,7 @@ export function useMediaServerOps() {
       const res = await mediaServerApi.scan(libsServer.value.id, lib?.id)
       // opResult 风格：失败也是 HTTP 200 + ok:false，不读回执就会把「一个库都没扫动」toast 成成功。
       if (res && res.ok === false) {
-        ElMessage.error(res.error || '扫描触发失败')
+        ElMessage.error(res.error || t('opusemediaserverops.k2'))
         return
       }
       if (lib) {
@@ -48,7 +51,7 @@ export function useMediaServerOps() {
         ElMessage.success(`已触发全库扫描（${res?.scanned ?? 0} 个库）`)
       }
     } catch (e: any) {
-      ElMessage.error(e?.message || '扫描失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k3'))
     }
   }
 
@@ -57,12 +60,12 @@ export function useMediaServerOps() {
     try {
       const res = await mediaServerApi.refresh(libsServer.value.id, lib.id)
       if (res && res.ok === false) {
-        ElMessage.error(res.error || '刷新触发失败')
+        ElMessage.error(res.error || t('opusemediaserverops.k4'))
         return
       }
       ElMessage.success(`已刷新：${lib.name}`)
     } catch (e: any) {
-      ElMessage.error(e?.message || '刷新失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k5'))
     }
   }
 
@@ -77,7 +80,7 @@ export function useMediaServerOps() {
       const blob = await mediaServerApi.coverBlob(libsServer.value.id, lib.id)
       coverURL.value = URL.createObjectURL(blob)
     } catch (e: any) {
-      ElMessage.error(e?.message || '封面生成失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k6'))
     } finally {
       coverLoading.value = false
     }
@@ -101,7 +104,7 @@ export function useMediaServerOps() {
     try {
       report.value = await mediaServerApi.playbackReport(s.id, reportDays.value)
     } catch (e: any) {
-      ElMessage.error(e?.message || '观影报告拉取失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k7'))
     } finally {
       reportLoading.value = false
     }
@@ -113,7 +116,7 @@ export function useMediaServerOps() {
     try {
       report.value = await mediaServerApi.playbackReport(libsServer.value.id, reportDays.value)
     } catch (e: any) {
-      ElMessage.error(e?.message || '观影报告拉取失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k7'))
     } finally {
       reportLoading.value = false
     }
@@ -134,7 +137,7 @@ export function useMediaServerOps() {
       libs.value = await mediaServerApi.libraries(s.id)
       if (libs.value.length) dupLib.value = libs.value[0].id
     } catch (e: any) {
-      ElMessage.error(e?.message || '拉取库失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k1'))
     }
   }
 
@@ -144,7 +147,7 @@ export function useMediaServerOps() {
     try {
       dupGroups.value = await mediaServerApi.duplicates(libsServer.value.id, dupLib.value)
     } catch (e: any) {
-      ElMessage.error(e?.message || '查重失败')
+      ElMessage.error(e?.message || t('opusemediaserverops.k8'))
     } finally {
       dupLoading.value = false
     }

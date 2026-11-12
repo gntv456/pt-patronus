@@ -12,6 +12,7 @@ import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 part 'saveptopsmixin.dart';
 part 'savept_widgets.dart';
@@ -20,7 +21,7 @@ part 'site_card.dart';
 part 'notice_models.dart';
 
 /// PT监护室页：聚合 savept.icu 站点健康数据（ICU 仪表盘风格）。
-/// 迁移自 MoviePilot savept 插件 Page.vue，对齐 Web Savept.vue：品牌头部脉冲 +
+/// 对齐 Web Savept.vue：品牌头部脉冲 +
 /// 紧凑生命体征 + 筛选 + 结构化公告（站点名高亮）+ 年份分组折叠 + 状态色卡 +
 /// 今天站庆彩带 + 回到顶部。
 class SaveptPage extends StatefulWidget {
@@ -186,7 +187,7 @@ class _SaveptPageState extends State<SaveptPage>
 
 }
 
-// ── 公告正文站点名高亮分词（移植自 Web frontend/src/utils/savept.ts 的 tokenizeNoticeText）──
+// ── 公告正文站点名高亮分词（与 Web utils/savept.ts 的 tokenizeNoticeText 同实现）──
 // 按 `|` 切段，段内用「已知站点名集合正则前缀匹配」+「已抢救/已/还有/抢救/于 动词前缀启发式」
 // 找出站点名，便于在 RichText 里把站点名段着色成 inline tag。
 

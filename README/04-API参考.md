@@ -124,7 +124,7 @@ Base URL: `/api/v1`
 | GET | `/mediaserver/:id/duplicates?library_id=` | 重复媒体检测：枚举库条目，按 TMDB/IMDb ID（优先）或归一化标题+年份归并，返回 `Count>=2` 的组 |
 | GET | `/mediaserver/:id/direct/*path` | **302 直链反代（公开）**：开启后把 Emby 文件路径 `{DirectLinkBase}/{path}` 改写到高带宽 CDN，让播放器直连省本机带宽；不泄露 Token（仅静态改写），未开启返 404 |
 
-> **直链反代**对标 MoviePilot Emby 302 直链：播放器无法带 JWT，故端点公开；安全靠「目标 host 来自管理员配置（非请求入参），仅静态拼 `base/path`」，且仅做 302 不注入凭据。服务器配置加 `direct_link_enabled` / `direct_link_base` 两字段。
+> **直链反代**（Emby 302 直链模式）：播放器无法带 JWT，故端点公开；安全靠「目标 host 来自管理员配置（非请求入参），仅静态拼 `base/path`」，且仅做 302 不注入凭据。服务器配置加 `direct_link_enabled` / `direct_link_base` 两字段。
 
 ## 娱乐游戏
 

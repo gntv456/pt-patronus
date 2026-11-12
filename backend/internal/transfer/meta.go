@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Meta 是从文件名/种子名解析出的元信息（对标 MP MetaBase，精简版）。
+// Meta 是从文件名/种子名解析出的元信息（精简版）。
 // 用于：(1) 无 DownloadMediaLink 时构造搜索关键字；(2) 命名时填季集/分辨率/组。
 type Meta struct {
 	Title         string // 清洗后的标题（搜索关键字）

@@ -13,7 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/workflow"
 )
 
-// FilterRulesNode 用规则引擎（对标 MP-2 filter module）按 rule_string 优先级层过滤并排序 ecx.Torrents。
+// FilterRulesNode 用规则引擎按 rule_string 优先级层过滤并排序 ecx.Torrents。
 // 与 FilterTorrentsNode（简单 include/exclude）并列：本节点支持级联优先级 + 22 内置规则 + 自定义规则组。
 type FilterRulesNode struct {
 	eng *filter.Engine
@@ -28,7 +28,7 @@ func (n *FilterRulesNode) Type() string     { return "filter_rules" }
 func (n *FilterRulesNode) Name() string     { return "优先级规则过滤" }
 func (n *FilterRulesNode) Category() string { return "过滤" }
 func (n *FilterRulesNode) Description() string {
-	return "按 MP-2 规则组（rule_string 优先级层 + 22 内置规则）过滤并排序资源"
+	return "按规则组（rule_string 优先级层 + 22 内置规则）过滤并排序资源"
 }
 func (n *FilterRulesNode) Icon() string { return "filter_rules" }
 func (n *FilterRulesNode) DefaultParams() map[string]any {

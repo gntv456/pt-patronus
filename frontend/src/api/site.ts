@@ -69,7 +69,7 @@ export interface SiteConnectivityStatus {
   level?: string
   error?: string
   checked_at?: string // 上次检测时刻（后端 site_connectivity 缓存；ISO 字符串）
-  success?: number // 累计成功次数（对标 MP SiteStatistic，供展示成功率）
+  success?: number // 累计成功次数（供展示成功率）
   fail?: number // 累计失败次数
   avg_seconds?: number // 平均成功响应耗时（秒）
 }
@@ -95,7 +95,7 @@ export interface CheckinRecord {
   created_at: string
 }
 
-// 站点求种请求（对标 MSaber「站点请求」；NexusPHP viewsrequests.php）。
+// 站点求种请求（NexusPHP viewsrequests.php）。
 export interface SiteRequestItem {
   id: string
   title: string

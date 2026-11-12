@@ -4,9 +4,13 @@
 // NasServer 运维配置中心（OpsConfig CRUD + 历史）—— 从 NasServer.vue 抽出的状态簇。
 // opsConfigs 由本 composable 持有并 return；调用方（loadAll / 部署簇 / computed）用解构回的 ref。
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { opsConfigApi, type OpsConfig, type OpsConfigHistory, type OpsConfigInput } from '@/api/monitor'
 import { useAuthStore } from '@/stores/auth'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useNasOpsConfigs() {
   const auth = useAuthStore()
@@ -88,30 +92,30 @@ export function useNasOpsConfigs() {
     try {
       if (editingConfig.value) {
         await opsConfigApi.update(editingConfig.value.id, configForm.value)
-        ElMessage.success('配置已更新')
+        ElMessage.success(t('opusenasopsconfigs.k1'))
       } else {
         await opsConfigApi.create(configForm.value)
-        ElMessage.success('配置已创建')
+        ElMessage.success(t('opusenasopsconfigs.k2'))
       }
       configFormVisible.value = false
       opsConfigs.value = await opsConfigApi.list()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || t('common.saveFailed'))
     }
   }
 
   async function removeConfig(c: OpsConfig) {
     try {
-      await ElMessageBox.confirm(`确定删除配置「${c.name}」？历史记录也会一起删除。`, '删除配置', { type: 'warning' })
+      await ElMessageBox.confirm(`确定删除配置「${c.name}」？历史记录也会一起删除。`, t('opusenasopsconfigs.k3'), { type: 'warning' })
     } catch {
       return
     }
     try {
       await opsConfigApi.remove(c.id)
-      ElMessage.success('配置已删除')
+      ElMessage.success(t('opusenasopsconfigs.k4'))
       opsConfigs.value = await opsConfigApi.list()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
+      ElMessage.error((e as Error).message || t('common.deleteFailed'))
     }
   }
 

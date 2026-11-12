@@ -19,6 +19,10 @@ import (
 
 func newMediaLibTestChain(t *testing.T) (*MediaServerChain, *gorm.DB) {
 	t.Helper()
+	// MediaLibraryOverview 现带 5min TTL 缓存；进入/退出用例都清一次，避免上一
+	// 用例的缓存污染下一用例（尤其「正控空配置 → 制造读取故障」序列）。
+	resetMediaLibCache()
+	t.Cleanup(resetMediaLibCache)
 	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/ml.db"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +55,8 @@ func TestMediaLibraryOverviewDistinguishesReadFailure(t *testing.T) {
 		t.Fatalf("空配置应报「未配置」且无错误，got %+v", empty)
 	}
 
-	// 制造读取故障。
+	// 制造读取故障（先清缓存——空配置结果本身是被合法缓存的）。
+	resetMediaLibCache()
 	if err := db.Migrator().DropTable(&models.MediaServer{}); err != nil {
 		t.Fatal(err)
 	}

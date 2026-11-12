@@ -9,7 +9,7 @@ const importFailureShownLimit = 3;
 /// 这次导入到底成了什么：返回给用户看的那一句（纯函数，便于用例）。
 /// 对齐 Web `Backup.vue` 的口径：「导入多少」「跳过/失败多少」「这份压根没内容」
 /// 是三件不同的事，塌成一句「导入完成」就是让用户体验到一次假恢复（#256）。
-/// [withDownloaders]=false 用于 MoviePilot / .ptd 这两条只导站点的路径
+/// [withDownloaders]=false 用于外部格式（站点 JSON / .ptd）这两条只导站点的路径
 /// （后端不给下载器维度，写出来就是「下载器 0」这种误导性数字）。
 String importOutcomeNotice(ImportResult r, {bool withDownloaders = true}) {
   final counts = withDownloaders

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// wolPlugin — 远程 WOL 唤醒（对标 MSaber 网络工具「远程 WOL 唤醒」）。
+// wolPlugin — 远程 WOL 唤醒（）。
 // 发送 UDP 魔术包（6×0xFF + 16×MAC）到目标广播地址:9（或配置端口）。
 type wolPlugin struct{}
 

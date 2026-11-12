@@ -15,6 +15,7 @@ import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import '../media/media_detail_page.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 // 推荐页：多源热门信息流（豆瓣热映/TMDB trending/Bangumi 热门/寸光集短剧）。
 // 关键词搜索统一到「搜索」页（影视 Tab），本页只保留源+分类筛选的信息流，不再单独占一排放搜索框。
@@ -107,7 +108,7 @@ class _RecommendPageState extends State<RecommendPage> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = errTextOf(e) ?? '加载失败，请检查网络';
         });
       },
     );

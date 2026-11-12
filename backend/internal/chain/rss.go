@@ -21,7 +21,7 @@ import (
 )
 
 // RssChain 编排 RSS 订阅：抓取→解析→过滤→去重→(可选)下载→通知。cron 全局扫描按各订阅间隔到点调 Check。
-// 对标 MoviePilot FetchRssAction + 订阅检查（dedup 靠 RssItem.item_key）。
+// （dedup 靠 RssItem.item_key）。
 type RssChain struct {
 	Base
 	op        *oper.RssOper

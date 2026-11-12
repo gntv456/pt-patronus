@@ -5,7 +5,7 @@ import { http } from './http'
 
 // importOutcomeKind 判断一次导入到底有没有内容：0 条不是「成功」。
 // MoviePilot / .ptd 两条外部格式路径从前无条件弹绿色「导入完成：站点 0」，
-// 而选错文件（拿自有备份去点 MP 入口）正是返回 0 条的常见原因。
+// 而选错文件（拿自有备份去点外部导入入口）正是返回 0 条的常见原因。
 export function importOutcomeKind(sites: unknown, downloaders?: unknown): 'done' | 'none' {
   const s = Number(sites ?? 0)
   const d = Number(downloaders ?? 0)

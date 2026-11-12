@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import {
   entertainmentApi,
   type BigSmallState,
@@ -10,6 +11,10 @@ import {
   type BigSmallProp,
   type BigSmallRedpacket,
 } from '@/api/entertainment'
+
+
+const tr = (k: string) => i18n.global.t(k)
+const t = tr
 
 export function useBigSmallChat(
   siteId: Ref<number>,
@@ -47,9 +52,9 @@ export function useBigSmallChat(
       if (res.success) {
         chatInput.value = ''
         await refreshChat()
-      } else ElMessage.warning(res.message || '发送失败')
+      } else ElMessage.warning(res.message || tr('common.sendFailed'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '发送失败')
+      ElMessage.error((e as Error).message || tr('common.sendFailed'))
     } finally {
       sending.value = false
     }
@@ -73,7 +78,7 @@ export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (
       ElMessage[res.success ? 'success' : 'warning'](res.message || (action === 'reward' ? '已领取' : '已接取'))
       if (res.success) await load(true)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || tr('common.actionFailed'))
     }
   }
   async function useRefund() {
@@ -82,7 +87,7 @@ export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (
       ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
       if (res.success) await load(true)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || tr('common.actionFailed'))
     }
   }
   async function useProp(p: BigSmallProp) {
@@ -91,7 +96,7 @@ export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (
       ElMessage[res.success ? 'success' : 'warning'](res.message || '已使用')
       if (res.success) await load(true)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '使用失败')
+      ElMessage.error((e as Error).message || t('opusebigsmallgame.k1'))
     }
   }
   async function claimRed(r: BigSmallRedpacket) {
@@ -100,7 +105,7 @@ export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (
       ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
       if (res.success) await load(true)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || tr('common.actionFailed'))
     }
   }
 
@@ -121,7 +126,7 @@ export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (
       ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
       if (res.success) await load(true)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '发送失败')
+      ElMessage.error((e as Error).message || tr('common.sendFailed'))
     } finally {
       rpSending.value = false
     }

@@ -88,7 +88,7 @@ func localPowerCommand(action string) (string, []string, error) {
 }
 
 // parseDiskPaths 把 target.DiskPaths（换行或逗号分隔）拆成路径切片，trim + 去空。
-// 供 host 采集器把宿主 bind mount 目录传给 sysinfo.CollectSystemMetrics（MoviePilot 式磁盘监控）。
+// 供 host 采集器把宿主 bind mount 目录传给 sysinfo.CollectSystemMetrics（宿主磁盘监控）。
 func parseDiskPaths(s string) []string {
 	var out []string
 	for _, line := range strings.Split(s, "\n") {

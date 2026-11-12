@@ -12,7 +12,7 @@ import (
 
 // mcp-server：MCP（Model Context Protocol）服务端，把宿主能力（站点/订阅/下载器/搜索…）
 // 暴露为 MCP 工具，供 AI Agent / IDE / 自动化客户端经 JSON-RPC 调用。
-// 对标 MoviePilot MCP Server（cyt-666）。
+//
 //
 // 协议传输由 internal/mcp 包 + 公开路由 /api/v1/mcp 承载；本插件负责配置 UI（启用/令牌）：
 // 服务端在每次请求时经 SettingsGetter 读取本插件配置，单一真源、热改即时生效。

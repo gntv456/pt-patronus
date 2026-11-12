@@ -695,7 +695,7 @@
   cursor: not-allowed;
 }
 
-/* ===== 双视图切换（对标极空间） ===== */
+/* ===== 双视图切换 ===== */
 .view-switch {
   display: flex;
   gap: var(--sp-1);
@@ -727,7 +727,7 @@
   box-shadow: var(--surface-shadow);
 }
 
-/* ===== 卡片内资源监控 sparkline（对标绿联） ===== */
+/* ===== 卡片内资源监控 sparkline ===== */
 .card-monitor {
   display: flex;
   gap: var(--sp-3);

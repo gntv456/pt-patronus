@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-// ---- 识别词云端共享（对标 MSaber「本地自定义 + 云端协作共享」） ----
+// ---- 识别词云端共享 ----
 //
 // 模型：一个或多个「共享仓库」（JSON URL，如 GitHub raw / jsDelivr / 自建 gist）。
 // 仓库格式：{"words":[{"kind":"replace","from":"...","to":"...","note":"..."}]}。
 // 同步 = 拉取仓库合并进本地词表（from+kind 去重，本地优先），一键导入，不做自动推送
-//（避免用户词表被远端静默覆盖；与 MSaber 云端协作同只读语义）。
+//（避免用户词表被远端静默覆盖）。
 
 const identifyRepoKey = "transfer.identify_words_repos"
 

@@ -1,4 +1,3 @@
-# qingyingpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # dead site retained; reference projects expose no executable user_info/search selectors beyond retained metadata.
 

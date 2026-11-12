@@ -55,7 +55,7 @@ func (c *DownloadChain) List(ctx context.Context, id uint) ([]downloader.Torrent
 }
 
 // Add 添加种子。若 opts.SiteID 非 0 且 URL 为 http(s) 种子链接，先用站点 cookie 把 .torrent
-// 下载成字节再以文件方式推下载器（对标 MoviePilot，解决 PT 站 download.php 需登录态、下载器
+// 下载成字节再以文件方式推下载器（解决 PT 站 download.php 需登录态、下载器
 // 无站点 cookie 拿不到种子的问题）。
 //
 // 向后兼容：磁力 / 无 SiteID / FileContent 已有 / ErrDelegatedToDownloader（URL 自带凭证或

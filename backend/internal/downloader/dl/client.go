@@ -4,7 +4,6 @@
 // Package dl 是 Deluge Web UI 客户端，实现 downloader.Downloader 接口。
 // 协议：POST /json 自有 JSON-RPC（{id,method,params}）；auth.login([password]) 换 session cookie
 // （Deluge 认证只用密码，用户名不参与）；core.* 操作种子。
-// 参考实现：PT-depiler src/packages/downloader/entity/Deluge.ts。
 //
 // 文件组织：
 //   - client.go  Client 结构、auth.login 认证、JSON-RPC 请求编排（本文件）

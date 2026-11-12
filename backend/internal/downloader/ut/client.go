@@ -5,7 +5,6 @@
 // 协议：HTTP Basic Auth + GET /gui/token.html 取 CSRF token（服务器同时 Set-Cookie: GUID，
 // cookiejar 自动存）；之后所有操作为 GET /gui/?token=...&t=<ts>&action=...&...，
 // 返回 JSON（list=1 的 torrents 为元组数组）。.torrent 文件走 multipart POST 到 /gui/。
-// 参考实现：PT-depiler src/packages/downloader/entity/uTorrent.ts。
 //
 // 文件组织：
 //   - client.go  Client 结构、token 认证、请求编排（本文件）

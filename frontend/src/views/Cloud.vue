@@ -17,6 +17,7 @@ import {
   type DriveInput,
 } from '@/api/cloud'
 import type { StrmRule, StrmRecord } from '@/api/cloud'
+import { registerPolling } from '@/composables/usePolling'
 import { strmRepairNotices } from './strmRepairNotices'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -176,21 +177,20 @@ async function loadTasks() {
 
 // 有在途任务（排队中/执行中）时每 4s 自动轮询，全部终态或离开页面即停。
 const hasActiveTask = computed(() => tasks.value.some((t) => t.status === 'pending' || t.status === 'running'))
-let taskTimer: number | undefined
+let taskStop: (() => void) | null = null
 function syncTaskPolling() {
   // 连续失败 3 次也停轮询（恢复靠用户手动刷新/重试）。
-  if (hasActiveTask.value && taskFailCount < 3 && taskTimer === undefined) {
-    taskTimer = window.setInterval(() => {
-      loadTasks()
-    }, 4000)
-  } else if ((!hasActiveTask.value || taskFailCount >= 3) && taskTimer !== undefined) {
-    window.clearInterval(taskTimer)
-    taskTimer = undefined
+  // 统一调度器：后台标签页暂停、切回补拉（原裸 setInterval 后台照跑 4s）。
+  if (hasActiveTask.value && taskFailCount < 3 && taskStop === null) {
+    taskStop = registerPolling(loadTasks, 4000, { runOnShow: true })
+  } else if ((!hasActiveTask.value || taskFailCount >= 3) && taskStop !== null) {
+    taskStop()
+    taskStop = null
   }
 }
 watch(hasActiveTask, syncTaskPolling)
 onUnmounted(() => {
-  if (taskTimer !== undefined) window.clearInterval(taskTimer)
+  taskStop?.()
 })
 async function retryTask(task: CloudTask) {
   try {

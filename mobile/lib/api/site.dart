@@ -274,7 +274,8 @@ class SiteApi {
   /// 一键签到全部启用站点，返回每站结果列表 + 「清单读不出来」的原因。
   /// 只取 results 会把后端读不出站点清单讲成「没有启用的站点」（#258）。
   Future<CheckinAllOutcome> checkinAll() async {
-    final r = await _api.post('/sites/checkin', <String, dynamic>{});
+    // 一键签到是分钟级动作（并发 8 站 × 单站 30s 上限）：走 postLong 的 60s 档。
+    final r = await _api.postLong('/sites/checkin', <String, dynamic>{});
     final list = (r['results'] as List?) ?? const [];
     return (
       results: list.map((e) => Map<String, dynamic>.from(e as Map)).toList(),

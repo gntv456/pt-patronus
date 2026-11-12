@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import {
   entertainmentApi,
   type GameStats,
@@ -10,6 +11,9 @@ import {
   type PlayResult,
 } from '@/api/entertainment'
 import { entFail } from '@/utils/entFail'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useMedalSynthesis(siteId: Ref<number>) {
   const targets = ref<SynthesisTarget[]>([])
@@ -65,7 +69,7 @@ export function useMedalSynthesis(siteId: Ref<number>) {
         lastDraw.value = { count, frags: parseFrags(res.prize), msg: res.message || '' }
         ElMessage.success(res.message || `${count} 连抽取完成`)
       } else {
-        ElMessage.warning(res.message || '抽取失败')
+        ElMessage.warning(res.message || t('opusemedalsynthesis.k1'))
       }
       await loadAll() // 刷新碎片库存 + 火花
       if (showHistory.value) {
@@ -76,7 +80,7 @@ export function useMedalSynthesis(siteId: Ref<number>) {
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || t('common.requestFailed'))
     } finally {
       drawing.value = 0
     }
@@ -87,12 +91,12 @@ export function useMedalSynthesis(siteId: Ref<number>) {
     synthesizing.value = true
     try {
       const res = await entertainmentApi.synthesize(siteId.value, 'medal_synthesis', selected.value.id)
-      if (res.success) ElMessage.success(res.prize ? `合成成功：${res.prize}` : '合成成功')
-      else ElMessage.warning(res.message || '合成失败')
+      if (res.success) ElMessage.success(res.prize ? `合成成功：${res.prize}` : t('opusemedalsynthesis.k2'))
+      else ElMessage.warning(res.message || t('opusemedalsynthesis.k3'))
       await loadAll()
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || t('common.requestFailed'))
     } finally {
       synthesizing.value = false
     }
@@ -105,7 +109,7 @@ export function useMedalSynthesis(siteId: Ref<number>) {
       try {
         history.value = await entertainmentApi.history(siteId.value, 'medal_synthesis')
       } catch {
-        ElMessage.warning('记录加载失败')
+        ElMessage.warning(t('opusemedalsynthesis.k4'))
       } finally {
         historyLoading.value = false
       }

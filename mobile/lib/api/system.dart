@@ -106,7 +106,7 @@ class DoctorFinding {
       );
 }
 
-/// 诊断报告（对标后端 doctor.Report）。
+/// 诊断报告（对齐后端 doctor.Report）。
 class DoctorReport {
   final String status; // healthy | degraded | failed
   final List<DoctorFinding> findings;

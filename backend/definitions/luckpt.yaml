@@ -1,4 +1,3 @@
-# luckpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 
 description: 汇聚多元精彩，启程旋律之旅。

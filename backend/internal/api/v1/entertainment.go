@@ -33,16 +33,10 @@ func NewEntertainmentHandler(ent *chain.EntertainmentChain, tickets *auth.Ticket
 	return &EntertainmentHandler{ent: ent, tickets: tickets, allowedOrigins: set}
 }
 
-// checkOrigin 防 CSWSH：配置白名单时浏览器来源须命中；非浏览器（无 Origin）放行。
+// checkOrigin 防 CSWSH。空白名单=开发全开语义（failClosedEmpty=false 保持旧行为）；
+// same-origin 放行 + 跨域白名单的统一口径见 origin.go。
 func (h *EntertainmentHandler) checkOrigin(r *http.Request) bool {
-	if len(h.allowedOrigins) == 0 {
-		return true
-	}
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-	return h.allowedOrigins[origin]
+	return originAllowed(h.allowedOrigins, false, r)
 }
 
 // spendErr 处理"花钱"操作（Play/Buy/Draw/Synthesize）的错误：

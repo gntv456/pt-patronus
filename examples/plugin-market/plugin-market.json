@@ -2,6 +2,7 @@
   "version": 1,
   "name": "PTPatronus Plugin Market",
   "api_version": "1",
+  "app_version": "1.03.29",
   "host_capabilities": [
     "host.runtime.external-http.command",
     "host.runtime.external-http.base-url",
@@ -18,7 +19,8 @@
     "host.api.site.read",
     "host.api.site.cookie",
     "host.ui.view",
-    "host.ui.bridge"
+    "host.ui.bridge",
+    "host.api.tools"
   ],
   "public_key": "cbK2okPdJoXOUPlW3vL1KEKWM6Owm4rO6Mw3+kICRfs=",
   "plugins": [
@@ -29,7 +31,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/auto-speed-1.1.0.zip",
-      "sha256": "9f1be95d365a148bf1ad8f6e2f7773888bbfed125e4c47673e8833f931bdc7d5",
+      "sha256": "88746ed54639fdd0ce6478750afbcb4815e8de2440006ec5afe7cf118718c9f2",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -38,7 +40,7 @@
         "host.api.notice.write"
       ],
       "author": "PTPatronus Community",
-      "description": "\u7b80\u6613\u4e0b\u8f7d\u6d4b\u901f\uff08\u8fc1\u79fb\u81ea MoviePilot auto-speed\uff09\u3002",
+      "description": "\u7b80\u6613\u4e0b\u8f7d\u6d4b\u901f\u3002",
       "license": "MIT",
       "keywords": [
         "speedtest",
@@ -86,7 +88,7 @@
           "\u6d4b\u901f URL"
         ]
       },
-      "signature": "d5OtXxGIPs7TuEP652JF8qAd/W6n0M1DdqbOSHlVH7yIsQux2Ktl+EoTz49kFIAD7eOdc5n/70vhZHIgV7gjCw==",
+      "signature": "Dz2XjuwA853vegQ5ZwlHHy2S53MJ7kbOY34CV2cUmSbuiS0DrAZ5hq5dJ8UTIm0pMtnNAB9c+nscZG0R0k/vCA==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -104,7 +106,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/cloudflare-subscribe-1.0.5.zip",
-      "sha256": "95d175b5acb0602873daacff22a2eb75ee2512a5d2509043c97d590e41e3d245",
+      "sha256": "59c54286301e09e690a254ae4632b413ef2c02dbc8746b0db24283b74bd26eb8",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -113,7 +115,7 @@
         "host.api.notice.write"
       ],
       "author": "PTPatronus Community",
-      "description": "\u5b9a\u65f6\u62c9\u53d6\u8ba2\u9605\u6e90\u5e76\u66f4\u65b0\u672c\u5730 hosts \u7247\u6bb5\uff08\u8fc1\u79fb\u81ea MoviePilot\uff09\u3002",
+      "description": "\u5b9a\u65f6\u62c9\u53d6\u8ba2\u9605\u6e90\u5e76\u66f4\u65b0\u672c\u5730 hosts \u7247\u6bb5\u3002",
       "license": "MIT",
       "keywords": [
         "cloudflare",
@@ -177,7 +179,7 @@
           "\u8ba2\u9605 URL"
         ]
       },
-      "signature": "8nViF0bpDfdaEpUcUevByuxJlIF5ikXTbpNKscHK7oUwOK50w8W6cBLGbOZTFz0GRycUG66R3RicNK9csLEuAw==",
+      "signature": "zTi7SzoQd/8ZU/gpRWq8jaAJcViAd81kz87usJ12XUE6GhkgUsi0QtJ5wg7klgk+gWBomtcV+g4xe75EkokFCw==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -2195,14 +2197,14 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/twofa-helper-1.2.7.zip",
-      "sha256": "06656e2a22acb9e776de35826e817208087e3c4fda45482ba05ac8c33636b76f",
+      "sha256": "a90d6f27de5a8783f0afe07b146102c9e4fa75c0ec58bfb992d08c2eaaa5f775",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
         "host.api.log.write"
       ],
       "author": "PTPatronus Community",
-      "description": "\u57fa\u4e8e Base32 \u5bc6\u94a5\u751f\u6210 TOTP \u9a8c\u8bc1\u7801\uff08\u8fc1\u79fb\u81ea MoviePilot\uff09\u3002",
+      "description": "\u57fa\u4e8e Base32 \u5bc6\u94a5\u751f\u6210 TOTP \u9a8c\u8bc1\u7801\u3002",
       "license": "MIT",
       "keywords": [
         "2fa",
@@ -2233,7 +2235,7 @@
           "help": "\u6bcf\u884c name|BASE32_SECRET \u6216 otpauth uri"
         }
       ],
-      "signature": "DIHtO5lRxodrzq3f3o9OpjpJzDr1jJPl1r5XWku8KguvSCTrKN3JKkjFKJZVfShVZWS9CiTr+LBuLRbdz4C2Aw==",
+      "signature": "S0ujqbyPRiQpX0bD30GSMwkizWoLD+EB1I6pQ3a0rPsRdWFKCS5YZ55oWQ1Uuv0fvFyRxyMDdqZROfr5hsBUCA==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",

@@ -12,7 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
-// 勋章合成页面解析（移植自 Kotlin HxptMedalSynthesisGame.parseSyntheses）。
+// 勋章合成页面解析（站点勋章合成页解析）。
 // 站点页为服务端渲染 HTML：每个合成目标是 class="synthesis-card" 的 <div> 块，
 // 内含 data-synthesis-id、<h3>名称、碎片 current/required、drawFragment(id,count,price)、合成按钮。
 

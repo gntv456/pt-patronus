@@ -44,7 +44,7 @@ function lastCheckedLabel(): string {
   return t('scs.lastDay', { n: Math.floor(hr / 24) })
 }
 
-// 站点稳定性统计（成功率 + 平均耗时，对标 MP SiteStatistic）；无累计数据返回空串。
+// 站点稳定性统计（成功率 + 平均耗时）；无累计数据返回空串。
 function statsLabel(): string {
   const s = props.status?.success ?? 0
   const f = props.status?.fail ?? 0

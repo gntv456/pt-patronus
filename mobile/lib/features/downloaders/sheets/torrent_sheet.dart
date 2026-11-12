@@ -21,7 +21,10 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   int? _upRate;
   String _error = '';
   bool _connecting = true;
+  bool _wsDead = false; // WS 连不上（ticket 被拒/握手失败）：展示错误态而非无限转圈
+  Timer? _connectTimeout;
   StreamSubscription? _sub;
+  StreamSubscription? _stateSub;
 
   int get _id => widget.downloader.id;
   String get _type => widget.downloader.type;
@@ -30,6 +33,19 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   void initState() {
     super.initState();
     _ws.connect();
+    // 兜底超时：WS 无任何状态回调（如 ticket 挂起）时，10s 后走 REST 拉一次，
+    // 不让弹窗无限转圈。
+    _connectTimeout = Timer(const Duration(seconds: 10), _restFallback);
+    _stateSub = _ws.connectionState.listen((st) {
+      if (!mounted) return;
+      if (st == WsState.failed || st == WsState.stopped) {
+        setState(() => _wsDead = true);
+        _connectTimeout?.cancel();
+        _restFallback();
+      } else if (st == WsState.connected) {
+        _connectTimeout?.cancel();
+      }
+    });
     _sub = _ws.snapshots.listen((list) {
       final match = list.where((s) => s.downloaderId == _id).toList();
       if (match.isEmpty) return; // 本次广播不含此下载器，保留上次显示
@@ -41,6 +57,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
         _upRate = s.upRate;
         _error = s.error;
         _connecting = false;
+        _wsDead = false; // 收到推送即覆盖 REST 兜底横幅
       });
     });
   }
@@ -48,7 +65,21 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   @override
   void dispose() {
     _sub?.cancel(); // 仅取消本页订阅，不断开共享的 WsClient
+    _stateSub?.cancel();
+    _connectTimeout?.cancel();
     super.dispose();
+  }
+
+  /// REST 兜底：WS 不可达时直接拉一次种子列表（静态快照，无实时速率）。
+  Future<void> _restFallback() async {
+    try {
+      final list = await _api.torrents(_id);
+      if (!mounted) return;
+      setState(() {
+        _torrents = list;
+        _connecting = false;
+      });
+    } catch (_) {/* REST 也失败：保持现有状态（_wsDead 已置错误态） */}
   }
 
   int get _active =>
@@ -64,7 +95,31 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   Widget build(BuildContext context) {
     final d = widget.downloader;
     Widget body;
-    if (_connecting) {
+    if (_wsDead && _torrents.isEmpty) {
+      body = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off, size: 36, color: context.dimText),
+            const SizedBox(height: 10),
+            Text('实时推送连不上', style: TextStyle(color: context.dimText)),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              onPressed: () {
+                setState(() {
+                  _wsDead = false;
+                  _connecting = true;
+                });
+                _connectTimeout =
+                    Timer(const Duration(seconds: 10), _restFallback);
+                _ws.connect();
+              },
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      );
+    } else if (_connecting) {
       body = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -129,7 +129,7 @@ type BrushFlowTask struct {
 	DeleteUploadMB  int64   `json:"delete_upload_mb"`                     // 累计上传达此值删，0=不限
 	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"`    // 删种时是否删文件
 	UseShareLimit   bool    `gorm:"default:false" json:"use_share_limit"` // 开启：RunSweep 时对任务种子设下载器原生 share limit（达标即暂停，即时保护，补充应用层扫删）；复用 DeleteRatio/DeleteSeedHours 作阈值
-	// 删种增强（对标 autoremove；0/空=不启用；默认 DeleteLogic=or 保持旧行为）
+	// 删种增强（0/空=不启用；默认 DeleteLogic=or 保持旧行为）
 	DeleteMinUPRateKB   int64   `json:"delete_min_up_rate_kb"`                 // 上传速度低于此值(KB/s)且已完成做种 → 删
 	DeleteInactiveHours float64 `json:"delete_inactive_hours"`                 // 最后活跃超过此小时 → 删
 	DeleteLogic         string  `gorm:"size:8;default:or" json:"delete_logic"` // or=任一命中即删 / and=已配置项全部命中

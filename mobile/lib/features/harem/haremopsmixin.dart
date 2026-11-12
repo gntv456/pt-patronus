@@ -207,7 +207,7 @@ mixin HaremOpsMixin on State<HaremPage> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = errTextOf(e) ?? '加载失败，请检查网络';
         });
       },
     );

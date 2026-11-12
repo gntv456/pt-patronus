@@ -1,4 +1,3 @@
-# passthepopcorn — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: gazelle。定义级 mock 已覆盖 PTP panels 用户信息、时魔、做种数与做种体积；真实站点仍建议 live smoke。
 
 aka:

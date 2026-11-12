@@ -33,7 +33,7 @@ func (c *DockerLocalClient) LocalCreateContainer(ctx context.Context, req map[st
 }
 
 // LocalCreateFromSimple 接收简化的前端表单，组装成 Engine API 的完整请求体。
-// 对齐 1Panel 创建容器表单：镜像、名称、端口映射、环境变量、挂载、命令。
+// 创建容器表单：镜像、名称、端口映射、环境变量、挂载、命令。
 func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simpleCreateReq) (string, error) {
 	body := map[string]any{
 		"Image": in.Image,
@@ -102,7 +102,7 @@ func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simple
 	return c.LocalCreateContainer(ctx, body)
 }
 
-// simpleCreateReq 创建容器的简化前端表单（对齐 1Panel 创建容器 UI）。
+// simpleCreateReq 创建容器的简化前端表单。
 type simpleCreateReq struct {
 	Image         string            `json:"image" binding:"required"`
 	Name          string            `json:"name"`

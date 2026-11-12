@@ -7,6 +7,7 @@
 import { computed, ref } from 'vue'
 import { dockerApi, type DockerListResp, type DockerStatsRow } from '@/api/docker'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
+import { registerPolling } from '@/composables/usePolling'
 
 const HISTORY_POINTS = 20
 
@@ -25,7 +26,7 @@ export function useDockerData(mode: () => 'local' | 'remote') {
   // 资源监控历史数据（用于 sparkline）
   const cpuHistory = ref<Record<string, number[]>>({})
   const memHistory = ref<Record<string, number[]>>({})
-  let statsTimer: number | undefined
+  let statsStop: (() => void) | null = null
 
   // 资源条的「停更」账面：原因用后端给的中文（503/502 都带 message），界面自己不编造解释。
   const statsError = ref('')
@@ -119,13 +120,12 @@ export function useDockerData(mode: () => 'local' | 'remote') {
 
   function startStatsPolling() {
     stopStatsPolling()
-    statsTimer = window.setInterval(refreshStats, 5000)
+    // 统一调度器：后台标签页暂停、切回补拉（原裸 setInterval 后台照跑 5s 打 API）。
+    statsStop = registerPolling(refreshStats, 5000, { runOnShow: true })
   }
   function stopStatsPolling() {
-    if (statsTimer) {
-      clearInterval(statsTimer)
-      statsTimer = undefined
-    }
+    statsStop?.()
+    statsStop = null
   }
 
   function statFor(name: string): DockerStatsRow | undefined {

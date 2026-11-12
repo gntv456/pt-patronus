@@ -5,7 +5,7 @@
 
 <script setup lang="ts">
 /**
- * MoviePilot-style "find on sites" dialog.
+ * "Find on sites" dialog.
  * Card grid + "更多来源" grouping, progressive results while parent streams.
  */
 import { useI18n } from 'vue-i18n'

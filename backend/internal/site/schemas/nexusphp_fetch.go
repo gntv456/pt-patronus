@@ -26,7 +26,7 @@ var (
 	bphValueRe = regexp.MustCompile(`(?:能获取|能獲取|currently\s+getting)[^0-9-+]{0,12}([-+]?[\d,]+\.?\d*)`)
 	// seedingSummaryRe 匹配 getusertorrentlistajax 响应里 table 前的汇总「N | SIZE」
 	// （nexusphp getusertorrentlistajax.php 源码：div 内 "数量 | 体积"）。第二段必须带单位，
-	// 以区分表内 seeders|leechers 那种 "5 | 3" 误匹配（PT-depiler #1060 同样问题）。
+	// 以区分表内 seeders|leechers 那种 "5 | 3" 误匹配。
 	seedingSummaryRe = regexp.MustCompile(`(\d[\d.,]*)\s*\|\s*([\d.]+\s*[KMGTPE]i?B)`)
 	// sizeTokenRe 匹配单个体积串（带单位），用于回退时从做种列表每行抽出体积。
 	sizeTokenRe = regexp.MustCompile(`(?i)([\d.]+\s*[KMGTPE]i?B|[\d.]+\s*Bytes)`)
@@ -39,7 +39,7 @@ var (
 )
 
 // fetchBonusPerHour 抓 mybonus.php 取「每小时积分」。
-// 按 PT-depiler NexusPHP 方案：定位含「你当前每小时能获取」的元素（取最后一个/最深），
+// 定位含「你当前每小时能获取」的元素（取最后一个/最深），
 // 再用 bphValueRe 锚定「能获取」之后的数字，避免误取同元素内的魔力总量。best-effort。
 func fetchBonusPerHour(ctx context.Context, hc *httpclient.Client, baseURL, cookie string) float64 {
 	resp, err := hc.Get(ctx, joinURL(baseURL, "mybonus.php"), cookie, true)

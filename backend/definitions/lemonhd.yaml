@@ -1,4 +1,4 @@
-# lemonhd - user_info overrides migrated from PT-depiler and covered by mock tests; dead site retained.
+# lemonhd - user_info overrides 按上游定义校准迁移 and covered by mock tests; dead site retained.
 # schema: nexusphp; defaults fill common NexusPHP fields.
 
 aka:

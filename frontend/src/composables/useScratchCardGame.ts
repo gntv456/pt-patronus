@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, watch, onMounted, onUnmounted, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import {
   entertainmentApi,
   type GameStats,
@@ -11,6 +12,9 @@ import {
   type PlayResult,
 } from '@/api/entertainment'
 import { entFail } from '@/utils/entFail'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useScratchCardGame(siteId: Ref<number>) {
   const stats = ref<GameStats | null>(null)
@@ -53,13 +57,13 @@ export function useScratchCardGame(siteId: Ref<number>) {
     try {
       const res = await entertainmentApi.play(siteId.value, 'cspt_scratch')
       reveal.value = res
-      if (res.success) ElMessage.success(res.prize ? `获得 ${res.prize}` : '刮卡成功')
-      else ElMessage.warning(res.message || '刮卡失败')
+      if (res.success) ElMessage.success(res.prize ? `获得 ${res.prize}` : t('opusescratchcardgame.k1'))
+      else ElMessage.warning(res.message || t('opusescratchcardgame.k2'))
       await refreshStats()
       history.value = await entertainmentApi.history(siteId.value, 'cspt_scratch').catch(entFail('history', history.value))
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '请求失败')
+      ElMessage.error(msg || t('common.requestFailed'))
     } finally {
       playing.value = false
     }
@@ -94,11 +98,11 @@ export function useScratchCardGame(siteId: Ref<number>) {
     try {
       const res = await entertainmentApi.buy(siteId.value, 'cspt_scratch', opt.type)
       if (res.success) ElMessage.success(res.message || `购买 ${opt.buy_count} 张`)
-      else ElMessage.warning(res.message || '购买失败')
+      else ElMessage.warning(res.message || t('opusescratchcardgame.k3'))
       await refreshStats()
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '购买失败')
+      ElMessage.error(msg || t('opusescratchcardgame.k3'))
     } finally {
       buying.value = false
     }

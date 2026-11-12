@@ -7,6 +7,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { traktApi, type TraktConfig } from '@/api/trakt'
+import { registerPolling } from '@/composables/usePolling'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
 import { devicePollTerminal, traktFailText, traktPollGiveUpText, TRAKT_POLL_GIVEUP } from './traktHelpers'
@@ -35,7 +36,7 @@ const saving = ref(false)
 const device = ref<{ user_code: string; verification_url: string } | null>(null)
 const authBusy = ref(false)
 const syncing = ref(false)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollStop: (() => void) | null = null
 // 连续「什么都读不到」的次数：只在该停下来时才停（一次网络抖动不等于授权坏了）。
 let pollFails = 0
 
@@ -105,7 +106,8 @@ async function startDeviceAuth() {
 
 function startPolling() {
   stopPolling()
-  pollTimer = setInterval(async () => {
+  // 统一调度器：后台标签页暂停（原裸 setInterval 后台照跑 3s 打授权状态接口）。
+  pollStop = registerPolling(async () => {
     try {
       const st = await traktApi.deviceStatus()
       pollFails = 0
@@ -129,14 +131,12 @@ function startPolling() {
         ElMessage.warning(traktPollGiveUpText(pollFails))
       }
     }
-  }, 3000)
+  }, 3000, { runOnShow: true })
 }
 
 function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+  pollStop?.()
+  pollStop = null
   pollFails = 0
 }
 

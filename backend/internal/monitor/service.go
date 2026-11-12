@@ -44,7 +44,7 @@ type Service struct {
 
 // targetLocks per-target 串行锁（四轮 P2 修复：pull tick / 手动 CollectNow / agent
 // push 三源可对同一 target 并发 RecordSnapshot——computeNetRate 双双读到同一条 prev
-// 把速率算成 0 或翻倍，同刻双快照污染图表；对标 transfer 的 hashLock 范式）。
+// 把速率算成 0 或翻倍，同刻双快照污染图表；同 transfer 的 hashLock 范式）。
 // 后来加的手动探活 ProbeNow 也写目标状态，是这份清单的第四个写者：新增写者时必须一起加锁，
 // 否则清单只是注释里的装饰（RecordProbe 只写状态行，仍与 tick 抢同一目标的状态字段）。
 var targetLocks sync.Map // targetID → *sync.Mutex
@@ -85,7 +85,7 @@ func (s *Service) scanAndCollect(ctx context.Context) {
 		return
 	}
 	now := time.Now()
-	// 并发采集上限，防大量不可达 target 同时烧满 SSH/RTSP 超时致 fd/socket 耗尽（参考 chain 包 semaphore 范式）。
+	// 并发采集上限，防大量不可达 target 同时烧满 SSH/RTSP 超时致 fd/socket 耗尽（chain 包 semaphore 范式）。
 	// wg.Wait 串行化轮次：采集慢时 ticker 自然降频，而非堆积 goroutine。
 	sem := make(chan struct{}, 8)
 	var wg sync.WaitGroup

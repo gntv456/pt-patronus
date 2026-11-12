@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Subscription — 媒体订阅（对标 MoviePilot 订阅）。cron 定时跨站搜种子，命中即推送到下载器 + 通知。
+// Subscription — 媒体订阅。cron 定时跨站搜种子，命中即推送到下载器 + 通知。
 // 单 admin 应用，无 user_id。Status: subscribed(订阅中) | completed(电影已下，不再查) | paused(暂停)。
 type Subscription struct {
 	ID           uint   `gorm:"primaryKey" json:"id"`
@@ -142,7 +142,7 @@ type SubscriptionHit struct {
 }
 
 // TransferHistory — 媒体整理历史：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削 NFO/海报 的结果记录。
-// 对标 MoviePilot TransferHistory。download_hash 索引供 transfer-sweep 去重（同一种子不重复整理）。
+// download_hash 索引供 transfer-sweep 去重（同一种子不重复整理）。
 type TransferHistory struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	Src          string    `gorm:"size:512;index" json:"src"` // 源文件路径
@@ -166,7 +166,7 @@ type TransferHistory struct {
 }
 
 // DownloadMediaLink — 下载推送 → 媒体身份映射：subscribe/rss/workflow 推送种子时落库，
-// 整理时按 hash 秒级命中媒体身份（对标 MP DownloadHistory 的 tmdbid/doubanid 路径），免再搜索。
+// 整理时按 hash 秒级命中媒体身份（tmdbid/doubanid 索引路径），免再搜索。
 // download_hash 唯一：同一种子多次推送以最新身份为准（Upsert）。
 type DownloadMediaLink struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
@@ -230,7 +230,7 @@ type StrmRule struct {
 	Incremental bool   `gorm:"default:false" json:"incremental"`    // 增量模式：本地 .strm 已存在即跳过（大库定期生成）
 	Enabled     bool   `gorm:"default:true" json:"enabled"`
 	// 输出目录绑定目录标签（transfer.dir_tags，local 型）：填 OutputTag 时解析标签路径为
-	// 实际输出目录并覆盖 OutputDir——对标 MSaber「STRM 目录绑定目录分类」，改标签映射全局生效。
+	// 实际输出目录并覆盖 OutputDir——改标签映射全局生效。
 	OutputTag string `gorm:"size:64;default:''" json:"output_tag"`
 	// 过滤：IncludeExts 命中才生成（空=全部媒体扩展名）；ExcludeKeywords 命中文件名即跳过
 	// （排除 sample/预告/广告等）。逗号分隔存一列，避免加两张关联表。

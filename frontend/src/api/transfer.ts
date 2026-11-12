@@ -188,7 +188,7 @@ export const transferApi = {
         name,
       })
       .then((r) => r.data),
-  // 名称识别测试（对标 MSaber）：本地 ParseMeta + 可选媒体源匹配，验证文件名可识别性。
+  // 名称识别测试：本地 ParseMeta + 可选媒体源匹配，验证文件名可识别性。
   testRecognize: (name: string, year = 0, media = false) =>
     http
       .post<{
@@ -217,7 +217,7 @@ export const transferApi = {
     http.post<{ total: number; added: number }>('/transfer/identify-words/repos/import', { url }).then((r) => r.data),
 }
 
-// 共享词库仓库（对标 MSaber 识别词云端协作共享）。
+// 共享词库仓库（识别词云端协作共享）。
 export interface SharedRepo {
   name: string
   url: string

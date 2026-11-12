@@ -10,7 +10,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-// FetchRequests 求种列表（NexusPHP viewsrequests.php；对标 MSaber「站点请求」）。
+// FetchRequests 求种列表（NexusPHP viewsrequests.php；）。
 // filled=true 取已满足段，false 取待满足段（页面默认段）。未登录/CF 同其它抓取链路判定。
 func (n *NexusPHP) FetchRequests(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string, filled bool) ([]site.SiteRequest, error) {

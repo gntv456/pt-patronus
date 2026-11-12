@@ -19,7 +19,7 @@ part 'global_defaults_dialog.dart';
 part 'subscriptionsopsmixin.dart';
 part 'subscriptions_widgets.dart';
 
-// 订阅列表（对标 Web Subscriptions）：展示订阅状态，支持手动检查 / 暂停-恢复 /
+// 订阅列表（对齐 Web Subscriptions）：展示订阅状态，支持手动检查 / 暂停-恢复 /
 // 改分辨率 / 删除。订阅的创建在影视详情页「订阅」按钮（同源同 id 幂等）。
 class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({super.key});

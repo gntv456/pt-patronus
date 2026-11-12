@@ -2,23 +2,23 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package site 实现站点适配框架：Schema（按平台）+ Definition（按站点，YAML 配置驱动）
-// 两层抽象，借鉴 PT-depiler 的架构。Selector 引擎用 goquery，新增站点零代码。
+// 两层抽象，自研两层抽象。Selector 引擎用 goquery，新增站点零代码。
 package site
 
 import (
 	"time"
 )
 
-// ElementQuery 是配置驱动的字段提取规则（抄 PT-depiler IElementQuery 的实用子集）。
+// ElementQuery 是配置驱动的字段提取规则（IElementQuery 风格的实用子集）。
 type ElementQuery struct {
 	Selector  string   `yaml:"selector" binding:"max=512"`       // 相对上下文的 CSS 选择器（单选）
 	Selectors []string `yaml:"selectors" binding:"dive,max=512"` // 回退选择器列表：按序逐个尝试，取首个非空结果。优先于 Selector
-	Text      string   `yaml:"text" binding:"max=2000"`          // 固定文本值；对应 PT-depiler text
+	Text      string   `yaml:"text" binding:"max=2000"`          // 固定文本值
 	Ancestor  string   `yaml:"ancestor" binding:"max=512"`       // 命中节点后向上找到最近祖先，再读取/继续 find
 	Find      string   `yaml:"find" binding:"max=512"`           // 命中节点/祖先内继续查找子节点
 	Parent    bool     `yaml:"parent"`                           // 命中节点后先爬到父节点再取文本/属性。为 font.color_* 锚点设计——值是 label 的兄弟文本节点，取父节点文本才能拿到「上传量: 104.564 TB」整串
 	Attr      string   `yaml:"attr" binding:"max=64"`            // 空/"text" 取文本；"html" 取 HTML；否则取属性（href/src/...）
-	Data      string   `yaml:"data" binding:"max=128"`           // PT-depiler data 字段；HTML 读取 data-*，JSON 读取同名路径
+	Data      string   `yaml:"data" binding:"max=128"`           // data 字段；HTML 读取 data-*，JSON 读取同名路径
 	Remove    string   `yaml:"remove" binding:"max=512"`         // 提取前移除的子选择器（如广告/图标）
 	Filters   []Filter `yaml:"filters" binding:"dive"`           // 后处理链
 }
@@ -80,7 +80,7 @@ type Torrent struct {
 	// 未填充时引擎降级：Free 近似 factor、PubDate 零值时 publish_time 规则放行。
 	PubDate              time.Time `json:"pub_date,omitempty"`
 	DownloadVolumeFactor float64   `json:"downloadvolumefactor,omitempty"` // 0=FREE,1=正常,0.5/2=促销；0 且 Free=false 视为未知→1
-	UploadVolumeFactor   float64   `json:"uploadvolumefactor,omitempty"`   // 上传因子：0=未设/正常,2=双倍上传（对齐 MP-2，此前遗漏）
+	UploadVolumeFactor   float64   `json:"uploadvolumefactor,omitempty"`   // 上传因子：0=未设/正常,2=双倍上传
 	Labels               []string  `json:"labels,omitempty"`
 }
 
@@ -205,7 +205,7 @@ type SiteMetadata struct {
 	LevelRequirements []LevelRequirement `yaml:"level_requirements,omitempty"`
 }
 
-// LevelRequirement 描述站点等级体系的一级（移植自 PT-depiler levelRequirements，纯数据）。
+// LevelRequirement 描述站点等级体系的一级（levelRequirements 数据结构，纯数据）。
 // 214 个站点定义含此数据，供前端展示等级要求；好学 VIP 判定仍走 UserInfoDef.VIPLevels。
 type LevelRequirement struct {
 	ID           int      `yaml:"id" json:"id"`

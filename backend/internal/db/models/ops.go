@@ -90,7 +90,7 @@ type MonitorTarget struct {
 	TimeoutSec     int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
 	Enabled        bool       `gorm:"default:true" json:"enabled"`
 	Thresholds     string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
-	DiskPaths      string     `gorm:"type:text" json:"disk_paths"` // host/nas+local：宿主 bind mount 目录（换行/逗号分隔，MoviePilot 式磁盘监控）
+	DiskPaths      string     `gorm:"type:text" json:"disk_paths"` // host/nas+local：宿主 bind mount 目录（换行/逗号分隔，宿主磁盘监控）
 	LastOnline     *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
 	LastError      string     `gorm:"type:text" json:"last_error"`
 	LastCheckedAt  *time.Time `json:"last_checked_at"`

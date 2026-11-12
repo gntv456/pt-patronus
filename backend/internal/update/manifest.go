@@ -4,8 +4,7 @@
 // Package update 实现在线更新检查：拉取官方版本清单(manifest)，与当前版本比较，
 // 供服务端自检(Web UI 提示 docker pull 升级)与客户端中转(/system/update/check)。
 //
-// 设计融合旧版 PTPatronus(纯检查 + 外链下载)、pt_mate(自部署后端做版本分发)与
-// MoviePilot(检查/执行分离)，并补齐三者都缺的 sha256 校验。
+// 检查/执行分离，并补 sha256 校验。
 package update
 
 import "time"

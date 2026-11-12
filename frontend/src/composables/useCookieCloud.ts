@@ -6,6 +6,7 @@
 // mode：external=外部服务器（自建/公共 CookieCloud）；builtin=内置服务端（PTPatronus 自身
 // 充当服务器，浏览器扩展直接推到 PTPatronus，免单独部署容器）。
 import { computed, ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cookieCloudApi, type CookieCloudConfig, type CookieCloudConfigInput } from '@/api/cookiecloud'
 import { copyText } from '@/utils/clipboard'
@@ -45,7 +46,7 @@ async function loadCookieCloud() {
       interval_min: ccCfg.value.interval_min || 120,
     }
   } catch {
-    ElMessage.error('加载 CookieCloud 配置失败')
+    ElMessage.error(t('opusecookiecloud.k1'))
   } finally {
     ccLoading.value = false
   }
@@ -65,12 +66,12 @@ async function saveCookieCloud() {
   ccSaving.value = true
   try {
     const r = await cookieCloudApi.setConfig(ccForm.value)
-    ElMessage.success('已保存')
+    ElMessage.success(t('common.saved'))
     if (r?.uuid) ccForm.value.uuid = r.uuid
     maybeShowGenerated(r)
     await loadCookieCloud()
   } catch {
-    ElMessage.error('保存失败')
+    ElMessage.error(t('common.saveFailed'))
   } finally {
     ccSaving.value = false
   }
@@ -79,10 +80,10 @@ async function saveCookieCloud() {
 // 重新生成 builtin 凭证（确认后随保存提交；旧数据作废）
 async function regenerateBuiltinCreds() {
   try {
-    await ElMessageBox.confirm('重新生成 UUID 和密码？浏览器扩展需要改用新凭证，旧推送数据将作废。', '重新生成凭证', {
+    await ElMessageBox.confirm(t('opusecookiecloud.k2'), t('opusecookiecloud.k3'), {
       type: 'warning',
-      confirmButtonText: '重新生成',
-      cancelButtonText: '取消',
+      confirmButtonText: t('opusecookiecloud.k4'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return
@@ -103,7 +104,7 @@ async function syncCookieCloud() {
     )
     await loadCookieCloud()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.error || e?.message || '同步失败')
+    ElMessage.error(e?.response?.data?.error || e?.message || t('opusecookiecloud.k5'))
   } finally {
     ccSyncing.value = false
   }
@@ -116,11 +117,14 @@ async function pushCookieCloud() {
     ElMessage.success(`推送完成：${r.report.pushed ?? 0} 个站点 host`)
     await loadCookieCloud()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.error || e?.message || '推送失败')
+    ElMessage.error(e?.response?.data?.error || e?.message || t('opusecookiecloud.k6'))
   } finally {
     ccSyncing.value = false
   }
 }
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useCookieCloud() {
   return {

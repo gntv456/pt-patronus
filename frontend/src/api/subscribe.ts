@@ -3,7 +3,7 @@
 
 import { http } from './http'
 
-// 订阅（对标 MoviePilot 订阅）：cron 跨站搜种子→推送默认下载器+通知。
+// 订阅：cron 跨站搜种子→推送默认下载器+通知。
 export interface Subscription {
   id: number
   source: string // tmdb | douban | bangumi
@@ -87,7 +87,7 @@ export const subscribeApi = {
   // 清空订阅指定字段回退全局默认（enable_rating_guard/best_version/resolution/promo_types/site_ids）
   reset: (id: number, fields: string[]) =>
     http.post<Subscription>(`/subscriptions/${id}/reset`, { fields }).then((r) => r.data),
-  // 批量操作（对标 MSaber）：op=update(patch 字段级编辑)/check(重新搜索)/delete(取消)。
+  // 批量操作：op=update(patch 字段级编辑)/check(重新搜索)/delete(取消)。
   // 逐条执行单条失败不影响其余，返回成功/失败汇总与失败明细。
   batch: (ids: number[], op: 'update' | 'check' | 'delete', patch?: SubInput) =>
     http

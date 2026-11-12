@@ -46,7 +46,7 @@ func setupConversations(t *testing.T, n int, cntErr error) *gin.Engine {
 		count = func() (int64, error) { return 0, cntErr }
 	}
 	h := NewAgentChatHandler(nil, convOp.List, count, convOp.Create, convOp.Delete, convOp.Get,
-		oper.NewAgentMessageOper(db).ListByConv, oper.NewSystemConfigOper(db), security.NewCrypto("conv-account"))
+		oper.NewAgentMessageOper(db).ListByConvLimit, oper.NewSystemConfigOper(db), security.NewCrypto("conv-account"))
 	r := gin.New()
 	r.GET("/agent/conversations", h.Conversations)
 	return r

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// TOTP 验证器（对标 MoviePilot-Tools 的两步验证器）：RFC 6238 本地生成。
+// TOTP 验证器：RFC 6238 本地生成。
 // 秘钥存 chrome.storage.local（不同步到 Google 账号——凭据不出本机），AES-GCM 加密可选 PIN 保护。
 // 供 PT 站登录 2FA 时人工查看 6 位码；「自动填充」对 content script 场景仅复制到剪贴板
 // （MV3 不允许向跨域页面注入键击之外，还受站点 CSP 与密码框语义差异限制，复制粘贴最可靠）。

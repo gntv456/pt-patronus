@@ -15,6 +15,7 @@ import { useWs } from '@/composables/useWs'
 import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 import { useSitesForm, defUrls } from '@/composables/useSitesForm'
+import { ruleRequired, ruleRequiredChange, ruleURL } from '@/composables/useFormRules'
 import { useSitesActions } from '@/composables/useSitesActions'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
@@ -129,6 +130,26 @@ async function visitStaleSites() {
 }
 
 const { t } = useI18n()
+
+// 字段级校验（对齐 Downloaders 范本）：错误显示在对应输入框下方 + 必填星标，
+// 替代提交后才弹一条 toast、不知道哪个字段错。API Key 新建必填的约束保留在
+// useSitesForm.submit（依赖 needsApiKey 动态判断，rules 表达不了条件组合）。
+const siteFormRef = ref()
+const siteFormRules = {
+  name: [ruleRequired(t('sites.name'))],
+  definition: [ruleRequiredChange(t('sites.definition'))],
+  base_url: [ruleRequired(t('sites.address')), ruleURL(t('sites.address'))],
+}
+async function submitValidated() {
+  if (siteFormRef.value) {
+    try {
+      await siteFormRef.value.validate()
+    } catch {
+      return
+    }
+  }
+  await submit()
+}
 onMounted(load)
 </script>
 
@@ -181,11 +202,11 @@ onMounted(load)
     />
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480">
-      <el-form label-width="80">
-        <el-form-item :label="t('sites.name')">
+      <el-form ref="siteFormRef" :model="form" :rules="siteFormRules" label-width="80">
+        <el-form-item :label="t('sites.name')" prop="name">
           <el-input v-model="form.name" :placeholder="t('sites.namePlaceholder')" />
         </el-form-item>
-        <el-form-item :label="t('sites.definition')">
+        <el-form-item :label="t('sites.definition')" prop="definition">
           <el-select
             v-model="form.definition"
             :placeholder="t('sites.defPlaceholder')"
@@ -211,7 +232,7 @@ onMounted(load)
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item :label="t('sites.address')">
+        <el-form-item :label="t('sites.address')" prop="base_url">
           <el-select
             v-if="baseUrlOptions.length > 1"
             v-model="form.base_url"
@@ -263,7 +284,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submit">{{
+        <el-button type="primary" :loading="submitting" @click="submitValidated">{{
           isEdit ? t('common.save') : t('common.add')
         }}</el-button>
       </template>

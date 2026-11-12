@@ -4,6 +4,7 @@
 // 仪表盘核心数据：overview / 趋势 / 站点列表与派生指标。
 // 从 Dashboard.vue 抽出，供仪表盘及其子组件共享。
 import { ref, computed } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { dashboardApi, type DashboardOverview, type DashboardTrendPoint } from '@/api/dashboard'
 import { siteApi, type Site } from '@/api/site'
@@ -63,7 +64,7 @@ async function changeTrendDays(days: 7 | 30 | 90) {
     trend.value = tr
   } catch (e: unknown) {
     if (seq !== trendSeq) return
-    ElMessage.warning(`趋势加载失败：${(e as Error)?.message || '未知错误'}`)
+    ElMessage.warning(`趋势加载失败：${(e as Error)?.message || t('opusedashboarddata.k1')}`)
   } finally {
     if (seq === trendSeq) trendLoading.value = false
   }
@@ -175,6 +176,8 @@ function siteBaseUrl(siteId: number): string {
 function siteConfigByName(name: string): Site | undefined {
   return allSites.value.find((site) => site.name === name)
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useDashboardData() {
   return {

@@ -5,7 +5,7 @@
 
 <script setup lang="ts">
 /**
- * 站点搜索结果筛选条（对标 MoviePilot TorrentFilterBar / PT-depiler 高级筛选）。
+ * 站点搜索结果筛选条。
  * pill 多选（站点/促销/分辨率/编码/来源/特效）+ 中字开关 + 高级面板（大小范围/做种下限/发布时间）+ 排序。
  * filter/sort 是父组件 composable 的 reactive 对象（传引用，直接改嵌套属性即可响应）；removeFilter/clearAll 透传。
  */

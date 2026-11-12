@@ -4,7 +4,7 @@
 // Package mcp 实现 Model Context Protocol（MCP）服务端核心子集：JSON-RPC 2.0 over
 // streamable HTTP，暴露宿主能力为 MCP 工具（tools/list、tools/call）。
 //
-// 对标 MoviePilot MCP Server（cyt-666）。协议核心子集（initialize / ping / tools/list /
+// 协议核心子集（initialize / ping / tools/list /
 // tools/call / notifications/initialized）；SSE 流式传输与 resources/prompts 等长尾留后续。
 // 仅依赖标准库，便于 httptest 端到端覆盖。
 package mcp

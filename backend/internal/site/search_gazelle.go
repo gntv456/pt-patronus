@@ -14,7 +14,7 @@ import (
 
 // detectColumns 遍历表头的 td 集合，按 detector 选择器匹配，返回 field→列号(0 基)。
 // Gazelle/Luminance 表头列顺序跨 fork 不固定，故按内容（order_by 链接 / Size 文本）动态探测。
-// PT-depiler guessSearchFieldIndexConfig 的等价实现。匹配用 Find(后代链接/图标) OR Is(自身文本)，
+// 匹配用 Find(后代链接/图标) OR Is(自身文本)，
 // 兼顾「td 含 <a>order_by=size</a>」与「td 文本即 Size」两种表头形态。
 // 调用方传入表头行的 td 集合（如 rows.First().Find("td")）。
 func detectColumns(tds *goquery.Selection, detectors map[string][]string) map[string]int {
@@ -38,7 +38,7 @@ func detectColumns(tds *goquery.Selection, detectors map[string][]string) map[st
 	return cols
 }
 
-// gazelleColumnDetectors 返回 Gazelle 表头列探测选择器（PT-depiler Gazelle.guessSearchFieldIndexConfig）。
+// gazelleColumnDetectors 返回 Gazelle 表头列探测选择器。
 func gazelleColumnDetectors() map[string][]string {
 	return map[string][]string{
 		"time":      {`a[href*="order_by=time"]`},
@@ -85,7 +85,7 @@ func isGazelleClass(row *goquery.Selection, classes []string) bool {
 // 表有三类行：group 头（group/group_redline）、group 子（group_torrent.groupid_N）、
 // 独立种子（torrent/torrent_redline）。group 头的标题/分类被子行继承。
 // 与 ParseSearch 差异：Rows 跨多类行需分类；size/seeders/leechers/completed 按表头动态列探测。
-// rowspan/colspan 填充（PT-depiler insertCell hack）M4 跳过——vanilla gazelle 不需要。
+// rowspan/colspan 填充 M4 跳过——vanilla gazelle 不需要。
 func ParseGazelleSearch(doc *goquery.Document, def *SiteMetadata, baseURL string) []Torrent {
 	if doc == nil || def == nil {
 		return nil

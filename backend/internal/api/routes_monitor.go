@@ -179,7 +179,7 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 		tr.POST("/dir-sync/run", middleware.RequireAdmin(), trH.RunDirSync)
 	}
 
-	// 资源过滤规则（对标 MP-2 filter module）：内置/自定义规则 + 规则组 + 全局绑定 + 规则测试。
+	// 资源过滤规则：内置/自定义规则 + 规则组 + 全局绑定 + 规则测试。
 	frH := v1.NewFilterRuleHandler(d.Filter, d.FilterEng)
 	fr := guarded.Group("/filter")
 	{

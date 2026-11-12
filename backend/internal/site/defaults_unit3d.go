@@ -71,7 +71,7 @@ func DefaultUnit3DSelectors() SiteSelectors {
 }
 
 // DefaultUnit3DUserInfo 返回 UNIT3D 用户资料选择器（ratio-bar + i18n dt/dd 双轨）。
-// cascadia 不支持 :has(> x) 前导组合子，故 PT-depiler 的 :has(> i.fa-x) 改为 :has(i.fa-x)
+// cascadia 不支持 :has(> x) 前导组合子，故 :has(> i.fa-x) 写作 :has(i.fa-x)
 // （ratio-bar 内 <i> 是 <a> 唯一子代，后代匹配等价）。dt:contains('Label') + dd 覆盖中英文。
 // name 选择器从顶部导航 settings 链接的 href 抽用户名（三步流程第 1 步用 ParseUnit3DUsername）。
 func DefaultUnit3DUserInfo() UserInfoDef {
@@ -106,7 +106,7 @@ func DefaultUnit3DUserInfo() UserInfoDef {
 			},
 		},
 		DetailFields: map[string]ElementQuery{
-			// /users/{name}/earnings 页 .panelV2 dl.key-value 的第 3 个 dd（PT-depiler dd:nth(2) 0-基）。
+			// /users/{name}/earnings 页 .panelV2 dl.key-value 的第 3 个 dd（dd:nth(2) 0-基）。
 			// cascidia 不支持裸 :nth(N)，用 :nth-of-type(3)。
 			"bonus_per_hour": {Selectors: []string{".panelV2 dl.key-value dd:nth-of-type(3)", "dl.key-value dd:nth-of-type(3)"}},
 		},

@@ -17,7 +17,7 @@ part 'filter_rules_help.dart';
 part 'filterrulesopsmixin.dart';
 part 'filter_rules_widgets.dart';
 
-/// 资源过滤规则页（对标 MoviePilot-2 filter 模块，对齐 Web FilterRules）。
+/// 资源过滤规则页（对齐 Web FilterRules）。
 ///
 /// 三 Tab：
 ///  - 内置规则：只读列表（22 条，展示 id / 名称 / include / exclude / 体积·做种·发布约束）。

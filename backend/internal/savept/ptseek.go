@@ -44,7 +44,7 @@ type ptseekSite struct {
 	ResearchStatus     string           `json:"research_status"` // 资料研究状态
 	CheckedAt          string           `json:"checked_at"`      // 资料核对日期
 	ContentTypes       []string         `json:"content_types"`   // 内容类型（详情页「资源」区）
-	Sources            []ptseekSource   `json:"sources"`         // 资料来源（PThub/PT-depiler…）
+	Sources            []ptseekSource   `json:"sources"`         // 资料来源
 	Features           string           `json:"features"`        // 站点介绍
 	BeginnerTips       string           `json:"beginner_tips"`   // 新手提示
 	Community          *ptseekCommunity `json:"community_profile"`

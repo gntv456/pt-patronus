@@ -242,7 +242,7 @@ func (h *BackupHandler) ImportPTD(c *gin.Context) {
 		}
 		_ = h.notice.Notice(c.Request.Context(), notice.Input{
 			Source: notice.SourceBackupImport,
-			Title:  "PT-Depiler 备份导入成功",
+			Title:  ".ptd 备份导入成功",
 			Body:   body,
 			Level:  "success",
 		}, false)

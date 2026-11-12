@@ -44,7 +44,7 @@ func init() {
 }
 
 // FetchTorrentFile 用站点凭据（cookie 为主，必要时补 passkey）把 downloadURL 指向的
-// .torrent 下载成字节。对标 MoviePilot TorrentHelper.download_torrent：MP 自己用站点 cookie
+// .torrent 下载成字节。下载器无站点 cookie 拿不到种子的问题（站点 cookie
 // 下载 .torrent 再以文件方式提交下载器，而非让下载器直连需登录态的 PT 站 URL。
 //
 // 返回约定：
@@ -80,7 +80,7 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 		return c.fetchPiggoTorrentFile(ctx, downloadURL, cred)
 	}
 	// schema 分流：mteam/rousi 的 download URL 自带临时 token/passkey，下载器可直连；
-	// 且 mteam 用 cookie 下载反致错（对标 MP 注释「涉及解析地址的不使用Cookie下载种子，否则MT会出错」）。
+	// 且 mteam 用 cookie 下载反致错（M-Team 站规：涉及解析地址的不使用 Cookie 下载种子，否则会出错）。
 	if def != nil && (def.Schema == "mteam" || def.Schema == "rousi") {
 		return nil, "", ErrDelegatedToDownloader
 	}
@@ -146,7 +146,7 @@ func sanitizeURLSecrets(s string) string {
 }
 
 // classifyAndConfirm 对 download 响应分类：合法 .torrent 直接返回；NexusPHP 首次下载确认页
-// 则 POST 确认后重判；登录页/HTML 报错。对标 MP 处理 download.php 确认表单。
+// 则 POST 确认后重判；登录页/HTML 报错。与 download.php 确认表单流程一致。
 func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Response, baseURL, dlURL, cookie string) ([]byte, error) {
 	if resp == nil {
 		return nil, ErrNotTorrent

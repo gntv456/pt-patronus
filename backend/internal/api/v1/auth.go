@@ -147,7 +147,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
-// ---- 用户偏好（跨浏览器同步，对标 MSaber 界面偏好随账号同步） ----
+// ---- 用户偏好（跨浏览器同步） ----
 
 const userPrefMaxValue = 64 * 1024 // 64KB：偏好 JSON 上限（防滥用）
 

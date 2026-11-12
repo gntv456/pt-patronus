@@ -6,6 +6,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -47,11 +48,15 @@ func (h *SystemHandler) Readiness(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
+	// db 字段固定 "unavailable"：探针响应会进编排日志/curl 输出，gorm/dial 的
+	// 英文内部错误原文给不出行动指引，真实原因进 slog（对齐 errcode 信封纪律）。
 	if sqlDB, err := h.db.DB(); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": err.Error()})
+		slog.Warn("readiness db failed", "err", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": "unavailable"})
 		return
 	} else if err := sqlDB.PingContext(ctx); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": err.Error()})
+		slog.Warn("readiness ping failed", "err", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": "unavailable"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "db": "ok"})

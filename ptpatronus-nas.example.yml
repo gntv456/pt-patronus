@@ -1,0 +1,61 @@
+# PTPatronus — NAS 部署（本地账号版，完整可直接用）
+# 账号为本地用户名密码；下面已配置 ADMIN_USERNAME / ADMIN_PASSWORD，空库首启即建管理员。
+# ./data 必须持久化：SQLite + 自动生成的 secret_key / activation_secret 都在里面，
+# 删了 = 已加密的站点凭据解不开 + 全员被踢下线。
+# ⚠ 部署前把 ADMIN_PASSWORD 改成你自己的强密码（≥8 位含字母数字）。
+services:
+  ptpatronus:
+    # 锁版本可精确回滚：升级改 tag 再 up -d；想跟随最新就改 :latest 并取消 pull_policy 注释。
+    image: ghcr.io/gntv456/pt-patronus:latest
+    # pull_policy: always
+    container_name: ptpatronus
+    restart: unless-stopped
+    ports:
+      - "8088:8088"                      # 改左边换访问端口
+    environment:
+      TZ: Asia/Shanghai                  # 不设则容器 UTC，cron「0 8 * * *」会晚 8 小时
+      APP_ENV: release
+      # 管理员账号（空库首启即建，堵住首登抢 admin）；存量无密码账号原地补密，已有密码忽略。
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: 'ChangeMe_StrongPass123!'   # ← 改成你自己的强密码；明文会被 docker inspect 看到
+      # 生产推荐改用 secrets：取消下面一行，并把密码文件挂进容器 volumes（权限 600）。
+      # ADMIN_PASSWORD_FILE: /run/secrets/ptp_admin_pw
+      # SECRET_KEY / ACTIVATION_SECRET 不写 = 首次启动自动生成并持久化到 ./data/（0600）；
+      # 想自控再取消注释填 openssl rand -base64 32 的输出（换密钥 = 已加密站点凭据失效）。
+      # SECRET_KEY: <base64>
+      # ACTIVATION_SECRET: <base64>
+      # 公网/反代按需开；TRUSTED_PROXIES 不填会让限流按直连 IP 判定（伪造 XFF 可绕过）。
+      # CORS_ALLOWED_ORIGINS: https://你的域名
+      # TRUSTED_PROXIES: 172.16.0.0/12
+      # 官方清单随发版更新（latestVersion / docker.image 等），默认即用；
+      # 此前误指 ptpatronus-plugin-market 仓库 manifest（停滞 1.03.23）会致自检报旧版，已改指主仓。
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/pt-patronus/main/update-manifest.json
+      COMPOSE_SCAN_DIR: /host/compose    # 对应下方 /host/compose 挂载
+      COMPOSE_ROOT: /vol1          # 页面反推宿主路径用，与挂载对齐
+      # agent 自更新：AGENT_CHECKSUM 留空时点「升级」必失败（agent 拒绝无校验二进制，非故障）。
+      # 多架构写「amd64=<hex> arm64=<hex>」；不用该功能可整段删。
+      AGENT_LATEST_VERSION: 0.3.1
+      AGENT_DOWNLOAD_URL: https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}
+      AGENT_CHECKSUM: ""
+      # 默认 SQLite；切 PG 才需要：
+      # DB_TYPE: postgres
+      # DATABASE_URL: postgres://user:pass@host:5432/ptpatronus?sslmode=disable
+    volumes:
+      - ./data:/app/data                # 数据库 + 密钥，务必持久化
+      - /vol1/video:/video         # 与下载器容器内 /video 对齐
+      - /vol1/movies:/media/movies
+      - /vol1/tv:/media/tv
+      # 文件管理器「本机」存储：页面里根路径填 /hostfs/vol2/1000（可写）。
+      # 收窄到数据盘，不挂整个宿主根；compose/data 若也在 /vol2/1000 下仍能被看到。
+      - /vol1:/hostfs/vol1
+      # 确需浏览整个宿主才换成这行（根路径填 /hostfs）：应用层失陷 = 宿主 root。
+      # - /:/hostfs
+      # ⚠ 默认注释：docker.sock = 容器内可指挥宿主 Docker（等价宿主 root）。
+      # 仅在需要「运维中心 Docker 管理」且接受该风险时手动打开。
+      # - /var/run/docker.sock:/var/run/docker.sock
+      - /vol2/1000:/host/compose        # Compose 项目扫描
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3

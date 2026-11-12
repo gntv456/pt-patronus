@@ -4,6 +4,7 @@
 // 通用设置：主题切换、版本号、在线更新检查、帮助/反馈/更新日志。
 // 从 Settings.vue 抽出，供 GeneralPanel 与父级共享。
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
 import { copyText } from '@/utils/clipboard'
@@ -33,9 +34,9 @@ async function checkUpdate() {
     const res = await systemApi.checkUpdate('docker')
     updateInfo.value = res
     if (res.hasUpdate) updateDlgVisible.value = true
-    else ElMessage.success('已是最新版本')
+    else ElMessage.success(t('opusegeneralsettings.k1'))
   } catch {
-    ElMessage.error('检查更新失败，请稍后重试')
+    ElMessage.error(t('opusegeneralsettings.k2'))
   } finally {
     updateChecking.value = false
   }
@@ -44,7 +45,7 @@ async function checkUpdate() {
 async function copyUpgradeCmd() {
   if (updateInfo.value?.instructions) {
     await copyText(updateInfo.value.instructions)
-    ElMessage.success('已复制升级命令')
+    ElMessage.success(t('opusegeneralsettings.k3'))
   }
 }
 
@@ -74,6 +75,8 @@ async function openChangelog() {
     window.open(README_URL, '_blank', 'noopener')
   }
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useGeneralSettings() {
   return {

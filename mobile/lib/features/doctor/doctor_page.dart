@@ -6,7 +6,7 @@ import 'package:ptpatronus/api/system.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 
-/// 诊断面板：跑健康检查（对标 MP doctor）。SAFE_MODE 自救时主入口。
+/// 诊断面板：跑健康检查。SAFE_MODE 自救时主入口。
 class DoctorPage extends StatefulWidget {
   const DoctorPage({super.key, this.run});
 

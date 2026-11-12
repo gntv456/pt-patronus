@@ -18,7 +18,7 @@ import (
 )
 
 // Rclone 后端：通过调用 rclone 二进制的子进程 CLI（lsjson/mkdir/purge/deletefile/copyto）
-// 访问任意 rclone remote。参考 MP-2 的 rclone.py（同样用 subprocess CLI，而非 rc API/FUSE）。
+// 访问任意 rclone remote。
 //
 // 字段映射（与 manager.buildBackend 约定）：
 //   - binary        = f.URL        rclone 二进制路径（/usr/bin/rclone、rclone.exe，或空=用 PATH 里的 rclone）
@@ -204,7 +204,7 @@ func (t *tempFileReadCloser) Close() error {
 }
 
 // isDirPath 判断 clamped（虚拟 /-路径，已钳制在 rootDir 下）是否为目录。
-// 通过 lsjson 父目录并按 basename 匹配 IsDir（参考 MP-2 get_item）。根目录恒为目录。
+// 通过 lsjson 父目录并按 basename 匹配 IsDir（根目录恒为目录。
 func (r *Rclone) isDirPath(ctx context.Context, clamped string) (isDir, found bool, err error) {
 	if clamped == "" || clamped == "/" {
 		return true, true, nil

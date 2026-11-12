@@ -23,7 +23,7 @@ type Collector interface {
 	Probe(ctx context.Context, t *models.MonitorTarget, creds Credentials) (bool, error)
 }
 
-// Registry 按 (type,protocol) 注册采集器（参考 site.Registry 的 map 注册模式）。
+// Registry 按 (type,protocol) 注册采集器（map 注册模式（同 site.Registry））。
 type Registry struct {
 	mu         sync.RWMutex
 	collectors map[string]Collector

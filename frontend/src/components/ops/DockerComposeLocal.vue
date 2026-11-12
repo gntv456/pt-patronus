@@ -134,7 +134,9 @@ async function action(act: 'up' | 'down' | 'validate') {
     }
     if (res.ok && act === 'validate') ElMessage.success(t('dcl.validated'))
   } catch (e: any) {
-    output.value = e.message
+    // 后端失败已改 errcode 信封（compose_action_failed）：CLI 原文在
+    // e.response.data.output；没有 output 时退回拦截器给的友好文案。
+    output.value = e?.response?.data?.output || e.message
   } finally {
     loading.value = false
   }

@@ -15,7 +15,7 @@ import (
 
 // plex-suite：Plex 媒体服务器套件增强（本地化/跳片头/自动语言/IP 优选）。
 // 凭据由插件配置承载（server_url + X-Plex-Token），不耦合 mediaserver 表，便于多 Plex 实例。
-// 对标 MoviePilot Plex 系列插件（InfinityPacer/shyblacktea）。
+//
 
 type plexSuitePlugin struct {
 	hc *httpclient.Client

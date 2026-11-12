@@ -33,7 +33,7 @@ type ccStore interface {
 }
 
 // CookieCloudSettings 是 CookieCloud 同步配置（落 SystemConfig，密码 AES-GCM 加密）。
-// 对齐 MoviePilot：浏览器扩展把最新 cookie 端到端加密推到 CookieCloud 服务器，本端定时拉取
+// 浏览器扩展把最新 cookie 端到端加密推到 CookieCloud 服务器，本端定时拉取
 // 并按域名覆盖本地失效站的 cookie，根治 Laravel qw_session 等 session 短寿站的掉 cookie 问题。
 type CookieCloudSettings struct {
 	Enabled      bool   `json:"enabled"`

@@ -62,7 +62,7 @@ func numAt(row []any, i int) int64 {
 	return 0
 }
 
-// toTorrent 把 list=1 的元组映射为统一模型。索引见 PT-depiler TorrentData（29 元组）。
+// toTorrent 把 list=1 的元组映射为统一模型。
 // PROGRESS/RATIO 均为 per-mille（0..1000）→ Progress 0..1、Ratio 直接 /1000。
 func toTorrent(row []any) downloader.Torrent {
 	status := int(numAt(row, 1))

@@ -1,19 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-import { computed, reactive, type Ref } from 'vue'
+import { computed, reactive, watch, type Ref } from 'vue'
 import type { SaveptSiteCard as SiteCardData } from '@/api/savept'
 import { buildSiteKeywords, getMpStatusMeta, getStatusMeta, siteTypeLabel } from '@/utils/savept'
+import { useUserPrefs } from '@/composables/useUserPrefs'
 
 export function useSaveptFilters(sites: Ref<SiteCardData[]>) {
+  // 筛选持久化（localStorage 即时 + 登录后服务端同步）：筛了年份/状态后去签到
+  // 再回来，原实现全部重置（页面上还专门做了 clearFilters 空态按钮，却留不住选择）。
+  const { prefs, update } = useUserPrefs('savept.filters')
+  const saved = (prefs.value ?? {}) as Record<string, unknown>
+  const asStr = (v: unknown, dft: string) => (typeof v === 'string' && v ? v : dft)
   const filters = reactive({
-    keyword: '',
-    year: '全部',
-    mpStatus: '全部',
-    status: '全部',
-    type: '全部',
-    anniversaryOnly: false,
+    keyword: typeof saved.keyword === 'string' ? saved.keyword : '',
+    year: asStr(saved.year, '全部'),
+    mpStatus: asStr(saved.mpStatus, '全部'),
+    status: asStr(saved.status, '全部'),
+    type: asStr(saved.type, '全部'),
+    anniversaryOnly: saved.anniversaryOnly === true,
   })
+  watch(
+    filters,
+    () => {
+      update({ ...filters })
+    },
+    { deep: true },
+  )
 
   const collapsedYears = reactive<Record<string, boolean>>({})
 

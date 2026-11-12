@@ -120,7 +120,7 @@ type Client struct {
 	allowPrivate bool
 	maxBody      int64
 
-	// per-host 最小请求间隔限流（站点礼貌抓取，对标 MP 站点流控）。
+	// per-host 最小请求间隔限流（站点礼貌抓取）。
 	limMu   sync.Mutex
 	limNext map[string]time.Time // host → 下一次允许请求的时间
 	lims    map[string]time.Duration

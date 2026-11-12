@@ -196,6 +196,35 @@ func (c *embyJellyfinClient) LibraryItems(ctx context.Context, libraryID string)
 	return out, nil
 }
 
+// LibraryItemCount: GET /Items?ParentId=<lib>&Recursive=true
+// &IncludeItemTypes=<type>&Limit=0
+// —— Limit=0 时 Emby/JF 不返回 Items、只给 TotalRecordCount，两个类型各查一次即得计数。
+// 工作台 60s 轮询在用：不能走 LibraryItems 整库拉条目（上万条库 = 每分钟几十 MB JSON）。
+func (c *embyJellyfinClient) LibraryItemCount(
+	ctx context.Context, lib Library,
+) (LibraryCount, error) {
+	var out LibraryCount
+	for _, tc := range []struct {
+		itemType string
+		dst      *int
+	}{
+		{"Movie", &out.Movies},
+		{"Series", &out.Series},
+	} {
+		u := fmt.Sprintf(
+			"%s/Items?ParentId=%s&Recursive=true&IncludeItemTypes=%s&Limit=0",
+			c.apiRoot, esc(lib.ID), tc.itemType)
+		var res struct {
+			Total int `json:"TotalRecordCount"`
+		}
+		if err := jsonGet(ctx, c.hc, u, c.headers(), &res); err != nil {
+			return out, err
+		}
+		*tc.dst = res.Total
+	}
+	return out, nil
+}
+
 // embyItemType 把 Emby 的 Type（Movie/Series/Episode/...）归一为 movie|series|episode。
 func embyItemType(t string) string {
 	switch t {

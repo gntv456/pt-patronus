@@ -74,11 +74,13 @@ async function doAction(p: Project, action: 'up' | 'down' | 'restart' | 'pull') 
     outputText.value = ''
     outputVisible.value = true
     const res = await dockerApi.localProjectAction(p.dir, action)
-    outputText.value = res.output || (res.ok ? t('dcl.ok') : t('dcl.ko'))
+    outputText.value = res.output || t('dcl.ok')
     if (res.ok) ElMessage.success(t('cp.actionOk', { name: labels[action] }))
   } catch (e: any) {
     if (e !== 'cancel') {
-      outputText.value = e.message
+      // 失败已是 errcode 信封（compose_action_failed）：CLI 原文在
+      // e.response.data.output 展示于输出面板；toast 交给 http 拦截器按 code 中文。
+      outputText.value = e?.response?.data?.output || e.message
       outputVisible.value = true
     }
   } finally {

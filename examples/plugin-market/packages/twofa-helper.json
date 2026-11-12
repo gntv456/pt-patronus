@@ -12,7 +12,7 @@
     "host.api.log.write"
   ],
   "author": "PTPatronus Community",
-  "description": "基于 Base32 密钥生成 TOTP 验证码（迁移自 MoviePilot）。",
+  "description": "基于 Base32 密钥生成 TOTP 验证码。",
   "license": "MIT",
   "keywords": [
     "2fa",

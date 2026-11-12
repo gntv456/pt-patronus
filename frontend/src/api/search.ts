@@ -20,7 +20,7 @@ export interface SiteTorrent {
   category?: string
   tags?: string[]
   free?: boolean
-  // Align MoviePilot TorrentInfo promo fields when backend fills them.
+  // Align TorrentInfo promo fields when backend fills them.
   downloadvolumefactor?: number
   uploadvolumefactor?: number
   pub_date?: string

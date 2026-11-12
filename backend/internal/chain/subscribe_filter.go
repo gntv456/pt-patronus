@@ -183,7 +183,7 @@ func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscriptio
 	return true, summary.Reason, ""
 }
 
-// filterByResolution 按分辨率子串过滤（复用 matchResolution，对齐 MP-2 两阶段前置过滤）。
+// filterByResolution 按分辨率子串过滤（复用 matchResolution，两阶段前置过滤）。
 func filterByResolution(torrents []site.Torrent, want string) []site.Torrent {
 	out := torrents[:0]
 	for _, t := range torrents {
@@ -205,10 +205,10 @@ func filterByOfficial(torrents []site.Torrent) []site.Torrent {
 	return out
 }
 
-// filterByTitleMatch 用标题匹配确认过滤无关种子（对标 MoviePilot TorrentHelper.match_torrent）。
+// filterByTitleMatch 用标题匹配确认过滤无关种子（）。
 // acceptSet 为订阅媒体的接受标题集（订阅 Title + 媒体 OriginalTitle + Names 别名，均归一化）。
 //   - 精确命中（种子 clean 标题归一化 ∈ acceptSet）→ 保留（含别名跨语言命中，如「让子弹飞」命中「Let the Bullets Fly」）。
-//   - 未命中但接受集覆盖种子语言（有该语言别名）→ 过滤（对标 MP 精确，过滤子串误命中如「特立独行」≠「一只特立独行的猪」）。
+//   - 未命中但接受集覆盖种子语言（有该语言别名）→ 过滤（精确匹配，过滤子串误命中如「特立独行」≠「一只特立独行的猪」）。
 //   - 未命中且接受集无该语言别名（如豆瓣国产片 aka 全中文、种子却是英文）→ 放行（无法精确，信任站点搜索，避免误杀）。
 //   - 类型门控 + 年份门控（电影±1）。
 func filterByTitleMatch(torrents []site.Torrent, sub *models.Subscription, acceptSet map[string]struct{}) []site.Torrent {
@@ -235,7 +235,7 @@ func filterByTitleMatch(torrents []site.Torrent, sub *models.Subscription, accep
 			continue
 		}
 		if tokenHitsAccept(splitTitleTokens(t.Title), acceptSet) {
-			out = append(out, t) // 拆词兜底（对标 MP Step6：救「让子弹飞.简繁中字.CMCT」clean 含噪声但拆词含主标题）
+			out = append(out, t) // 拆词兜底（拆词兜底：救「让子弹飞.简繁中字.CMCT」clean 含噪声但拆词含主标题）
 			continue
 		}
 		seedHasCJK := containsCJK(m.Title)
@@ -243,7 +243,7 @@ func filterByTitleMatch(torrents []site.Torrent, sub *models.Subscription, accep
 			continue // 接受集覆盖该语言却未命中 → 过滤（「特立独行」≠「一只特立独行的猪」）
 		}
 		// 订阅标题非 CJK（如纯英文）且种子为 CJK：接受集无 CJK 别名也无法精确确认，
-		// 不放行纯语言不匹配的噪声（对标 MP 跨语言精确，避免同年中文无关种子误入）。
+		// 不放行纯语言不匹配的噪声（跨语言精确匹配，避免同年中文无关种子误入）。
 		// 反向（CJK 订阅 + 英文种子）仍放行，因站点搜索常跨语言返回结果，不误杀。
 		if !containsCJK(sub.Title) && seedHasCJK {
 			continue

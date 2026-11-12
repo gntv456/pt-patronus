@@ -19,8 +19,7 @@ import (
 // GazelleJSONAPI 是 Gazelle 系站点的 JSON API 适配器（RED/OPS/DIC 等）。
 // 走 /ajax.php?action=index|browse|user 信封 {status,response,error}，cookie 会话鉴权。
 // GGn（gazellegames）用 X-API-Key token + /api.php 是离群点，M4 延后。
-// 适配器是跨站单例，authkey 按 baseURL 缓存（PT-depiler 实例级缓存的正确性修正）。
-// 契约来源：PT-depiler GazelleJSONAPI.ts。
+// 适配器是跨站单例，authkey 按 baseURL 缓存（实例级缓存会串站，按 baseURL 隔离）。
 type GazelleJSONAPI struct {
 	hc   *httpclient.Client
 	keys sync.Map // baseURL → gazelleAuthKey（authkey/passkey 每站不同）
@@ -79,7 +78,7 @@ type gazelleUserResp struct {
 }
 
 // gazelleRequest GET /ajax.php?action=<action>&<params>，校验信封。
-// status!="success" 时 isGazelleAuthError(error)→ErrNotLoggedIn（改进 PT-depiler 静默返空）；
+// status!="success" 时 isGazelleAuthError(error)→ErrNotLoggedIn（不静默返空）；
 // HTTP 401/403→ErrNotLoggedIn；CF 守卫。
 func (g *GazelleJSONAPI) gazelleRequest(ctx context.Context, baseURL, cookie, action string, params map[string]string) (json.RawMessage, error) {
 	q := url.Values{}
@@ -147,7 +146,7 @@ func buildGazelleDownloadURL(baseURL string, torrentID any, k gazelleAuthKey) st
 }
 
 // Search action=browse。response.results[] 异构：group（含 torrents[]）或 flat torrent。
-// 判别：JSON 含 "torrents" 键=group（PT-depiler "torrents" in group）。
+// 判别：JSON 含 "torrents" 键=group。
 func (g *GazelleJSONAPI) Search(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie, keyword, category string, page int) ([]site.Torrent, error) {
 	if def != nil && def.ID == "gazellegames" {
@@ -177,7 +176,7 @@ func (g *GazelleJSONAPI) Search(ctx context.Context, def *site.SiteMetadata,
 	k, kerr := g.getAuthKey(ctx, baseURL, cookie)
 	out := make([]site.Torrent, 0, len(browse.Results))
 	for _, raw := range browse.Results {
-		// 判别 group vs flat：是否含 "torrents" 键（PT-depiler "torrents" in group）。
+		// 判别 group vs flat：是否含 "torrents" 键。
 		// 用 map 键检查而非子串匹配，避免 groupName 含 "torrents" 字样误判。
 		var probe map[string]json.RawMessage
 		if json.Unmarshal(raw, &probe) != nil {
@@ -245,7 +244,7 @@ func (g *GazelleJSONAPI) Search(ctx context.Context, def *site.SiteMetadata,
 	return out, nil
 }
 
-// gazelleGroupTitle 拼 "artist - groupName [year] [releaseType]"（PT-depiler transformGroupTorrent）。
+// gazelleGroupTitle 拼 "artist - groupName [year] [releaseType]"。
 func gazelleGroupTitle(artist, name string, year any, releaseType string) string {
 	var b strings.Builder
 	if a := strings.TrimSpace(artist); a != "" {

@@ -17,7 +17,7 @@ export const WIDGET_CATALOG: WidgetDef[] = [
 </script>
 
 <script setup lang="ts">
-// 首页定制化部件区（对标 MSaber 自定义部件）：从目录添加部件、拖拽排序（HTML5 DnD，
+// 首页定制化部件区：从目录添加部件、拖拽排序（HTML5 DnD，
 // 移动端用默认顺序兜底）、尺寸预设（紧凑/横向/焦点）、显示/隐藏。
 // 布局存用户偏好域 dashboard（useUserPrefs → localStorage + 服务端跨浏览器同步）。
 import { computed } from 'vue'
@@ -108,7 +108,7 @@ const sizeLabel = computed<Record<string, string>>(() => ({
 
 <template>
   <div class="widgets-zone">
-    <!-- 部件区标题栏：常驻「部件定制」入口（对标 MSaber 右下角首页定制），空态另有引导 -->
+    <!-- 部件区标题栏：常驻「部件定制」入口，空态另有引导 -->
     <div class="widgets-bar">
       <span class="widgets-bar-title">{{ t('dwg.barTitle') }}</span>
       <el-button size="small" @click="customizeOpen = true">{{ t('dwg.customize') }}</el-button>

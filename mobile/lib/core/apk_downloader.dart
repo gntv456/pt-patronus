@@ -15,7 +15,7 @@ export 'package:ptpatronus/core/platform/platform_caps.dart'
 
 /// 下载 APK 到临时目录，校验 sha256（expectedSha256 非空时），返回本地路径。
 /// onProgress(received, total) 用于进度展示，total<=0 表示未知大小。
-/// 失败抛异常；cancelToken 可取消。下载前清理上次残留 APK（同 pt_mate clearDownloadedApks）。
+/// 失败抛异常；cancelToken 可取消。下载前清理上次残留 APK。
 Future<String> downloadApk({
   required String url,
   String? expectedSha256,
@@ -45,7 +45,7 @@ Future<String> downloadApk({
   } finally {
     dio.close(force: true);
   }
-  // 完整性校验（pt_mate 缺的短板：补 sha256，防中间人替换 APK）
+  // 完整性校验：sha256，防中间人替换 APK
   if (expectedSha256 != null && expectedSha256.isNotEmpty) {
     final digest = sha256.convert(await File(savePath).readAsBytes());
     if (digest.toString().toUpperCase() != expectedSha256.toUpperCase()) {

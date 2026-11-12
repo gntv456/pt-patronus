@@ -12,7 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
-// toTorrent 映射 ruTorrent list 元组（见 PT-depiler torrentData 索引）。
+// toTorrent 映射 ruTorrent list 元组。
 func toTorrent(hash string, row []any) downloader.Torrent {
 	isOpen := iv(row, 0)
 	isHashChecking := iv(row, 1)
@@ -159,7 +159,7 @@ func safeFileName(s string) string {
 	return name
 }
 
-// peerFlags 拼接 ruTorrent peer 标志位为短串（对标 qB flags 字段）：
+// peerFlags 拼接 ruTorrent peer 标志位为短串（qB flags 字段）：
 // I=入站连接 E=加密传输 S=被忽略(snubbed)。
 func peerFlags(incoming, encrypted, snubbed bool) string {
 	var b strings.Builder

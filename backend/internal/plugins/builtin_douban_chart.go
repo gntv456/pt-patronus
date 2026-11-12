@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// doubanChartPlugin — 豆瓣榜单订阅（对标 MSaber 订阅管理「豆瓣榜单订阅」）。
+// doubanChartPlugin — 豆瓣榜单订阅（）。
 // 定时拉取豆瓣榜单（经宿主 media.trending 工具，category=topMovie/topTv/weekly），
 // 把榜单条目批量建为订阅（已存在的按 title+type 去重跳过）。
 type doubanChartPlugin struct{}

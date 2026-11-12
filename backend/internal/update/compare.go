@@ -5,11 +5,11 @@ package update
 
 import "strings"
 
-// compareVersions 逐段整数比较版本号(移植自旧版 PTPatronus UpdateChecker.compareVersions)。
+// compareVersions 逐段整数比较版本号(逐段整数比较)。
 // 返回 -1/0/1 表示 a<b/a==b/a>b。非数字段当 0，缺位补 0，前导零归一。
 //
 // 用逐段比较而非 semver 库：版本号 "0.70.01" 含前导零，不符合严格 semver；
-// 旧版/pt_mate/MoviePilot 一致采用此朴素算法，已验证可靠。
+// 朴素算法，已验证可靠。
 //
 // 示例：("0.70.01","0.70.02")→-1  ("0.70.01","0.70.1")→0  ("1.2","1.2.3")→-1  ("2.0","1.9.9")→1
 func compareVersions(a, b string) int {

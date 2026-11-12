@@ -10,6 +10,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 class AssessmentPage extends StatefulWidget {
   const AssessmentPage({super.key, this.frames});
@@ -70,7 +71,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = errTextOf(e) ?? '加载失败，请检查网络';
         });
       },
     );

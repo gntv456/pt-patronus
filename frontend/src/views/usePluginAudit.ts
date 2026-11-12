@@ -4,10 +4,13 @@
 // 插件「审计面板」（日志 + 版本发布历史 + 回滚）子状态簇。
 // 从 usePlugins.ts 迁出；openAudit/rollback 自包含,回滚成功后经 deps.reload 刷新宿主插件列表。
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pluginApi, type PluginInfo, type PluginLog, type PluginRelease } from '@/api/plugin'
 import { normalizePlugin } from './pluginsHelpers'
 import { pluginLogsNotice } from './pluginLogsAccount'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function usePluginAudit(deps: { reload: () => Promise<void> }) {
   const auditVisible = ref(false)
@@ -44,7 +47,7 @@ export function usePluginAudit(deps: { reload: () => Promise<void> }) {
       })
       auditReleases.value = releasesData
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载插件审计失败')
+      ElMessage.error((e as Error).message || t('opusepluginaudit.k1'))
     } finally {
       auditLoading.value = false
     }
@@ -52,7 +55,7 @@ export function usePluginAudit(deps: { reload: () => Promise<void> }) {
 
   async function rollbackRelease(p: PluginInfo, rel: PluginRelease) {
     try {
-      await ElMessageBox.confirm(`确定将「${p.name}」回滚到 ${rel.version}？`, '回滚插件', { type: 'warning' })
+      await ElMessageBox.confirm(`确定将「${p.name}」回滚到 ${rel.version}？`, t('opusepluginaudit.k2'), { type: 'warning' })
     } catch {
       return
     }
@@ -63,7 +66,7 @@ export function usePluginAudit(deps: { reload: () => Promise<void> }) {
       await deps.reload()
       await openAudit(normalizePlugin(await pluginApi.get(p.id)))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '回滚失败')
+      ElMessage.error((e as Error).message || t('opusepluginaudit.k3'))
     } finally {
       rollbacking.value = null
     }

@@ -16,7 +16,7 @@ import (
 
 // jsonNavigate 沿点分路径遍历已解码的 JSON 节点（any）。
 // 每段：map[string]any 按键取；[]any 按数字段索引。缺键/越界 → nil。
-// 支持 data / torrentList / data.torrents（嵌套）/ data.results 等 PT-depiler JSON 路径。
+// 支持 data / torrentList / data.torrents（嵌套）/ data.results 等 JSON 路径。
 func jsonNavigate(node any, path string) any {
 	if path == "" {
 		return node

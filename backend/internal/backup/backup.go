@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package backup 实现配置导出/导入：自身 JSON 格式（含站点/下载器）+ MoviePilot 站点导入。
+// Package backup 实现配置导出/导入：自身 JSON（站点/下载器）+ 外部格式导入
+// （MoviePilot 站点 JSON、.ptd）。
 package backup
 
 import (

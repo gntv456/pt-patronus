@@ -71,7 +71,7 @@ func postBackup(t *testing.T, r *gin.Engine, path, body string) (int, map[string
 	return rec.Code, env
 }
 
-// 正控：合法的 MoviePilot 数组照常导入（加分类不许碰通这条路）。
+// 正控：合法的外部站点数组照常导入（加分类不许碰通这条路）。
 func TestImportMoviePilotHappyPathStillWorks(t *testing.T) {
 	r, _ := backupRouter(t)
 	status, env := postBackup(t, r, "/api/v1/backup/import-moviepilot",
@@ -91,7 +91,7 @@ func TestImportMoviePilotWrongFileShape(t *testing.T) {
 		t.Fatalf("形状不对应 400：status=%d 整包=%v", status, env)
 	}
 	if env["code"] != errcode.BackupNotMoviePilotFile.Code {
-		t.Fatalf("要说清「这不是 MoviePilot 的站点 JSON」，不能只甩参数有误：整包=%v", env)
+		t.Fatalf("要说清「这不是外部站点导出的 JSON」，不能只甩参数有误：整包=%v", env)
 	}
 	msg, _ := env["message"].(string)
 	for _, want := range []string{"MoviePilot", "数组"} {
@@ -99,7 +99,7 @@ func TestImportMoviePilotWrongFileShape(t *testing.T) {
 			t.Errorf("缺 %q：%q", want, msg)
 		}
 	}
-	// Go 侧的 json 原文（"parse moviepilot sites: json: cannot unmarshal object…"）只进日志。
+	// Go 侧的 json 原文（解析错误详情）只进日志。
 	if strings.Contains(msg, "unmarshal") || strings.Contains(msg, "parse moviepilot") {
 		t.Errorf("英文原文进了界面：%q", msg)
 	}

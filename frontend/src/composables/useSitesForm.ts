@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { siteApi, type Site, type SiteDef } from '@/api/site'
 import { dashboardApi } from '@/api/dashboard'
 import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from '@/utils/siteDefSearch'
@@ -17,6 +18,9 @@ export interface SiteForm {
   password: string
   is_active: boolean
 }
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function defUrls(d?: SiteDef) {
   return Array.from(new Set((d?.urls || []).map((u) => u.trim()).filter(Boolean)))
@@ -114,10 +118,10 @@ export function useSitesForm(
       defs.value = await siteApi.definitions()
     } catch {
       if (!defs.value.length) {
-        ElMessage.error('加载站点定义失败')
+        ElMessage.error(t('opusesitesform.k1'))
         return
       }
-      ElMessage.warning('站点定义刷新失败，使用当前缓存')
+      ElMessage.warning(t('opusesitesform.k2'))
     }
     editingId.value = null
     definitionQuery.value = ''
@@ -155,12 +159,12 @@ export function useSitesForm(
   async function submit() {
     if (submitting.value) return
     if (!form.value.name || !form.value.base_url) {
-      ElMessage.warning('名称与地址必填')
+      ElMessage.warning(t('opusesitesform.k3'))
       return
     }
     // API 型站点鉴权：新建必填 API Key，否则后续连接测试/搜索全部 401
     if (needsApiKey.value && !isEdit.value && !form.value.api_key.trim()) {
-      ElMessage.warning(`${currentDef.value?.name || '该站点'}需填写 API Key`)
+      ElMessage.warning(`${currentDef.value?.name || t('opusesitesform.k4')}需填写 API Key`)
       return
     }
     // 根据定义自动推断 platform
@@ -180,7 +184,7 @@ export function useSitesForm(
           password: form.value.password,
           is_active: form.value.is_active,
         })
-        ElMessage.success('已更新')
+        ElMessage.success(t('common.updated'))
       } else {
         await siteApi.create({
           name: form.value.name,
@@ -194,7 +198,7 @@ export function useSitesForm(
           password: form.value.password,
           is_active: form.value.is_active,
         })
-        ElMessage.success('已添加')
+        ElMessage.success(t('common.added'))
         // 新建站点：立即抓取统计，避免切到仪表盘看到全 0。
         dashboardApi
           .sync()
@@ -206,7 +210,7 @@ export function useSitesForm(
       await operationsMatrixReload()
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || (isEdit.value ? '更新失败' : '添加失败'))
+      ElMessage.error(msg || (isEdit.value ? t('common.updateFailed') : t('opusesitesform.k5')))
     } finally {
       submitting.value = false
     }

@@ -3,7 +3,7 @@
 
 package fl
 
-// advanced.go 实现 Flood (jesec/flood) 的高级操作，对标 qb/tr。
+// advanced.go 实现 Flood (jesec/flood) 的高级操作，接口面同 qb/tr。
 // API 参考：https://github.com/jesec/flood （/server/routes/api/torrents.ts、client.ts）。
 //
 // jesec 路径与 legacy Flood-UI 不同：本文件面向 jesec（主流分叉），
@@ -155,7 +155,7 @@ func (c *Client) ListPeers(ctx context.Context, hash string) ([]downloader.Peer,
 	}
 	out := make([]downloader.Peer, 0, len(peers))
 	for _, p := range peers {
-		// 汇总标志位：E=加密 I=入站连接（对标 qB flags 的子集语义）
+		// 汇总标志位：E=加密 I=入站连接（qB flags 子集语义）
 		var flags strings.Builder
 		if p.IsEncrypted {
 			flags.WriteByte('E')

@@ -79,7 +79,7 @@ func (m *MTeam) mtRequest(ctx context.Context, baseURL, token, path string, body
 }
 
 // GenDlToken 取 MTeam 签名下载 URL：multipart/form-data POST /api/torrent/genDlToken {id}，
-// 头 x-api-key。契约源 pt_mate mteam_adapter.genDlToken（data 为签名 URL 字符串）。
+// 头 x-api-key。
 // URL 有时效（签名），调用方应在「添加」时现取，勿提前入库缓存。
 // M-Team 兼容站（如 ColaPT，extra_param 里的 mtorrent.compat 面）不收 multipart，
 // 400 invalid_request——此时用 JSON 体 {"id":...} 兜底重试一次（实测 200）。
@@ -192,7 +192,6 @@ func isMTAuthError(code, msg string) bool {
 // ── 用户等级映射 ──
 
 // mtRoles 对照 NexusPHP 标准 class（MTeam profile 的 role 字段）→ 等级名。
-// 契约来源：MoviePilot MTeam_sysRoleList / PT-depiler levelRequirements（二者一致）。
 var mtRoles = map[int64]string{
 	1: "User", 2: "Power User", 3: "Elite User", 4: "Crazy User",
 	5: "Insane User", 6: "Veteran User", 7: "Extreme User", 8: "Ultimate User",

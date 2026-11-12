@@ -1,4 +1,4 @@
-# audiobookbay — 搜索 selector 与 tt=1 参数已按 PT-depiler/Jackett 结构迁移，并由 GenericHTML mock 覆盖；详情页 magnet 仍建议 live smoke。
+# audiobookbay — 搜索 selector 与 tt=1 参数已按 上游定义 结构迁移，并由 GenericHTML mock 覆盖；详情页 magnet 仍建议 live smoke。
 
 aka:
     - ABB

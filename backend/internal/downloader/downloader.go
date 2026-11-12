@@ -2,7 +2,6 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package downloader 定义统一下载器抽象（qBittorrent / Transmission / uTorrent / Deluge / Aria2 / ruTorrent / Flood）与数据模型。
-// 接口粒度参考 qBitController 的 Repository 层（已验证的业务方法集）。
 package downloader
 
 import (
@@ -110,7 +109,7 @@ type AddOptions struct {
 
 	// SiteID 非 0 时，DownloadChain.Add 会先用该站点 cookie/passkey 把 URL 指向的
 	// .torrent 下载成字节（FileContent）再推下载器——解决 PT 站 download.php 需登录态、
-	// 下载器无站点 cookie 拿不到种子的问题（对标 MoviePilot）。0=沿用旧 URL 直推。
+	// 下载器无站点 cookie 拿不到种子的问题（）。0=沿用旧 URL 直推。
 	SiteID uint
 
 	Category      string
@@ -215,7 +214,7 @@ type StatsCacher interface {
 	CachedStats() *GlobalStats
 }
 
-// 错误分类（参考 qBitController RequestResult）。
+// 错误分类。
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrBanned             = errors.New("banned by downloader")

@@ -2,8 +2,11 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { searchApi, type SiteSearchResult } from '@/api/search'
 import type { MediaInfo } from '@/api/recommend'
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useFindOnSites() {
   // find-on-sites 弹窗
@@ -42,7 +45,7 @@ export function useFindOnSites() {
       )
     } catch (e: unknown) {
       if ((e as Error).name !== 'AbortError') {
-        ElMessage.error((e as Error).message || '站点查找失败')
+        ElMessage.error((e as Error).message || t('opusefindonsites.k1'))
       }
     } finally {
       if (findAbort === ctrl) {

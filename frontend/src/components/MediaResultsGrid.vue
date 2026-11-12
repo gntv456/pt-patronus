@@ -6,7 +6,7 @@
 <script setup lang="ts">
 /**
  * 影视搜索结果海报卡片网格（原 Search.vue 影视模式区块）。
- * 卡片点击 → 进入媒体详情页（对标 MoviePilot），由父组件处理跳转。
+ * 卡片点击 → 进入媒体详情页，由父组件处理跳转。
  */
 import { useI18n } from 'vue-i18n'
 import MediaPoster from '@/components/MediaPoster.vue'

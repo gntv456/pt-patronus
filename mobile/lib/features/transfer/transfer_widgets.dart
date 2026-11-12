@@ -60,7 +60,8 @@ extension on _TransferPageState {
       borderRadius: BorderRadius.circular(6),
       child: url.isEmpty
           ? Container(width: 40, height: 58, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.movie, size: 20))
-          : Image.network(url, width: 40, height: 58, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(width: 40, height: 58, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.movie, size: 20))),
+          // cacheWidth 80：按 40 逻辑像素×2 解码，缩略图不解码整图（内存省一个量级）
+          : Image.network(url, width: 40, height: 58, fit: BoxFit.cover, cacheWidth: 80, errorBuilder: (_, _, _) => Container(width: 40, height: 58, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.movie, size: 20))),
     );
   }
 

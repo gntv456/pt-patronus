@@ -123,7 +123,7 @@ const advOpen = ref(false)
       </div>
     </template>
 
-    <!-- 高级：循环重试（所有节点通用，参考 MoviePilot loop/loop_interval） -->
+    <!-- 高级：循环重试（所有节点通用） -->
     <div class="advanced">
       <div v-a11y-button class="adv-head" @click="advOpen = !advOpen">
         <span>{{ advOpen ? '▼' : '▶' }} {{ t('npf.advRetry') }}</span>

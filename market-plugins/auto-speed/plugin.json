@@ -5,7 +5,7 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "简易下载测速（迁移自 MoviePilot auto-speed）。",
+  "description": "Simple download speed test.",
   "license": "MIT",
   "keywords": [
     "speedtest",

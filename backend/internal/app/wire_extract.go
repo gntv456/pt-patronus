@@ -37,8 +37,8 @@ func wireSubtitleStack(cfg *config.Config, cfgOp *oper.SystemConfigOper, base ch
 	// 媒体健康中心联动：missing_subtitle 一键补齐（复用字幕搜索/下载源）。
 	mediaServerCh.SetSubtitleFixer(chain.SubtitleChainAdapter{Ch: subtitleCh})
 
-	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（Bazarr /
-	// ChineseSubFinder 模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
+	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（自动化
+	// 监听模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
 	// 通知走 noticeSvc；默认关闭，用户经 /subtitle/automation/config 开启。异步 handler 不阻塞整理。
 	subAutoSvc := subauto.New(bus, subtitleCh, cfgOp, noticeSvc)
 	subAutoSvc.Start()

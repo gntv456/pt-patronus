@@ -102,7 +102,7 @@ type SiteDetail struct {
 	BonusPoints     bool           `json:"bonus_points,omitempty"`     // 有魔力/积分系统
 	HitAndRun       bool           `json:"hit_and_run,omitempty"`      // 有 H&R 考核
 	RatioRequired   bool           `json:"ratio_required,omitempty"`   // 有分享率要求
-	Sources         []DetailSource `json:"sources,omitempty"`          // 资料来源（PThub/PT-depiler…）
+	Sources         []DetailSource `json:"sources,omitempty"`          // 资料来源
 	Language        string         `json:"language,omitempty"`         // 站点语言（zh-CN…）
 	Rank            int            `json:"rank,omitempty"`             // ptseek 综合排名
 	SourceCategory  string         `json:"source_category,omitempty"`  // 来源分类（热门站点/其他站点…）

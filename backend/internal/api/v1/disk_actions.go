@@ -33,7 +33,7 @@ func validateMountpoint(mp string) bool {
 	return mountpointRe.MatchString(mp) && !strings.Contains(mp, "..")
 }
 
-// Partition 对未分区磁盘创建分区 + 格式化 + 挂载（对应 1Panel"分区并挂载"）。
+// Partition 对未分区磁盘创建分区 + 格式化 + 挂载（分区并挂载）。
 // 高危：会清除目标磁盘所有数据。必须 ConfirmRisk。
 func (h *DiskHandler) Partition(c *gin.Context) {
 	id, ok := parseID(c)

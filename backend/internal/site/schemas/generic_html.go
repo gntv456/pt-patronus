@@ -20,7 +20,7 @@ import (
 // （""、xbtit、tcg、tbsource、filelist、discuz、rartracker、fsm、cgbtsource、meantorrent、aidoruonline、smallhorse）。
 // schema 参数化——每个 schema 注册一个实例（RegisterAdapter 按 Schema() 去重）。
 // 选择器完全由 definition（YAML）驱动：HTML 走 site.ParseSearch，JSON 走 site.ParseJSONSearch。
-// schema ""（PT-depiler AbstractPrivateSite 系，含 nyaa/rutracker/hdbits/torrentleech 等）的
+// schema ""（通用私有站系，含 nyaa/rutracker/hdbits/torrentleech 等）的
 // HTML/JSON 分发：def.Format 显式 > 响应体首字节嗅探。
 type GenericHTML struct {
 	BaseHTMLAdapter

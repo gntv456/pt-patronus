@@ -41,7 +41,7 @@ class ImportResult {
   }
 }
 
-/// 备份 API：导出/导入（自身格式）/ 导入 MoviePilot 站点。对齐后端 /backup/*。
+/// 备份 API：导出/导入（自身格式）/ 导入外部格式站点。对齐后端 /backup/*。
 /// 注意：导入是 raw JSON body（后端 ShouldBindJSON(&RawMessage)），不是 multipart。
 class BackupApi {
   final _api = ApiClient();
@@ -55,7 +55,7 @@ class BackupApi {
     return ImportResult.fromJson(r);
   }
 
-  /// 导入 MoviePilot 站点 JSON 数组（强制建为 nexusphp 启用站点）。
+  /// 导入外部站点 JSON 数组（强制建为 nexusphp 启用站点）。
   /// 后端这条链同样给 `sites_skipped` / `empty`（缺 name、注册域重复都在跳过账里），
   /// 所以按 ImportResult 返回，别让调用方只能显示「导入了几个」。
   Future<ImportResult> importMoviePilot(List<dynamic> data) async {
@@ -63,7 +63,7 @@ class BackupApi {
     return ImportResult.fromJson(r);
   }
 
-  /// 导入 PT-Depiler (.ptd) 备份（multipart 文件上传；.ptd 是二进制 ZIP）。
+  /// 导入 .ptd 备份（multipart 文件上传；.ptd 是二进制 ZIP）。
   /// 加密备份 / 非 PTD 文件后端返回 4xx，ApiClient 转 ApiException（userMessage 友好中文）。
   /// 成功时也带回 `sites_skipped` / `empty`（无可用 URL、注册域重复都在跳过账里）。
   Future<ImportResult> importPTD(Uint8List bytes, String filename) async {

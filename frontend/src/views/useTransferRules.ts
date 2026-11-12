@@ -4,8 +4,12 @@
 // useTransfer 的「目录标签/排序/目录同步/识别词/识别词云端共享」子模块。
 // （从 useTransfer.ts 拆出；自含全部状态与方法，行为不变。）
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { transferApi, type DirTag, type SortRules, type DirSyncTask, type IdentifyWord, type SharedRepo } from '@/api/transfer'
+
+
+const tr = (k: string, params?: Record<string, unknown>) => i18n.global.t(k, params ?? {})
 
 export function useTransferRules() {
   // —— 目录标签 + 排序规则 + 目录同步 ——
@@ -37,10 +41,10 @@ export function useTransferRules() {
     try {
       await transferApi.setDirTags(dirTags.value.filter((t) => t.name.trim() && t.path.trim()))
       await transferApi.setSortRules(sortRules.value)
-      ElMessage.success('标签与排序规则已保存')
+      ElMessage.success(tr('opusetransferrules.k1'))
       showTags.value = false
     } catch (e) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || tr('common.saveFailed'))
     } finally {
       tagsSaving.value = false
     }
@@ -65,10 +69,10 @@ export function useTransferRules() {
     syncSaving.value = true
     try {
       await transferApi.setDirSync(syncTasks.value)
-      ElMessage.success('同步任务已保存')
+      ElMessage.success(tr('opusetransferrules.k2'))
       showDirSync.value = false
     } catch (e) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || tr('common.saveFailed'))
     } finally {
       syncSaving.value = false
     }
@@ -77,9 +81,9 @@ export function useTransferRules() {
     syncingName.value = t.name
     try {
       const r = await transferApi.runDirSync(t.name)
-      ElMessage.success('同步完成：扫描 ' + r.scanned + ' 同步 ' + r.synced + ' 跳过 ' + r.skipped)
+      ElMessage.success(tr('opusetransferrules.syncDone', { scanned: r.scanned, synced: r.synced, skipped: r.skipped }))
     } catch (e) {
-      ElMessage.error((e as Error).message || '运行失败')
+      ElMessage.error((e as Error).message || tr('opusetransferrules.k3'))
     } finally {
       syncingName.value = ''
     }
@@ -112,10 +116,10 @@ export function useTransferRules() {
     identifySaving.value = true
     try {
       await transferApi.setIdentifyWords(identifyWords.value)
-      ElMessage.success('识别词已保存（即时生效）')
+      ElMessage.success(tr('opusetransferrules.k4'))
       showIdentify.value = false
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || tr('common.saveFailed'))
     } finally {
       identifySaving.value = false
     }
@@ -130,7 +134,7 @@ export function useTransferRules() {
     }
   }
 
-  // —— 名称识别测试（对标 MSaber）：本地元数据 + 媒体源匹配一步到位 ——
+  // —— 名称识别测试：本地元数据 + 媒体源匹配一步到位 ——
   const recognizeTesting = ref(false)
   async function testRecognize() {
     if (!identifyTestName.value.trim()) return
@@ -182,9 +186,9 @@ export function useTransferRules() {
   async function saveSharedRepos() {
     try {
       await transferApi.setSharedRepos(sharedRepos.value.filter((r) => r.url))
-      ElMessage.success('共享仓库已保存')
+      ElMessage.success(tr('opusetransferrules.k5'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || tr('common.saveFailed'))
     }
   }
   async function importSharedRepo(url: string) {
@@ -202,7 +206,7 @@ export function useTransferRules() {
       ElMessage.success(`已导入 ${r.added} 条（共 ${r.total} 条）`)
       identifyWords.value = await transferApi.getIdentifyWords()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '导入失败')
+      ElMessage.error((e as Error).message || tr('opusetransferrules.k6'))
     } finally {
       shareImporting.value = false
     }

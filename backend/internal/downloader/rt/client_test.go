@@ -37,7 +37,6 @@ func (f *rtFake) record(r *http.Request, body string) {
 }
 
 func sampleRow() []any {
-	// 30+ fields per PT-depiler
 	row := make([]any, 34)
 	row[0] = "1"             // is_open
 	row[1] = "0"             // is_hash_checking

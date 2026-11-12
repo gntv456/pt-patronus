@@ -3,7 +3,7 @@
 
 import { http } from './http'
 
-// 工作流：可视化节点图引擎（参考 MoviePilot 工作流 + 图片收割机步骤编排）。
+// 工作流：可视化节点图引擎。
 
 export interface Position {
   x: number

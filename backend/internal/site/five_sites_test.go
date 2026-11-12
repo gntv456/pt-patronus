@@ -332,7 +332,7 @@ func TestQingwaTadpoleCurrency(t *testing.T) {
 }
 
 // TestDetailFieldsStatsMerge 锁定「统计字段自动 userdetails 合并」：默认 DetailFields 现含
-// bonus/uploaded/downloaded/ratio/seeding/seeding_size（PT-depiler 方案——统计行在
+// bonus/uploaded/downloaded/ratio/seeding/seeding_size（统计行在
 // userdetails.php rowhead 的站，usercp 抓不到时经 uid 二次页补齐）。只补零值，不覆盖基础页结果。
 func TestDetailFieldsStatsMerge(t *testing.T) {
 	def := defOf(t, "springsunday")

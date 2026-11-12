@@ -13,7 +13,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// 备份页：导出 / 导入（PTPatronus 格式）/ 导入 MoviePilot 站点。对齐 Web Backup.vue。
+/// 备份页：导出 / 导入（PTPatronus 格式）/ 导入外部格式站点。对齐 Web Backup.vue。
 class BackupPage extends StatefulWidget {
   const BackupPage({super.key});
   @override

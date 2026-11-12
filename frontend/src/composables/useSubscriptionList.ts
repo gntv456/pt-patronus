@@ -2,12 +2,16 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { subscribeApi, type Subscription } from '@/api/subscribe'
 import { mediaApi } from '@/api/media'
 
 // 订阅列表的加载与逐条操作（手动检查 / 暂停-恢复 / 改分辨率 / 改促销 / 改站点 / 删除）。
 // 抽出为 composable 收敛 Subscriptions.vue 脚本体积；ElMessage / ElMessageBox 依赖
 // unplugin-auto-import 的 ElementPlusResolver 全局注入（与 .vue 一致，无需手写 import）。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function useSubscriptionList() {
   const list = ref<Subscription[]>([])
   const loading = ref(false)
@@ -21,7 +25,7 @@ export function useSubscriptionList() {
       list.value = items.map((s) => ({ ...s, promo_types: s.promo_types ?? [], site_ids: s.site_ids ?? [] }))
       void fillMissingPosters(list.value)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载失败')
+      ElMessage.error((e as Error).message || t('common.loadFailed'))
     } finally {
       loading.value = false
     }
@@ -49,13 +53,13 @@ export function useSubscriptionList() {
     try {
       const r = await subscribeApi.check(s.id)
       if (r.ok) {
-        ElMessage.success(r.pushed > 0 ? `命中并推送 ${r.pushed} 条` : '本轮暂无新资源')
+        ElMessage.success(r.pushed > 0 ? `命中并推送 ${r.pushed} 条` : t('opusesubscriptionlist.k1'))
       } else {
-        ElMessage.warning(r.error || '检查失败')
+        ElMessage.warning(r.error || t('opusesubscriptionlist.k2'))
       }
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '检查失败')
+      ElMessage.error((e as Error).message || t('opusesubscriptionlist.k2'))
     } finally {
       checking.value = null
     }
@@ -67,16 +71,16 @@ export function useSubscriptionList() {
       await subscribeApi.update(s.id, { status: next })
       await load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || t('common.actionFailed'))
     }
   }
 
   async function setResolution(s: Subscription) {
     try {
       await subscribeApi.update(s.id, { resolution: s.resolution })
-      ElMessage.success('分辨率已更新')
+      ElMessage.success(t('opusesubscriptionlist.k3'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '更新失败')
+      ElMessage.error((e as Error).message || t('common.updateFailed'))
     }
   }
 
@@ -88,7 +92,7 @@ export function useSubscriptionList() {
       await subscribeApi.update(s.id, { promo_types: vals })
     } catch (e: unknown) {
       s.promo_types = prev
-      ElMessage.error((e as Error).message || '更新失败')
+      ElMessage.error((e as Error).message || t('common.updateFailed'))
     }
   }
 
@@ -100,16 +104,16 @@ export function useSubscriptionList() {
       await subscribeApi.update(s.id, { site_ids: ids })
     } catch (e: unknown) {
       s.site_ids = prev
-      ElMessage.error((e as Error).message || '更新失败')
+      ElMessage.error((e as Error).message || t('common.updateFailed'))
     }
   }
 
   async function remove(s: Subscription) {
     try {
-      await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
+      await ElMessageBox.confirm(t('opusesubscriptionlist.k4'), t('opusesubscriptionlist.k5'), {
         type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
+        confirmButtonText: t('common.delete'),
+        cancelButtonText: t('common.cancel'),
       })
     } catch {
       return // 用户取消
@@ -117,9 +121,9 @@ export function useSubscriptionList() {
     try {
       await subscribeApi.remove(s.id)
       await load()
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
+      ElMessage.error((e as Error).message || t('common.deleteFailed'))
     }
   }
 

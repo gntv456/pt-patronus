@@ -306,7 +306,7 @@ export const pluginApi = {
   publishEvent: (type = 'plugin.test', data: Record<string, any> = { source: 'web' }) =>
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') => http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
-  // ---- 市场运营层（对标 MSaber：百鸟朝凤/百宝袋/分神/天序） ----
+  // ---- 市场运营层（百鸟朝凤/百宝袋/分神/天序） ----
   marketCharts: () =>
     http.get<{ disciples: ChartRow[]; newcomers: ChartRow[] }>('/plugins/market/charts').then((r) => r.data),
   marketFavorites: () =>

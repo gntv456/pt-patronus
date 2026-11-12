@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 /**
- * Lightweight torrent title meta for MoviePilot-style result cards.
+ * Lightweight torrent title meta for result cards.
  * Pure frontend heuristics - no filter engine dependency.
  */
 
@@ -113,7 +113,7 @@ export function relativeTime(raw?: string): string {
   return `${Math.floor(diffSec / (86400 * 365))} 年前`
 }
 
-/** MoviePilot-style promo text from upload/download volume factors. */
+/** Promo text from upload/download volume factors. */
 export function volumeFactorLabel(
   upload?: number,
   download?: number,
@@ -149,7 +149,7 @@ export function cardGroupKey(t: { title: string; size?: string; tags?: string[] 
   const res = tags.find((x) => x.tone === 'res')?.label || ''
   const codec = tags.find((x) => x.tone === 'codec')?.label || ''
   const src = tags.find((x) => x.tone === 'src')?.label || ''
-  // MoviePilot groups by name+pix+edition+team+season+size; we approximate with size+tech tokens.
+  // Grouping approximated with size+tech tokens (name+pix+edition+team+season+size exact match is overkill here).
   return `${(t.size || '').toLowerCase()}|${res}|${codec}|${src}|${torrentGroupKey(t.title)}`
 }
 

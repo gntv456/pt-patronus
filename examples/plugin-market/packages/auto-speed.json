@@ -14,7 +14,7 @@
     "host.api.notice.write"
   ],
   "author": "PTPatronus Community",
-  "description": "简易下载测速（迁移自 MoviePilot auto-speed）。",
+  "description": "简易下载测速。",
   "license": "MIT",
   "keywords": [
     "speedtest",

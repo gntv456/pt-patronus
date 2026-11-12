@@ -69,7 +69,7 @@ import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
 
-// 站点求种请求：跨站聚合展示（对标 MSaber「站点请求」）。低频查看，无缓存现取。
+// 站点求种请求：跨站聚合展示。低频查看，无缓存现取。
 const loading = ref(false)
 const filled = ref(false)
 const results = ref<SiteRequestResult[]>([])

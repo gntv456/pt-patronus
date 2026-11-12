@@ -22,9 +22,8 @@ import (
 
 // Avistaz 是 Avistaz 网络适配器（avistaz/cinemaz/exoticaz/privatehd）。
 // from-scratch JWT token API：POST /api/v1/jackett/auth（username+password+pid）→ Bearer token，
-// GET /api/v1/jackett/torrents。UserInfo 按站规禁用（PT-depiler passParse），只返 {Name: username}。
+// GET /api/v1/jackett/torrents。UserInfo 按站规禁用（按站规禁用），只返 {Name: username}。
 // 凭据由 chain.credential() 打包成 JSON {username,password,pid} 单串传入（cookie 参数位）。
-// 契约来源：PT-depiler AvistazNetwork.ts。
 type Avistaz struct {
 	hc   *httpclient.Client
 	keys sync.Map // baseURL → avistazToken
@@ -215,7 +214,7 @@ func firstMapValue(m map[string]any) string {
 	return ""
 }
 
-// FetchUserInfo 按站规禁用用户数据，只返 {Name: username}（PT-depiler passParse 状态）。
+// FetchUserInfo 按站规禁用用户数据，只返 {Name: username}（按站规禁用）。
 // 绝不报错、绝不访问 /profile。
 func (a *Avistaz) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cred string) (*site.UserInfo, error) {

@@ -1,6 +1,6 @@
 # PTPatronus 功能路线图
 
-> 日期：2026-07-23 · 来源：Awesome PT 生态清单对照 + cross-seed / autoremove-torrents 源码实证 + 收割机/MP-2/PT-depiler/旧版 PTPatronus 四参照
+> 日期：2026-07-23 · 来源：PT 生态需求盘点 + 源码实证
 > 性质：**功能层**规划（非导航/UX，后者见 [menu-redesign.md](menu-redesign.md) v2）
 
 ## 一、优化现有功能（高 ROI，契合管理台定位）
@@ -9,24 +9,24 @@
 
 > **进度（2026-07-23）**：P0 四项已落地——`DeleteMinUPRateKB` / `DeleteInactiveHours` / `DeleteLogic`+`DeleteRuleExpr` / `MaxTotalSizeGB` 淘汰；qB `LastActivity` 已映射。
 - **现状**：[brushflow.go](backend/internal/chain/brushflow.go) `bfMatchRule()` 仅 3 维（DeleteRatio/DeleteSeedHours/DeleteUploadMB），OR 组合。
-- **差距**：autoremove-torrents 有 22 条件 + 布尔表达式 + 9 淘汰策略。[Torrent 结构体](backend/internal/downloader/downloader.go) 已采集 `UPRate`/`NumSeeds`/`NumLeechs`/`NumComplete`/`NumIncomplete`/`Availability` 等，**未接入删种**。
+- **差距**：业界工具有 22 条件 + 布尔表达式 + 9 淘汰策略。[Torrent 结构体](backend/internal/downloader/downloader.go) 已采集 `UPRate`/`NumSeeds`/`NumLeechs`/`NumComplete`/`NumIncomplete`/`Availability` 等，**未接入删种**。
 - **P0 补**：① 上传速度下限（`UPRate` 已有）② 最后活跃 `last_activity` ③ 布尔表达式（阶梯策略：新种 ratio>1 删 / 老种 ratio>3 才删）④ 磁盘/总量约束 + 淘汰 action（满时优先删不活跃/慢速）
 - **P1 补**：~~swarm 人数 max_seeder/min_leecher~~ ✅ `DeleteMaxSwarmSeeders` / `DeleteMinSwarmLeechers` + 表达式 `swarm_seeders`/`swarm_leechers`；多策略仍可用 DeleteRuleExpr
-- **不借鉴**：YAML 配置（DB+UI 更优）、tracker 过滤（用 tag）、多 client（6 适配器更广）
+- **不做**：YAML 配置（DB+UI 更优）、tracker 过滤（用 tag）、多 client（6 适配器更广）
 
 ### 1.2 辅种匹配增强 — P1（去 IYUU 单点 + 提升命中率）
 
 > **进度（2026-07-23）**：无 IYUU token 时 `reseedLocal` 走名称+大小跨站搜索（score≥75）；**Torznab** 候选；**IMDb/TMDB ID**（标题提取 + `DownloadMediaLink`）抬分；**体积字节级一致**作数据块强信号（≥92）；文件树 basename 重叠辅助；Torznab 支持 imdbid/tmdbid 查询。完整 .torrent piece hash 比对仍属增强项（需种子元数据）。
 - **现状**：IYUU 移植，infohash 跨站匹配，走 IYUU 中心化 API；cookie 下载 .torrent；Reseed 按下载器维度。
-- **差距**：cross-seed 是本地数据驱动，用 Torznab（Jackett/Prowlarr）搜候选 + IMDb/TMDB ID + 数据块匹配（**支持重命名/部分匹配**），不依赖中心化服务。
-- **借鉴**：① 匹配引入 IMDb/TMDB ID + 数据块（提升重命名场景命中率）② 候选来源支持 Torznab，降低 IYUU 单点依赖 ③ 不改 daemon 模式（保持任务驱动）
+- **差距**：本地数据驱动路线用 Torznab（Jackett/Prowlarr）搜候选 + IMDb/TMDB ID + 数据块匹配（**支持重命名/部分匹配**），不依赖中心化服务。
+- ① 匹配引入 IMDb/TMDB ID + 数据块（提升重命名场景命中率）② 候选来源支持 Torznab，降低 IYUU 单点依赖 ③ 不改 daemon 模式（保持任务驱动）
 
 ### 1.3 字幕自动化 — P2（从手动搜索 → 监听自动）
 - **现状**：字幕页手动搜索（ASSRT/OpenSubtitles/SubHD/字幕库）。
-- **借鉴**：Bazarr / ChineseSubFinder 模式——监听媒体库变化自动匹配下载字幕。
+- 监听媒体库变化自动匹配下载字幕。
 
 ### 1.4 识别引擎 — P2
-- **借鉴**：parse-torrent-title 标题解析规则对照查漏（影视名/年份/分辨率/发布组/版本）。
+- 标题解析规则对照查漏（影视名/年份/分辨率/发布组/版本）。
 
 ## 二、功能扩张（需拍板，非核心）
 
@@ -37,7 +37,7 @@
 ### 2.2 IRC 抢种（Autobrr）— 低优先，优先对接
 - 场景：首种/竞速（监听 PT 站 IRC announce 秒抢）。受众窄但上传贡献大。
 - 路径：**对接 Autobrr**（省自建 IRC 成本），或低优自建。
-- 联动：cross-seed + autobrr 可「100% seeder 抢种」（种子发布瞬间以完整数据入场）。
+- 联动：辅种 + autobrr 可「100% seeder 抢种」（种子发布瞬间以完整数据入场）。
 
 ## 三、对接生态（已集成 / 可加强）
 - **已集成**：Servarr（Sonarr/Radarr）/ 媒体服务器（Emby/Jellyfin/Plex）/ TMDB / 豆瓣 Frodo / 下载器 6 种（qb/tr/ut/dl/ar/rt/fl）。

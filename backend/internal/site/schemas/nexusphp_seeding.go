@@ -11,9 +11,9 @@ import (
 )
 
 // parsePTTimeSeedingSummary 解析 PTTime getusertorrentlist.php 的 #outer 汇总。
-// PTTime 该页结构（非标准 nexusphp ajax，故 PT-depiler 专门重写 requestUserSeedingPage +
+// PTTime 该页结构（非标准 nexusphp ajax，故专门重写 requestUserSeedingPage +
 // parseUserInfoForSeedingStatus）：#outer 直接子元素依次为 h1 / span(用户名) /
-// span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...，对应 PT-depiler 的
+// span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...，对应页面的
 // #outer > span:nth-child(3) > b（做种数）与 :nth-child(4)（做种体积）。
 //
 // ok=true 表示命中此格式——即便 size=0（PTTime 对 0 流量种子显示「资源总大小：0B」，是站点

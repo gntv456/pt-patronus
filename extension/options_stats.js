@@ -47,7 +47,7 @@ export function initStatsPage($, feedback, getStatsPrivacy) {
       </tr>`).join('')
   }
 
-  // exportPng 把汇总卡 + 表格渲染到离屏 canvas 导出 PNG（对标竞品图片导出）。
+  // exportPng 把汇总卡 + 表格渲染到离屏 canvas 导出 PNG。
   async function exportPng() {
     if (!statsData) return
     const W = 1080

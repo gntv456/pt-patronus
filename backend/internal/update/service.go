@@ -87,11 +87,19 @@ func (s *Service) Check(ctx context.Context, platform, currentVersion string) (*
 		res.IsForced = true
 	}
 	if platform != "" {
-		if t, ok := m.Targets[platform]; ok {
+		t, ok := m.Targets[platform]
+		if ok {
 			res.DownloadURL = t.URL
 			res.SHA256 = t.SHA256
 			res.Image = t.Image
 			res.Instructions = t.Instructions
+		}
+		// 该平台 target 未发布下载（url 与 image 全空）：不报「发现新版本」。
+		// 原实现照样 HasUpdate=true——移动端弹更新框、点「浏览器下载」是死按钮，
+		// 既不像故障也没有指引。改判无更新；版本对比信息仍带在 LatestVersion，
+		// 桌面 Web 端（走 docker target）不受影响。
+		if (!ok || (t.URL == "" && t.Image == "")) && platform != "docker" {
+			res.HasUpdate = false
 		}
 	}
 	return res, nil

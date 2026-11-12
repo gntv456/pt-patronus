@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package plexsuite 实现 Plex 媒体服务器套件增强：本地化、跳片头、自动语言、IP 优选。
-// 自包含（对标 forumsignin/groupchat 子包模式），避免 plugins 包直接持有 Plex 业务逻辑。
+// 自包含（同 forumsignin/groupchat 子包模式），避免 plugins 包直接持有 Plex 业务逻辑。
 // 端点字段基于 Plex Media Server 公开 REST 契约，部分能力需 Plex Pass，真实联调留用户。
 package plexsuite
 

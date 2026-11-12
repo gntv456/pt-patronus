@@ -6,7 +6,7 @@
 <script setup lang="ts">
 // 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
 /* eslint-disable vue/no-mutating-props */
-// 工作台（对标 MSaber 天序工作台）：问候语 + 体检分 + 今日流转节点（可点选过滤今日摘要）
+// 工作台（天序工作台）：问候语 + 体检分 + 今日流转节点（可点选过滤今日摘要）
 // + 今日待办/动态（带进度条）双栏 + 今日摘要指标 + 媒体库态势。
 // 数据源：GET /dashboard/workbench 单接口聚合；60s 自动轮询。
 import { ref, computed, onMounted, onUnmounted } from 'vue'
@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 import { fmtBytes } from '@/utils/format'
+import { registerPolling } from '@/composables/usePolling'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -25,27 +26,24 @@ const wb = ref<Workbench | null>(null)
 const loading = ref(false)
 const loadError = ref('')
 const activeNode = ref<string>('') // 选中的流转节点 key（空=总览）
-let timer: ReturnType<typeof setInterval> | undefined
-
-async function load() {
-  loading.value = true
+async function load(silent = false) {
+  // silent=true 供 60s 轮询复用：不再整块置 v-loading，避免阅读中途闪遮罩。
+  if (!silent) loading.value = true
   loadError.value = ''
   try {
     wb.value = await dashboardApi.workbench()
   } catch (e: any) {
     loadError.value = e?.message || t('wb.loadFailed')
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
-onMounted(() => {
-  void load()
-  timer = setInterval(() => void load(), 60_000)
-})
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
+// 统一轮询调度器：后台标签页暂停、切回补拉（原裸 setInterval 后台照跑 60s 打 API）。
+// immediate 承担首载（替代原 onMounted 里的显式 load()）。
+const stopPolling = registerPolling(() => void load(true), 60_000, { runOnShow: true })
+onMounted(() => void load())
+onUnmounted(stopPolling)
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -138,6 +136,21 @@ function timeAgo(iso: string): string {
 
 <template>
   <section class="workbench glass" v-loading="loading">
+    <!-- 读取失败必须可见（原实现 loadError 只赋值不渲染）：接口挂了会落到
+         wb=null 的「暂无待办/去添加媒体服务器」空态，用户会把故障当清零、
+         误去重配媒体服务器。 -->
+    <el-alert
+      v-if="loadError"
+      class="wb-incomplete"
+      type="error"
+      :closable="false"
+      show-icon
+      :title="loadError"
+    >
+      <el-button size="small" @click="load()">
+        {{ t('common.retry') }}
+      </el-button>
+    </el-alert>
     <!-- 数据不完整：后端某些区块读失败时会跳过对应待办与扣分，不提示就会让人
          把「看不见」当成「没问题」。 -->
     <el-alert

@@ -4,7 +4,7 @@
 import { watch } from 'vue'
 import { useUserPrefs } from '@/composables/useUserPrefs'
 
-// 界面偏好（对标 MSaber 界面自定义面板）：主题明暗已在 useMainLayout（localStorage['theme']），
+// 界面偏好：主题明暗已在 useMainLayout（localStorage['theme']），
 // 此处补：主题色 accent（violet 默认/azure/rose/green/amber）、风格 uiStyle（glass 默认/modern）、
 // 壁纸 wallpaper（{kind: none|url|bing|local, url}，bing=必应每日）、遮罩浓度 mask（light/standard/strong）、
 // 卡片风格 cardStyle（shadow 默认/border）、侧栏默认态 sidebarCollapsed（bool）。

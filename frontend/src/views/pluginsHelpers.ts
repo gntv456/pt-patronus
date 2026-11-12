@@ -3,6 +3,7 @@
 
 // Plugins.vue 抽出的纯函数 / 类型（零组件状态耦合）：权限/宿主能力/依赖/兼容性/安装计划/
 // 信任等级的展示与归一化,以及 normalizePlugin/normalizeMarket/schema/configGroups/defaultsFromSchema 等。
+import { i18n } from '@/i18n'
 import {
   hasInstallPlanChanges,
   normalizeHostCapabilities,
@@ -23,6 +24,9 @@ import type {
 export type MarketItem = PluginMarketIndex['plugins'][number]
 export type MarketItemLike = Partial<MarketItem> & Record<string, any>
 // 把归一化后的源 URL 收敛成简短展示名：raw.githubusercontent.com/o/r/... → o/r，否则取 host。
+
+const t = (k: string) => i18n.global.t(k)
+
 export function shortSource(source?: string): string {
   if (!source) return ''
   const m = source.match(/raw\.githubusercontent\.com\/([^/]+\/[^/]+)/i)
@@ -177,8 +181,8 @@ export async function confirmPermissions(title: string, permissions: string[]) {
   try {
     await ElMessageBox.confirm(node, title, {
       type: hasHigh ? 'warning' : 'info',
-      confirmButtonText: '确认授权',
-      cancelButtonText: '取消',
+      confirmButtonText: t('oppluginshelpers.k1'),
+      cancelButtonText: t('common.cancel'),
     })
     return true
   } catch {

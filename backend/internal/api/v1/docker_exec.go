@@ -45,18 +45,10 @@ var execUpgrader = websocket.Upgrader{
 	// （安全审计 P2）。release 未配置白名单时 fail-closed，与 ws.go 一致。
 }
 
-// checkExecOrigin 与 ws.go/monitor_terminal.go 同口径：非浏览器（无 Origin）放行；
-// 配置白名单则必须命中；release 未配置白名单时 fail-closed（exec 是命令执行级
-// 能力，CSWSH 借管理员浏览器开 shell 的面必须关掉）。
+// checkExecOrigin 统一口径见 origin.go（same-origin 放行 + 跨域白名单 + release 空白名单
+// fail-closed；exec 是命令执行级能力，CSWSH 借管理员浏览器开 shell 的面必须关掉）。
 func (h *DockerExecHandler) checkExecOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-	if len(h.allowedOrigins) == 0 {
-		return !h.release
-	}
-	return h.allowedOrigins[origin]
+	return originAllowed(h.allowedOrigins, h.release, r)
 }
 
 // Handle 是 exec 终端的 WebSocket 入口。

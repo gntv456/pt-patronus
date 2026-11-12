@@ -1,4 +1,3 @@
-# bitpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 description: 极速之星IPV6资源交流平台
 id: bitpt

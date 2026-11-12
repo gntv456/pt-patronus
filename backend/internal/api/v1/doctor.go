@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// DoctorHandler 离线健康诊断面板（对标 MP doctor）。safe-mode 下仍注册（自救用途）。
+// DoctorHandler 离线健康诊断面板。safe-mode 下仍注册（自救用途）。
 type DoctorHandler struct {
 	cfg   *config.Config
 	db    *gorm.DB

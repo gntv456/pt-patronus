@@ -44,7 +44,7 @@ func (h *MediaHandler) tmdbSource() *media.TMDB {
 	return nil
 }
 
-// Calendar 开播日历（GET /media/calendar?kind=tv|movie&days=14，对标 MSaber 开播日历）。
+// Calendar 开播日历（GET /media/calendar?kind=tv|movie&days=14）。
 // 返回 {date: [{tmdb_id,title,air_date,...}]} 按日期分组；数据源 TMDB discover（作品级首播/上映）。
 func (h *MediaHandler) Calendar(c *gin.Context) {
 	kind := c.DefaultQuery("kind", "tv")

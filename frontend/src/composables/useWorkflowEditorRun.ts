@@ -3,7 +3,11 @@
 
 // useWorkflowEditor 的保存/运行/输入构建（从主文件拆出；行为不变）。
 import { ElMessage } from 'element-plus'
+import { i18n } from '@/i18n'
 import type { GraphNode, GraphEdge, ParamField } from '@/api/workflow'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useWorkflowEditorRun(opts: Record<string, any>) {
   const { name, description, triggerType, timer, eventType, eventConditions, enabled,
@@ -41,7 +45,7 @@ function buildInput() {
   }
 async function save() {
     if (!name.value.trim()) {
-      ElMessage.warning('请填写工作流名称')
+      ElMessage.warning(t('opuseworkfloweditorrun.k1'))
       return
     }
     // P1: 校验各节点必填参数
@@ -75,17 +79,17 @@ async function save() {
         const created = await workflowApi.create(input)
         router.replace({ name: 'workflow-editor', query: { id: created.id } })
       }
-      ElMessage.success('已保存')
+      ElMessage.success(t('common.saved'))
       dirty.value = false
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存失败')
+      ElMessage.error((e as Error).message || t('common.saveFailed'))
     } finally {
       saving.value = false
     }
   }
 async function run() {
     if (!wfId.value) {
-      ElMessage.warning('请先保存工作流')
+      ElMessage.warning(t('opuseworkfloweditorrun.k2'))
       return
     }
     running.value = true
@@ -94,12 +98,12 @@ async function run() {
       if (r.ok && r.run) {
         runResult.value = r.run
         showResult.value = true
-        ElMessage.success('执行完成')
+        ElMessage.success(t('opuseworkfloweditorrun.k3'))
       } else {
-        ElMessage.error(r.error || '执行失败')
+        ElMessage.error(r.error || t('common.execFailed'))
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '执行失败')
+      ElMessage.error((e as Error).message || t('common.execFailed'))
     } finally {
       running.value = false
     }

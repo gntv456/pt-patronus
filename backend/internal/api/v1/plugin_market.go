@@ -13,7 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
-// ---- 插件市场运营层（对标 MSaber：百鸟朝凤/百宝袋/分神/天序） ----
+// ---- 插件市场运营层（百鸟朝凤/百宝袋/分神/天序） ----
 
 // MarketCharts GET /plugins/market/charts —— 百鸟朝凤（老树洞 + 蹦蹦新窝）。
 func (h *PluginHandler) MarketCharts(c *gin.Context) {

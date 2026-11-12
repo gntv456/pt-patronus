@@ -34,6 +34,12 @@ const { syncing, syncTotal, syncDone, syncStats, abortSync } = useDashboardSync(
 const { refreshing, loadCached, refreshConnectivity, connectedCount, disabledCount, healthSegments, unreadCount } =
   useDashboardActions()
 
+// 空库首屏：无站点且无下载器时只保留新手向导。原顺序把向导排在工作台/部件区
+// 之后——新用户第一眼看到的是一排零值指标，引导卡被挤到折叠线以下。
+const emptyHome = computed(
+  () => !loading.value && !!overview.value && overview.value.site_count === 0 && overview.value.downloader_count === 0,
+)
+
 // 区③④⑥ 组件 ref：syncStats 完成后触发刷新自动化/AI/时间线数据。
 const autoCard = ref<{ refresh: () => Promise<void> } | null>(null)
 const aiCard = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -152,17 +158,8 @@ onUnmounted(() => abortSync())
       </div>
     </div>
 
-    <!-- 工作台（对标 MSaber 天序工作台）：问候/体检分/今日流转/待办/动态/摘要/媒体库态势 -->
-    <DashboardWorkbench />
-
-    <!-- 自定义部件区（对标 MSaber 首页定制）：快捷工具等，可增删/拖拽排序/尺寸预设 -->
-    <DashboardWidgets />
-
-    <!-- 新用户引导向导：无站点且无下载器时首屏展示 -->
-    <div
-      v-if="!loading && overview && overview.site_count === 0 && overview.downloader_count === 0"
-      class="onboarding-wizard ops-surface"
-    >
+    <!-- 新用户引导向导：空库时置顶展示，工作台/部件区让位（见 emptyHome） -->
+    <div v-if="emptyHome" class="onboarding-wizard ops-surface">
       <div class="ob-header">
         <h2>{{ t('dashboard.welcome.title') }}</h2>
         <p>{{ t('dashboard.welcome.subtitle') }}</p>
@@ -200,6 +197,13 @@ onUnmounted(() => abortSync())
         </div>
       </div>
     </div>
+
+    <!-- 工作台（天序工作台）：问候/体检分/今日流转/待办/动态/摘要/媒体库态势；
+         空库首屏隐藏（零值指标对新用户是噪音，向导优先） -->
+    <DashboardWorkbench v-if="!emptyHome" />
+
+    <!-- 自定义部件区：快捷工具等，可增删/拖拽排序/尺寸预设 -->
+    <DashboardWidgets v-if="!emptyHome" />
 
     <!-- 首屏骨架（W3）：overview 未就绪时用指标骨架占位（替代整页空白/转圈）。
          结构对应工作台问候条 + 三列实时卡，避免布局跳动。 -->

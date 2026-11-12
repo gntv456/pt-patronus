@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// Package filter 实现资源过滤规则引擎（对标 MoviePilot-2 app/modules/filter）。
+// Package filter 实现资源过滤规则引擎（）。
 //
 // 规则组 rule_string 用 '>' 分优先级层，每层是规则 id 的布尔表达式（! & | ()），
 // first-match-wins 赋 pri_order（100/99/98...），无层命中=硬剔除；多个规则组串行 AND。
-// include/exclude 用 RE2 正则打在 title+subtitle+labels 上（不解析结构化字段，与 MP-2 一致）。
+// include/exclude 用 RE2 正则打在 title+subtitle+labels 上（不解析结构化字段）。
 //
 // 设计为叶子包：仅 import site + db/oper，供 chain / workflow/nodes 共用，
 // 破除 workflow/nodes/util.go:12 记录的「复制 matchResolution 避免循环 import」根因。
@@ -13,7 +13,7 @@ package filter
 
 import "github.com/hxpt/ptpatronus/internal/site"
 
-// SystemConfig 键名（对齐 MP-2 SystemConfigKey，复用 models.SystemConfig KV 表）。
+// SystemConfig 键名（复用 models.SystemConfig KV 表）。
 const (
 	KeyCustomFilterRules           = "CustomFilterRules"           // 自定义规则 []Rule（JSON）
 	KeyUserFilterRuleGroups        = "UserFilterRuleGroups"        // 规则组定义 []RuleGroup（JSON）
@@ -22,13 +22,13 @@ const (
 	KeyBestVersionFilterRuleGroups = "BestVersionFilterRuleGroups" // 洗版绑定 []string
 )
 
-// MediaType 取值（对齐 MP-2：用户面向中文）。
+// MediaType 取值（用户面向中文）。
 const (
 	MediaTypeMovie = "电影"
 	MediaTypeTV    = "电视剧"
 )
 
-// mediaTypeCN 把 PTPatronus 内部 type（movie/tv）映射为 MP-2 规则组的 media_type（电影/电视剧）。
+// mediaTypeCN 把 PTPatronus 内部 type（movie/tv）映射为规则组的 media_type（电影/电视剧）。
 func mediaTypeCN(t string) string {
 	switch t {
 	case "movie":
@@ -40,7 +40,7 @@ func mediaTypeCN(t string) string {
 }
 
 // Rule 一条过滤规则（内置或自定义，JSON 存 SystemConfig KV）。
-// 字段语义对齐 MP-2 app/modules/filter/builtin_rules.py 与 schemas/rule.py CustomRule。
+// 字段语义见规则模型（内置规则集与自定义规则 CustomRule）。
 type Rule struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name,omitempty"`

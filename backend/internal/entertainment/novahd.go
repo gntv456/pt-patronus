@@ -20,7 +20,7 @@ import (
 //   - 魔力值刮刮乐 magic_scratch.php：buy(POST→HTML 抠 scratch_id) → scratch(POST→JSON) → settle(GET)。
 //   - 幸运抽奖 fortune-wheel-spin.php：POST count=1|10|20|50 → JSON {success, results:[{status,type,value,unit}]}。
 //
-// 参考 hxpt.go（NexusPHP cookie + PostFormAjax/GetWithHeaders + HTML 抠取）、longpt.go（抽奖聚合）。
+// 同站系既有适配器（NexusPHP cookie + PostFormAjax/GetWithHeaders + HTML 抠取 + 抽奖聚合）。
 
 // novaHDNum 解析可能带千分位的数值串（去逗号）。
 func novaHDNum(s string) float64 {

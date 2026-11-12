@@ -101,10 +101,14 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		"local_login":   true,  // 本地密码登录恒可用（好学站点关闭后的主路径，#<issue>）
 		"vip_verified":  verified,
 		"demo_mode":     h.demoMode,
-		// 升级引导：已登录账号是否已设本地密码。存量好学账号为 false，前端据此弹
-		// 「首次设置本地密码」对话框，用户无需在终端跑 CLI / 改 compose。
-		"has_local_password": false,
 	}
+	// 升级引导：已登录账号是否已设本地密码，按真实 PasswordHash 判定（原实现恒 false，
+	// 导致包括首登建号在内的所有用户每次加载都被前端弹「首次设置本地密码」，且
+	// 已有密码账号在弹窗里改密必撞 bad_old_password 401 被踢回登录页，死循环）。
+	// 仅存量好学/OIDC 账号（无密码）为 false，前端据此弹「首次设置本地密码」对话框，
+	// 用户无需在终端跑 CLI / 改 compose。未登录或 user 读库失败时按 true 兜底——
+	// 宁可不弹，也不能对已有密码的用户误弹（前端仅在 authenticated 且该值为 false 时弹）。
+	resp["has_local_password"] = user == nil || user.PasswordHash != ""
 	if h.oidc != nil {
 		oc := h.oidc.LoadSettings()
 		resp["oidc_enabled"] = oc.Enabled && oc.Issuer != "" && oc.ClientID != ""

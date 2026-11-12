@@ -97,6 +97,18 @@ type Client interface {
 	PlayedItems(ctx context.Context, userID string, limit int) ([]PlayItem, error)
 	// LibraryItems 枚举某库全部条目（重复检测用；带年份与 Provider ID）。
 	LibraryItems(ctx context.Context, libraryID string) ([]DetailedItem, error)
+	// LibraryItemCount 取某库 movie/series 条目计数（工作台媒体库态势）。
+	// 与 LibraryItems 的区别：只拿计数不拉条目——上万条的 Emby/Plex 库走
+	// LibraryItems 会整库 JSON 拉回只为 ++，工作台首屏被拖到数秒。
+	// 传 Library（含归一后的 type）而非裸 ID：Plex 的 section 计数按库类型
+	// 整体给出，需要知道这是 movie 库还是 show 库才能正确归类。
+	LibraryItemCount(ctx context.Context, lib Library) (LibraryCount, error)
+}
+
+// LibraryCount 单库按类型聚合的条目计数（LibraryItemCount 的返回）。
+type LibraryCount struct {
+	Movies int `json:"movies"`
+	Series int `json:"series"`
 }
 
 // NewClient 按 Server.Type 构建对应客户端。type 不在白名单内返回错误。

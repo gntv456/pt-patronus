@@ -1,4 +1,3 @@
-# exttorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 description: EXT Torrents is a Public torrent site for MOVIES / TV / GENERAL
 id: exttorrents

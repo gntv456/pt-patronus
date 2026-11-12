@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// 微信 ClawBot（iLink Bot）常量。逆向自 MoviePilot wechatclawbot 模块。
+// 微信 ClawBot（iLink Bot）常量。逆向微信 ClawBot（iLink Bot）协议。
 const (
 	wxDefaultBaseURL    = "https://ilinkai.weixin.qq.com"
 	wxChannelVersion    = "1.0.2" // base_info.channel_version

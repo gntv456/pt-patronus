@@ -1,4 +1,3 @@
-# speedapp — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 description: SpeedApp is a ROMANIAN Private Torrent Tracker for MOVIES / TV / GENERAL
 id: speedapp

@@ -17,7 +17,7 @@ import (
 
 // ImportPTD 从 PT-Depiler 浏览器扩展导出的 .ptd 备份（ZIP）导入站点。
 //
-// 移植自旧项目（F:\PT-admin\PTPatronus）的 PtdBackupImportService。.ptd 结构：
+// .ptd 备份导入。.ptd 结构：
 //   - manifest.json（必需）：{encryption, version, files:{metadata:{name}, cookies:{name}}}
 //   - metadata 文件：{sites:{id:{url,merge,inputSetting,isOffline}}, siteNameMap, lastUserInfo, siteHostMap}
 //   - cookies 文件：{host:[{name,value}]}
@@ -38,7 +38,7 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (*ImportResult
 		return nil, oper.InputReasonf(".ptd 里的 manifest.json 读不出内容，文件可能已损坏，请重新导出")
 	}
 	if ptdBool(manifest, "encryption") {
-		return nil, oper.InputReasonf("这份 PT-Depiler 备份是加密的，请先在 PT-Depiler 里导出未加密的备份再导入")
+		return nil, oper.InputReasonf("这份 .ptd 备份是加密的，请先在对应扩展里导出未加密的备份再导入")
 	}
 
 	files, _ := manifest["files"].(map[string]any)

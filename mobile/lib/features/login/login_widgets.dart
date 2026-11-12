@@ -46,13 +46,25 @@ extension on _LoginPageState {
     return [
       TextField(
         controller: _user,
+        autofillHints: const [AutofillHints.username],
+        textInputAction: TextInputAction.next,
         decoration: const InputDecoration(labelText: '用户名'),
       ),
       const SizedBox(height: 12),
       TextField(
         controller: _pass,
-        obscureText: true,
-        decoration: const InputDecoration(labelText: '密码'),
+        autofillHints: const [AutofillHints.password],
+        // 密码可见切换 + 回车提交（输完密码不必手点登录按钮）。
+        obscureText: !_showPass,
+        onSubmitted: (_) => _loading ? null : _localLogin(),
+        decoration: InputDecoration(
+          labelText: '密码',
+          suffixIcon: IconButton(
+            icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility),
+            onPressed: togglePassVisible,
+            tooltip: _showPass ? '隐藏密码' : '显示密码',
+          ),
+        ),
       ),
       const SizedBox(height: 8),
       Text(

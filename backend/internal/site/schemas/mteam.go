@@ -17,7 +17,6 @@ import (
 
 // MTeam 是 M-Team（馒头）适配器：走 api.m-team.cc 的 JSON API，用 x-api-key 鉴权。
 // 与 NexusPHP（HTML 抓取）不同——所有数据来自 POST JSON 端点，无需选择器。
-// 契约来源：pt_mate-master/lib/services/api/mteam_adapter.dart（在用的实现）。
 type MTeam struct {
 	hc *httpclient.Client
 }
@@ -167,7 +166,7 @@ type mtPeerStats struct {
 }
 
 // fetchMTPeerStats 抓 /api/tracker/myPeerStatistics 取做种统计。
-// best-effort：失败返回零值，不影响主资料抓取。契约来源 PT-depiler / 旧版 PTPatronus。
+// best-effort：失败返回零值，不影响主资料抓取。
 func (m *MTeam) fetchMTPeerStats(ctx context.Context, baseURL, token string) mtPeerStats {
 	data, err := m.mtRequest(ctx, baseURL, token, "/api/tracker/myPeerStatistics", map[string]any{})
 	if err != nil {
@@ -191,7 +190,7 @@ func (m *MTeam) fetchMTPeerStats(ctx context.Context, baseURL, token string) mtP
 }
 
 // fetchMTBonusPerHour 抓 /api/tracker/mybonus 取「每小时魔力」(finalBs)。
-// best-effort：失败/缺失返回 0，不影响主资料抓取。契约来源 PT-depiler / 旧版 PTPatronus。
+// best-effort：失败/缺失返回 0，不影响主资料抓取。
 // 优先 formulaParams.finalBs（现行结构），回退顶层 finalBs（兼容旧形态）。
 func (m *MTeam) fetchMTBonusPerHour(ctx context.Context, baseURL, token string) float64 {
 	data, err := m.mtRequest(ctx, baseURL, token, "/api/tracker/mybonus", map[string]any{})

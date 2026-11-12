@@ -12,6 +12,7 @@ import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 /// 字幕页（对齐 Web Subtitle.vue）：跨 ASSRT/OpenSubtitles/SubHD/字幕库 聚合搜索 + 下载 + 源配置。
 class SubtitlePage extends StatefulWidget {
@@ -63,7 +64,7 @@ class _SubtitlePageState extends State<SubtitlePage> {
       if (mounted) {
         setState(() {
           _results = [];
-          _error = e.toString();
+          _error = errTextOf(e) ?? '加载失败，请检查网络';
           _searched = false; // 失败时不显示「未找到」，由 _error 态承接
         });
       }

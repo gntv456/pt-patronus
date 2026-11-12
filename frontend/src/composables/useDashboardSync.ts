@@ -4,6 +4,7 @@
 // 仪表盘逐站同步：进度、日志、失败站点。
 // 从 Dashboard.vue 抽出；syncStats 完成后通过回调联动刷新其它卡片。
 import { ref, computed } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { dashboardApi } from '@/api/dashboard'
 import { siteApi } from '@/api/site'
@@ -83,7 +84,7 @@ async function syncStats(onDone?: () => void) {
     syncTotal.value = activeSites.length
     if (!activeSites.length) {
       addSyncLog('error', '刷新统计', '没有启用的站点可同步')
-      ElMessage.warning('没有启用的站点可同步')
+      ElMessage.warning(t('opusedashboardsync.k1'))
       return
     }
     addSyncLog('info', '刷新统计', `共 ${activeSites.length} 个启用站点，开始逐站同步`)
@@ -137,6 +138,8 @@ async function syncStats(onDone?: () => void) {
     onDone?.()
   }
 }
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useDashboardSync() {
   return { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, syncLogs, syncPercent, syncStats, abortSync }

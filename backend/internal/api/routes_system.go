@@ -18,8 +18,12 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 	guarded.POST("/dashboard/sync/:id", dashH.SyncOne)
 	guarded.GET("/dashboard/history/:id", dashH.History)
 	guarded.GET("/dashboard/trend", dashH.Trend)
-	// 工作台聚合（对标 MSaber 天序工作台）：今日流转/待办/动态/摘要 + 媒体库态势 + 体检分
+	// 工作台聚合：今日流转/待办/动态/摘要 + 媒体库态势 + 体检分
 	guarded.GET("/dashboard/workbench", v1.NewDashboardHandler2(d.Dashboard, d.MediaServer).Workbench)
+
+	// 浏览器扩展包下载（关于页「下载扩展 zip」按钮）：embed 进二进制，
+	// Docker 用户无需进仓库找 extension/ 目录。
+	guarded.GET("/system/extension.zip", sysH.ExtensionZip)
 
 	// 运行日志（环形缓冲；级别筛选，排查用）
 	guarded.GET("/system/logs", middleware.RequireAdmin(), sysH.Logs)
@@ -109,7 +113,7 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		plugins.GET("/trust-config", middleware.RequireAdmin(), pluginH.TrustConfig)
 		plugins.PUT("/trust-config", middleware.RequireAdmin(), pluginH.SetTrustConfig)
 		plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
-		// 市场运营层（对标 MSaber）：百鸟朝凤 / 百宝袋收藏 / 分神实例 / 天序排序。
+		// 市场运营层：百鸟朝凤 / 百宝袋收藏 / 分神实例 / 天序排序。
 		// 静态段 charts/favorites 置于 /:id 参数路由之前（Gin radix 区分静态与参数，顺序无碍但集中放置可读）。
 		plugins.GET("/market/charts", pluginH.MarketCharts)
 		plugins.GET("/market/favorites", pluginH.MarketFavorites)

@@ -60,7 +60,7 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
       _defs = results[1] as List<SiteDef>;
     } catch (e) {
       if (_sites.isEmpty) {
-        _error = e.toString();
+        _error = errTextOf(e) ?? '加载失败，请检查网络';
       } else {
         _toast(e.toString());
       }

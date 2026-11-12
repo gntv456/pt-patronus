@@ -28,14 +28,14 @@ const (
 
 	// —— 微信免签策略（零配置主路径）——
 	// 公开 apiKey：豆瓣微信小程序凭据。frodo 对微信流量免 _sig 签名校验，
-	// 因此只需 apiKey + 微信 UA + servicewechat Referer 即可调用（参考 douban-showcase 在用实现）。
+	// 因此只需 apiKey + 微信 UA + servicewechat Referer 即可调用（社区通用实现）。
 	doubanDefaultKey = "0ac44ae016490db2204ce0a042db2916"
 	doubanUA         = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_3 like Mac OS X) AppleWebKit/605.1.15 " +
 		"(KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001023) NetType/WIFI Language/zh_CN"
 	doubanReferer = "https://servicewechat.com/wx2f9b06c1de1ccfca/84/page-frame.html"
 
 	// —— 安卓 HMAC 签名策略（更稳，不依赖微信白名单）——
-	// 公开 (apiKey, secret) + _ts/_sig。参考 MoviePilot app/modules/douban/apiv2.py，并已用
+	// 公开 (apiKey, secret) + _ts/_sig。并已用
 	// bestyize/DoubanAPI 真实抓包向量验证（见 frodoSign 注释）。DOUBAN_SECRET 非空时改以此为主策略。
 	doubanSignedKey    = "0dad551ec0f84ed02907ff5c42e8ec70"
 	doubanSignedSecret = "bf7dddc7c9cfe6f7"
@@ -125,7 +125,7 @@ func (d *Douban) Name() string { return "douban" }
 func (d *Douban) Types() []MediaType { return []MediaType{TypeMovie, TypeTV} }
 
 // Categories 实现 CategoryCapable：豆瓣 Trending 支持热映/即将/剧集/榜单聚合。
-// 榜单聚合（topMovie/topTv/weekly，对标 MSaber 剧榜风云）实现见 douban_detail.go Trending。
+// 榜单聚合（topMovie/topTv/weekly，）实现见 douban_detail.go Trending。
 func (d *Douban) Categories() []string {
 	return []string{"movie", "coming", "tv", "topMovie", "topTv", "weekly"}
 }
@@ -180,7 +180,7 @@ func (d *Douban) getWeb(ctx context.Context, path string, params map[string]stri
 }
 
 // doRequest 按策略构造并发起一次请求。
-// signed=true 注入 _ts/_sig（对实际请求 path 签名，含 /api/v2 前缀，与 MoviePilot 一致）+
+// signed=true 注入 _ts/_sig（对实际请求 path 签名，含 /api/v2 前缀）+
 // os_rom=android + 安卓 UA；否则注入微信 UA + servicewechat Referer 免签。
 func (d *Douban) doRequest(ctx context.Context, signed bool, path string, params map[string]string, out any) error {
 	u, err := url.Parse(d.base + path)

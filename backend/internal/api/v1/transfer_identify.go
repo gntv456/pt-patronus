@@ -12,7 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/transfer"
 )
 
-// ---- 识别词表与名称识别测试（对标 MSaber「名称识别测试」） ----
+// ---- 识别词表与名称识别测试 ----
 
 // GetIdentifyWords 识别词表（GET /transfer/identify-words）。
 func (h *TransferHandler) GetIdentifyWords(c *gin.Context) {
@@ -51,7 +51,7 @@ func (h *TransferHandler) TestIdentifyWords(c *gin.Context) {
 }
 
 // TestRecognize 名称识别测试（POST：{name, year?, media?} → 本地识别元数据 + 媒体源匹配结果）。
-// 对标 MSaber「名称识别测试」：先本地 ParseMeta（含识别词规整），再可选调媒体源确认能否匹配，
+// 先本地 ParseMeta（含识别词规整），再可选调媒体源确认能否匹配，
 // 用于验证文件名可识别性与识别词效果。media=true 走媒体源查询（默认仅本地）。
 func (h *TransferHandler) TestRecognize(c *gin.Context) {
 	var in struct {

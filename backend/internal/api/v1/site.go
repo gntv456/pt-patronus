@@ -291,7 +291,7 @@ func (h *SiteHandler) Status(c *gin.Context) {
 
 // StatusStream SSE 流式逐站检测：每站完成推一帧 event:status，结束推 event:done。
 // 供站点运营矩阵/Dashboard「检测到一个更新一个」；每站结果顺带 upsert 进 site_connectivity 缓存。
-// 完全照搬 SearchAllStream 的 beginSSE + chain 流式回调 + done 收尾模式。
+// 复用 SearchAllStream 的 beginSSE + chain 流式回调 + done 收尾模式。
 func (h *SiteHandler) StatusStream(c *gin.Context) {
 	emit := beginSSE(c.Writer)
 	listErr := h.siteCh.TestConnectionsStream(c.Request.Context(), func(r chain.SiteConnectionResult) {

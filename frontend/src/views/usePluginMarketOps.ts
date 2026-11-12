@@ -4,8 +4,12 @@
 // usePlugins 的「市场运营层」子模块：百鸟朝凤榜单/百宝袋收藏/分神实例/天序排序/市场源管理。
 // （从 usePlugins.ts 拆出；依赖宿主注入 market 状态与 loadMarket，行为不变。）
 import { ref, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { i18n } from '@/i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { pluginApi, type PluginMarketItem, type PluginInstance, type ChartRow } from '@/api/plugin'
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function usePluginMarketOps(opts: {
   market: { value: { plugins: PluginMarketItem[] } | null }
@@ -33,7 +37,7 @@ export function usePluginMarketOps(opts: {
     } catch (e: unknown) {
       // 旧写法把 502 演成「读到了空榜单」——百鸟朝凤从此看着像没人上榜。
       marketCharts.value = null
-      ElMessage.error('百鸟朝凤读不出来：' + ((e as Error).message || '未知原因'))
+      ElMessage.error(t('opusepluginmarketops.k1') + ((e as Error).message || t('common.unknownReason')))
     }
   }
   async function loadFavorites() {
@@ -41,7 +45,7 @@ export function usePluginMarketOps(opts: {
       favoritePlugins.value = await pluginApi.marketFavorites()
     } catch (e: unknown) {
       favoritePlugins.value = null
-      ElMessage.error('百宝袋收藏读不出来：' + ((e as Error).message || '未知原因'))
+      ElMessage.error(t('opusepluginmarketops.k2') + ((e as Error).message || t('common.unknownReason')))
     }
   }
   async function toggleFavorite(item: PluginMarketItem) {
@@ -50,15 +54,15 @@ export function usePluginMarketOps(opts: {
         await pluginApi.unfavorite(item.id)
         item.favorited = false
         favoritePlugins.value = (favoritePlugins.value ?? []).filter((p) => p.id !== item.id)
-        ElMessage.success('已取消收藏')
+        ElMessage.success(t('opusepluginmarketops.k3'))
       } else {
         await pluginApi.favorite(item.id)
         item.favorited = true
         favoritePlugins.value = [item, ...(favoritePlugins.value ?? [])]
-        ElMessage.success('已收藏（百宝袋）')
+        ElMessage.success(t('opusepluginmarketops.k4'))
       }
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '收藏操作失败')
+      ElMessage.error((e as Error).message || t('opusepluginmarketops.k5'))
     }
   }
   const marketView = ref<'all' | 'favorites' | 'charts'>('all')
@@ -78,17 +82,17 @@ export function usePluginMarketOps(opts: {
     } catch (e: unknown) {
       instances.value = []
       singleInstance.value = false
-      ElMessage.error((e as Error).message || '实例加载失败')
+      ElMessage.error((e as Error).message || t('opusepluginmarketops.k6'))
     }
   }
   async function createInstance(key: string) {
     if (!key.trim()) return
     try {
       await pluginApi.createInstance(instancePluginId.value, key.trim())
-      ElMessage.success('分身已创建')
+      ElMessage.success(t('opusepluginmarketops.k7'))
       await openInstances(instancePluginId.value)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '创建失败')
+      ElMessage.error((e as Error).message || t('opusepluginmarketops.k8'))
     }
   }
   async function toggleInstance(inst: PluginInstance) {
@@ -96,16 +100,27 @@ export function usePluginMarketOps(opts: {
       await pluginApi.saveInstance(inst.plugin_id, inst.instance_key, {}, !inst.enabled)
       inst.enabled = !inst.enabled
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '操作失败')
+      ElMessage.error((e as Error).message || t('common.actionFailed'))
     }
   }
   async function removeInstance(inst: PluginInstance) {
-    if (!confirm(`确认删除分身「${inst.instance_key}」？不可恢复`)) return
+    // 全站破坏性确认统一走 ElMessageBox（原生 confirm 不可定制样式/暗色适配差）；
+    // 删除成功补 toast——原实现列表悄悄少一行，用户不确定是否成功。
+    try {
+      await ElMessageBox.confirm(`确认删除分身「${inst.instance_key}」？不可恢复`, t('opusepluginmarketops.k9'), {
+        type: 'warning',
+        confirmButtonText: t('common.delete'),
+        cancelButtonText: t('common.cancel'),
+      })
+    } catch {
+      return // 用户取消
+    }
     try {
       await pluginApi.deleteInstance(inst.plugin_id, inst.instance_key)
       instances.value = instances.value.filter((i) => i.id !== inst.id)
+      ElMessage.success(t('opusepluginmarketops.k10'))
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
+      ElMessage.error((e as Error).message || t('common.deleteFailed'))
     }
   }
   // 天序：上移/下移按钮（触屏友好替代拖拽），顺序持久化到服务端跨端同步。
@@ -121,7 +136,7 @@ export function usePluginMarketOps(opts: {
         arr.map((i) => i.id),
       )
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '排序保存失败')
+      ElMessage.error((e as Error).message || t('opusepluginmarketops.k11'))
       await openInstances(instancePluginId.value)
     }
   }
@@ -136,7 +151,7 @@ export function usePluginMarketOps(opts: {
       // 从前是 catch {} 忽略：读失败与「您还没配过源」在界面上长得一样，
       // 计数显示 0 个，用户以为源列表丢了就去重建——保存是整份替换，真源列表就此没了。
       ElMessage.error(
-        '市场源读不出来：' + ((e as Error).message || '未知原因') + '（点开「管理市场源」会重新尝试读取）',
+        t('opusepluginmarketops.k12') + ((e as Error).message || t('common.unknownReason')) + t('opusepluginmarketops.k13'),
       )
     }
   })
@@ -162,7 +177,7 @@ export function usePluginMarketOps(opts: {
       marketSources.value = r.sources ?? []
       marketSourceOfficial.value = r.official ?? ''
     } catch (e: unknown) {
-      ElMessage.error('市场源读不出来，未打开编辑：' + ((e as Error).message || '未知原因'))
+      ElMessage.error(t('opusepluginmarketops.k14') + ((e as Error).message || t('common.unknownReason')))
       return
     }
     marketSourceDraft.value = marketSources.value.map((s) => s)
@@ -194,10 +209,10 @@ export function usePluginMarketOps(opts: {
       marketSourceOfficial.value = r.official
       marketSourceVisible.value = false
       market.value = null
-      ElMessage.success(normalized.length ? `已保存 ${normalized.length} 个市场源` : '市场源已清空')
+      ElMessage.success(normalized.length ? `已保存 ${normalized.length} 个市场源` : t('opusepluginmarketops.k15'))
       await loadMarket()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '保存市场源失败')
+      ElMessage.error((e as Error).message || t('opusepluginmarketops.k16'))
     }
   }
 

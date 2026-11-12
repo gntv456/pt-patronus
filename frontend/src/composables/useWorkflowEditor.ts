@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { useWorkflowEditorRun } from './useWorkflowEditorRun'
 import { useRouter, useRoute } from 'vue-router'
 import { useVueFlow, type Edge, type Node, type Connection } from '@vue-flow/core'
@@ -22,6 +23,8 @@ export interface WfNodeData {
   info?: NodeInfo
   branch: boolean
 }
+
+const tr = (k: string) => i18n.global.t(k)
 
 export function useWorkflowEditor(flowId: string) {
   const route = useRoute()
@@ -118,7 +121,7 @@ export function useWorkflowEditor(flowId: string) {
         setEdges((wf.edges ?? []).map(toVFEdge))
         dirty.value = false
       } catch (e: unknown) {
-        ElMessage.error((e as Error).message || '加载工作流失败')
+        ElMessage.error((e as Error).message || tr('opuseworkfloweditor.k1'))
       }
     }
   }
@@ -235,7 +238,7 @@ export function useWorkflowEditor(flowId: string) {
       historyWindow.value = { shown: page.runs.length, total: page.total, truncated: page.truncated }
       showHistory.value = true
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '历史加载失败')
+      ElMessage.error((e as Error).message || tr('opuseworkfloweditor.k2'))
     }
   }
   async function viewRun(rid: number) {
@@ -245,7 +248,7 @@ export function useWorkflowEditor(flowId: string) {
       showHistory.value = false
     } catch (e: unknown) {
       // 失败时不打开 showResult，避免显示旧 runResult
-      ElMessage.error((e as Error).message || '运行详情加载失败')
+      ElMessage.error((e as Error).message || tr('opuseworkfloweditor.k3'))
     }
   }
 
@@ -274,7 +277,7 @@ export function useWorkflowEditor(flowId: string) {
       if (!templates.value.length) templates.value = await workflowApi.templates()
       showTemplates.value = true
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '模板加载失败')
+      ElMessage.error((e as Error).message || tr('opuseworkfloweditor.k4'))
     }
   }
   function applyTemplate(t: WorkflowTemplate) {
@@ -289,7 +292,7 @@ export function useWorkflowEditor(flowId: string) {
     setEdges((t.edges ?? []).map(toVFEdge))
     showTemplates.value = false
     markDirty()
-    ElMessage.success('已载入模板，编辑后保存')
+    ElMessage.success(tr('opuseworkfloweditor.k5'))
   }
   function exportJSON() {
     const input = buildInput()
@@ -319,9 +322,9 @@ export function useWorkflowEditor(flowId: string) {
         setNodes((data.nodes || []).map(toVFNode))
         setEdges((data.edges || []).map(toVFEdge))
         markDirty()
-        ElMessage.success('已导入')
+        ElMessage.success(tr('opuseworkfloweditor.k6'))
       } catch {
-        ElMessage.error('JSON 解析失败')
+        ElMessage.error(tr('opuseworkfloweditor.k7'))
       }
     }
     reader.readAsText(file)

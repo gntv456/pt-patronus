@@ -43,7 +43,7 @@ type ConfigField struct {
 }
 
 // ScheduleSpec 声明插件的一条定时调度：到点自动调用某个 action。
-// 对标 MoviePilot 的 get_service()——让插件能"自调度"，而不必手搓工作流 timer。
+// 插件自调度——让插件能"自调度"，而不必手搓工作流 timer。
 type ScheduleSpec struct {
 	ID     string `json:"id"`              // 稳定键，参与 cron job 命名（plugin:<pluginID>:<ID>）
 	Label  string `json:"label,omitempty"` // 人类可读名，如"每日拉取订阅"

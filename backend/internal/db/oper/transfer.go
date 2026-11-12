@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// TransferHistoryOper 封装媒体整理历史的读写（对标 MP TransferHistoryOper）。
+// TransferHistoryOper 封装媒体整理历史的读写。
 type TransferHistoryOper struct {
 	db *gorm.DB
 }
@@ -81,7 +81,7 @@ func (o *TransferHistoryOper) Delete(id uint) error {
 	return o.db.Delete(&models.TransferHistory{}, id).Error
 }
 
-// DeleteMany 批量删除整理历史，返回「不存在」的 id 列表（对标 SiteOper.DeleteMany）。
+// DeleteMany 批量删除整理历史，返回「不存在」的 id 列表（同 SiteOper.DeleteMany）。
 // 先 Pluck 存在集，再一条 SQL 删除已存在的，不存在的计入 failed —— 既能批量又能精确汇报逐条结果。
 func (o *TransferHistoryOper) DeleteMany(ids []uint) ([]uint, error) {
 	if len(ids) == 0 {
@@ -116,6 +116,15 @@ func (o *TransferHistoryOper) DeleteByStatus(status string) (int64, error) {
 		return 0, nil
 	}
 	res := o.db.Where("status = ?", status).Delete(&models.TransferHistory{})
+	return res.RowsAffected, res.Error
+}
+
+// Cleanup 清理 before 之前的整理历史（每次下载完成落一行，含 Files JSON；无 TTL 会
+// 无限膨胀，CountByStatus 全表 COUNT 与列表页随之变钝）。成功记录删除后 Sweep 的
+// SuccessExistsByHash 去重会重新放行同名种子——因此 TTL 只清 180 天前的陈迹，
+// 远超任何现实里的辅种/整理回看窗口，实际去重不受影响。
+func (o *TransferHistoryOper) Cleanup(before time.Time) (int64, error) {
+	res := o.db.Where("created_at < ?", before).Delete(&models.TransferHistory{})
 	return res.RowsAffected, res.Error
 }
 

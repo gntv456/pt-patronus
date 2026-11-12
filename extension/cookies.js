@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-// 站点 Cookie 台账（对标 MoviePilot-Tools「站点 Cookie/UA 统一台账」）：
+// 站点 Cookie 台账：
 // 服务器侧站点列表（指纹/有无 cookie）↔ 浏览器当前会话 cookie（按域匹配）对比，双向覆盖。
 //
 // 匹配规则：以「注册域」（registered domain，如 hkpt.fun 覆盖 www.hkpt.fun/api.hkpt.fun）为键。

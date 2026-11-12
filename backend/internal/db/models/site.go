@@ -66,7 +66,7 @@ type SiteStat struct {
 // SiteConnectivity — 站点联通状态缓存（每站一行，upsert 覆盖）。
 // 与 SiteStat（仅 UserInfo 成功才写）互补：此处也记录 disconnected/disabled，
 // 供站点运营矩阵/Dashboard 进页面瞬时显示「上次检测结果」，后台 SSE 逐站刷新覆盖。
-// Success/Fail/AvgSeconds 为累计统计（对标 MP SiteStatistic），供展示站点稳定性（成功率/平均耗时）。
+// Success/Fail/AvgSeconds 为累计统计，供展示站点稳定性（成功率/平均耗时）。
 type SiteConnectivity struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	SiteID     uint      `gorm:"uniqueIndex;not null" json:"site_id"`

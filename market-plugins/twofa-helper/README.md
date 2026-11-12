@@ -1,5 +1,5 @@
 # twofa-helper
 
-基于 Base32 密钥生成 TOTP 验证码（迁移自 MoviePilot）。
+Generate TOTP codes from Base32 secrets.
 
 Former PTPatronus built-in, now open-source market plugin.

@@ -118,7 +118,7 @@ func TestNexusPHPDeadDefinitionsUserInfoOverrides(t *testing.T) {
 	}
 }
 
-func TestNexusPHPHaresUserInfoFromMoviePilotReference(t *testing.T) {
+func TestNexusPHPHaresUserInfoSelectors(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/index.php":

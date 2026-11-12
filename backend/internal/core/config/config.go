@@ -184,7 +184,7 @@ func Load() (*Config, error) {
 		SnapshotCron:      getenv("SNAPSHOT_CRON", "7 */4 * * *"),
 		BackupCron:        getenv("BACKUP_CRON", ""), // 默认关闭：自动把明文密钥写盘属敏感行为，须显式开启
 		BackupDir:         getenv("BACKUP_DIR", ""),
-		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
+		// TMDB 默认带 业界通用公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
 		TMDBAPIKey:           getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),
 		TMDBAPIDomain:        getenv("TMDB_API_DOMAIN", "api.tmdb.org"),

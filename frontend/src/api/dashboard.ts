@@ -117,7 +117,7 @@ export interface NoDataSite {
   platform: string
 }
 
-// ---- 工作台聚合（对标 MSaber 天序工作台）----
+// ---- 工作台聚合（天序工作台）----
 
 export interface WorkbenchNode {
   key: 'site' | 'subscribe' | 'download' | 'organize' | 'library' | 'watch'

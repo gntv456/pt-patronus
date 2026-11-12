@@ -278,7 +278,7 @@ func (c *TransferChain) GetHistory(id uint) (*models.TransferHistory, error) { r
 
 func (c *TransferChain) DeleteHistory(id uint) error { return c.hist.Delete(id) }
 
-// DeleteHistories 批量删除历史，返回不存在的 id 列表（对标站点批量删除）。
+// DeleteHistories 批量删除历史，返回不存在的 id 列表（同站点批量删除）。
 func (c *TransferChain) DeleteHistories(ids []uint) ([]uint, error) { return c.hist.DeleteMany(ids) }
 
 // ClearFailed 一键清除全部失败记录，返回删除条数。

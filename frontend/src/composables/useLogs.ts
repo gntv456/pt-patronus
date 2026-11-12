@@ -4,6 +4,7 @@
 // 运行日志（环形缓冲）。
 // 从 Settings.vue 抽出：加载、清空、复制运行日志。
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logsApi, type LogEntry } from '@/api/logs'
 import { copyText } from '@/utils/clipboard'
@@ -17,7 +18,7 @@ async function loadLogs() {
   try {
     logs.value = await logsApi.list(logLevel.value, 500)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载日志失败')
+    ElMessage.error((e as Error).message || t('opuselogs.k1'))
   } finally {
     logLoading.value = false
   }
@@ -25,10 +26,10 @@ async function loadLogs() {
 
 async function clearLogs() {
   try {
-    await ElMessageBox.confirm('确定清空运行日志缓冲？此后新日志仍会正常记录。', '清空日志', {
+    await ElMessageBox.confirm(t('opuselogs.k2'), t('opuselogs.k3'), {
       type: 'warning',
-      confirmButtonText: '清空',
-      cancelButtonText: '取消',
+      confirmButtonText: t('common.clear'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return // 用户取消
@@ -36,9 +37,9 @@ async function clearLogs() {
   try {
     await logsApi.clear()
     logs.value = []
-    ElMessage.success('已清空')
+    ElMessage.success(t('opuselogs.k4'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '清空失败')
+    ElMessage.error((e as Error).message || t('opuselogs.k5'))
   }
 }
 
@@ -62,6 +63,9 @@ function attrText(attrs?: { key: string; value: string }[]) {
   if (!attrs?.length) return ''
   return attrs.map((a) => `${a.key}=${a.value}`).join(' ')
 }
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useLogs() {
   return { logs, logLevel, logLoading, loadLogs, clearLogs, copyLogs, fmtTime, attrText }

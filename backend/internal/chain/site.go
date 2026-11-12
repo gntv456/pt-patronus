@@ -142,7 +142,7 @@ func (c *SiteChain) piggoAdapter() *schemas.Piggo {
 func (c *SiteChain) SetHTTPClient(hc *httpclient.Client) { c.hc = hc }
 
 // SyncHostLimits 把每个站点的 LimitInterval（抓取限流秒数）同步到站点 HTTP 客户端的
-// per-host 最小请求间隔（对标 MP 站点流控）。启动与站点增改后调用；client 为 nil（测试）跳过。
+// per-host 最小请求间隔（站点流控）。启动与站点增改后调用；client 为 nil（测试）跳过。
 // host 取 BaseURL 的域名部分——同域多实例（主站/镜像）共享同一限速桶。
 func (c *SiteChain) SyncHostLimits(sites []models.Site, hc *httpclient.Client) {
 	if hc == nil {

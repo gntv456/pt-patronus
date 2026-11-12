@@ -41,7 +41,7 @@ func FormatCookieHeader(m map[string]string) string {
 
 // MergeCookieHeader 合并 cookie header：以 base 为底，overlay 同名覆盖。
 // KeepAlive 回写场景下 jar 可能只含 Set-Cookie 轮换后的子集，必须与原 cookie 合并，
-// 避免把 c_secure_* / remember_web_* 等未轮换键写丢（对齐 PT-Depiler 的保护思路）。
+// 避免把 c_secure_* / remember_web_* 等未轮换键写丢。
 func MergeCookieHeader(base, overlay string) string {
 	base = strings.TrimSpace(base)
 	overlay = strings.TrimSpace(overlay)

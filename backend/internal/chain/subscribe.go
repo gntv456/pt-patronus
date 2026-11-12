@@ -18,7 +18,7 @@ import (
 )
 
 // SubscribeChain 编排媒体订阅：跨站搜种子 → 分辨率过滤 → 去重 → 推送下载器 + 通知。
-// 对标 MoviePilot 订阅。cron (SUBSCRIBE_CRON) 周期调 CheckAll；详情页订阅调 Create（建后即查一次）。
+// cron (SUBSCRIBE_CRON) 周期调 CheckAll；详情页订阅调 Create（建后即查一次）。
 //
 // 多评分低分保护：mediaCh.AggregatedRating 跨源聚合评分 + vote_count/上映天数闸门。
 // 全局 MediaQualityConfig.Enabled 或订阅 EnableRatingGuard 任一为真即对该订阅启用闸门；

@@ -37,7 +37,7 @@ func setupAgentChatServer(t *testing.T) *gin.Engine {
 	convOp := oper.NewAgentConversationOper(db)
 	msgOp := oper.NewAgentMessageOper(db)
 	h := NewAgentChatHandler(nil,
-		convOp.List, convOp.Count, convOp.Create, convOp.Delete, convOp.Get, msgOp.ListByConv,
+		convOp.List, convOp.Count, convOp.Create, convOp.Delete, convOp.Get, msgOp.ListByConvLimit,
 		oper.NewSystemConfigOper(db), security.NewCrypto("agent-test-seed"))
 	r := gin.New()
 	r.POST("/agent/chat", h.Chat)

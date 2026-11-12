@@ -79,7 +79,7 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 		ann.POST("/sync/:id", annH.SyncOne)
 	}
 
-	// 站点求种请求（viewsrequests.php；NexusPHP 系，对标 MSaber「站点请求」）
+	// 站点求种请求（viewsrequests.php；NexusPHP 系）
 	reqH := v1.NewSiteRequestHandler(d.SiteCh)
 	guarded.GET("/site-requests", reqH.All)
 

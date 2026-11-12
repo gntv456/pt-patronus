@@ -4,7 +4,7 @@
 import { http } from './http'
 
 // 资源过滤规则 API（对齐后端 internal/filter + api/v1/filter_rule.go）。
-// 对标 MoviePilot-2 app/modules/filter：内置规则只读、自定义规则 CRUD、
+// 内置规则只读、自定义规则 CRUD、
 // 规则组 CRUD（rule_string 表达式）、三个全局绑定（搜索/订阅/洗版）、规则试算。
 
 // Rule —— 一条过滤规则（内置或自定义），对齐后端 filter.Rule。

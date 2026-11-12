@@ -131,7 +131,7 @@ func TestSiteDeleteMany(t *testing.T) {
 }
 
 // TestCreate_RejectsDuplicateByRegisteredDomain 同注册域（不同子域/不同 name）视为同一站点 →
-// 拒绝添加，对齐 MoviePilot「一站点一账号」。错误文案应带域名。
+// 拒绝添加，错误文案应带域名。
 func TestCreate_RejectsDuplicateByRegisteredDomain(t *testing.T) {
 	db := newSiteTestDB(t)
 	op := NewSiteOper(db, nil) // 无密钥字段，Crypto 传 nil 安全

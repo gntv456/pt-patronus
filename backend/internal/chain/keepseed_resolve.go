@@ -124,7 +124,7 @@ func (c *KeepSeedChain) Resolve(ctx context.Context, taskID uint, action string)
 			Paused:   setting.PauseAfterAdd,
 		}
 		// 辅种 URL 多为 passkey/MTeam token 直链（FetchTorrentFileByID 按 schema 自动委托）；
-		// 否则用站点 cookie 下载 .torrent 再以文件方式推（对标 DownloadChain.Add）。
+		// 否则用站点 cookie 下载 .torrent 再以文件方式推（同 DownloadChain.Add）。
 		if task.SiteID != 0 && c.siteCh != nil {
 			if content, _, ferr := c.siteCh.FetchTorrentFileByID(ctx, task.SiteID, url); ferr == nil {
 				opts.FileContent, opts.URL = content, ""

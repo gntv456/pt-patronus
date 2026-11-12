@@ -14,6 +14,7 @@ import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'device_form_sheet.dart';
 import 'monitor_detail_page.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 part 'agent_manager_sheet.dart';
 
@@ -62,7 +63,7 @@ class _MonitorPageState extends State<MonitorPage>
       await Future.wait(mFutures);
     } catch (e) {
       if (_targets.isEmpty) {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = errTextOf(e) ?? '加载失败，请检查网络'.replaceFirst('Exception: ', '');
       } else {
         _toast(e.toString().replaceFirst('Exception: ', ''));
       }

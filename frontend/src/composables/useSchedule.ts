@@ -4,6 +4,7 @@
 // 调度频率（聚合站点快照 cron，平衡站点隐蔽性与数据时效）。
 // 从 Settings.vue 抽出：管理快照与保活 cron 预设与保存。
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { scheduleApi, type ScheduleConfig } from '@/api/schedule'
 
@@ -30,7 +31,7 @@ async function loadSchedule() {
     schedForm.value.snapshot_cron = schedCfg.value.snapshot_cron || schedCfg.value.snapshot_default
     schedForm.value.keepalive_cron = schedCfg.value.keepalive_cron || schedCfg.value.keepalive_default
   } catch {
-    ElMessage.error('加载调度配置失败')
+    ElMessage.error(t('opuseschedule.k1'))
   } finally {
     schedLoading.value = false
   }
@@ -43,14 +44,17 @@ async function saveSchedule() {
       snapshot_cron: schedForm.value.snapshot_cron.trim(),
       keepalive_cron: schedForm.value.keepalive_cron.trim(),
     })
-    ElMessage.success('调度配置已保存')
+    ElMessage.success(t('opuseschedule.k2'))
     await loadSchedule()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.error || e?.message || '保存失败')
+    ElMessage.error(e?.response?.data?.error || e?.message || t('common.saveFailed'))
   } finally {
     schedSaving.value = false
   }
 }
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useSchedule() {
   return { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, keepalivePresets, loadSchedule, saveSchedule }

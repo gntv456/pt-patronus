@@ -9,6 +9,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 /// 媒体质量页：多评分订阅质量闸门配置 + 评分聚合预览。
 class MediaQualityPage extends StatefulWidget {
@@ -68,7 +69,7 @@ class _MediaQualityPageState extends State<MediaQualityPage> {
         );
       }
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
     } finally {
       if (mounted) setState(() => _loading = false);
     }

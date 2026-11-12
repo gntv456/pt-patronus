@@ -101,7 +101,10 @@ class ApiClient {
     HttpClient()..connectionTimeout = const Duration(seconds: 15),
   );
   http.Client _newClient() => _sharedClient;
-  static const _requestTimeout = Duration(seconds: 60);
+  /// 常规请求 20s：原 60s 超时 × GET 重试一次 = 弱网下最长 ~2 分钟白屏转圈，
+  /// 用户以为 App 死了。20s 足够局域网/常规 WAN；个别长任务端点各自放宽。
+  static const _requestTimeout = Duration(seconds: 20);
+  static const _longTimeout = Duration(seconds: 60);
 
   Future<http.Response> _get(Uri u, {Map<String, String>? headers}) async {
     final blocked = _insecureBlockedReason(u);
@@ -129,12 +132,19 @@ class ApiClient {
 
   /// 幂等 GET/DELETE 的网络层重试（连接失败/超时重试 1 次，指数退避）。
   /// HTTP 层错误（>=400）不重试——那是后端语义，不是网络抖动。
+  int _retryCount = 0;
   Future<http.Response> _withRetry(Future<http.Response> Function() fn) async {
     try {
-      return await fn();
+      final r = await fn();
+      _retryCount = 0;
+      return r;
     } catch (e) {
       if (e is ApiException) rethrow;
-      await Future<void>.delayed(const Duration(milliseconds: 800));
+      // 真指数退避（800ms → 1600ms，封顶 3200ms）：原固定 800ms 注释写着
+      // 「指数退避」实现却是常量。
+      _retryCount++;
+      final ms = 800 << (_retryCount > 2 ? 2 : _retryCount - 1);
+      await Future<void>.delayed(Duration(milliseconds: ms));
       return fn();
     }
   }
@@ -156,24 +166,39 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> get(String path) =>
-      _do(() => _get(_u(path), headers: _headers), path: path, method: 'GET');
+      _do(() => _get(_u(path), headers: _headers), path: path);
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
-      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)),
-          path: path, method: 'POST');
+      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
+
+  /// 长任务 POST（跨站签到/聚合搜索等分钟级动作）：用 60s 上限，不占用常规 20s。
+  Future<Map<String, dynamic>> postLong(String path, Map<String, dynamic> body) =>
+      _do(
+        () => _post(_u(path), headers: _headers, body: jsonEncode(body))
+            .timeout(_longTimeout),
+        path: path,
+      );
 
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
-      _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)),
-          path: path, method: 'PUT');
+      _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
 
   Future<Map<String, dynamic>> delete(String path, {Object? body}) =>
-      _do(() => _delete(_u(path), headers: _headers, body: body), path: path, method: 'DELETE');
+      _do(() => _delete(_u(path), headers: _headers, body: body), path: path);
 
   /// 取数组响应：后端部分端点直接回裸 JSON 数组（如 /dashboard/history/:id），
   /// 不能走 [_json] 的 `as Map` 解包。兼容裸数组与 {data|points|items|list:[...]} 包裹两种形态。
   Future<List<dynamic>> getList(String path) async {
     try {
-      final r = await _get(_u(path), headers: _headers);
+      var r = await _get(_u(path), headers: _headers);
+      // 401 与 _do 同口径：先透明续期一次并重放（GET 幂等），重放仍 401 才清洗登出。
+      // 原实现直接 _handle401：同一过期状态下「走 _do 的页面能自动恢复、走 getList
+      // 的页面却要重新登录」，行为不可预期。
+      if (r.statusCode == 401) {
+        final refreshed = await _tryRefresh();
+        if (refreshed != null) {
+          r = await _get(_u(path), headers: _headers);
+        }
+      }
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
@@ -203,24 +228,29 @@ class ApiClient {
     }
   }
 
-  /// 发送任意 JSON body（支持数组，如 MoviePilot 站点数组）；响应按对象 Map 解包。
-  /// method 留 null：401 续期后不重放（非幂等 POST），直接按原响应走 _json 语义。
+  /// 发送任意 JSON body（支持数组，如站点 JSON 数组）；响应按对象 Map 解包。
+  /// 与 post/put/delete 同走 _do 的 401→续期→重放链路（path 非空才触发续期）。
   Future<Map<String, dynamic>> postJson(String path, Object body) =>
-      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: null);
+      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
 
   /// 统一请求包装：网络层错误（连接失败/超时/DNS）转为友好 ApiException；HTTP 错误由 _json 转。
-  /// 401 先透明续期一次（成功则用新 token 重放原请求），仍 401 才走全局清洗。
-  /// 仅幂等 GET 重放：POST/PUT 无法安全重建 body，续期成功也直接按原 401 响应走 _json 语义
-  /// （调用方收到 401 提示重登；避免把写操作静默降级成 GET）。
-  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn,
-      {String? path, String method = 'GET'}) async {
+  /// 401 先透明续期一次，成功则用新 token 重放原请求，重放仍 401 才走全局清洗。
+  /// 所有动词都可安全重放：401 是鉴权中间件在 handler 执行前的拒绝，写操作并未
+  /// 发生，重放不会双写。原实现只重放 GET——非 GET 续期成功后仍拿旧 401 走
+  /// _handle401，把刚续期的新 token 又作废：access token 过期后用户的第一个写操作
+  /// （加种子/保存表单）即使刷新令牌完全有效也会被强制登出、表单内容全丢。
+  Future<Map<String, dynamic>> _do(
+    Future<http.Response> Function() fn, {
+    String? path,
+  }) async {
     try {
       var r = await fn();
       if (r.statusCode == 401 && path != null && path != '/auth/refresh') {
         final refreshed = await _tryRefresh();
-        if (refreshed != null && method == 'GET') {
-          // 用新 token 重放一次（重放请求不再触发续期，防循环）。
-          r = await _replay(path, fn);
+        if (refreshed != null) {
+          // 用新 token 重放一次：闭包里的 _headers/body 都在调用时求值，
+          // 直接再调 fn 即携带新 token（重放不再触发续期，防循环）。
+          r = await fn();
         }
       }
       return _json(r);
@@ -229,14 +259,6 @@ class ApiClient {
     } catch (e) {
       throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
     }
-  }
-
-  /// 用更新后的 token 重放：闭包 fn 已绑定旧 headers，这里按 path 重建。
-  /// 仅 GET 通道调用（_do 已按 method 守卫）；非 GET 不会走到这里。
-  Future<http.Response> _replay(String path, Future<http.Response> Function() fn) async {
-    final h = _headers;
-    final u = _u(path);
-    return _sharedClient.get(u, headers: h).timeout(_requestTimeout);
   }
 
   Map<String, dynamic> _json(http.Response r) {

@@ -259,7 +259,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 })
 
-// —— omnibox：地址栏输 ptp + Tab 直达跨站搜索（对标 PT-depiler 的 ptd）——
+// —— omnibox：地址栏输 ptp + Tab 直达跨站搜索——
 chrome.omnibox.onInputEntered.addListener((text) => openSearch(text))
 chrome.omnibox.setDefaultSuggestion({ description: '在 PTPatronus 跨站搜索「%s」' })
 

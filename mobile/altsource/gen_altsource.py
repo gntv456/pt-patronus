@@ -4,7 +4,7 @@
 
 """生成/更新 AltSource.json（iOS AltStore / SideStore 侧载源）。
 
-私密分发：ipa 放网盘，不走 GitHub Release API（pt_mate 的 update_source.py 走 GitHub，
+私密分发：ipa 放网盘，不走 GitHub Release API（
 本项目闭源 + 私密，改成手动传参）。每次发 iOS 版后跑一次：
 
   python3 mobile/altsource/gen_altsource.py \\

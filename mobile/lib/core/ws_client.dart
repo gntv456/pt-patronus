@@ -132,6 +132,9 @@ class TorrentDiff {
 // WsClient 连后端实时推送 WS（/api/v1/ws?ticket=<一次性>），监听种子快照广播流，
 // 断线指数退避重连。单例：同一时刻一个连接服务所有订阅者。
 // 先用 header JWT 换一次性 ticket 再连（JWT 不落 URL），对齐 Web useWs。
+/// WS 连接状态（WsClient.connectionState 广播）。
+enum WsState { connecting, connected, failed, stopped }
+
 class WsClient {
   WsClient._();
   static final WsClient _i = WsClient._();
@@ -144,6 +147,9 @@ class WsClient {
   bool _stopped = false; // 登出（可逆）：停止重连，但保留单例与广播流供重登后 connect()
   Timer? _reconnectTimer; // 待执行的重连定时器（登出时可取消，避免旧 token 换 ticket 失败循环）
   final _ctl = StreamController<List<TorrentSnapshot>>.broadcast();
+  // 连接状态广播：connecting/connected/failed/stopped。原实现失败路径只静默退避
+  // 重连，UI 无法感知——种子任务弹窗在 WS 连不上时永远转圈（无错误态/无重试/无兜底）。
+  final _ctlState = StreamController<WsState>.broadcast();
   final _ctlHR = StreamController<List<HRAlert>>.broadcast();
   final _ctlCookie = StreamController<List<String>>.broadcast();
   final _ctlNotice = StreamController<Notice>.broadcast();
@@ -168,9 +174,13 @@ class WsClient {
   /// 当前是否连着（UI 状态展示用）。
   bool get isConnected => _ch != null;
 
+  /// 连接状态流（UI 错误态/重试按钮的依据）。
+  Stream<WsState> get connectionState => _ctlState.stream;
+
   /// 连接（幂等：已连则跳过）。先用 header JWT 换一次性 ticket，再用 ?ticket= 连（JWT 不落 URL）。
   Future<void> connect() async {
     if (_ch != null || _disposed) return;
+    _ctlState.add(WsState.connecting);
     _stopped = false; // 重登后重新启用重连
     final api = ApiClient();
     final token = api.token;
@@ -184,11 +194,14 @@ class WsClient {
       if (e.status == 401 || e.status == 403) {
         ptLog('[ws] ticket 请求被拒（${e.status}），停止重连：${e.userMessage}');
         _retry = 0;
+        _ctlState.add(WsState.stopped);
         return;
       }
+      _ctlState.add(WsState.failed);
       _scheduleReconnect();
       return;
     } catch (_) {
+      _ctlState.add(WsState.failed);
       _scheduleReconnect();
       return;
     }
@@ -199,8 +212,10 @@ class WsClient {
     try {
       _ch = WebSocketChannel.connect(uri);
       _retry = 0;
+      _ctlState.add(WsState.connected);
       _sub = _ch!.stream.listen(_onData, onDone: _onDone, onError: (_) => _onDone());
     } catch (_) {
+      _ctlState.add(WsState.failed);
       _scheduleReconnect();
     }
   }
@@ -297,6 +312,7 @@ class WsClient {
     _ch = null;
     _sub?.cancel();
     _sub = null;
+    _ctlState.add(WsState.failed); // 掉线：等待退避重连（UI 可显示断连提示）
     _scheduleReconnect();
   }
 
@@ -332,6 +348,7 @@ class WsClient {
     _ch?.sink.close();
     _ch = null;
     _ctl.close();
+    _ctlState.close();
     _ctlHR.close();
     _ctlCookie.close();
     _ctlNotice.close();

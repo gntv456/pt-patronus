@@ -8,6 +8,7 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 /// 公告页：按站点分组展示公告条目，每条可展开正文。
 class AnnouncementsPage extends StatefulWidget {
@@ -44,7 +45,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     try {
       _results = await _api.all(refresh: refresh);
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
     } finally {
       if (mounted) setState(() => _loading = false);
     }

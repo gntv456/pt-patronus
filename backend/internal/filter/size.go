@@ -10,9 +10,9 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-const sizeUnit = 1024 * 1024 // MB → bytes（对齐 MP-2 _SIZE_UNIT）
+const sizeUnit = 1024 * 1024 // MB → bytes（MB→bytes）
 
-// 体积范围操作符（对齐 MP-2 _parse_size_range）。
+// 体积范围操作符。
 const (
 	opBetween = "between"
 	opGTE     = "gte"
@@ -24,7 +24,7 @@ const (
 //   - "1000-5000" → between
 //   - ">1000"     → gte（≥1000MB）
 //   - "<5000"     → lte（≤5000MB）
-//   - 纯数字 "1000" → unknown（MP-2 同样不匹配，要求显式 >/< 或区间）
+//   - 纯数字 "1000" → unknown（要求显式 >/< 或区间）
 func parseSizeRange(sizeRange string) (op string, min, max int64) {
 	s := strings.TrimSpace(sizeRange)
 	if s == "" {
@@ -66,7 +66,7 @@ func mbToBytes(s string) (int64, bool) {
 }
 
 // matchSize 判断总体积（或单集体积）是否落在 sizeRange 内。
-// episodeCount 为剧集总集数（MP-2 用 MetaInfo.total_episode）；P1 传 1=按总体积比较。
+// episodeCount 为剧集总集数；P1 传 1=按总体积比较。
 func matchSize(sizeStr, sizeRange string, episodeCount int) bool {
 	if strings.TrimSpace(sizeRange) == "" {
 		return true

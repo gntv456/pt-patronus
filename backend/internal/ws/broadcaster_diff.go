@@ -6,41 +6,76 @@ package ws
 import (
 	"context"
 	"reflect"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
 // aggregate 拉所有下载器的当前种子（单下载器失败填 error，不影响其余）。
+// 并发抓取 + 单下载器独立超时：原串行实现里任一台不可达（qB 客户端单请求 30s
+// HTTP 超时）会把每轮 2s 的广播 tick 卡满 30s——仪表盘实时种子列表/速率全部
+// 冻结，下载完成检测（detectFromFresh 同走这里）也一并延迟。并发有界（8），
+// 与 chain 一键签到同口径；单台预算 5s 足够正常拉取，不可达时快速失败不拖垮整轮。
 func (b *Broadcaster) aggregate(ctx context.Context) ([]TorrentSnapshot, error) {
 	dls, err := b.dlOp.List()
 	if err != nil {
 		return nil, err
 	}
-	out := make([]TorrentSnapshot, 0, len(dls))
+	out := make([]TorrentSnapshot, len(dls)) // 保序：按入参下标写回，快照序列稳定
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
 	for i := range dls {
-		d := &dls[i]
-		snap := TorrentSnapshot{DownloaderID: d.ID, Name: d.Name}
-		c, err := b.mgr.Get(ctx, d.ID)
-		if err != nil {
-			snap.Error = err.Error()
-			snap.Torrents = []downloader.Torrent{} // 显式空数组：避免 nil → JSON "torrents":null 致前端崩溃
-			out = append(out, snap)
-			continue
-		}
-		ts, err := c.ListTorrents(ctx)
-		if err != nil {
-			snap.Error = err.Error()
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// 广播循环是长驻 goroutine，单台实现 panic 不能带走整个进程；
+			// 吞掉 panic 并把该台标为 error，与抓取失败同语义。
+			defer func() {
+				if r := recover(); r != nil {
+					out[i] = TorrentSnapshot{
+						DownloaderID: dls[i].ID, Name: dls[i].Name,
+						Error: "downloader fetch panic", Torrents: []downloader.Torrent{},
+					}
+				}
+			}()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				out[i] = TorrentSnapshot{
+					DownloaderID: dls[i].ID, Name: dls[i].Name,
+					Error: ctx.Err().Error(), Torrents: []downloader.Torrent{},
+				}
+				return
+			}
+			d := &dls[i]
+			snap := TorrentSnapshot{DownloaderID: d.ID, Name: d.Name}
+			// 显式空数组：避免 nil → JSON "torrents":null 致前端崩溃
 			snap.Torrents = []downloader.Torrent{}
-			out = append(out, snap)
-			continue
-		}
-		snap.Torrents = ts
-		if sc, ok := c.(downloader.StatsCacher); ok {
-			snap.Stats = sc.CachedStats()
-		}
-		out = append(out, snap)
+			cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+			c, err := b.mgr.Get(cctx, d.ID)
+			if err != nil {
+				snap.Error = err.Error()
+				out[i] = snap
+				return
+			}
+			ts, err := c.ListTorrents(cctx)
+			if err != nil {
+				snap.Error = err.Error()
+				out[i] = snap
+				return
+			}
+			snap.Torrents = ts
+			if sc, ok := c.(downloader.StatsCacher); ok {
+				snap.Stats = sc.CachedStats()
+			}
+			out[i] = snap
+		}(i)
 	}
+	wg.Wait()
 	return out, nil
 }
 

@@ -4,6 +4,7 @@
 // NasServer 设备 CRUD（添加/编辑/删除/探活/告警）—— 从 NasServer.vue 抽出。
 // 依赖注入：targets（工作区切换）、reload（操作后刷新）、setWorkspace/openAddMonitorItem（工作区联动）。
 import { ref, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { monitorApi, agentApi, type MonitorTarget, type TargetInput, type MonitorAlert } from '@/api/monitor'
 import { isSSHAuthError, showSSHAuthFix } from '@/utils/ssh-fix'
@@ -12,6 +13,9 @@ import type { OpsCredential } from '@/api/monitor'
 
 type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
 export type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'
+
+
+const tr = (k: string) => i18n.global.t(k)
 
 export function useDeviceCrud(
   auth: { isAdmin: boolean },
@@ -65,14 +69,14 @@ export function useDeviceCrud(
         showAgentSecret(r.agent, r.plain_secret)
       } else if (editing.value) {
         await monitorApi.update(editing.value.id, input)
-        ElMessage.success('已更新')
+        ElMessage.success(tr('common.updated'))
       } else {
         await monitorApi.create(input)
-        ElMessage.success('已添加，开始采集')
+        ElMessage.success(tr('opusedevicecrud.k1'))
       }
       await deps.reload()
     } catch (e) {
-      ElMessage.error('保存失败：' + (e as Error).message)
+      ElMessage.error(tr('opusedevicecrud.k2') + (e as Error).message)
     }
   }
 
@@ -88,17 +92,17 @@ export function useDeviceCrud(
       await deps.reload()
     } catch (e) {
       // 后端给的中文原因在 err.message 里（http 拦截器改写），别压成一句「探活失败」。
-      ElMessage.error('探活失败：' + ((e as Error).message || '未知原因'))
+      ElMessage.error(tr('opusedevicecrud.k3') + ((e as Error).message || tr('common.unknownReason')))
     }
   }
 
   async function onRemove(t: MonitorTarget) {
     try {
-      await ElMessageBox.confirm(`确定删除「${t.name}」？关联的指标与告警将一并删除。`, '删除设备', {
+      await ElMessageBox.confirm(`确定删除「${t.name}」？关联的指标与告警将一并删除。`, tr('opusedevicecrud.k4'), {
         type: 'warning',
       })
       await monitorApi.remove(t.id)
-      ElMessage.success('已删除')
+      ElMessage.success(tr('common.deleted'))
       await deps.reload()
     } catch {
       /* 用户取消 */
@@ -120,7 +124,7 @@ export function useDeviceCrud(
   // handler ⇒ Promise rejection 没人处理：列表没变、也不吭声，用户读到的就是「点了没反应」。
   // 失败后照样 reload 不是把失败演成成功：那条告警可能已经不存在，界面要跟服务端对齐。
   function alertActionFailed(action: string, e: unknown) {
-    ElMessage.error(action + '失败：' + (e as Error).message)
+    ElMessage.error(action + tr('opusedevicecrud.k5') + (e as Error).message)
   }
 
   async function onReadAlert(a: MonitorAlert) {
@@ -135,7 +139,7 @@ export function useDeviceCrud(
   async function onAckAlert(a: MonitorAlert) {
     try {
       await monitorApi.ackAlert(a.id)
-      ElMessage.success('告警已确认')
+      ElMessage.success(tr('opusedevicecrud.k6'))
     } catch (e) {
       alertActionFailed('确认告警', e)
     }
@@ -145,7 +149,7 @@ export function useDeviceCrud(
   async function onSilenceAlert(a: MonitorAlert) {
     try {
       await monitorApi.silenceAlert(a.id, 30)
-      ElMessage.success('已静默 30 分钟')
+      ElMessage.success(tr('opusedevicecrud.k7'))
     } catch (e) {
       alertActionFailed('静默告警', e)
     }
@@ -154,17 +158,17 @@ export function useDeviceCrud(
 
   async function onDeleteAlert(a: MonitorAlert) {
     try {
-      await ElMessageBox.confirm('确定删除该告警记录?', '删除告警', {
+      await ElMessageBox.confirm(tr('opusedevicecrud.k8'), tr('opusedevicecrud.k9'), {
         type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
+        confirmButtonText: tr('common.delete'),
+        cancelButtonText: tr('common.cancel'),
       })
     } catch {
       return
     }
     try {
       await monitorApi.deleteAlert(a.id)
-      ElMessage.success('已删除')
+      ElMessage.success(tr('common.deleted'))
     } catch (e) {
       alertActionFailed('删除告警', e)
     }
@@ -173,17 +177,17 @@ export function useDeviceCrud(
 
   async function onClearAlerts() {
     try {
-      await ElMessageBox.confirm('确定清空全部告警记录?此操作不可恢复。', '清空告警', {
+      await ElMessageBox.confirm(tr('opusedevicecrud.k10'), tr('opusedevicecrud.k11'), {
         type: 'warning',
-        confirmButtonText: '清空',
-        cancelButtonText: '取消',
+        confirmButtonText: tr('common.clear'),
+        cancelButtonText: tr('common.cancel'),
       })
     } catch {
       return
     }
     try {
       await monitorApi.clearAlerts(false)
-      ElMessage.success('已清空告警记录')
+      ElMessage.success(tr('opusedevicecrud.k12'))
     } catch (e) {
       alertActionFailed('清空告警', e)
     }

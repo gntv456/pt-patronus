@@ -6,7 +6,6 @@
 // （对应 aria2 配置 rpc-secret；用户名忽略）。仅处理 bittorrent 任务。
 // 任务 ID：Hash 使用 Aria2 GID（操作接口均以 GID 寻址）；BT info hash 单独写入
 // InfoHash，供辅种、磁力链接等依赖标准 info hash 的流程使用。
-// 参考实现：PT-depiler src/packages/downloader/entity/Aria2.ts。
 //
 // 文件组织：
 //   - client.go    Client 结构、JSON-RPC 编发

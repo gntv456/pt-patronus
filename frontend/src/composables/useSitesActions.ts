@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import {
   siteApi,
   type Site,
@@ -14,6 +15,9 @@ import {
 function errResp(e: unknown): string | undefined {
   return (e as { response?: { data?: { error?: string } } })?.response?.data?.error
 }
+
+
+const t = (k: string) => i18n.global.t(k)
 
 export function useSitesActions(
   sites: Ref<Site[]>,
@@ -51,7 +55,7 @@ export function useSitesActions(
         },
       }
       if (r.ok) ElMessage.success(`${s.name}：连接正常，等级 ${r.level || '-'}`)
-      else ElMessage.warning(`${s.name}：${r.error || '连接失败'}`)
+      else ElMessage.warning(`${s.name}：${r.error || t('opusesitesactions.k1')}`)
     } catch (e: unknown) {
       const msg = errResp(e) || '请求失败'
       connectivity.value = {
@@ -72,7 +76,7 @@ export function useSitesActions(
       if (r.success) {
         if (r.bonus > 0) ElMessage.success(`${s.name}：签到成功，获得 ${r.bonus} 魔力`)
         else if (r.message?.includes('已签到')) ElMessage.info(`${s.name}：今天已签到`)
-        else ElMessage.success(`${s.name}：${r.message || '签到成功'}`)
+        else ElMessage.success(`${s.name}：${r.message || t('opusesitesactions.k2')}`)
       } else {
         const reason = r.error || r.message || '签到失败'
         if (reason.includes('not supported')) ElMessage.warning(`${s.name}：该站点暂不支持签到`)
@@ -98,7 +102,7 @@ export function useSitesActions(
         return
       }
       if (!results.length) {
-        ElMessage.info('没有启用的站点')
+        ElMessage.info(t('opusesitesactions.k3'))
         return
       }
       let ok = 0
@@ -117,7 +121,7 @@ export function useSitesActions(
       else ElMessage.warning(`一键签到完成：${summary} / 失败 ${failed.length}（${failed.join('、')}）`)
     } catch (e: unknown) {
       const msg = errResp(e)
-      ElMessage.error(msg || '一键签到请求失败')
+      ElMessage.error(msg || t('opusesitesactions.k4'))
     } finally {
       checkinAllLoading.value = false
     }
@@ -137,7 +141,7 @@ export function useSitesActions(
         truncated: page.truncated,
       }
     } catch {
-      ElMessage.error('加载签到记录失败')
+      ElMessage.error(t('opusesitesactions.k5'))
       records.value = []
       recordsWindow.value = { shown: 0, total: undefined, offset: 0, truncated: false }
     } finally {
@@ -147,17 +151,17 @@ export function useSitesActions(
 
   async function removeSite(s: Site) {
     try {
-      await ElMessageBox.confirm(`确认删除站点「${s.name}」？`, '删除', { type: 'warning' })
+      await ElMessageBox.confirm(`确认删除站点「${s.name}」？`, t('common.delete'), { type: 'warning' })
     } catch {
       return // 用户取消
     }
     try {
       await siteApi.remove(s.id)
-      ElMessage.success('已删除')
+      ElMessage.success(t('common.deleted'))
       await reload()
       await operationsMatrixReload()
     } catch (e: any) {
-      ElMessage.error(e?.message || '删除失败')
+      ElMessage.error(e?.message || t('common.deleteFailed'))
     }
   }
 
@@ -165,7 +169,7 @@ export function useSitesActions(
     if (!selected.length) return
     const names = selected.map((s) => s.name).join('、')
     try {
-      await ElMessageBox.confirm(`确认删除选中的 ${selected.length} 个站点？\n${names}`, '批量删除', {
+      await ElMessageBox.confirm(`确认删除选中的 ${selected.length} 个站点？\n${names}`, t('opusesitesactions.k6'), {
         type: 'warning',
       })
     } catch {
@@ -181,7 +185,7 @@ export function useSitesActions(
       await reload()
       await operationsMatrixReload()
     } catch (e: any) {
-      ElMessage.error(e?.message || '批量删除失败')
+      ElMessage.error(e?.message || t('opusesitesactions.k7'))
     }
   }
 

@@ -25,7 +25,7 @@ import (
 
 // ---- 媒体代理（Emby/JF 反代 + 302 直链 + 失败回退） ----
 //
-// 对标 MSaber 媒体代理：用户经本端 `/api/v1/mediaproxy/:serverId/*` 访问 Emby。
+// 用户经本端 `/api/v1/mediaproxy/:serverId/*` 访问 Emby。
 // 普通请求原样反向转发；原始流播放请求（original.mkv/stream）→ 查条目文件路径 →
 // ① .strm：读取内容；若指向本端 /cloud/direct 端点则直接执行该解析逻辑；
 // ② 网盘挂载路径（路径位于某网盘 RootPath/CloudBase 约定下）：按路径查 StrmRecord →
@@ -37,7 +37,7 @@ type MediaProxyService struct {
 	cloud *CloudChain
 	hc    *http.Client // 转发用普通客户端（内网直连，无 SSRF 守卫；目标为管理员配置的服务器）
 
-	// pathCache PlaybackInfo 条目→媒体路径缓存（对标 MSaber「影片条目与媒体源路径复用」：
+	// pathCache PlaybackInfo 条目→媒体路径缓存（
 	// 同片每次播放/进度上报都查一次 PlaybackInfo 是上游往返浪费；命中省一次 API）。
 	pathCache sync.Map // key "serverID:itemID" → pathCacheEntry{path, exp}
 }

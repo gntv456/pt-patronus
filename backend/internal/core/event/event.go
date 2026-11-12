@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package event 提供事件总线：广播事件（一对多，并发扇出）与链式事件
-// （按优先级串行的中间件链，可改写数据）。借鉴 MoviePilot 的 EventManager。
+// （按优先级串行的中间件链，可改写数据）。事件管理器。
 package event
 
 import (

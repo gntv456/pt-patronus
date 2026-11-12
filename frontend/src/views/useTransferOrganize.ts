@@ -4,9 +4,13 @@
 // Transfer 页手动整理（下载器选种 → 立即整理）子状态簇。
 // 从 useTransfer.ts 迁出；organizing 与宿主共用（待入库 sweep 也置位）。
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { transferApi, type TransferHistory } from '@/api/transfer'
 import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
+
+
+const t = (k: string, params?: Record<string, unknown>) => i18n.global.t(k, params ?? {})
 
 export function useTransferOrganize(opts: { organizing: Ref<boolean>; load: () => Promise<void> }) {
   const downloaders = ref<Downloader[]>([])
@@ -30,7 +34,7 @@ export function useTransferOrganize(opts: { organizing: Ref<boolean>; load: () =
     try {
       torrents.value = await downloaderApi.torrents(selDl.value)
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载种子失败')
+      ElMessage.error((e as Error).message || t('opusetransferorganize.k1'))
       torrents.value = []
     } finally {
       loadingTorrents.value = false
@@ -41,18 +45,18 @@ export function useTransferOrganize(opts: { organizing: Ref<boolean>; load: () =
   )
   async function doOrganize() {
     if (!selDl.value || !selHash.value) {
-      ElMessage.warning('请选择下载器与种子')
+      ElMessage.warning(t('opusetransferorganize.k2'))
       return
     }
     opts.organizing.value = true
     try {
       const res = await transferApi.organize(selDl.value, selHash.value)
-      if (res && res.Success) ElMessage.success('整理完成：' + (res.Files?.length || 0) + ' 文件 → ' + res.DestDir)
-      else ElMessage.warning('整理未成功：' + (res?.ErrMsg || '未知'))
+      if (res && res.Success) ElMessage.success(t('opusetransferorganize.organized', { n: res.Files?.length || 0, dest: res.DestDir }))
+      else ElMessage.warning(t('opusetransferorganize.k4') + (res?.ErrMsg || t('common.unknown')))
       showOrganize.value = false
       await opts.load()
     } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '整理失败')
+      ElMessage.error((e as Error).message || t('opusetransferorganize.k5'))
     } finally {
       opts.organizing.value = false
     }

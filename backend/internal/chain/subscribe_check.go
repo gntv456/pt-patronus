@@ -102,10 +102,10 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		c.noticeStable(ctx, sub, "site-unavailable", "订阅检查："+sub.Title,
 			checkErr+"，本轮只用上了其余站的结果", "warning")
 	}
-	// 标题匹配确认：对标 MP match_torrent。用订阅媒体别名集（Title+OriginalTitle+Names）精确匹配，
+	// 标题匹配确认。用订阅媒体别名集（Title+OriginalTitle+Names）精确匹配，
 	// 接受集覆盖种子语言时收紧（过滤无关），无该语言别名时放行（不误杀跨语言合法命中）。
 	all = filterByTitleMatch(all, sub, buildSubscribeAcceptSet(ctx, c.mediaCh, sub))
-	// 简单参数前置过滤：分辨率有效值（订阅空→全局默认；空=不过滤；对齐 MP-2 TorrentHelper 两阶段前置过滤）。
+	// 简单参数前置过滤：分辨率有效值（订阅空→全局默认；空=不过滤；两阶段前置过滤）。
 	if eff.Resolution != "" {
 		all = filterByResolution(all, eff.Resolution)
 	}

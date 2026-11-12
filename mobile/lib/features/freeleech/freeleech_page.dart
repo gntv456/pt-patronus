@@ -9,6 +9,7 @@ import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ptpatronus/core/err_text.dart';
 
 /// 站免页（对齐 Web Freeleech.vue）：汇总各站全站免费/促销状态。
 /// 宽屏/窄屏均用 PTMasonry 多列可变高卡片；多公告站点默认折叠+展开全部；
@@ -43,7 +44,7 @@ class _FreeleechPageState extends State<FreeleechPage> {
     try {
       _results = await _api.all(refresh: refresh);
     } catch (e) {
-      _error = e.toString();
+      _error = errTextOf(e) ?? '加载失败，请检查网络';
     } finally {
       if (mounted) setState(() => _loading = false);
     }

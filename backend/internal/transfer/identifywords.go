@@ -2,7 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // Package transfer — 识别词（自定义词表）：整理识别前对种子名/文件名做「替换/前缀剥离」
-// 规整，让无法识别的文件名变得可识别。对标 MSaber 识别词（本地自定义部分）。
+// 规整，让无法识别的文件名变得可识别。识别词本地自定义部分。
 //
 // 存储：SystemConfig key "transfer.identify_words"（JSON 数组，有序生效）。
 // 生效点：searchKeyword（识别关键字清洗）与 ParseMeta 前的原始名规整——

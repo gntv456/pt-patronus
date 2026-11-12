@@ -3,7 +3,7 @@
 
 // Package transfer 实现媒体整理流水线引擎：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削 NFO/海报。
 // 纯逻辑编排层，所有外部依赖（识别/存储/通知/配置/取图）经接口与函数注入，便于单测且不产生包循环。
-// 对标 MoviePilot TransferChain，适配 PTPatronus 既有积木（MediaChain 识别 / media.NFO / 媒体服务器刷新）。
+// 适配 PTPatronus 既有积木（MediaChain 识别 / media.NFO / 媒体服务器刷新）。
 package transfer
 
 import (

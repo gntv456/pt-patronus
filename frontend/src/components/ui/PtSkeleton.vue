@@ -7,7 +7,7 @@ withDefaults(
     radius?: string
     label?: string
   }>(),
-  { height: '36px', width: '100%', radius: 'var(--radius-control)', label: '加载中' },
+  { height: '36px', width: '100%', radius: 'var(--radius-control)' },
 )
 </script>
 

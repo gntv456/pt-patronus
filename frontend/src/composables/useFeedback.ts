@@ -19,7 +19,11 @@ export interface ConfirmOptions {
 
 export function useFeedback() {
   /** 简短反馈：3–5s 自动消失、可手动关闭、不抢焦点 */
-  function toast(message: string, type: FeedbackType = 'success', duration = 4000) {
+  function toast(
+    message: string,
+    type: FeedbackType = 'success',
+    duration = 4000,
+  ) {
     return ElMessage({ message, type, duration, showClose: true })
   }
 

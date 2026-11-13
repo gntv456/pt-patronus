@@ -9,25 +9,45 @@
 import { computed, ref, type WritableComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-function safeRouter(): { route: ReturnType<typeof useRoute> | undefined; router: ReturnType<typeof useRouter> | undefined } {
+type RouterCtx = {
+  route: ReturnType<typeof useRoute> | undefined
+  router: ReturnType<typeof useRouter> | undefined
+}
+
+function safeRouter(): RouterCtx {
   try {
     const route = useRoute()
     const router = useRouter()
-    const ok = !!route && typeof route.query === 'object' && !!router && typeof router.replace === 'function'
+    const ok =
+      !!route &&
+      typeof route.query === 'object' &&
+      !!router &&
+      typeof router.replace === 'function'
     return ok ? { route, router } : { route: undefined, router: undefined }
   } catch {
     return { route: undefined, router: undefined }
   }
 }
 
-export function useQueryState(key: string, initial = ''): WritableComputedRef<string> {
+export function useQueryState(
+  key: string,
+  initial = '',
+): WritableComputedRef<string> {
   const { route, router } = safeRouter()
   if (!route || !router) {
     const local = ref(initial)
-    return computed<string>({ get: () => local.value, set: (v: string) => { local.value = v } })
+    return computed<string>({
+      get: () => local.value,
+      set: (v: string) => {
+        local.value = v
+      },
+    })
   }
   return computed<string>({
-    get: () => (typeof route.query[key] === 'string' ? (route.query[key] as string) : initial),
+    get: () =>
+      typeof route.query[key] === 'string'
+        ? (route.query[key] as string)
+        : initial,
     set: (value: string) => {
       const next = { ...route.query }
       if (value === '' || value === initial) delete next[key]
@@ -46,11 +66,19 @@ export function useQueryStates<K extends string>(
   for (const key of Object.keys(defaults) as K[]) {
     if (!route || !router) {
       const local = ref(defaults[key])
-      state[key] = computed<string>({ get: () => local.value, set: (v: string) => { local.value = v } })
+      state[key] = computed<string>({
+        get: () => local.value,
+        set: (v: string) => {
+          local.value = v
+        },
+      })
       continue
     }
     state[key] = computed<string>({
-      get: () => (typeof route.query[key] === 'string' ? (route.query[key] as string) : defaults[key]),
+      get: () =>
+        typeof route.query[key] === 'string'
+          ? (route.query[key] as string)
+          : defaults[key],
       set: (value: string) => {
         const next = { ...route.query }
         if (value === '' || value === defaults[key]) delete next[key]

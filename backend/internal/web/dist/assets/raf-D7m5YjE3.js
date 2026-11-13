@@ -1,0 +1,1 @@
+import{a1 as i}from"./vue-DuijWcMQ.js";const s="update:modelValue",a="change",n="input",e=()=>i&&/firefox/i.test(window.navigator.userAgent),r=()=>i&&/android/i.test(window.navigator.userAgent),c=t=>i?window.requestAnimationFrame(t):setTimeout(t,16),d=t=>i?window.cancelAnimationFrame(t):clearTimeout(t);export{a as C,n as I,s as U,r as a,d as c,e as i,c as r};

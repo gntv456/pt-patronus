@@ -33,6 +33,14 @@ docker compose up -d
 > 部署前把 compose 里的 `ADMIN_PASSWORD` 改成自己的强密码（模板已预设 admin 账号，
 > 详见 [快速开始](README/快速开始.md)）。
 
+## 🖼️ 界面一览
+
+| 仪表盘（数据聚合 + 趋势） | 站点运营矩阵 |
+| :---: | :---: |
+| ![仪表盘](docs/screenshots/dashboard.png) | ![站点](docs/screenshots/sites.png) |
+| **下载器（WS 实时）** | **工作流（可视化编排）** |
+| ![下载器](docs/screenshots/downloaders.png) | ![工作流](docs/screenshots/workflow.png) |
+
 ## 🧩 核心能力
 
 | 域 | 能力 |

@@ -12,6 +12,7 @@ import Sparkline from './Sparkline.vue'
 // DashboardAICard — 区④AI 助手用量与成本：消费 GET /agent/stats（13 维度，进程内内存，重启清零）。
 const { t } = useI18n()
 const stats = ref<AgentStats | null>(null)
+const loading = ref(true)
 // 读不到 stats 时以前直接落到「暂无…」空态，与真的没调用过 AI 同形。
 const failed = ref(false)
 // GET /agent/stats 是 admin-only：非管理员拿到的 403 是权限，不是「这页读失败」，
@@ -20,6 +21,7 @@ const forbidden = ref(false)
 async function load() {
   failed.value = false
   forbidden.value = false
+  loading.value = true
   try {
     stats.value = await agentApi.stats()
   } catch (e: unknown) {
@@ -27,6 +29,8 @@ async function load() {
     forbidden.value = status === 403
     failed.value = status !== 403
     stats.value = null
+  } finally {
+    loading.value = false
   }
 }
 onMounted(load)
@@ -57,7 +61,8 @@ function fmtToken(n: number): string {
       </div>
     </div>
 
-    <div v-if="forbidden" class="dc-empty">{{ t('daic.forbidden') }}</div>
+    <div v-if="loading" class="dc-empty" aria-busy="true"><el-skeleton :rows="3" animated style="width: 100%" /></div>
+    <div v-else-if="forbidden" class="dc-empty">{{ t('daic.forbidden') }}</div>
     <div v-else-if="failed" class="dc-empty">{{ t('common.loadFailed') }}</div>
     <div v-else-if="!stats" class="dc-empty">{{ t('daic.empty') }}</div>
     <template v-else>
@@ -91,7 +96,7 @@ function fmtToken(n: number): string {
       </div>
       <div v-if="sparkValues.length >= 2" class="ai-spark">
         <span class="spark-label">{{ t('daic.recentN', { n: sparkValues.length }) }}</span>
-        <Sparkline :values="sparkValues" color="#8b5cf6" unit="count" />
+        <Sparkline :values="sparkValues" color="var(--chart-4)" unit="count" />
       </div>
     </template>
   </div>
@@ -143,12 +148,12 @@ function fmtToken(n: number): string {
   line-height: 1.2;
 }
 .ai-cell strong.danger {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .ac-sub {
   font-size: var(--fs-2xs);
-  color: var(--text-muted);
-  opacity: 0.85;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .ai-spark {
   margin-top: 12px;

@@ -122,14 +122,14 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
                 padding: const EdgeInsets.only(left: 22, top: 2),
                 child: Text(
                   '${_defDiagKindLabel(d.kind)} · ${d.target.isEmpty ? '—' : d.target}：${d.detail}',
-                  style: const TextStyle(fontSize: 11, color: Colors.black87),
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                 ),
               ),
             if (_defDiags.length > shown.length)
               Padding(
                 padding: const EdgeInsets.only(left: 22, top: 2),
                 child: Text('另有 ${_defDiags.length - shown.length} 条未列出',
-                    style: const TextStyle(fontSize: 11)),
+                    style: const TextStyle(fontSize: 12)),
               ),
           ],
         ),
@@ -204,7 +204,7 @@ class _SitesPageState extends State<SitesPage> with SitesCheckinMixin, SitesForm
                         Text(
                           _fmtRecordTime(r.createdAt),
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: context.dimText,
                           ),
                         ),

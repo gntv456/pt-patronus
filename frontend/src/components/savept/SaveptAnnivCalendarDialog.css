@@ -1,15 +1,15 @@
 /* 弹窗 teleport 到 body，继承不到 .spt-root 的变量，这里自带一份浅/深色取值。 */
 .anniv {
   --anniv-on-surface: 31, 41, 55;
-  --anniv-border: rgba(15, 23, 42, 0.08);
-  --anniv-color: #f59e0b;
+  --anniv-border: var(--color-border);
+  --anniv-color: var(--color-warning);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 :root.dark .anniv {
   --anniv-on-surface: 229, 231, 235;
-  --anniv-border: rgba(226, 232, 240, 0.14);
+  --anniv-border: var(--color-border);
 }
 
 .anniv__nav {
@@ -20,9 +20,9 @@
 .anniv__nav-title {
   min-width: 110px;
   text-align: center;
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 700;
-  color: rgba(var(--anniv-on-surface), 0.9);
+  color: var(--color-text-secondary);
 }
 .anniv__nav-btn {
   display: inline-flex;
@@ -33,13 +33,13 @@
   border: 1px solid var(--anniv-border);
   border-radius: 6px;
   background: transparent;
-  color: rgba(var(--anniv-on-surface), 0.55);
+  color: var(--color-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .anniv__nav-btn:hover {
-  background: rgba(var(--anniv-on-surface), 0.06);
-  color: rgba(var(--anniv-on-surface), 0.85);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 .anniv__nav-icon--prev {
   transform: rotate(180deg);
@@ -49,16 +49,16 @@
   min-height: 28px;
   padding: 3px 10px;
   border: 1px solid var(--anniv-border);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: transparent;
-  color: rgba(var(--anniv-on-surface), 0.55);
-  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .anniv__nav-today:hover {
-  color: rgba(var(--anniv-on-surface), 0.85);
-  background: rgba(var(--anniv-on-surface), 0.06);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
 }
 
 .anniv__grid {
@@ -71,8 +71,8 @@
 }
 .anniv__weekday {
   text-align: center;
-  font-size: 0.72rem;
-  color: rgba(var(--anniv-on-surface), 0.4);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
   padding: 2px 0;
 }
 
@@ -82,8 +82,8 @@
   justify-content: center;
   min-height: 38px;
   border-radius: 8px;
-  font-size: 0.82rem;
-  color: rgba(var(--anniv-on-surface), 0.75);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
   border: 1px solid transparent;
   box-sizing: border-box;
 }
@@ -91,7 +91,7 @@
   pointer-events: none;
 }
 .anniv__day--today-plain {
-  border-color: rgba(var(--anniv-on-surface), 0.35);
+  border-color: var(--color-text-muted);
   font-weight: 700;
 }
 .anniv__day--anniv {
@@ -99,11 +99,9 @@
   border: none;
   cursor: pointer;
   font-weight: 600;
-  background: rgba(245, 158, 11, 0.16);
+  background: var(--color-warning-soft);
   color: var(--anniv-color);
-  transition:
-    background 0.15s ease,
-    transform 0.15s ease;
+  transition: background var(--dur-fast) var(--ease);
 }
 .anniv__day--anniv::after {
   content: '';
@@ -116,14 +114,13 @@
   opacity: 0.8;
 }
 .anniv__day--anniv:hover {
-  background: rgba(245, 158, 11, 0.28);
-  transform: translateY(-1px);
+  background: var(--color-warning-soft);
 }
 .anniv__day--today {
-  box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4);
+  box-shadow: inset 0 0 0 2px var(--color-border);
 }
 .anniv__day--selected {
-  background: rgba(245, 158, 11, 0.42);
+  background: var(--color-warning-soft);
 }
 
 .anniv__detail {
@@ -135,9 +132,9 @@
   gap: 8px;
 }
 .anniv__detail-title {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  color: rgba(var(--anniv-on-surface), 0.85);
+  color: var(--color-text-secondary);
 }
 .anniv__detail-list {
   display: flex;
@@ -158,40 +155,40 @@
   text-align: left;
 }
 .anniv__site:hover {
-  background: rgba(var(--anniv-on-surface), 0.06);
+  background: var(--color-surface-2);
 }
 .anniv__site-status {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 .anniv__site-status[data-status='healthy'] {
-  background: #22c55e;
+  background: var(--color-success);
 }
 .anniv__site-status[data-status='critical'] {
-  background: #ef4444;
+  background: var(--color-danger);
 }
 .anniv__site-name {
-  font-size: 0.85rem;
-  color: rgba(var(--anniv-on-surface), 0.9);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 .anniv__site-years {
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   color: var(--anniv-color);
 }
 .anniv__site-owned {
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  border-radius: var(--radius-control);
+  background: var(--color-success-soft);
+  color: var(--pt-success-fg);
 }
 .anniv__site-arrow {
   margin-left: auto;
-  color: rgba(var(--anniv-on-surface), 0.3);
+  color: var(--color-text-muted);
 }
 
 .anniv__legend {
@@ -199,8 +196,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 0.75rem;
-  color: rgba(var(--anniv-on-surface), 0.45);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
 }
 .anniv__legend-item {
   display: inline-flex;
@@ -214,12 +211,12 @@
   display: inline-block;
 }
 .anniv__legend-swatch--anniv {
-  background: rgba(245, 158, 11, 0.28);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.5);
+  background: var(--color-warning-soft);
+  box-shadow: inset 0 0 0 1px var(--color-warning-soft);
 }
 .anniv__legend-swatch--today {
   background: transparent;
-  box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4);
+  box-shadow: inset 0 0 0 2px var(--color-border);
 }
 .anniv__legend-note {
   margin-left: auto;

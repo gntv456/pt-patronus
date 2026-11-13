@@ -60,11 +60,11 @@ const {
 )
 
 const statusColor: Record<string, string> = {
-  SAFE: '#22c55e',
-  PROGRESS: '#f59e0b',
-  DANGER: '#ef4444',
-  EXEMPT: '#6b7280',
-  UNKNOWN: '#94a3b8',
+  SAFE: 'var(--color-success)',
+  PROGRESS: 'var(--color-warning)',
+  DANGER: 'var(--color-danger)',
+  EXEMPT: 'var(--color-text-muted)',
+  UNKNOWN: 'var(--color-text-muted)',
 }
 
 async function loadSite() {
@@ -126,6 +126,11 @@ function onTab(name: string | number) {
   void loadTab(n)
 }
 
+function backToList() {
+  // 返回列表时携带站点与当前 Tab，便于列表侧恢复/高亮（深链可分享、后退可恢复）
+  router.push({ name: 'sites', query: { site: String(siteId.value), tab: tab.value } })
+}
+
 function goGlobal(name: string) {
   const q: Record<string, string> = { site_id: String(siteId.value) }
   if (site.value?.name) q.site_name = site.value.name
@@ -177,10 +182,10 @@ watch(
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page" v-loading="loading" :aria-busy="loading">
     <div class="head">
-      <button type="button" class="back" @click="router.push({ name: 'sites' })">
-        ← {{ t('sitedetail.backSites') }}
+      <button type="button" class="back" @click="backToList()">
+        <SptIcon name="arrow-left" :size="14" aria-hidden="true" /> {{ t('sitedetail.backSites') }}
       </button>
       <div v-if="site" class="title-wrap">
         <SiteFavicon :name="site.name" :base-url="site.base_url" :size="36" />
@@ -211,7 +216,7 @@ watch(
       </div>
       <div v-if="site" class="head-actions">
         <el-button size="small" @click="goGlobal('assessment')">{{ t('sitedetail.globalAssess') }}</el-button>
-        <el-button size="small" type="primary" plain @click="router.push({ name: 'sites' })">{{
+        <el-button size="small" type="primary" plain @click="backToList()">{{
           t('sitedetail.backList')
         }}</el-button>
       </div>
@@ -220,7 +225,7 @@ watch(
     <el-alert v-if="loadError" type="error" :title="loadError" show-icon :closable="false" />
 
     <template v-if="site && !loadError">
-      <el-tabs v-model="tab" class="glass tabs" @tab-change="onTab">
+      <el-tabs v-model="tab" class="solid-card tabs" @tab-change="onTab">
         <el-tab-pane :label="t('sitedetail.tabOverview')" name="overview">
           <el-alert
             v-if="statFailed"
@@ -230,27 +235,27 @@ watch(
             :closable="false"
           />
           <div class="grid">
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.level') }}</span
               ><span class="v">{{ stat?.level || conn?.level || '—' }}</span>
             </div>
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.uploaded') }}</span
               ><span class="v">{{ statFailed ? '—' : fmtBytes(stat?.uploaded || 0) }}</span>
             </div>
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.downloaded') }}</span
               ><span class="v">{{ statFailed ? '—' : fmtBytes(stat?.downloaded || 0) }}</span>
             </div>
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.ratio') }}</span
               ><span class="v">{{ stat ? (stat.ratio || 0).toFixed(2) : '—' }}</span>
             </div>
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.seeding') }}</span
               ><span class="v">{{ stat?.seeding ?? '—' }}</span>
             </div>
-            <div class="card glass metric">
+            <div class="card solid-card metric">
               <span class="k">{{ t('sitedetail.bonus') }}</span
               ><span class="v">{{ stat?.bonus != null ? Math.round(stat.bonus) : '—' }}</span>
             </div>
@@ -260,7 +265,7 @@ watch(
 
         <el-tab-pane :label="t('sitedetail.tabAssessment')" name="assessment" lazy>
           <div v-loading="assessLoading || contractLoading" class="tab-body">
-            <div v-if="assess" class="card glass">
+            <div v-if="assess" class="card solid-card">
               <div class="row-between">
                 <h3>{{ t('sitedetail.assess') }}</h3>
                 <el-tag :color="statusColor[assess.status]" effect="dark" style="border: 0">{{ assess.status }}</el-tag>
@@ -278,16 +283,16 @@ watch(
                 <li v-for="(m, i) in assess.metrics" :key="i">
                   <b>{{ m.label }}</b
                   >：{{ m.current }}/{{ m.required }} {{ m.unit }}
-                  <span v-if="m.is_completed" class="ok">✓</span>
+                  <SptIcon v-if="m.is_completed" name="check" :size="14" class="ok" aria-hidden="true" />
                 </li>
               </ul>
               <p v-if="assess.error" class="err">{{ assess.error }}</p>
             </div>
-            <div v-else class="card glass text-muted">
+            <div v-else class="card solid-card text-muted">
               {{ assessFailed ? t('common.loadFailed') : t('sitedetail.noAssess') }}
             </div>
 
-            <div class="card glass">
+            <div class="card solid-card">
               <div class="row-between">
                 <h3>{{ t('sitedetail.contract') }}</h3>
                 <el-button size="small" text type="primary" @click="goGlobal('contract')">{{
@@ -323,10 +328,10 @@ watch(
                 t('sitedetail.globalBf')
               }}</el-button>
             </div>
-            <div v-if="!bfTasks.length" class="card glass text-muted">
+            <div v-if="!bfTasks.length" class="card solid-card text-muted">
               {{ bfFailed ? t('common.loadFailed') : t('sitedetail.noBf') }}
             </div>
-            <div v-for="task in bfTasks" :key="task.id" class="card glass">
+            <div v-for="task in bfTasks" :key="task.id" class="card solid-card">
               <div class="row-between">
                 <b>{{ task.name }}</b>
                 <el-tag size="small" :type="task.enabled ? 'success' : 'info'">{{
@@ -347,7 +352,7 @@ watch(
         </el-tab-pane>
 
         <el-tab-pane :label="t('sitedetail.tabReseed')" name="reseed" lazy>
-          <div v-loading="reseedLoading" class="card glass tab-body">
+          <div v-loading="reseedLoading" class="card solid-card tab-body">
             <p>{{ reseedHint || t('common.loading') }}</p>
             <el-button type="primary" @click="goGlobal('reseed')">{{ t('sitedetail.openReseed') }}</el-button>
           </div>
@@ -359,10 +364,10 @@ watch(
               <h3>{{ t('sitedetail.flStatus') }}</h3>
               <el-button size="small" @click="goGlobal('freeleech')">{{ t('sitedetail.globalFl') }}</el-button>
             </div>
-            <div v-if="!fl?.notices?.length" class="card glass text-muted">
+            <div v-if="!fl?.notices?.length" class="card solid-card text-muted">
               {{ flFailed ? t('common.loadFailed') : (fl?.error || t('sitedetail.noFl')) }}
             </div>
-            <div v-for="(n, i) in fl?.notices || []" :key="i" class="card glass">
+            <div v-for="(n, i) in fl?.notices || []" :key="i" class="card solid-card">
               <div class="row-between">
                 <b>{{ n.title || n.status }}</b>
                 <el-tag size="small">{{ n.status }}</el-tag>
@@ -379,13 +384,13 @@ watch(
               <h3>{{ t('sitedetail.saveptRoom') }}</h3>
               <el-button size="small" @click="goGlobal('savept')">{{ t('sitedetail.globalSavept') }}</el-button>
             </div>
-            <div v-if="saveptCard" class="card glass">
+            <div v-if="saveptCard" class="card solid-card">
               <p>
                 <b>{{ saveptCard.name }}</b> · {{ saveptCard.status_text || saveptCard.status }}
               </p>
               <p class="text-muted">{{ saveptCard.duration_text || saveptCard.year }}</p>
             </div>
-            <div v-else class="card glass text-muted">
+            <div v-else class="card solid-card text-muted">
               {{ saveptFailed ? t('common.loadFailed') : t('sitedetail.noSavept') }}
             </div>
           </div>

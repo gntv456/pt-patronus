@@ -64,21 +64,22 @@ onBeforeUnmount(() => {
       >
         <el-option v-for="p in plugins" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
-      <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{
+      <el-button :icon="Refresh" size="small" :aria-label="t('common.refresh')" :loading="loading" @click="emit('refresh')">{{
         t('common.refresh')
       }}</el-button>
       <el-tooltip :content="t('pld.autoTip')" placement="top">
         <el-switch v-model="autoRefresh" inline-prompt :active-text="t('pld.auto')" :inactive-text="t('pld.manual')" />
       </el-tooltip>
     </div>
-    <el-table
-      v-loading="loading"
-      :data="logs"
-      size="small"
-      class="log-table"
-      :empty-text="t('pad.noLogs')"
-      max-height="520"
-    >
+    <div class="table-scroll">
+      <el-table
+        v-loading="loading"
+        :data="logs"
+        size="small"
+        class="log-table pt-table-dense"
+        :empty-text="t('pad.noLogs')"
+        max-height="520"
+      >
       <el-table-column :label="t('pad.time')" width="170">
         <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
       </el-table-column>
@@ -91,6 +92,7 @@ onBeforeUnmount(() => {
           <span class="mono">{{ jsonText(row.data) }}</span>
         </template>
       </el-table-column>
-    </el-table>
+      </el-table>
+    </div>
   </el-dialog>
 </template>

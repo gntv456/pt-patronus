@@ -81,7 +81,7 @@ onMounted(refreshStats)
 <template>
   <div class="betgame">
     <div class="hero">
-      <div class="hero-title">🎲 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div class="balance">
         {{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b>
       </div>
@@ -118,7 +118,7 @@ onMounted(refreshStats)
       </template>
 
       <template v-else-if="mode === 'fastthree'">
-        <div class="sec-title">🦀 {{ t('bg.fastThreeTitle') }}</div>
+        <div class="sec-title"><SptIcon name="target" :size="16" aria-hidden="true" /> {{ t('bg.fastThreeTitle') }}</div>
         <div class="ops">
           <button
             v-for="c in fastThreeChars"
@@ -149,7 +149,7 @@ onMounted(refreshStats)
       </template>
 
       <template v-else-if="mode === 'slot'">
-        <div class="sec-title">🎰 {{ name }}</div>
+        <div class="sec-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ name }}</div>
         <!-- hdvideo_slots 按票数下注；tangpt_slot 站点侧按 base_cost 扣费，无需金额 -->
         <div v-if="game === 'hdvideo_slots'" class="row">
           <span>{{ t('bg.stake') }}</span>
@@ -178,7 +178,7 @@ onMounted(refreshStats)
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ last.success ? '成功' : '失败' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.balance" class="r-bal">{{ t('bj.balance') }} {{ last.balance.toLocaleString() }}</span>
@@ -199,22 +199,24 @@ onMounted(refreshStats)
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #db2777, #f59e0b);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .balance {
   margin-top: 4px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-secondary);
 }
 .balance b {
-  color: #fde68a;
+  color: var(--pt-warn-fg);
   font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
 }
 
 .section {
@@ -233,9 +235,9 @@ onMounted(refreshStats)
 .amt-input {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  color: inherit;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   width: 160px;
   font-size: var(--fs-lg);
 }
@@ -244,22 +246,27 @@ onMounted(refreshStats)
   gap: var(--sp-3);
 }
 .op {
+  min-height: 24px;
   padding: 11px 24px;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 700;
   font-size: var(--fs-lg);
-  color: #fff;
+  color: var(--color-on-accent);
+  transition: box-shadow var(--dur-fast) var(--ease);
 }
 .op.big {
-  background: linear-gradient(135deg, #dc2626, #ef4444);
+  background: var(--color-danger);
 }
 .op.small {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: var(--color-primary);
 }
 .op.primary {
-  background: linear-gradient(135deg, #db2777, #f59e0b);
+  background: var(--color-primary);
+}
+.op:hover:not(:disabled) {
+  box-shadow: var(--shadow-card);
 }
 .op:disabled {
   opacity: 0.6;
@@ -275,15 +282,15 @@ onMounted(refreshStats)
 .row span {
   width: 40px;
   font-size: var(--fs-body);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .txt {
   flex: 1;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  color: inherit;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: var(--fs-md);
 }
 .placeholder {
@@ -298,10 +305,12 @@ onMounted(refreshStats)
   align-items: flex-start;
 }
 .result.win {
-  background: var(--pt-success-bg);
+  background: var(--color-success-soft);
+  color: var(--pt-success-fg);
 }
 .result.lose {
-  background: var(--pt-danger-bg);
+  background: var(--color-danger-soft);
+  color: var(--pt-danger-fg);
 }
 .badge {
   font-weight: 700;
@@ -313,11 +322,11 @@ onMounted(refreshStats)
 }
 .r-prize {
   font-weight: 700;
-  color: var(--pt-success);
 }
 .r-bal {
   font-size: var(--fs-xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .r-msg {
   font-size: var(--fs-xs);

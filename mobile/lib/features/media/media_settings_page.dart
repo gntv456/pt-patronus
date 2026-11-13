@@ -120,7 +120,7 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('⚠ $_error',
+            Text('加载失败：$_error',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.redAccent)),
             const SizedBox(height: 12),

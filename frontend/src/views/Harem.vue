@@ -11,6 +11,7 @@ import { haremApi, type HaremResult, type HaremOverview, type PrescriptionItem }
 import { copyText } from '@/utils/clipboard'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 const data = ref<HaremResult | null>(null)
@@ -18,6 +19,8 @@ const loading = ref(false)
 const detail = ref<PrescriptionItem | null>(null)
 const exportText = ref('')
 const exportVisible = ref(false)
+// 批量选择（表格批量操作栏）
+const selectedRows = ref<PrescriptionItem[]>([])
 
 const EMPTY_OVERVIEW: HaremOverview = {
   total_sites: 0,
@@ -68,6 +71,13 @@ async function copyExport() {
   await copyText(exportText.value, t('harem.copied'))
 }
 
+async function copySelected() {
+  const text = selectedRows.value
+    .map((p) => `${p.site_name}\t${p.permanent_count}\t${p.temporary_count}`)
+    .join('\n')
+  await copyText(text, t('harem.copied'))
+}
+
 const overview = computed(() => data.value?.overview)
 
 // 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选 prescriptions）。
@@ -97,7 +107,7 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </div>
 
-    <div v-if="overview" class="summary glass">
+    <div v-if="overview" class="summary solid-card">
       <div class="tile">
         <span class="num">{{ overview.total_sites }}</span
         ><span class="lbl">{{ t('freeleech.tile.sites') }}</span>
@@ -128,13 +138,20 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </div>
 
-    <div class="card glass">
+    <div class="card solid-card">
+      <div v-if="selectedRows.length" class="batch-bar">
+        <span>已选 {{ selectedRows.length }} 条</span>
+        <el-button size="small" @click="copySelected">{{ t('harem.copy') }}</el-button>
+        <el-button size="small" text @click="selectedRows = []">{{ t('common.cancel') }}</el-button>
+      </div>
       <el-table
         v-if="filteredPrescriptions.length"
         :data="filteredPrescriptions"
         style="width: 100%"
-        :row-style="{ background: 'transparent' }"
+        max-height="480"
+        @selection-change="(rows: PrescriptionItem[]) => (selectedRows = rows)"
       >
+        <el-table-column type="selection" width="46" />
         <el-table-column :label="t('contract.f.site')" width="120">
           <template #default="{ row }"
             ><span class="site-tag">{{ row.site_name }}</span></template
@@ -143,13 +160,13 @@ onUnmounted(() => abortCtrl?.abort())
         <el-table-column prop="permanent_count" :label="t('harem.perm')" width="80" sortable align="right" />
         <el-table-column prop="temporary_count" :label="t('harem.temp')" width="70" sortable align="right">
           <template #default="{ row }">
-            <span :style="{ color: row.temporary_count ? '#f39c12' : 'inherit' }">{{ row.temporary_count }}</span>
+            <span :style="{ color: row.temporary_count ? 'var(--pt-warn-fg)' : 'inherit' }">{{ row.temporary_count }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="can_buy" :label="t('medalwall.status.available')" width="90" sortable align="right" />
         <el-table-column :label="t('harem.permission')" width="70" align="center">
           <template #default="{ row }">
-            <span :style="{ color: row.can_invite ? '#2ecc71' : '#f56c6c' }">{{ row.can_invite ? '✓' : '✗' }}</span>
+            <span :style="{ color: row.can_invite ? 'var(--pt-success-fg)' : 'var(--pt-danger-fg)' }"><SptIcon :name="row.can_invite ? 'check' : 'x'" :size="14" aria-hidden="true" /></span>
           </template>
         </el-table-column>
         <el-table-column :label="t('harem.count')" width="90" align="right">
@@ -175,11 +192,10 @@ onUnmounted(() => abortCtrl?.abort())
       </el-table>
       <EmptyState
         v-else-if="!loading"
-        icon="💗"
         :title="t('announcements.emptyTitle')"
         :description="t('harem.emptyDesc')"
       />
-      <p v-else style="text-align: center; color: var(--text-muted); padding: 40px 0">{{ t('common.loading') }}</p>
+      <el-skeleton v-else :rows="5" animated />
     </div>
 
     <el-dialog v-model="exportVisible" :title="t('harem.rxTitle')" width="560">
@@ -204,11 +220,11 @@ onUnmounted(() => abortCtrl?.abort())
         v-if="detail"
         :data="detail.invitees || []"
         style="width: 100%"
-        :row-style="{ background: 'transparent' }"
+        max-height="420"
       >
         <el-table-column :label="t('mediaserver.col.user')" min-width="120">
           <template #default="{ row }">
-            <span :style="{ color: row.status === 'disabled' ? '#f56c6c' : 'inherit' }">{{ row.username }}</span>
+            <span :style="{ color: row.status === 'disabled' ? 'var(--pt-danger-fg)' : 'inherit' }">{{ row.username }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" :label="t('reseed.col.status')" width="90">
@@ -281,6 +297,18 @@ onUnmounted(() => abortCtrl?.abort())
 .card {
   padding: 18px;
   min-height: 200px;
+  overflow-x: auto;
+}
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-xs);
 }
 .site-tag {
   display: inline-block;
@@ -298,10 +326,19 @@ onUnmounted(() => abortCtrl?.abort())
   padding: 40px;
   text-align: center;
 }
-:deep(.el-table),
-:deep(.el-table tr),
-:deep(.el-table td),
-:deep(.el-table th) {
-  background-color: transparent !important;
+.table-scroll {
+  overflow-x: auto;
+}
+:deep(.el-table__header-wrapper th.el-table__cell) {
+  height: var(--table-row-height);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-weight: 600;
+}
+:deep(.el-table__body-wrapper td.el-table__cell) {
+  height: var(--table-row-height);
+}
+:deep(.num) {
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -145,8 +145,8 @@ const {
       </div>
     </header>
 
-    <div class="glass card">
-      <div v-if="viewMode === 'pending'" v-loading="loading" class="pending-panel">
+    <div class="card solid-card">
+      <div v-if="viewMode === 'pending'" v-loading="loading" :aria-busy="loading" class="pending-panel">
         <el-alert
           v-if="!pendingEnabled"
           type="warning"
@@ -183,6 +183,7 @@ const {
         <el-table
           :data="filtered"
           v-loading="loading"
+          :aria-busy="loading"
           size="small"
           :empty-text="t('transfer.noRecords')"
           row-key="id"
@@ -252,7 +253,7 @@ const {
         </el-table>
         <EmptyState
           v-if="!loading && !filtered.length"
-          icon="📁"
+          
           :title="t('transfer.noRecords')"
           :description="t('transfer.noRecordsSub')"
         />

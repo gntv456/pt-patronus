@@ -167,7 +167,7 @@ extension on _SitesPageState {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: color,
               fontWeight: FontWeight.w600,
             ),

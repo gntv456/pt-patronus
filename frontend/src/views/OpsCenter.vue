@@ -4,7 +4,8 @@
 -->
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, nextTick } from 'vue'
+import { useQueryState } from '@/composables/useUrlState'
 import { useI18n } from 'vue-i18n'
 import OpsMonitor from '@/components/ops/OpsMonitor.vue'
 import OpsDocker from '@/components/ops/OpsDocker.vue'
@@ -18,7 +19,24 @@ import FileManager from '@/views/FileManager.vue'
 type Tab = 'monitor' | 'files' | 'docker' | 'database' | 'disk' | 'process' | 'ssh' | 'terminal'
 
 const { t } = useI18n()
-const activeTab = ref<Tab>('monitor')
+const tabQuery = useQueryState('tab', 'monitor')
+const VALID_TABS: Tab[] = ['monitor', 'files', 'docker', 'database', 'disk', 'process', 'ssh', 'terminal']
+// activeTab 由 URL query 读写，刷新/分享可恢复；非法值回退 monitor。
+const activeTab = computed<Tab>({
+  get: () => (VALID_TABS.includes(tabQuery.value as Tab) ? (tabQuery.value as Tab) : 'monitor'),
+  set: (v: Tab) => {
+    tabQuery.value = v
+  },
+})
+// 方向键在标签间移动焦点（tablist 键盘可达）。
+function stepTab(dir: -1 | 1) {
+  const i = VALID_TABS.indexOf(activeTab.value)
+  const next = VALID_TABS[(i + dir + VALID_TABS.length) % VALID_TABS.length]
+  activeTab.value = next
+  void nextTick(() => {
+    document.querySelector<HTMLButtonElement>(`.ops-tab[data-key="${next}"]`)?.focus()
+  })
+}
 
 const tabs = computed(() => [
   {
@@ -62,13 +80,21 @@ const tabs = computed(() => [
 
 <template>
   <div class="ops-center">
-    <nav class="ops-nav">
+    <nav class="ops-nav" role="tablist" :aria-label="t('nog.opsCenter')">
       <button
         v-for="tab in tabs"
         :key="tab.key"
+        type="button"
         class="ops-tab"
+        :data-key="tab.key"
+        role="tab"
+        :aria-selected="activeTab === tab.key"
+        :aria-label="tab.label"
+        :tabindex="activeTab === tab.key ? 0 : -1"
         :class="{ active: activeTab === tab.key }"
         @click="activeTab = tab.key"
+        @keydown.left.prevent="stepTab(-1)"
+        @keydown.right.prevent="stepTab(1)"
       >
         <svg viewBox="0 0 24 24" class="ops-tab-ico"><path :d="tab.icon" /></svg>
         <span class="ops-tab-label">{{ tab.label }}</span>
@@ -113,15 +139,18 @@ const tabs = computed(() => [
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
+  min-height: 24px;
   padding: 6px 14px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: none;
   cursor: pointer;
   font-size: var(--fs-sm);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   white-space: nowrap;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
   flex-shrink: 0;
 }
 .ops-tab:hover {
@@ -129,10 +158,10 @@ const tabs = computed(() => [
   color: var(--text-strong);
 }
 .ops-tab.active {
-  background: var(--pt-primary);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
   font-weight: 600;
-  box-shadow: 0 2px 8px var(--pt-primary-bg);
+  box-shadow: none;
 }
 
 .ops-tab-ico {
@@ -142,7 +171,7 @@ const tabs = computed(() => [
   flex-shrink: 0;
 }
 .ops-tab.active .ops-tab-ico {
-  fill: #fff;
+  fill: var(--color-text-inverse);
 }
 .ops-tab-label {
   line-height: 1;
@@ -159,6 +188,7 @@ const tabs = computed(() => [
   }
   .ops-tab {
     padding: 8px 10px;
+    min-height: 44px;
   }
   .ops-tab-ico {
     width: 20px;

@@ -24,12 +24,13 @@
   border: 2px solid var(--divider);
   background: var(--surface-1);
   cursor: pointer;
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
 }
 .source-card:hover {
   border-color: var(--pt-primary);
-  box-shadow: var(--surface-shadow-hover, 0 4px 16px rgba(0, 0, 0, 0.08));
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
 }
 .source-card-icon {
   flex: none;
@@ -143,12 +144,13 @@
   border: 1px solid var(--divider);
   background: var(--surface-1);
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .tpl-card:hover {
   border-color: var(--pt-primary);
   box-shadow: var(--surface-shadow-hover);
-  transform: translateX(-2px);
 }
 .tpl-icon {
   flex: none;

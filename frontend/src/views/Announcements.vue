@@ -88,13 +88,13 @@ onUnmounted(() => abortCtrl?.abort())
 
     <EmptyState
       v-if="!filtered.length && !loading"
-      icon="📢"
+      
       :title="selectedSiteIds.length === 0 ? t('announcements.emptyTitle') : t('announcements.emptySiteTitle')"
       :description="selectedSiteIds.length === 0 ? t('announcements.emptyDesc') : t('announcements.emptySiteDesc')"
     />
 
     <div class="groups">
-      <div v-for="r in filtered" :key="r.site_id" class="site-group glass">
+      <div v-for="r in filtered" :key="r.site_id" class="site-group solid-card">
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.items.length" class="count">{{ t('announcements.count', { n: r.items.length }) }}</span>

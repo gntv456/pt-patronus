@@ -18,6 +18,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { fmtBytes } from '@/utils/format'
 import { registerPolling } from '@/composables/usePolling'
+import SptIcon from '@/components/SptIcon.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -74,13 +75,18 @@ const scoreColor = computed(() => {
   return 'var(--pt-danger)'
 })
 
+// 结构性图标统一用单色 SptIcon（去 emoji）。
 const nodeIcon: Record<string, string> = {
-  site: '🌐',
-  subscribe: '🔔',
-  download: '⬇️',
-  organize: '🗂️',
-  library: '🎬',
-  watch: '📺',
+  site: 'globe',
+  subscribe: 'bell',
+  download: 'download',
+  organize: 'folder',
+  library: 'film',
+  watch: 'play',
+}
+function goActiveNode() {
+  const n = wb.value?.nodes?.find((x) => x.key === activeNode.value)
+  if (n) goNode(n)
 }
 
 function pickNode(n: WorkbenchNode) {
@@ -135,10 +141,12 @@ function timeAgo(iso: string): string {
 </script>
 
 <template>
-  <section class="workbench glass" v-loading="loading">
+  <section class="workbench solid-card" :aria-busy="loading">
+    <el-skeleton v-if="loading && !wb" :rows="6" animated class="wb-skeleton" />
     <!-- 读取失败必须可见（原实现 loadError 只赋值不渲染）：接口挂了会落到
          wb=null 的「暂无待办/去添加媒体服务器」空态，用户会把故障当清零、
          误去重配媒体服务器。 -->
+    <template v-else>
     <el-alert
       v-if="loadError"
       class="wb-incomplete"
@@ -170,8 +178,10 @@ function timeAgo(iso: string): string {
         <p class="wb-insight">{{ todayInsight }}</p>
       </div>
       <button
+        type="button"
         class="wb-score"
         :title="t('wb.scoreTip')"
+        :aria-label="t('wb.scoreTip')"
         @click="router.push({ name: 'settings', query: { section: 'maintain' } })"
       >
         <svg viewBox="0 0 36 36" class="score-ring">
@@ -205,13 +215,16 @@ function timeAgo(iso: string): string {
             @click="pickNode(n)"
             @dblclick="goNode(n)"
           >
-            <span class="wb-node-ico">{{ nodeIcon[n.key] ?? '•' }}</span>
+            <SptIcon :name="nodeIcon[n.key] ?? 'activity'" :size="16" class="wb-node-ico" aria-hidden="true" />
             <span class="wb-node-name">{{ n.label }}</span>
             <span class="wb-node-count">{{ n.count }}</span>
           </button>
-          <span v-if="i < wb.nodes.length - 1" class="wb-flow-arrow">→</span>
+          <SptIcon v-if="i < wb.nodes.length - 1" name="chevron-right" :size="14" class="wb-flow-arrow" aria-hidden="true" />
         </template>
-        <button v-if="activeNode" class="wb-node overview" @click="activeNode = ''">{{ t('wb.overview') }}</button>
+        <button v-if="activeNode" type="button" class="wb-node overview" @click="activeNode = ''">{{ t('wb.overview') }}</button>
+        <button v-if="activeNode" type="button" class="wb-node go" @click="goActiveNode">
+          <SptIcon name="arrow-right" :size="14" aria-hidden="true" /> 前往
+        </button>
       </div>
     </div>
 
@@ -234,7 +247,7 @@ function timeAgo(iso: string): string {
       <div class="wb-events">
         <div class="wb-sec-title">{{ t('wb.events') }}</div>
         <div v-if="!wb?.events?.length" class="wb-empty">{{ t('wb.noEvents') }}</div>
-        <div v-for="(e, i) in wb?.events ?? []" :key="i" class="wb-event" :class="`lv-${e.level}`">
+        <div v-for="(e, i) in wb?.events ?? []" :key="i" tabindex="0" class="wb-event" :class="`lv-${e.level}`">
           <div class="event-line">
             <span class="event-title">{{ e.title }}</span>
             <span class="event-time">{{ timeAgo(e.created_at) }}</span>
@@ -269,7 +282,7 @@ function timeAgo(iso: string): string {
         <template v-if="wb?.media_library?.configured">
           <div v-for="s in wb.media_library.servers" :key="s.server_id" class="wb-lib-row">
             <span class="lib-name">{{ s.server_name }}</span>
-            <span class="lib-counts">🎬 {{ t('wb.libCounts', { m: s.movies, s: s.series }) }}</span>
+            <span class="lib-counts"><SptIcon name="film" :size="14" aria-hidden="true" /> {{ t('wb.libCounts', { m: s.movies, s: s.series }) }}</span>
             <span class="lib-time">{{ timeAgo(s.synced_at) }}</span>
           </div>
         </template>
@@ -283,6 +296,7 @@ function timeAgo(iso: string): string {
         </div>
       </div>
     </div>
+    </template>
   </section>
 </template>
 

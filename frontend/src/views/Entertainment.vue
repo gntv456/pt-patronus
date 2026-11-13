@@ -35,8 +35,11 @@ import TangptLotteryGame from '@/components/TangptLotteryGame.vue'
 import HiloGame from '@/components/HiloGame.vue'
 import SimpleGameCard from '@/components/SimpleGameCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SptIcon from '@/components/SptIcon.vue'
+import { useQueryStates } from '@/composables/useUrlState'
 
 const { t } = useI18n()
+const query = useQueryStates({ site: '', game: '' })
 const sites = ref<Site[]>([])
 const currentSite = ref<number | undefined>()
 const games = ref<Game[]>([])
@@ -47,10 +50,9 @@ async function loadSites() {
   try {
     sites.value = await entertainmentApi.sites()
     if (sites.value.length && currentSite.value === undefined) {
-      // 总览页直达：?site=<id>&game=<id>
-      const qs = new URLSearchParams(window.location.search)
-      const qSite = Number(qs.get('site')) || undefined
-      const qGame = qs.get('game') || undefined
+      // 总览页直达：?site=<id>&game=<id>（从 URL query 初始化，支持刷新 / 分享）
+      const qSite = Number(query.site.value) || undefined
+      const qGame = query.game.value || undefined
       if (qSite && sites.value.some((s) => s.id === qSite)) {
         currentSite.value = qSite
         pendingGame.value = qGame
@@ -109,13 +111,28 @@ const bigsmallIds = ['hxpt_bigsmall', 'panda_bigsmall', 'tangpt_bigsmall']
 const blackjackIds = ['audiences_blackjack', 'nxp_blackjack', 'opencd_blackjack', 'hdvideo_blackjack']
 
 watch(currentSite, loadGames)
+
+// 站点 / 玩法写回 URL query，支持刷新与分享；并响应浏览器前进 / 后退。
+watch(currentSite, (v) => {
+  query.site.value = v ? String(v) : ''
+})
+watch(currentGame, (v) => {
+  query.game.value = v || ''
+})
+watch(() => query.site.value, (v) => {
+  const id = Number(v) || undefined
+  if (id && sites.value.some((s) => s.id === id) && id !== currentSite.value) currentSite.value = id
+})
+watch(() => query.game.value, (v) => {
+  if (v && games.value.some((g) => g.id === v) && v !== currentGame.value) currentGame.value = v
+})
 loadSites()
 </script>
 
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">{{ t('entertainment.title') }}</h2>
+      <h2 class="title"><SptIcon name="gamepad" :size="22" aria-hidden="true" /> {{ t('entertainment.title') }}</h2>
       <div class="selectors">
         <el-select
           v-model="currentSite"
@@ -141,7 +158,23 @@ loadSites()
       </div>
     </div>
 
-    <div v-loading="loading" :key="`${currentSite}-${currentGame}`" class="game-stage">
+    <!-- 常用玩法快捷栏：不经过下拉即可切换当前站点玩法 -->
+    <div v-if="games.length > 1" class="quick-bar" role="group" :aria-label="t('entertainment.selectGame')">
+      <button
+        v-for="g in games"
+        :key="g.id"
+        type="button"
+        class="quick-chip"
+        :class="{ active: g.id === currentGame }"
+        :aria-pressed="g.id === currentGame"
+        @click="currentGame = g.id"
+      >{{ g.name }}</button>
+    </div>
+
+    <!-- 切游戏不强制重挂载：key 仅随站点变化，游戏组件可保留自身状态 -->
+    <div :key="currentSite" class="game-stage">
+      <el-skeleton v-if="loading" :rows="8" animated class="game-skeleton" />
+      <template v-else>
       <!-- 富 UI 玩法（每个游戏独立组件） -->
       <ScratchCardGame v-if="richGame === 'cspt_scratch' && currentSite" :site-id="currentSite" />
       <JggGameUi v-else-if="richGame === 'jgg' && currentSite" :site-id="currentSite" />
@@ -254,10 +287,10 @@ loadSites()
 
       <EmptyState
         v-else-if="!loading"
-        icon="🎮"
         :title="currentSite ? t('entertainment.emptySiteTitle') : t('entertainment.emptyTitle')"
         :description="currentSite ? t('entertainment.emptySiteDesc') : t('entertainment.emptyDesc')"
       />
+      </template>
     </div>
   </div>
 </template>
@@ -277,6 +310,9 @@ loadSites()
 }
 .title {
   margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--fs-title);
   font-weight: 700;
 }
@@ -304,13 +340,43 @@ loadSites()
   font-size: var(--fs-xs);
   font-weight: 600;
   text-align: center;
-  color: var(--pt-primary);
-  background: color-mix(in srgb, var(--pt-primary) 14%, transparent);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-variant-numeric: tabular-nums;
 }
 .opt-count.zero {
-  color: var(--text-muted, #9aa0a6);
-  background: rgba(120, 120, 120, 0.12);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
   font-weight: 500;
+}
+.quick-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.quick-chip {
+  min-height: 24px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.quick-chip:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
+}
+.quick-chip.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.game-skeleton {
+  min-height: 320px;
+  padding: var(--space-4);
 }
 .simple-card {
   padding: 28px;
@@ -349,7 +415,7 @@ loadSites()
   font-weight: 600;
 }
 .amount {
-  color: var(--pt-warn, #f59e0b);
+  color: var(--pt-warn-fg);
   font-weight: 600;
 }
 .msg {
@@ -372,11 +438,5 @@ loadSites()
   max-height: 60vh;
 }
 
-/* 游戏切换：水润淡入 */
-.game-stage > * {
-  animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both;
-}
-.result {
-  animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both;
-}
+/* 入场 / 位移装饰动效已移除；状态过渡由 modern.css 全局收敛。 */
 </style>

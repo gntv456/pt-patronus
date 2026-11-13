@@ -167,11 +167,11 @@ const stateText = computed(() => {
             ><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span>
           </div>
           <div class="cell">
-            <span class="k">↓ {{ t('tt.speed') }}</span
+            <span class="k"><SptIcon name="arrow-down" :size="12" aria-hidden="true" /> {{ t('tt.speed') }}</span
             ><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span>
           </div>
           <div class="cell">
-            <span class="k">↑ {{ t('tt.speed') }}</span
+            <span class="k"><SptIcon name="arrow-up" :size="12" aria-hidden="true" /> {{ t('tt.speed') }}</span
             ><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span>
           </div>
           <div class="cell" v-if="caps.swarm">
@@ -216,7 +216,7 @@ const stateText = computed(() => {
       </el-tab-pane>
 
       <el-tab-pane v-if="caps.peers" :label="`Peers (${peers.length})`" name="peers">
-        <el-table v-loading="peersLoading" :data="peers" size="small" max-height="420">
+        <el-table v-loading="peersLoading" :aria-busy="peersLoading" :data="peers" size="small" max-height="420">
           <el-table-column prop="ip" :label="t('deviceform.address')" min-width="150" show-overflow-tooltip />
           <el-table-column prop="client" :label="t('td.client')" min-width="140" show-overflow-tooltip />
           <el-table-column :label="t('cloud.progress')" width="90">
@@ -256,7 +256,7 @@ const stateText = computed(() => {
   flex-wrap: wrap;
   margin-bottom: 14px;
   padding-bottom: 13px;
-  border-bottom: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
+  border-bottom: 1px solid var(--color-border);
 }
 .detail-title {
   display: flex;
@@ -376,6 +376,6 @@ const stateText = computed(() => {
   text-align: center;
 }
 :deep(.el-drawer__body) {
-  background: transparent;
+  background: var(--color-surface);
 }
 </style>

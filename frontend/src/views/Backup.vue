@@ -27,6 +27,26 @@ function isEncryptedBackup(text: string): boolean {
   }
 }
 
+// 导入覆盖前自动导出一份当前配置快照（明文），给用户一个可回滚的落盘文件。
+async function downloadSnapshot(): Promise<boolean> {
+  try {
+    const r = await fetch(backupApi.exportUrl, { headers: { Authorization: `Bearer ${auth.token}` } })
+    if (!r.ok) throw new Error(String(r.status))
+    const b = await r.blob()
+    const url = URL.createObjectURL(b)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ptpatronus-pre-import-snapshot.json'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(t('backup.snapshotSaved'))
+    return true
+  } catch {
+    ElMessage.warning(t('backup.snapshotFailed'))
+    return false
+  }
+}
+
 async function doExport() {
   // 导出含明文 Cookie / API Key / 密码，需二次确认
   try {
@@ -129,6 +149,7 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
         importing.value = false
         return
       }
+      await downloadSnapshot()
       const res = await backupApi.importOwn(data, password)
       // downloaders_skipped：同类型+同地址的下载器已存在而跳过（重复导入不再翻倍）。
       const skipped =
@@ -237,7 +258,7 @@ function onPTDUpload(f: UploadFile) {
     <h2 v-if="!props.embedded" class="title">{{ t('backup.title') }}</h2>
     <h3 v-else class="title embedded-title">{{ t('backup.title') }}</h3>
 
-    <div class="glass card">
+    <div class="solid-card card">
       <div class="brow">
         <div>
           <div class="btitle">{{ t('backup.exportTitle') }}</div>
@@ -249,37 +270,37 @@ function onPTDUpload(f: UploadFile) {
       </div>
     </div>
 
-    <div v-if="auth.isAdmin" class="glass card">
+    <div v-if="auth.isAdmin" class="solid-card card">
       <div class="brow">
         <div>
           <div class="btitle">{{ t('backup.importOwnTitle') }}</div>
           <div class="bdesc text-muted">{{ t('backup.importOwnDesc') }}</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onOwnUpload">
+        <el-upload drag :show-file-list="true" :auto-upload="false" accept=".json" :on-change="onOwnUpload">
           <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>
     </div>
 
-    <div v-if="auth.isAdmin" class="glass card">
+    <div v-if="auth.isAdmin" class="solid-card card">
       <div class="brow">
         <div>
           <div class="btitle">{{ t('backup.importMPTitle') }}</div>
           <div class="bdesc text-muted">{{ t('backup.importMPDesc') }}</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onMoviePilotUpload">
+        <el-upload drag :show-file-list="true" :auto-upload="false" accept=".json" :on-change="onMoviePilotUpload">
           <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>
     </div>
 
-    <div v-if="auth.isAdmin" class="glass card">
+    <div v-if="auth.isAdmin" class="solid-card card">
       <div class="brow">
         <div>
           <div class="btitle">{{ t('backup.importPTDTitle') }}</div>
           <div class="bdesc text-muted">{{ t('backup.importPTDDesc') }}</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".ptd" :on-change="onPTDUpload">
+        <el-upload drag :show-file-list="true" :auto-upload="false" accept=".ptd" :on-change="onPTDUpload">
           <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>

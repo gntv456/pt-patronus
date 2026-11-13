@@ -79,6 +79,13 @@ jobs:
       - run: npm test
       - run: npm run typecheck   # vue-tsc 严格类型检查（vite build 用 esbuild 擦除类型，单独跑 typecheck 才能抓类型错误）
       - run: npx eslint src      # i18n 防回潮门禁：已迁移页面禁止硬编码中文（eslint.config.mjs 的 I18N_DONE 列表）
+      # UI 去 AI 感 / 无障碍棘轮：emoji、outline:none、10/11px 小字、渐变、装饰模糊、
+      # 无限动画、transition:all、裸 hex、品牌色、views 静态引入 element-plus 只许减不许增。
+      - run: npm run lint:ui
+      # 语义 token 的浅/深色前景-背景组合必须全部 >= 4.5:1（WCAG AA）。
+      - run: npm run check:contrast
+      - run: npm run lint:css:ci
+      - run: npm run lint:ep
       - run: npm run build
       # 阻断式首屏体积预算：build 后立刻扫 dist 的入口 chunk（无需浏览器/后端），
       # 与 scripts/perf_baseline.json 的阈值 + 棘轮基线比对，回归直接 fail。

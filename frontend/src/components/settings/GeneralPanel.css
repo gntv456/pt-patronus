@@ -24,22 +24,24 @@
   gap: var(--sp-2);
 }
 .accent-dot {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
   padding: 0;
   transition:
-    transform var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .accent-dot:hover {
-  transform: scale(1.15);
+  border-color: var(--color-border-strong);
 }
 .accent-dot.active {
-  border-color: var(--text-strong);
-  transform: scale(1.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 .about-actions {
   display: flex;
@@ -54,23 +56,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   padding: 12px 0;
   cursor: pointer;
-  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: inherit;
+  font: inherit;
+  min-height: 44px;
   transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 .help-row:last-child {
   border-bottom: none;
 }
 .help-row:hover {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .help-arrow {
-  color: var(--text-muted);
-  font-size: var(--fs-xl);
+  flex: none;
+  color: var(--color-text-muted);
 }
 .help-body {
   line-height: 1.7;
@@ -97,12 +105,12 @@
 }
 
 .update-ver {
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--fs-body);
   margin-bottom: 8px;
 }
 .update-forced {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   font-weight: 600;
 }
 .update-name {
@@ -121,9 +129,10 @@
   margin-bottom: 4px;
 }
 .update-cmd {
-  background: var(--pt-primary-bg);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   padding: 10px 12px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   margin-bottom: 8px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: var(--fs-xs);

@@ -20,12 +20,12 @@ export function injectSummaryKind(r) {
 
 export function injectSummaryText(r) {
   if (!r || typeof r.tried !== 'number') return '补注入结果读不出来（后台没回数据）'
-  if (!r.tried) return r.error ? `⚠ ${r.error}` : '当前没有已打开的页面，刷新页面即生效'
+  if (!r.tried) return r.error ? `注意：${r.error}` : '当前没有已打开的页面，刷新页面即生效'
   const live = injectLive(r)
   const skip = r.skipped ? `（${r.skipped} 个受限页/黑名单跳过，不算失败）` : ''
   if (r.failed) {
     const why = r.error ? `：${String(r.error).slice(0, 40)}` : ''
-    return `⚠ ${live} 个页面已生效，${r.failed} 个注入失败${why}${skip}`
+    return `注意：${live} 个页面已生效，${r.failed} 个注入失败${why}${skip}`
   }
   return `${live} 个页面已生效${skip}`
 }

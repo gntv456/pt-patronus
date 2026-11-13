@@ -6,13 +6,15 @@ import type { ArrKey, SortField } from '@/composables/useSearchFilter'
 // 搜索筛选条的静态配置选项（维度/时间/排序字段）。
 // 抽出为独立文件以收敛 SearchFilterBar.vue 体积。
 
-export const SEARCH_DIMS: { key: ArrKey; labelKey: string; icon: string }[] = [
-  { key: 'site', labelKey: 'sfc.site', icon: '🌐' },
-  { key: 'promo', labelKey: 'sfc.promo', icon: '🎁' },
-  { key: 'res', labelKey: 'sfc.res', icon: '🖥' },
-  { key: 'codec', labelKey: 'sfc.codec', icon: '🎬' },
-  { key: 'src', labelKey: 'sfc.src', icon: '📦' },
-  { key: 'hdr', labelKey: 'sfc.hdr', icon: '✨' },
+// 维度图标由 SearchFilterBar.vue 的 dimIcon(key) 统一映射为 SptIcon，
+// 这里不再存 emoji 字面量（无消费方，且避免字体依赖与 AI 感）。
+export const SEARCH_DIMS: { key: ArrKey; labelKey: string }[] = [
+  { key: 'site', labelKey: 'sfc.site' },
+  { key: 'promo', labelKey: 'sfc.promo' },
+  { key: 'res', labelKey: 'sfc.res' },
+  { key: 'codec', labelKey: 'sfc.codec' },
+  { key: 'src', labelKey: 'sfc.src' },
+  { key: 'hdr', labelKey: 'sfc.hdr' },
 ]
 
 export const TIME_OPTS: { key: 'today' | 'week' | 'month'; labelKey: string }[] = [

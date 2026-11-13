@@ -46,15 +46,15 @@ export function initDownloadsPage($, feedback) {
       return `<tr>
         <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600" title="${esc(t.name)}">${esc(t.name)}</td>
         <td class="num">${fmtBytes(t.size)}</td>
-        <td><div style="display:flex; align-items:center; gap:6px"><div style="width:80px; height:4px; border-radius:2px; background:var(--bg); overflow:hidden"><i style="display:block; height:100%; width:${pct}%; background:${pct >= 100 ? 'var(--ok)' : 'var(--accent)'}"></i></div><span class="num" style="color:var(--ink-3); font-size:10.5px">${pct}%</span></div></td>
+        <td><div style="display:flex; align-items:center; gap:6px"><div style="width:80px; height:4px; border-radius:2px; background:var(--bg); overflow:hidden"><i style="display:block; height:100%; width:${pct}%; background:${pct >= 100 ? 'var(--ok)' : 'var(--accent)'}"></i></div><span class="num" style="color:var(--ink-3); font-size:12px">${pct}%</span></div></td>
         <td class="num" style="color:${/error|missingFiles/.test(st) ? 'var(--danger)' : /downloading/.test(st) ? 'var(--accent-strong)' : /upload|UP/.test(st) ? 'var(--ok)' : 'var(--ink-3)'}">${esc(st)}</td>
         <td class="num">${fmtSpeedLocal(t.dl_rate)}</td>
         <td class="num">${fmtSpeedLocal(t.up_rate)}</td>
         <td class="num">${t.ratio != null ? t.ratio.toFixed(2) : '—'}</td>
         <td style="white-space:nowrap">
-          <button class="subtle warn" data-dlop="pause" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? 'disabled' : ''}>⏸</button>
-          <button class="subtle ok" data-dlop="resume" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? '' : 'disabled'}>▶</button>
-          <button class="subtle danger" data-dlop="remove" data-h="${esc(t.hash)}" data-n="${esc(t.name)}">✕</button>
+          <button class="subtle warn" data-dlop="pause" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? 'disabled' : ''} title="暂停任务" aria-label="暂停任务"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+          <button class="subtle ok" data-dlop="resume" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? '' : 'disabled'} title="继续任务" aria-label="继续任务"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l14 9-14 9z"/></svg></button>
+          <button class="subtle danger" data-dlop="remove" data-h="${esc(t.hash)}" data-n="${esc(t.name)}" aria-label="删除任务">删除</button>
         </td>
       </tr>`
     }).join('')

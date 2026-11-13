@@ -91,24 +91,18 @@
    覆盖 Element Plus 默认的 dialog-fade（生硬的纯 opacity），
    改为 opacity + 微缩放 + 回弹曲线，配合 var(--ease-out-spring) 更灵动。 */
 .dialog-fade-enter-active {
-  transition:
-    opacity var(--dur-base) var(--ease-out-smooth),
-    transform var(--dur-base) var(--ease-out-spring) !important;
+  transition: opacity var(--dur-base) var(--ease) !important;
 }
 .dialog-fade-leave-active {
-  transition:
-    opacity var(--dur-fast) var(--ease-out-smooth),
-    transform var(--dur-fast) var(--ease-out-smooth) !important;
+  transition: opacity var(--dur-fast) var(--ease) !important;
 }
 .dialog-fade-enter-from .el-dialog,
 .dialog-fade-enter-from .el-message-box {
   opacity: 0;
-  transform: scale(0.94) translateY(12px);
 }
 .dialog-fade-leave-to .el-dialog,
 .dialog-fade-leave-to .el-message-box {
   opacity: 0;
-  transform: scale(0.97) translateY(-8px);
 }
 
 /* 抽屉（Drawer）：从边缘滑入更顺滑 */
@@ -119,7 +113,20 @@
 /* Message / Notification：从顶部/右侧轻柔滑入 */
 .el-message {
   transition:
-    opacity var(--dur-base) var(--ease-out-smooth),
-    transform var(--dur-base) var(--ease-out-spring),
-    top var(--dur-base) var(--ease-out-smooth) !important;
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease),
+    top var(--dur-base) var(--ease) !important;
+}
+
+/* 关键：dialog.css 内多处 !important 会盖过 glass.css 的全局 reduced-motion 兜底，
+   必须在此单独声明，保证弹窗/抽屉/消息在「减少动效」下不再有位移与缩放。 */
+@media (prefers-reduced-motion: reduce) {
+  .dialog-fade-enter-active,
+  .dialog-fade-leave-active,
+  .el-drawer,
+  .el-message,
+  .el-notification {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

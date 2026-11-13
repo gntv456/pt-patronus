@@ -72,7 +72,7 @@ onMounted(refresh)
 <template>
   <div class="hilo">
     <div class="hero">
-      <div class="hero-title">🃏 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div class="hero-sub">
         {{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b> 电影票
       </div>
@@ -81,7 +81,7 @@ onMounted(refresh)
     <section class="glass section table-zone">
       <div class="card-area">
         <div class="card-face" :class="{ active: state?.playing }">
-          <span v-if="state?.card">{{ state.card }}</span>
+          <span v-if="state?.card" aria-hidden="true">{{ state.card }}</span>
           <span v-else class="text-muted">未开局</span>
         </div>
       </div>
@@ -93,12 +93,12 @@ onMounted(refresh)
 
       <div v-if="state?.playing" class="ops">
         <button class="dir hi" :disabled="busy || !state.hi_avail" @click="guess('hi')">
-          👆 高 <span v-if="state.hi_mult">×{{ state.hi_mult.toFixed(2) }}</span>
+          <SptIcon name="arrow-up" :size="16" aria-hidden="true" /> 高 <span v-if="state.hi_mult">×{{ state.hi_mult.toFixed(2) }}</span>
         </button>
         <button class="dir lo" :disabled="busy || !state.lo_avail" @click="guess('lo')">
-          👇 低 <span v-if="state.lo_mult">×{{ state.lo_mult.toFixed(2) }}</span>
+          <SptIcon name="arrow-down" :size="16" aria-hidden="true" /> 低 <span v-if="state.lo_mult">×{{ state.lo_mult.toFixed(2) }}</span>
         </button>
-        <button class="cash" :disabled="busy" @click="cashout()">💰 兑现</button>
+        <button class="cash" :disabled="busy" @click="cashout()"><SptIcon name="download" :size="16" aria-hidden="true" /> 兑现</button>
       </div>
 
       <div v-else class="ops start">
@@ -108,7 +108,7 @@ onMounted(refresh)
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ last.success ? '成功' : '失败' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.balance" class="r-bal">余 {{ last.balance.toLocaleString() }}</span>
@@ -120,27 +120,28 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .hilo { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 520px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0369a1, #38bdf8); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
-.hero-sub { margin-top: 6px; opacity: .92; }
+.hero-sub { margin-top: 6px; color: var(--color-text-secondary); }
 .section { padding: 16px; }
 .table-zone { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .card-area { perspective: 600px; }
-.card-face { width: 120px; height: 168px; border-radius: 12px; background: linear-gradient(160deg, #f8fafc, #e2e8f0); border: 3px solid #475569; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 900; color: #0f172a; transition: transform .3s; }
-.card-face.active { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, .3); transform: rotate(-3deg); }
+.card-face { width: 120px; height: 168px; border-radius: 12px; background: var(--color-surface); border: 3px solid var(--color-border-strong); display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 900; color: var(--color-text); transition: border-color var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease); }
+.card-face.active { border-color: var(--color-warning); box-shadow: 0 0 0 3px var(--color-warning-soft); }
 .status-line { font-size: 14px; }
-.pot { color: #d97706; font-size: 17px; }
+.pot { color: var(--pt-warn-fg); font-size: 17px; font-variant-numeric: tabular-nums; }
 .ops { display: flex; gap: 10px; width: 100%; justify-content: center; }
 .ops.start { align-items: center; }
-.dir, .cash { flex: 1; max-width: 150px; padding: 14px 8px; border-radius: 10px; border: none; font-size: 16px; font-weight: 800; cursor: pointer; color: #fff; }
-.dir.hi { background: linear-gradient(160deg, #ef4444, #b91c1c); }
-.dir.lo { background: linear-gradient(160deg, #3b82f6, #1d4ed8); }
-.cash { background: linear-gradient(160deg, #f59e0b, #b45309); }
+.dir, .cash { flex: 1; max-width: 150px; min-height: 24px; padding: 14px 8px; border-radius: 10px; border: none; font-size: 16px; font-weight: 800; cursor: pointer; color: var(--color-on-accent); transition: box-shadow var(--dur-fast) var(--ease); }
+.dir.hi { background: var(--color-danger); }
+.dir.lo { background: var(--color-primary); }
+.cash { background: var(--color-warning); }
+.dir:hover:not(:disabled), .cash:hover:not(:disabled) { box-shadow: var(--shadow-card); }
 .dir:disabled, .cash:disabled { opacity: .5; cursor: not-allowed; }
 .dir span { font-size: 12px; opacity: .85; display: block; margin-top: 2px; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); color: var(--pt-success-fg); }
+.result.lose { background: var(--color-danger-soft); color: var(--pt-danger-fg); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
 </style>

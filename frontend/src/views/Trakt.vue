@@ -8,7 +8,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { traktApi, type TraktConfig } from '@/api/trakt'
 import { registerPolling } from '@/composables/usePolling'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import { ElMessage } from 'element-plus'
 import { devicePollTerminal, traktFailText, traktPollGiveUpText, TRAKT_POLL_GIVEUP } from './traktHelpers'
 
@@ -161,7 +161,7 @@ onUnmounted(stopPolling)
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title"><GlassIcon name="trakt" :size="26" /> {{ t('trakt.title') }}</h2>
+      <h2 v-if="!props.embedded" class="title"><SptIcon name="refresh" :size="26" aria-hidden="true" /> {{ t('trakt.title') }}</h2>
       <h3 v-else class="title embedded-title">{{ t('trakt.title') }}</h3>
       <div class="head-actions">
         <el-button @click="openConfig">{{ t('trakt.config') }}</el-button>
@@ -175,7 +175,8 @@ onUnmounted(stopPolling)
     </div>
     <p class="sub">{{ t('trakt.subtitle') }}</p>
 
-    <div v-loading="loading" class="glass status-card">
+    <el-skeleton v-if="loading" :rows="4" animated />
+    <div v-else class="solid-card status-card">
       <div class="status-row">
         <span class="status-dot" :class="cfg?.authorized ? 'on' : 'off'"></span>
         <span>{{ cfg?.authorized ? t('trakt.authorized') : t('trakt.unauthorized') }}</span>
@@ -185,7 +186,7 @@ onUnmounted(stopPolling)
         {{ t('trakt.lastSync') }}{{ new Date(cfg.last_sync_at * 1000).toLocaleString() }} ·
         {{ t('trakt.lastSyncCount', { n: cfg.last_sync_count }) }}
       </div>
-      <div v-if="cfg?.last_error" class="err">{{ cfg.last_error }}</div>
+      <div v-if="cfg?.last_error" class="err" role="alert" tabindex="-1">{{ cfg.last_error }}</div>
 
       <!-- 设备授权引导 -->
       <div v-if="device" class="device">

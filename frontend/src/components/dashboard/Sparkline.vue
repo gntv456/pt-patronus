@@ -34,7 +34,7 @@ function resolveColor(c: string): string {
   if (c.startsWith('var(')) {
     const name = c.slice(4, -1).trim()
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-    return v || '#6c5ce7'
+    return v || '#2563eb'
   }
   return c
 }
@@ -62,12 +62,9 @@ function draw() {
   const xOf = (i: number) => (v.length === 1 ? w / 2 : (i / (v.length - 1)) * w)
   const yOf = (val: number) => h - pad - ((val - lo) / span) * (h - 2 * pad)
   const color = resolveColor(props.color)
-  // 面积渐变（用 globalAlpha 兼容 hex / rgb / CSS 变量，无需解析颜色格式）
-  const grad = ctx.createLinearGradient(0, 0, 0, h)
-  grad.addColorStop(0, color)
-  grad.addColorStop(1, 'transparent')
-  ctx.globalAlpha = 0.3
-  ctx.fillStyle = grad
+  // 实色浅填充（去渐变）：globalAlpha 兼容 hex / CSS 变量解析结果
+  ctx.globalAlpha = 0.14
+  ctx.fillStyle = color
   ctx.beginPath()
   ctx.moveTo(xOf(0), yOf(v[0]))
   v.forEach((val, i) => { if (i) ctx.lineTo(xOf(i), yOf(val)) })
@@ -90,7 +87,7 @@ function draw() {
     ctx.beginPath()
     ctx.moveTo(xOf(hoverIdx.value), 0)
     ctx.lineTo(xOf(hoverIdx.value), h)
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)'
+    ctx.strokeStyle = resolveColor('var(--color-border-strong)')
     ctx.lineWidth = 1
     ctx.setLineDash([3, 3])
     ctx.stroke()
@@ -116,6 +113,14 @@ const tipEdge = computed(() => {
   if (hoverIdx.value === null || !geom.value) return false
   return geom.value.xOf(hoverIdx.value) > 82
 })
+// 图表可访问：role=img + tabindex + 含数值的 aria-label + 方向键切换数据点。
+const ariaLabel = computed(() => `${t('spark.trend')}：${props.values.map(fmtVal).join('、')}`)
+function moveHover(dir: -1 | 1) {
+  const n = props.values.length
+  if (!n) return
+  const cur = hoverIdx.value ?? 0
+  hoverIdx.value = Math.max(0, Math.min(n - 1, cur + dir))
+}
 
 watch(
   [() => props.values, () => props.color, hoverIdx],
@@ -134,8 +139,16 @@ onBeforeUnmount(() => ro?.disconnect())
 
 <template>
   <div ref="wrapRef" class="spark" @mouseleave="hoverIdx = null">
-    <canvas v-if="geom" ref="canvasRef" class="spark-svg" role="img"
-      :aria-label="t('spark.trend')" />
+    <canvas
+      v-if="geom"
+      ref="canvasRef"
+      class="spark-svg"
+      role="img"
+      tabindex="0"
+      :aria-label="ariaLabel"
+      @keydown.left.prevent="moveHover(-1)"
+      @keydown.right.prevent="moveHover(1)"
+    />
     <div v-else class="spark-empty text-muted">—</div>
     <div v-if="geom && days.length === geom.n" class="hot">
       <div v-for="(d, i) in days" :key="i" class="hot-col"
@@ -157,11 +170,11 @@ onBeforeUnmount(() => ro?.disconnect())
 .hot { position: absolute; inset: 0; display: flex; }
 .hot-col { height: 100%; }
 .tip { position: absolute; top: -4px; transform: translateX(-50%); z-index: 5;
-  padding: 3px 7px; white-space: nowrap; background: rgba(20,22,38,.96);
-  border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-xs);
-  box-shadow: var(--shadow-md); font-size: var(--fs-2xs); display: flex;
+  padding: 3px 7px; white-space: nowrap; background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-control);
+  box-shadow: var(--shadow-popover); font-size: var(--fs-2xs); display: flex;
   align-items: center; gap: var(--sp-1); pointer-events: none; }
 .tip.edge { transform: translateX(-90%); }
-.tip-day { color: var(--text-muted); }
+.tip-day { color: var(--color-text-muted); }
 .tip b { font-weight: 600; }
 </style>

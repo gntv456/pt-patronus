@@ -94,9 +94,9 @@ async function draw(count: number) {
       if (groups.length > 1 || (groups.length === 1 && groups[0].n > 1)) {
         const wins = groups.filter((g) => g.win)
         const summary = groups.map((g) => `${g.name} ×${g.n}`).join('，')
-        ElMessage.success(wins.length ? `🎉 ${summary}` : summary)
+        ElMessage.success(summary)
       } else {
-        ElMessage.success(res.prize ? `🎉 ${res.prize}` : res.message || t('sp.done'))
+        ElMessage.success(res.prize || res.message || t('sp.done'))
       }
     } else {
       ElMessage.warning(res.message || t('sp.drawFailed'))
@@ -130,7 +130,9 @@ function animateSpins(turns: number, stopName?: string | null) {
       extra = turns * 360 + Math.floor(Math.random() * 360)
     }
     rotation.value = rotation.value + extra
-    setTimeout(resolve, 4100) // 等 CSS transition（4s）结束
+    // reduced-motion 下 CSS transition 被禁用，直接出结果，不硬等 4s
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setTimeout(resolve, reduce ? 0 : 4100) // 等 CSS transition（4s）结束
   })
 }
 
@@ -189,7 +191,7 @@ onMounted(async () => {
 <template>
   <div class="spinner">
     <div class="hero">
-      <div class="hero-title">🎰 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div class="balance">
         {{ t('bs.balance') }} <b>{{ heroBalance }}</b>
         <span v-if="stats?.cost_per_play" class="cost">· {{ stats.cost_per_play.toLocaleString() }}/次</span>
@@ -198,13 +200,13 @@ onMounted(async () => {
 
     <div class="wheel-wrap">
       <div class="wheel" :style="{ transform: `rotate(${rotation}deg)` }">
-        <canvas ref="canvasRef" class="canvas" width="560" height="560" />
+        <canvas ref="canvasRef" class="canvas" width="560" height="560" aria-hidden="true" />
       </div>
       <div class="pointer" />
       <button class="hub" :disabled="playing" @click="draw(1)">
         <span v-if="playing" class="spin-icon" />
         <template v-else>
-          <span class="hub-emoji">🎲</span>
+          <SptIcon class="hub-emoji" name="play" :size="22" aria-hidden="true" />
           <span class="hub-text">{{ t('sp.hub') }}</span>
         </template>
       </button>
@@ -220,7 +222,7 @@ onMounted(async () => {
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '🎉' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'party-popper' : 'x'" :size="18" aria-hidden="true" /></span>
       <div class="r-body">
         <template v-if="groupedPrizes.length">
           <div class="r-list">

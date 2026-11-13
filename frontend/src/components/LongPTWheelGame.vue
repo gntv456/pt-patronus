@@ -81,14 +81,17 @@ function targetRotationForIndex(index: number): number {
 function animateToIndex(index: number) {
   return new Promise<void>((resolve) => {
     rotation.value = targetRotationForIndex(index)
-    setTimeout(resolve, 4100) // 等 CSS transition（4s）结束
+    // reduced-motion 下不硬等 4s 动画
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setTimeout(resolve, reduce ? 0 : 4100) // 等 CSS transition（4s）结束
   })
 }
 
 function animateSpins(turns: number) {
   return new Promise<void>((resolve) => {
     rotation.value = rotation.value + turns * 360
-    setTimeout(resolve, 4100)
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setTimeout(resolve, reduce ? 0 : 4100)
   })
 }
 
@@ -107,7 +110,7 @@ async function spin(count: 1 | typeof MULTI) {
         await animateToIndex(idToIndex.value.get(res.prize_id ?? 0) ?? 0)
         result.value = res
         const win = res.prize && res.prize !== t('sp.noWin')
-        if (win) ElMessage.success(`🎉 ${res.prize}`)
+        if (win) ElMessage.success(res.prize || t('wh.win'))
         else ElMessage.info(res.message || t('sp.noWin'))
       } else {
         await animateSpins(3)
@@ -183,7 +186,7 @@ onMounted(async () => {
 <template>
   <div class="lpt-wheel">
     <div class="banner">
-      <span class="banner-title">🎰 {{ t('wh.title') }}</span>
+      <span class="banner-title"><SptIcon name="gamepad" :size="18" aria-hidden="true" /> {{ t('wh.title') }}</span>
       <span class="banner-sub"
         >{{ t('wh.costLine', { n: Math.round(stats?.cost_per_play ?? 0) })
         }}{{ stats?.discount ? t('wh.discount', { d: stats.discount / 10 }) : '' }}</span
@@ -203,13 +206,13 @@ onMounted(async () => {
 
     <div class="wheel-wrap">
       <div class="wheel" :style="{ transform: `rotate(${rotation}deg)` }">
-        <canvas ref="canvasRef" class="canvas" width="560" height="560" />
+        <canvas ref="canvasRef" class="canvas" width="560" height="560" aria-hidden="true" />
       </div>
       <div class="pointer" />
       <button class="hub" :disabled="spinning" @click="spin(1)">
         <span v-if="spinning" class="spinner" />
         <template v-else>
-          <span class="hub-icon">🎲</span>
+          <SptIcon class="hub-icon" name="play" :size="22" aria-hidden="true" />
           <span class="hub-text">{{ t('sp.hub') }}</span>
         </template>
       </button>
@@ -227,9 +230,14 @@ onMounted(async () => {
     <!-- 结果 -->
     <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
       <template v-if="lastMode === 1">
-        <span class="badge">{{
-          result.prize && result.prize !== t('sp.noWin') ? '🎉 ' + t('wh.win') : '💫 ' + t('sp.noWin')
-        }}</span>
+        <span class="badge">
+          <SptIcon
+            :name="result.prize && result.prize !== t('sp.noWin') ? 'party-popper' : 'x'"
+            :size="16"
+            aria-hidden="true"
+          />
+          {{ result.prize && result.prize !== t('sp.noWin') ? t('wh.win') : t('sp.noWin') }}
+        </span>
         <span v-if="result.prize" class="r-prize">{{ result.prize }}</span>
         <span v-if="result.amount" class="r-amt">×{{ result.amount }}</span>
         <div v-if="result.message" class="r-msg text-muted">{{ result.message }}</div>

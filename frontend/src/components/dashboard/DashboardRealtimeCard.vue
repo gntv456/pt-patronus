@@ -9,6 +9,7 @@ import { computed } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { fmtSpeed } from '@/utils/format'
 import { stateGroup } from '@/components/downloader/torrentTableFilters'
+import SptIcon from '@/components/SptIcon.vue'
 
 // DashboardRealtimeCard — 区②下载器实时速率：直接消费 WS torrents 单例（DeepReadonly），
 // 跨下载器汇总速率与任务状态。WS 自动更新，无需轮询。
@@ -45,11 +46,11 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
     <div v-if="count" class="dc-body">
       <div class="speed-row">
         <div class="speed-cell dl">
-          <span class="lbl">↓ {{ t('drc.totalDl') }}</span>
+          <span class="lbl"><SptIcon name="arrow-down" :size="14" aria-hidden="true" /> {{ t('drc.totalDl') }}</span>
           <strong>{{ fmtSpeed(dlRate) }}</strong>
         </div>
         <div class="speed-cell up">
-          <span class="lbl">↑ {{ t('drc.totalUp') }}</span>
+          <span class="lbl"><SptIcon name="arrow-up" :size="14" aria-hidden="true" /> {{ t('drc.totalUp') }}</span>
           <strong>{{ fmtSpeed(upRate) }}</strong>
         </div>
       </div>
@@ -65,7 +66,11 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
         >
       </div>
     </div>
-    <div v-else class="dc-empty">{{ t('drc.empty') }}</div>
+    <div v-else class="dc-empty dc-empty-cta">
+      <SptIcon name="inbox" :size="24" aria-hidden="true" />
+      <span>{{ t('drc.empty') }}</span>
+      <router-link to="/downloaders"><el-button size="small">{{ t('nav.items.downloaders') }}</el-button></router-link>
+    </div>
   </div>
 </template>
 
@@ -99,8 +104,8 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
   font-size: var(--fs-2xs);
 }
 .dc-tag.warn {
-  color: #d97706;
-  background: rgba(217, 119, 6, 0.13);
+  color: var(--pt-warn-fg);
+  background: var(--color-warning-soft);
 }
 .dc-body {
   display: flex;
@@ -131,10 +136,12 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
   letter-spacing: -0.3px;
 }
 .speed-cell.dl strong {
-  color: var(--pt-primary-2, #2563eb);
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
 }
 .speed-cell.up strong {
-  color: var(--pt-success, #2ecc71);
+  color: var(--pt-success-fg);
+  font-variant-numeric: tabular-nums;
 }
 .mini-row {
   display: flex;
@@ -146,6 +153,11 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
   color: var(--text-strong);
   font-size: var(--fs-md);
   margin-right: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.dc-empty-cta {
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 .dc-empty {
   flex: 1;

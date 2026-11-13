@@ -38,21 +38,6 @@ const icon = computed(() => {
   if (props.target.type === 'script') return 'history'
   return 'server'
 })
-const color = computed<[string, string]>(() =>
-  props.target.type === 'camera'
-    ? ['#ff5f6d', '#ffc371']
-    : props.target.type === 'nas'
-      ? ['#f7971e', '#ffd200']
-      : props.target.type === 'http'
-        ? ['#00b894', '#0984e3']
-        : props.target.type === 'tcp'
-          ? ['#34495e', '#16a085']
-          : props.target.type === 'process'
-            ? ['#8e44ad', '#3498db']
-            : props.target.type === 'script'
-              ? ['#d35400', '#f1c40f']
-              : ['#0f2027', '#2c5364'],
-)
 const status = computed(() => {
   if (props.target.last_online === null) return { cls: 'unknown', text: t('dc.notChecked') }
   if (props.target.last_online) return { cls: 'online', text: t('dc.online') }
@@ -156,7 +141,7 @@ const serviceRows = computed(() => {
 <template>
   <div class="device-card glass glass-hover">
     <div class="dc-head">
-      <GlassIcon :name="icon" :from="color[0]" :to="color[1]" :size="40" />
+      <GlassIcon :name="icon" :size="20" />
       <div class="dc-title">
         <div class="dc-name">{{ target.name }}</div>
         <div class="dc-sub">
@@ -269,26 +254,26 @@ const serviceRows = computed(() => {
   border-radius: 50%;
 }
 .dc-status.online {
-  color: #11998e;
+  color: var(--pt-success-fg);
   background: rgba(17, 153, 142, 0.12);
 }
 .dc-status.online .dot {
-  background: #11998e;
-  box-shadow: 0 0 6px #11998e;
+  background: var(--pt-success-fg);
+  
 }
 .dc-status.offline {
   color: var(--pt-danger);
   background: var(--pt-danger-bg);
 }
 .dc-status.offline .dot {
-  background: #e74c3c;
+  background: var(--pt-danger-fg);
 }
 .dc-status.unknown {
   color: var(--text-muted);
   background: rgba(156, 163, 175, 0.15);
 }
 .dc-status.unknown .dot {
-  background: #9ca3af;
+  background: var(--color-text-muted);
 }
 .dc-body {
   display: flex;

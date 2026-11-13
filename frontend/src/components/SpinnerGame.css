@@ -8,21 +8,21 @@
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .balance {
   margin-top: 4px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-secondary);
 }
 .balance b {
-  color: #fde68a;
+  color: var(--color-primary);
   font-size: var(--fs-lg);
 }
 
@@ -52,8 +52,8 @@
   height: 0;
   border-left: 16px solid transparent;
   border-right: 16px solid transparent;
-  border-top: 28px solid #ff3b3b;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+  border-top: 28px solid var(--color-danger);
+  
   z-index: 3;
 }
 .hub {
@@ -64,16 +64,16 @@
   width: 26%;
   height: 26%;
   border-radius: 50%;
-  border: 4px solid #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
+  border: 4px solid var(--color-surface);
+  background: var(--color-primary);
+  color: var(--color-on-accent);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 2;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+  box-shadow: var(--shadow-card);
 }
 .hub:disabled {
   cursor: wait;
@@ -91,10 +91,10 @@
 .spin-icon {
   width: 22px;
   height: 22px;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
-  animation: sp 0.8s linear infinite;
+  animation: sp 0.8s linear 6;
 }
 @keyframes sp {
   to {
@@ -118,20 +118,21 @@
   justify-content: center;
 }
 .op {
-  padding: 9px 16px;
-  border: 1px solid #6366f1;
+  min-height: 24px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--fs-body);
   font-weight: 600;
-  color: #6366f1;
+  color: var(--color-primary);
   background: transparent;
 }
 .op.primary {
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: 0;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  color: var(--color-on-accent);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  box-shadow: none;
 }
 .op:disabled {
   opacity: 0.6;
@@ -166,7 +167,7 @@
 }
 .r-bal {
   font-size: var(--fs-xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .r-msg {
   font-size: var(--fs-xs);
@@ -185,8 +186,8 @@
   color: var(--pt-success);
 }
 .r-pill.nowin {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-muted, #999);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
@@ -200,8 +201,8 @@
   flex: 0 0 auto;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   font-size: var(--fs-body);
   font-weight: 600;
 }
@@ -212,10 +213,10 @@
   align-items: center;
   padding: 6px 0;
   font-size: var(--fs-body);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rec-row .muted {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .rec-amt {
   color: var(--pt-success);
@@ -223,5 +224,15 @@
 }
 .rec-time {
   margin-left: auto;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
+}
+
+/* reduced-motion：转盘定位动画与加载 spinner 全部静止 */
+@media (prefers-reduced-motion: reduce) {
+  .wheel {
+    transition: none;
+  }
+  .spin-icon {
+    animation: none;
+  }
 }

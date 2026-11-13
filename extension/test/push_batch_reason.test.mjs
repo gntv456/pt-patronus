@@ -40,7 +40,7 @@ function menuItem(marker) {
 }
 
 test('批量推送失败必须带出原因，不许只报计数', () => {
-  const tail = menuItem("mk('⬇ 全部推送下载'")
+  const tail = menuItem("mk('全部推送下载'")
   // 失败要计数（这条本来就有，防回归）。
   assert.ok(/fail/.test(tail), '批量推送必须统计失败数')
   // 关键缺口：原因必须被留下来并显示出来。
@@ -51,8 +51,8 @@ test('批量推送失败必须带出原因，不许只报计数', () => {
 })
 
 test('两个批量出口的原因披露标准必须一致（不许一个报、一个不报）', () => {
-  const push = menuItem("mk('⬇ 全部推送下载'")
-  const fav = menuItem("mk('⭐ 收藏本页种子'")
+  const push = menuItem("mk('全部推送下载'")
+  const fav = menuItem("mk('收藏本页种子'")
   const hasReason = (s) => /\.error|err\.message|原因|reason/.test(s)
   assert.ok(
     hasReason(push) === hasReason(fav),

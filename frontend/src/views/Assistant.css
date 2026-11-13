@@ -17,7 +17,7 @@
   display: flex;
   flex-direction: column;
   padding: 10px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-card);
 }
 .side-head {
   display: flex;
@@ -51,7 +51,8 @@
   background: var(--surface-hover);
 }
 .conv-item.active {
-  background: var(--glass-active, var(--pt-primary-bg));
+  background: var(--color-primary-soft);
+  border-left: 2px solid var(--color-primary);
 }
 .conv-title {
   overflow: hidden;
@@ -63,7 +64,7 @@
   display: flex;
   flex-direction: column;
   padding: 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-card);
   min-width: 0;
 }
 .msg-list {
@@ -91,8 +92,8 @@
   word-break: break-word;
 }
 .user-bubble {
-  background: var(--grad-primary);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
 }
 .assistant-bubble {
   background: var(--surface-1);
@@ -100,7 +101,7 @@
 }
 .reasoning {
   font-size: var(--fs-xs);
-  opacity: 0.75;
+  color: var(--color-text-secondary);
   margin-bottom: 6px;
 }
 .reasoning summary {
@@ -119,14 +120,15 @@
   max-width: 78%;
 }
 .tool-step details {
-  background: var(--glass-bubble, rgba(127, 127, 127, 0.1));
-  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   padding: 6px 10px;
   font-size: var(--fs-xs);
 }
 .tool-step summary {
   cursor: pointer;
-  opacity: 0.85;
+  color: var(--color-text-secondary);
 }
 .tool-item {
   border-top: 1px solid var(--divider);
@@ -134,13 +136,13 @@
 }
 .tool-name {
   font-weight: 600;
-  color: var(--pt-primary-2);
+  color: var(--color-primary);
 }
 .tool-args,
 .tool-result {
   white-space: pre-wrap;
   margin: 4px 0;
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   max-height: 160px;
   overflow-y: auto;
 }
@@ -154,26 +156,27 @@
   flex: 1;
   resize: none;
   padding: 10px;
-  border-radius: var(--radius-sm);
-  background: var(--glass-input, rgba(127, 127, 127, 0.1));
-  border: 1px solid rgba(127, 127, 127, 0.25);
-  color: inherit;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
   font-family: inherit;
   font-size: var(--fs-md);
 }
-.input:focus {
-  outline: none;
-  border-color: var(--pt-primary);
+.input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
 }
 .hint {
   margin-left: 10px;
   font-size: var(--fs-xs);
-  opacity: 0.6;
+  color: var(--color-text-muted);
 }
 /* 读取失败的说明不能沿用 0.6 的弱化态：那正是「读不出来」最容易被跳过去的样子。 */
 .hint-warn {
   opacity: 1;
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .tool-perms {
   width: 100%;
@@ -188,17 +191,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--glass-bubble, rgba(127, 127, 127, 0.1));
-  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   padding: 6px 2px;
 }
 .stat-num {
   font-size: var(--fs-md);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: var(--fs-2xs);
-  opacity: 0.6;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
 }
 .tool-groups {
   margin-top: 8px;
@@ -218,11 +223,11 @@
 .tool-group-title {
   font-size: var(--fs-xs);
   font-weight: 600;
-  opacity: 0.85;
+  color: var(--color-text-secondary);
   margin: 4px 0;
 }
 .tool-group-title.danger {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .tool-groups :deep(.el-checkbox) {
   display: flex;
@@ -236,24 +241,18 @@
 }
 .tool-desc {
   display: block;
-  font-size: var(--fs-2xs);
-  opacity: 0.55;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
   margin-left: 24px;
   line-height: 1.3;
 }
 
-/* 聊天气泡：水润入场 */
-.row {
-  animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both;
-}
-.bubble {
-  transition: transform var(--dur-fast) var(--ease-out-smooth);
-}
+/* 去掉气泡入场 / 位移装饰；过渡只列具体属性 */
 .input {
   transition:
-    border-color var(--dur-base) var(--ease-out-smooth),
-    box-shadow var(--dur-base) var(--ease-out-smooth);
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
-.input:focus {
-  box-shadow: 0 0 0 3px var(--pt-primary-bg);
+.input:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }

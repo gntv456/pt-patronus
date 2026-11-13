@@ -10,7 +10,7 @@
   width: 100%;
   padding: 10px 8px;
   border: 0;
-  border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--color-border);
   background: transparent;
   cursor: pointer;
   text-align: left;
@@ -37,24 +37,24 @@
   display: inline-block;
   padding: 0 6px;
   border-radius: var(--radius-2xs);
-  color: #fff;
+  color: var(--color-text-inverse);
   font-size: var(--fs-2xs);
   font-weight: 700;
 }
 .sf-promo-chip.tone-free {
-  background: #4caf50;
+  background: var(--color-success);
 }
 .sf-promo-chip.tone-half {
-  background: #ff5722;
+  background: var(--color-warning);
 }
 .sf-promo-chip.tone-double {
-  background: #9c27b0;
+  background: var(--chart-4);
 }
 .sf-promo-chip.tone-plain {
-  background: #607d8b;
+  background: var(--color-text-muted);
 }
 .sf-more-right .up {
-  color: var(--pt-success, #2ecc71);
+  color: var(--pt-success-fg);
   font-size: var(--fs-xs);
   font-weight: 700;
 }
@@ -71,4 +71,5 @@
   color: var(--pt-primary);
   font-size: var(--fs-2xs);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }

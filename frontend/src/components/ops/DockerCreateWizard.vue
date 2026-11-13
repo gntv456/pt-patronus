@@ -238,7 +238,7 @@ async function submit() {
         </div>
         <div class="confirm-row">
           <span class="ck">{{ t('dw.privileged') }}</span
-          ><span>{{ form.privileged ? '⚠ ' + t('common.yes') : t('common.no') }}</span>
+          ><span><SptIcon v-if="form.privileged" name="alert-triangle" :size="14" aria-hidden="true" /> {{ form.privileged ? t('common.yes') : t('common.no') }}</span>
         </div>
         <div v-if="form.cmd" class="confirm-row">
           <span class="ck">{{ t('dw.cmd') }}</span

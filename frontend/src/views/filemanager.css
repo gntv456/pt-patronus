@@ -27,7 +27,7 @@
   padding: 6px;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--glass-bg) 86%, transparent);
+  background: var(--color-surface);
 }
 .sb-item {
   display: flex;
@@ -39,14 +39,11 @@
   transition: background var(--dur-fast) var(--ease-out-smooth);
 }
 .sb-item:hover {
-  background: color-mix(in srgb, var(--pt-primary, #4361ee) 10%, transparent);
+  background: var(--color-primary-soft);
 }
 .sb-item.active {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--pt-primary, #6366f1) 22%, transparent),
-    color-mix(in srgb, var(--pt-primary2, #4361ee) 16%, transparent)
-  );
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 .sb-icon {
   font-size: 20px;
@@ -63,12 +60,12 @@
   white-space: nowrap;
 }
 .sb-type {
-  font-size: 11px;
-  color: var(--text-muted, #909399);
+  font-size: 12px;
+  color: var(--color-text-muted);
   text-transform: uppercase;
 }
 .sb-type .ro {
-  color: #f59e0b;
+  color: var(--pt-warn-fg);
   text-transform: none;
   margin-left: 3px;
 }
@@ -77,7 +74,7 @@
 }
 .sb-fail {
   font-size: 12px;
-  color: #f59e0b;
+  color: var(--pt-warn-fg);
   padding: 6px 8px 0;
 }
 .sb-actions {
@@ -96,26 +93,25 @@
   cursor: pointer;
 }
 .dot.checking {
-  background: var(--text-muted, #909399);
+  background: var(--color-text-muted);
   opacity: 0.5;
 }
 .dot.ok {
-  background: #2ecc71;
-  box-shadow: 0 0 4px rgba(46, 204, 113, 0.6);
+  background: var(--color-success);
 }
 .dot.fail {
-  background: #e74c3c;
+  background: var(--color-danger);
 }
 .sb-more {
   cursor: pointer;
   padding: 0 2px;
   font-size: 18px;
   line-height: 1;
-  color: var(--text-muted, #909399);
+  color: var(--color-text-muted);
   flex-shrink: 0;
 }
 .sb-more:hover {
-  color: var(--pt-primary, #4361ee);
+  color: var(--color-primary);
 }
 .fm-main {
   flex: 1;
@@ -124,7 +120,7 @@
   flex-direction: column;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--glass-bg) 86%, transparent);
+  background: var(--color-surface);
   overflow: hidden;
 }
 .fm-toolbar {
@@ -148,7 +144,7 @@
   height: 4px;
 }
 .crumb {
-  color: var(--pt-primary, #4361ee);
+  color: var(--color-primary);
   cursor: pointer;
   white-space: nowrap;
   font-size: 13px;
@@ -157,7 +153,7 @@
   text-decoration: underline;
 }
 .crumb-sep {
-  color: var(--text-muted, #909399);
+  color: var(--color-text-muted);
 }
 .tb-actions {
   display: flex;
@@ -189,7 +185,7 @@
   padding: 8px 12px 12px;
 }
 .link {
-  color: var(--pt-primary, #4361ee);
+  color: var(--color-primary);
   cursor: pointer;
 }
 :deep(.el-table),
@@ -211,15 +207,15 @@
   cursor: pointer;
   text-align: center;
   transition:
-    transform var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth),
     box-shadow var(--dur-fast) var(--ease-out-smooth);
 }
 .grid-card:hover {
-  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
 }
 .grid-card.sel {
-  border-color: var(--pt-primary, #4361ee);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pt-primary, #4361ee) 40%, transparent);
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 .grid-check {
   position: absolute;
@@ -228,13 +224,13 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid rgba(128, 128, 128, 0.4);
+  border: 2px solid var(--color-border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text-inverse);
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out-smooth);
 }
@@ -243,8 +239,8 @@
 }
 .grid-check.on {
   opacity: 1;
-  background: var(--pt-primary, #4361ee);
-  border-color: var(--pt-primary, #4361ee);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .grid-icon {
   font-size: 34px;
@@ -258,8 +254,8 @@
   white-space: nowrap;
 }
 .grid-meta {
-  font-size: 11px;
-  color: var(--text-muted, #909399);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .grid-strm {
   margin-top: 6px;
@@ -268,7 +264,7 @@
   grid-column: 1 / -1;
   text-align: center;
   padding: 40px;
-  color: var(--text-muted, #909399);
+  color: var(--color-text-muted);
 }
 .fm-empty {
   flex: 1;
@@ -298,4 +294,9 @@
 .fm-page.embedded {
   height: calc(100vh - 240px);
   min-height: 420px;
+}
+@media (max-width: 640px) {
+  .sb-item, .crumb, .grid-card, .sb-more {
+    min-height: 44px;
+  }
 }

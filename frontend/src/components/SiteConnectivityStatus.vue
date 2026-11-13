@@ -103,7 +103,7 @@ function fullTitle(fallback: string): string {
   cursor: pointer;
 }
 .connectivity-status.is-clickable:hover {
-  filter: brightness(1.12);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
 }
 .connectivity-dot {
   width: 7px;
@@ -113,27 +113,20 @@ function fullTitle(fallback: string): string {
   background: currentColor;
 }
 .is-connected {
-  color: var(--pt-success, #16a34a);
+  color: var(--pt-success-fg);
   background: var(--pt-success-bg);
 }
 .is-disconnected {
-  color: var(--pt-danger, #dc2626);
+  color: var(--pt-danger-fg);
   background: var(--pt-danger-bg);
 }
 .is-disabled {
-  color: var(--text-muted, #94a3b8);
-  background: rgba(148, 163, 184, 0.14);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
 }
 .is-pending {
-  color: var(--text-muted, #94a3b8);
-  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
 }
-.is-pending .connectivity-dot {
-  animation: connectivity-pulse 1.1s ease-in-out infinite;
-}
-@keyframes connectivity-pulse {
-  50% {
-    opacity: 0.3;
-  }
-}
+/* 待检测状态点静态化：去掉无限脉冲装饰 */
 </style>

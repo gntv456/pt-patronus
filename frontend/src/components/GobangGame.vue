@@ -52,7 +52,7 @@ const canUndo = computed(
     (ongoing.value.moves?.length ?? 0) >= (ongoing.value.opening_move_count ?? 0) + 2,
 )
 const boardRows = computed(() =>
-  board.value.slice(0, SIZE).map((row, r) => ({ r, cells: Array.from({ length: SIZE }, (_, c) => row?.[c] ?? 0) })),
+  board.value.slice(0, SIZE).map((row, r) => ({ r, cells: Array.from({ length: SIZE }, (_, c) => ({ c, v: row?.[c] ?? 0 })) })),
 )
 const summaryLine = computed(() => {
   const s = state.value?.summary
@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="gobang">
     <div class="hero">
-      <div class="hero-title">♟️ {{ name }}</div>
+      <div class="hero-title"><SptIcon name="grid" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div class="balance">{{ summaryLine || '五子棋 · 人机挑战' }}</div>
     </div>
 
@@ -202,12 +202,14 @@ onBeforeUnmount(() => {
             :key="row.r + '-' + cell.c"
             class="pt"
             type="button"
+            :aria-label="`第${row.r + 1}行第${cell.c + 1}列`"
             :disabled="acting || cell.v !== 0 || !myTurn"
             @click="drop(row.r, cell.c)"
           >
             <span
               v-if="cell.v !== 0"
               class="stone"
+              aria-hidden="true"
               :class="cell.v === 1 ? 'black' : 'white'"
               :data-last="lastMove && lastMove.x === cell.c && lastMove.y === row.r"
             />

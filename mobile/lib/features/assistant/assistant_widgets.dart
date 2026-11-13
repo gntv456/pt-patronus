@@ -94,7 +94,7 @@ extension on _AssistantPageState {
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               dense: true,
-              title: const Text('🧠 思考过程', style: TextStyle(fontSize: 12)),
+              title: const Text('思考过程', style: TextStyle(fontSize: 12)),
               children: [Align(alignment: Alignment.centerLeft, child: Text(reasoning, style: const TextStyle(fontSize: 12, height: 1.4)))],
             ),
           Text(content, style: const TextStyle(fontSize: 14, height: 1.5)),
@@ -113,12 +113,12 @@ extension on _AssistantPageState {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 10),
           dense: true,
-          title: Text('🔧 调用 ${calls.length} 个工具', style: const TextStyle(fontSize: 12)),
+          title: Text('调用 ${calls.length} 个工具', style: const TextStyle(fontSize: 12)),
           children: calls.map((c) => Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(c['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF4285F4), fontSize: 12)),
-              if (c['arguments'] != null) Text(c['arguments'].toString(), style: const TextStyle(fontSize: 11), maxLines: 3, overflow: TextOverflow.ellipsis),
+              if (c['arguments'] != null) Text(c['arguments'].toString(), style: const TextStyle(fontSize: 12), maxLines: 3, overflow: TextOverflow.ellipsis),
               if (c['result'] != null)
                 Container(
                   margin: const EdgeInsets.only(top: 2),
@@ -126,7 +126,7 @@ extension on _AssistantPageState {
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: SizedBox(
                     height: 180,
-                    child: SingleChildScrollView(child: SelectableText(c['result'].toString(), style: const TextStyle(fontSize: 11))),
+                    child: SingleChildScrollView(child: SelectableText(c['result'].toString(), style: const TextStyle(fontSize: 12))),
                   ),
                 ),
             ]),
@@ -220,7 +220,7 @@ extension on _AssistantPageState {
               controlAffinity: ListTileControlAffinity.leading,
               value: enabled.contains(t.name),
               title: Text(t.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              subtitle: Text(t.risk == 'destructive' ? (t.riskNote.isNotEmpty ? t.riskNote : t.description) : t.description, style: const TextStyle(fontSize: 10)),
+              subtitle: Text(t.risk == 'destructive' ? (t.riskNote.isNotEmpty ? t.riskNote : t.description) : t.description, style: const TextStyle(fontSize: 12)),
               onChanged: (v) => setS(() {
                 if (v == true) {
                   enabled.add(t.name);
@@ -257,7 +257,7 @@ extension on _AssistantPageState {
                   decoration: BoxDecoration(color: PTColors.danger.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                   child: Text(
                     '工具目录读不出来：$toolsError\n此时不能改「启用全部工具」——关掉它会把清单存成空，而空清单在服务器上等于「全部允许」。',
-                    style: const TextStyle(fontSize: 11, height: 1.4, color: PTColors.danger),
+                    style: const TextStyle(fontSize: 12, height: 1.4, color: PTColors.danger),
                   ),
                 ),
               SwitchListTile(
@@ -271,10 +271,10 @@ extension on _AssistantPageState {
                         })
                     : null,
                 title: const Text('启用全部工具', style: TextStyle(fontSize: 14)),
-                subtitle: const Text('关闭后可按风险勾选，新增工具不自动可用', style: TextStyle(fontSize: 11)),
+                subtitle: const Text('关闭后可按风险勾选，新增工具不自动可用', style: TextStyle(fontSize: 12)),
               ),
               if (!allowAll) ...[
-                group('⚠️ 危险操作（执行前仍需二次确认）', tools.where((t) => t.risk == 'destructive').toList()),
+                group('危险操作（执行前仍需二次确认）', tools.where((t) => t.risk == 'destructive').toList()),
                 group('写入', tools.where((t) => t.risk == 'write').toList()),
                 group('只读', tools.where((t) => t.risk == 'read').toList()),
               ],
@@ -307,7 +307,7 @@ extension on _AssistantPageState {
       child: Column(children: [
         Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10)),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ]),
     );
     return Wrap(spacing: 6, runSpacing: 6, children: [

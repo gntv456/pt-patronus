@@ -45,22 +45,18 @@ const connectedCount = computed(() => Object.values(connectionState.value).filte
 const defaultDownloader = computed(() => list.value.find((dl) => dl.is_default))
 const typeCount = computed(() => new Set(list.value.map((dl) => dl.type)).size)
 
-const DL_META: Record<string, { glyph: string; from: string; to: string; label: string }> = {
-  qb: { glyph: 'qbittorrent', from: '#72B4F5', to: '#356EBF', label: 'qBittorrent' },
-  tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' },
-  ut: { glyph: 'utorrent', from: '#5BB04C', to: '#3A7A2E', label: 'uTorrent' },
-  dl: { glyph: 'deluge', from: '#4FB6E8', to: '#2A7AB3', label: 'Deluge' },
-  ar: { glyph: 'aria2', from: '#F0A030', to: '#C07010', label: 'Aria2' },
-  rt: { glyph: 'rutorrent', from: '#2E8B57', to: '#1A5C38', label: 'ruTorrent' },
-  fl: { glyph: 'flood', from: '#5B8DEF', to: '#2F5FCC', label: 'Flood' },
+// 单色图标取代 from/to 渐变方块；类型只保留展示名。
+const DL_META: Record<string, { label: string }> = {
+  qb: { label: 'qBittorrent' },
+  tr: { label: 'Transmission' },
+  ut: { label: 'uTorrent' },
+  dl: { label: 'Deluge' },
+  ar: { label: 'Aria2' },
+  rt: { label: 'ruTorrent' },
+  fl: { label: 'Flood' },
 }
 const dlMeta = (type: string) =>
-  DL_META[type] ?? {
-    glyph: 'downloaders',
-    from: '#536976',
-    to: '#2c3e50',
-    label: type || t('downloaders.genericLabel'),
-  }
+  DL_META[type] ?? { label: type || t('downloaders.genericLabel') }
 const typeOptions = Object.entries(DL_META).map(([value, meta]) => ({ value, ...meta }))
 
 const drawerDl = ref<Downloader | null>(null)
@@ -257,22 +253,19 @@ onMounted(load)
       </div>
     </section>
 
-    <div v-loading="loading" class="grid">
-      <div v-if="error" class="empty error-state">
+    <div :aria-busy="loading" class="grid">
+      <template v-if="loading">
+        <PtSkeleton v-for="i in 3" :key="i" height="180px" />
+      </template>
+      <div v-else-if="error" class="empty error-state">
         <CircleClose class="state-icon" />
         <div class="err-text">{{ error }}</div>
         <el-button size="small" @click="load">{{ t('downloaders.retry') }}</el-button>
       </div>
       <template v-else>
-        <article v-for="dl in list" :key="dl.id" class="glass glass-hover card">
+        <article v-for="dl in list" :key="dl.id" class="solid-card card">
           <div class="card-head">
-            <GlassIcon
-              :name="dlMeta(dl.type).glyph"
-              :from="dlMeta(dl.type).from"
-              :to="dlMeta(dl.type).to"
-              :size="42"
-              class="dl-badge"
-            />
+            <span class="dl-badge"><SptIcon name="hard-drive" :size="24" aria-hidden="true" /></span>
             <div class="identity">
               <div class="identity-title">
                 <span class="dname">{{ dl.name }}</span>
@@ -325,7 +318,7 @@ onMounted(load)
 
         <div v-if="!list.length && !loading" class="empty">
           <EmptyState
-            icon="📥"
+            
             :title="t('downloaders.card.emptyTitle')"
             :description="t('downloaders.card.emptyDesc')"
           >
@@ -357,7 +350,7 @@ onMounted(load)
         <el-form-item :label="t('downloaders.form.type')" required>
           <el-radio-group v-model="form.type" class="type-grid">
             <el-radio v-for="option in typeOptions" :key="option.value" :value="option.value" class="type-option">
-              <GlassIcon :name="option.glyph" :from="option.from" :to="option.to" :size="28" />
+              <SptIcon name="hard-drive" :size="18" aria-hidden="true" />
               <span>{{ option.label }}</span>
             </el-radio>
           </el-radio-group>

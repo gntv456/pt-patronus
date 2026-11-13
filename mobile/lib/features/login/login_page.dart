@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
             padding: const EdgeInsets.all(24),
             child: PTEntrance(
               child: GlassCard(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(20),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
                 child: Column(
@@ -106,8 +106,8 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
                         child: Text(
                           _err!,
                           style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 13,
+                            color: PTColors.danger,
+                            fontSize: 14,
                           ),
                         ),
                       ),
@@ -124,7 +124,7 @@ class _LoginPageState extends State<LoginPage> with LoginOpsMixin {
                         label: Text(
                           '后端：${ApiClient().baseUrl}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: context.dimText,
                           ),
                           overflow: TextOverflow.ellipsis,

@@ -76,7 +76,8 @@ const emit = defineEmits<{
       </div>
     </div>
 
-    <div v-else v-loading="loading" class="sf-push-body">
+    <div v-else v-loading="loading" :aria-busy="loading" class="sf-push-body">
+      <PtSkeleton v-if="loading" height="120px" />
       <div class="sf-push-media">
         <div v-if="posterUrl" class="sf-push-poster">
           <MediaPoster :url="posterUrl" kind="movie" />
@@ -124,7 +125,7 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <button type="button" class="sf-adv-toggle" @click="showAdvanced = !showAdvanced">
+      <button type="button" class="sf-adv-toggle" :aria-expanded="showAdvanced" @click="showAdvanced = !showAdvanced">
         {{ showAdvanced ? t('spd.hideAdv') : t('spd.showAdv') }}
       </button>
       <div v-if="showAdvanced" class="sf-push-advanced">
@@ -147,7 +148,7 @@ const emit = defineEmits<{
           :loading="loading"
           @click="emit('confirm')"
         >
-          ⬇ {{ t('spd.startDownload') }}
+          <SptIcon name="download" :size="16" aria-hidden="true" /> {{ t('spd.startDownload') }}
         </el-button>
       </div>
     </div>

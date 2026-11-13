@@ -85,12 +85,12 @@ class _PeersSheetState extends State<_PeersSheet> {
                       title: Text(p.ip, style: const TextStyle(fontSize: 13)),
                       subtitle: Text(
                         '${p.client.isEmpty ? '-' : p.client} · ${(p.progress * 100).toStringAsFixed(0)}% · ↓${_fmtSpeed(p.dlRate)} ↑${_fmtSpeed(p.upRate)}',
-                        style: const TextStyle(fontSize: 11),
+                        style: const TextStyle(fontSize: 12),
                       ),
                       trailing: Text(
                         p.flags,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: context.dimText,
                         ),
                       ),

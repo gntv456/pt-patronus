@@ -1,0 +1,300 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * modern.css —— 现代工具型外观（默认）。
+ * 策略：保留 glass.css 的类名与旧变量，通过「别名映射 + 覆盖」一次换肤，
+ * 47 个页面 template 无需改动；legacy 液态玻璃仅在 body.classic-ui 下保留。
+ * 加载顺序：tokens.css -> glass.css -> modern.css（见 main.ts）。 */
+
+/* ── 1. 旧变量别名映射（!important 用于压过 body[data-theme-accent] 等更高优先级规则） ── */
+:root {
+  --pt-primary: var(--color-primary) !important;
+  --pt-primary-2: var(--color-primary-hover) !important;
+  --pt-primary-dark: var(--color-primary-hover) !important;
+  --pt-success: var(--color-success) !important;
+  --pt-danger: var(--color-danger) !important;
+  --pt-warn: var(--color-warning) !important;
+  --grad-primary: var(--color-primary) !important;
+  --grad-danger: var(--color-danger) !important;
+  --grad-success: var(--color-success) !important;
+  --pt-primary-bg: var(--color-primary-soft) !important;
+  --pt-primary-2-bg: var(--color-primary-soft) !important;
+  --pt-success-bg: var(--color-success-soft) !important;
+  --pt-danger-bg: var(--color-danger-soft) !important;
+  --pt-warn-bg: var(--color-warning-soft) !important;
+  --glass-bg: var(--color-surface) !important;
+  --glass-bg-strong: var(--color-surface) !important;
+  --glass-border: var(--color-border) !important;
+  --glass-shadow: var(--shadow-card) !important;
+  --glass-hover-shadow: var(--shadow-card) !important;
+  --surface-1: var(--color-surface) !important;
+  --surface-2: var(--color-surface-2) !important;
+  --surface-border: var(--color-border) !important;
+  --surface-border-strong: var(--color-border-strong) !important;
+  --surface-shadow: var(--shadow-card) !important;
+  --surface-shadow-hover: var(--shadow-card) !important;
+  --surface-hover: var(--color-primary-soft) !important;
+  --surface-muted: var(--color-surface-2) !important;
+  --divider: var(--color-border) !important;
+  --text-strong: var(--color-text) !important;
+  --text-muted: var(--color-text-secondary) !important;
+  --text-disabled: var(--color-text-muted) !important;
+  --app-bg: var(--color-bg) !important;
+  --accent: var(--color-primary) !important;
+  --blur: 0px !important;
+  --radius-xs: var(--radius-control) !important;
+  --radius-2xs: var(--radius-control) !important;
+  --radius-sm: var(--radius-control) !important;
+  --radius-md: var(--radius-card) !important;
+  --radius-lg: var(--radius-card) !important;
+  --radius-xl: var(--radius-panel) !important;
+  /* 注意：这里必须用字面值。tokens.css 与旧 glass.css 用了同名变量，
+     若写成 var(--fs-xs) 会形成自引用循环（自定义属性计算为 guaranteed-invalid）。 */
+  --fs-2xs: 12px !important;
+  --fs-xs: 12px !important;
+  --fs-sm: 13px !important;
+  --fs-body: 14px !important;
+  --fs-md: 14px !important;
+  --fs-lg: 16px !important;
+  --fs-xl: 20px !important;
+  --fs-title: 24px !important;
+  --fs-hero: 30px !important;
+  --ease-out-spring: var(--ease) !important;
+  --ease-out-smooth: var(--ease) !important;
+  --ease-in-out: var(--ease) !important;
+  --dur-fast: 120ms !important;
+  --dur-base: 180ms !important;
+  --dur-slow: 240ms !important;
+  --shadow-primary: var(--shadow-card) !important;
+  --shadow-primary-lg: var(--shadow-card) !important;
+
+  /* Element Plus 内置组件跟随同一套语义 token：
+     否则 EP 默认 primary 按钮 (#409eff + 白字 ≈3:1) 会绕过上面的对比度修复。
+     var() 在 :root.dark 上解析时会取暗色值，无需重复声明。 */
+  --el-color-primary: var(--color-primary) !important;
+  --el-color-success: var(--color-success) !important;
+  --el-color-warning: var(--color-warning) !important;
+  --el-color-danger: var(--color-danger) !important;
+  --el-color-error: var(--color-danger) !important;
+  --el-text-color-primary: var(--color-text) !important;
+  --el-text-color-regular: var(--color-text-secondary) !important;
+  --el-text-color-secondary: var(--color-text-muted) !important;
+  --el-text-color-placeholder: var(--color-text-muted) !important;
+  --el-border-color: var(--color-border) !important;
+  --el-border-color-light: var(--color-border) !important;
+  --el-border-color-lighter: var(--color-border) !important;
+  --el-fill-color-blank: var(--color-surface) !important;
+  --el-bg-color: var(--color-surface) !important;
+  --el-bg-color-page: var(--color-bg) !important;
+  --el-border-radius-base: var(--radius-control) !important;
+  --el-border-radius-small: var(--radius-control) !important;
+}
+
+:root.dark {
+  --pt-primary: var(--color-primary) !important;
+  --pt-primary-2: var(--color-primary-hover) !important;
+  --pt-success: var(--color-success) !important;
+  --pt-danger: var(--color-danger) !important;
+  --pt-warn: var(--color-warning) !important;
+  --glass-bg: var(--color-surface) !important;
+  --glass-bg-strong: var(--color-surface) !important;
+  --glass-border: var(--color-border) !important;
+  --surface-1: var(--color-surface) !important;
+  --surface-2: var(--color-surface-2) !important;
+  --surface-border: var(--color-border) !important;
+  --text-strong: var(--color-text) !important;
+  --text-muted: var(--color-text-secondary) !important;
+  --text-disabled: var(--color-text-muted) !important;
+}
+
+/* 主题色预设「石墨灰」：在 body 上重定义变量即可覆盖从 :root 继承的值。
+   默认蓝不写属性（上面 :root 已定义）；两套都走同一套语义 token，明暗主题自动适配。 */
+body[data-theme-accent='graphite'] {
+  --color-primary: #475569;
+  --color-primary-hover: #334155;
+  --color-primary-soft: #f1f5f9;
+  --color-focus: #475569;
+  --el-color-primary: #475569;
+  --pt-primary: #475569;
+  --pt-primary-2: #334155;
+  --pt-primary-bg: #f1f5f9;
+}
+:root.dark body[data-theme-accent='graphite'] {
+  --color-primary: #94a3b8;
+  --color-primary-hover: #b6c2d1;
+  --color-primary-soft: rgba(148, 163, 184, 0.16);
+  --color-focus: #94a3b8;
+  --el-color-primary: #94a3b8;
+  --pt-primary: #94a3b8;
+  --pt-primary-2: #b6c2d1;
+  --pt-primary-bg: rgba(148, 163, 184, 0.16);
+}
+
+/* ── 2. 中性实色底，去掉全屏渐变与壁纸 ── */
+body {
+  background: var(--color-bg) !important;
+  background-image: none !important;
+  background-attachment: scroll !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--fs-md) !important;
+  line-height: var(--line-height) !important;
+  color: var(--color-text) !important;
+}
+:root.dark body { background: var(--color-bg) !important; }
+body[data-wallpaper], body[data-wallpaper]::before { background-image: none !important; }
+body[data-wallpaper]::before { display: none !important; }
+
+/* ── 3. 玻璃卡 → 实色卡（类名不变） ── */
+.glass,
+.glass-bar,
+.glass-flat {
+  background: var(--color-surface) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+.glass::before { display: none !important; }
+.solid-card {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+.glass-hover:hover,
+.solid-card-hover:hover,
+.pt-pressable:hover,
+[class*='glass']:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-card) !important;
+  border-color: var(--color-border-strong) !important;
+}
+.glass,
+[class*='glass'] {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease) !important;
+}
+
+/* ── 4. 表单控件与 Element Plus 贴合 ── */
+.el-input__wrapper,
+.el-select .el-input__wrapper,
+:root.dark .el-input__wrapper,
+:root.dark .el-select .el-input__wrapper {
+  background: var(--color-surface) !important;
+  box-shadow: 0 0 0 1px var(--color-border) inset !important;
+}
+:focus-visible {
+  outline: 2px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}
+html { scroll-padding-top: var(--header-height); }
+
+/* ── 5. 按钮 / 标签：实色、无渐变、无光晕、方一点 ── */
+.pt-btn--primary {
+  background: var(--color-primary) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-control) !important;
+}
+.pt-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover) !important;
+  box-shadow: none !important;
+}
+.pt-btn--ghost { background: var(--color-surface-2) !important; color: var(--color-primary) !important; }
+.pt-btn--ghost:hover:not(:disabled) { background: var(--color-primary-soft) !important; }
+.pt-btn--danger { background: var(--color-danger) !important; }
+.pt-btn--success { background: var(--color-success) !important; }
+/* 实色按钮/徽章统一前景色：暗色主题下亮蓝/亮绿/亮红底必须配深字，
+   否则白字只有 3.2:1（不达 WCAG AA）。 */
+.pt-btn--primary,
+.pt-btn--success,
+.pt-btn--danger,
+.pt-badge--primary,
+.pt-badge--success,
+.pt-badge--danger,
+.pt-badge--warn,
+.el-button--primary,
+.el-button--success,
+.el-button--danger {
+  color: var(--color-on-accent) !important;
+}
+.pt-btn:active { transform: none !important; }
+.pt-btn { border-radius: var(--radius-control) !important; }
+.pt-chip,
+.pt-badge { border-radius: var(--radius-control) !important; }
+.pt-chip--success { color: var(--pt-success-fg) !important; }
+.pt-chip--danger { color: var(--pt-danger-fg) !important; }
+.pt-chip--warn { color: var(--pt-warn-fg) !important; }
+.el-button:active:not(.is-disabled) { transform: none !important; }
+.el-button,
+.el-switch__core,
+.el-tabs__item,
+.el-tag,
+.el-input__wrapper {
+  transition-duration: var(--dur-fast) !important;
+}
+.el-tabs__active-bar,
+.el-switch__action,
+.el-checkbox__input.is-checked .el-checkbox__inner::after {
+  transition-duration: var(--dur-fast) !important;
+  transition-timing-function: var(--ease) !important;
+}
+
+/* ── 6. 装饰动效清零（保留加载指示器） ── */
+.pt-ripple::before,
+.pt-link-underline::after { display: none !important; }
+.pt-stagger > *,
+.pt-fade-in,
+.pt-fade-in-up,
+.pt-scale-in,
+.pt-num-updated,
+.pt-pulse {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+.pt-pressable { transition: none !important; }
+.pt-pressable:active { transform: none !important; }
+
+/* ── 7. 密度与可读性基线 ── */
+.metric-value { font-size: var(--fs-2xl) !important; letter-spacing: 0 !important; }
+:where(.head, .page-head, .header) { gap: var(--space-2); }
+:where(.title, .page-title) { font-size: var(--fs-xl) !important; }
+:where(.sub, .subtitle, .page-subtitle) { font-size: var(--fs-sm) !important; }
+
+/* 说明：10/11px 等过小字号由各页面显式改为 >=12px，并由 scripts/check-ui-a11y.mjs 棘轮门禁守住；
+   此处不再用 [class*='-xs'] 这类宽泛选择器，避免误伤带 xs 类名但本应更大的文字。 */
+
+/* ── 8. 经典外观逃生开关（过渡期保留 1–2 个版本） ── */
+body.classic-ui { background: linear-gradient(135deg, #e6f0ff, #f0e6ff) !important; }
+body.classic-ui .glass,
+body.classic-ui .glass-bar {
+  background: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-radius: 20px !important;
+}
+body.classic-ui .glass::before { display: block !important; }
+body.classic-ui .pt-btn--primary { background: linear-gradient(135deg, #6c5ce7, #4285f4) !important; }
+
+/* 撤销按钮（useFeedback.undo 注入的 VNode） */
+.pt-undo-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: 600 var(--fs-xs) var(--font-sans);
+  cursor: pointer;
+}
+.pt-undo-btn:hover { background: var(--color-primary-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

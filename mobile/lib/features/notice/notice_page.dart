@@ -72,10 +72,10 @@ class _NoticePageState extends State<NoticePage> with NoticePageOpsMixin {
   }
 
   Color _levelColor(NoticeLevel l) => switch (l) {
-    NoticeLevel.success => const Color(0xFF22C55E),
-    NoticeLevel.warning => const Color(0xFFF39C12),
-    NoticeLevel.danger => const Color(0xFFEF4444),
-    NoticeLevel.info => const Color(0xFF3B82F6),
+    NoticeLevel.success => PTColors.success,
+    NoticeLevel.warning => PTColors.warn,
+    NoticeLevel.danger => PTColors.danger,
+    NoticeLevel.info => PTColors.primary,
   };
 
   Future<void> _openNotice(Notice n) async {
@@ -130,7 +130,7 @@ class _NoticePageState extends State<NoticePage> with NoticePageOpsMixin {
               : PreferredSize(
                   preferredSize: const Size.fromHeight(34),
                   child: Material(
-                    color: const Color(0xFFF39C12).withValues(alpha: 0.12),
+                    color: PTColors.warn.withValues(alpha: 0.12),
                     child: Center(
                       child: Text(
                         _windowNote,
@@ -243,7 +243,7 @@ class _NoticePageState extends State<NoticePage> with NoticePageOpsMixin {
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: c.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(PTRadius.md),
                                 ),
                                 child: Icon(
                                   _levelIcon(n.level),
@@ -270,12 +270,12 @@ class _NoticePageState extends State<NoticePage> with NoticePageOpsMixin {
                                             decoration: BoxDecoration(
                                               color: c.withValues(alpha: 0.12),
                                               borderRadius:
-                                                  BorderRadius.circular(999),
+                                                  BorderRadius.circular(PTRadius.xs),
                                             ),
                                             child: Text(
                                               noticeSourceLabel[n.source]!,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 12,
                                                 color: c,
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -295,7 +295,7 @@ class _NoticePageState extends State<NoticePage> with NoticePageOpsMixin {
                                         Text(
                                           _relTime(n.createdAt),
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: 12,
                                             color: context.dimText,
                                           ),
                                         ),

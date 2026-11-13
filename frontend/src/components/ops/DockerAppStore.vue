@@ -128,10 +128,10 @@ const resultCount = computed(() =>
         <!-- 模式切换 -->
         <div class="store-mode-switch">
           <button class="mode-tab" :class="{ active: storeMode === 'single' }" @click="setStoreMode('single')">
-            📦 {{ t('das.modeSingle') }}
+            <SptIcon name="package" :size="16" aria-hidden="true" /> {{ t('das.modeSingle') }}
           </button>
           <button class="mode-tab" :class="{ active: storeMode === 'compose' }" @click="setStoreMode('compose')">
-            🗂️ {{ t('das.modeCompose') }}
+            <SptIcon name="layers" :size="16" aria-hidden="true" /> {{ t('das.modeCompose') }}
           </button>
         </div>
 
@@ -144,7 +144,7 @@ const resultCount = computed(() =>
             :class="{ active: activeCategory === cat.key }"
             @click="activeCategory = cat.key"
           >
-            <span class="cat-icon">{{ cat.icon }}</span>
+            <SptIcon class="cat-icon" :name="cat.icon" :size="18" aria-hidden="true" />
             <span class="cat-name">{{ cat.key }}</span>
             <span class="cat-count">{{ countForCategory(cat.key) }}</span>
           </button>
@@ -159,7 +159,7 @@ const resultCount = computed(() =>
             :class="{ active: activeComposeCategory === cat.key }"
             @click="activeComposeCategory = cat.key"
           >
-            <span class="cat-icon">{{ cat.icon }}</span>
+            <SptIcon class="cat-icon" :name="cat.icon" :size="18" aria-hidden="true" />
             <span class="cat-name">{{ cat.key }}</span>
             <span class="cat-count">{{ countForComposeCategory(cat.key) }}</span>
           </button>
@@ -193,7 +193,7 @@ const resultCount = computed(() =>
           <div v-for="tpl in filteredTemplates" :key="tpl.id" class="store-app-card">
             <div class="app-card-top">
               <div class="app-icon" :style="{ background: tpl.color + '22', color: tpl.color }">
-                <span>{{ tpl.icon }}</span>
+                <SptIcon :name="tpl.icon" :size="18" aria-hidden="true" />
               </div>
               <div class="app-info">
                 <h3 class="app-name">{{ tpl.name }}</h3>
@@ -216,7 +216,7 @@ const resultCount = computed(() =>
           <div v-for="tpl in filteredCompose" :key="tpl.id" class="store-app-card store-app-card--compose">
             <div class="app-card-top">
               <div class="app-icon" :style="{ background: tpl.color + '22', color: tpl.color }">
-                <span>{{ tpl.icon }}</span>
+                <SptIcon :name="tpl.icon" :size="18" aria-hidden="true" />
               </div>
               <div class="app-info">
                 <h3 class="app-name">{{ tpl.name }}</h3>
@@ -237,7 +237,7 @@ const resultCount = computed(() =>
 
         <!-- 空状态 -->
         <div v-if="!resultCount" class="store-empty">
-          <div class="store-empty-icon">🔍</div>
+          <div class="store-empty-icon"><SptIcon name="search" :size="28" aria-hidden="true" /></div>
           <p>{{ t('das.emptyTitle') }}</p>
           <span>{{ t('das.emptyHint') }}</span>
         </div>

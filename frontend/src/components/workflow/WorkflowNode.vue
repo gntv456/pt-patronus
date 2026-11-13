@@ -26,17 +26,19 @@ const props = defineProps<{
 }>()
 
 // 类别配色
+// 类别配色改用语义 token：明暗主题自动切换、全部达到对比度要求，
+// 且不再把品牌渐变紫/橙绿硬编码进节点样式。
 const catColor: Record<string, string> = {
-  '\u8d44\u6e90': '#4285f4',
-  '\u8fc7\u6ee4': '#f39c12',
-  '\u4e0b\u8f7d': '#2ecc71',
-  '\u901a\u77e5': '#e100ff',
-  '\u6570\u636e': '#6c5ce7',
-  '\u7ad9\u70b9': '#00b894',
-  '\u903b\u8f91': '#e74c3c',
-  '\u6d41\u7a0b': '#0f9b0f',
-  '\u5a92\u4f53': '#e84393',
-  '\u6587\u4ef6': '#0984e3',
+  '\u8d44\u6e90': 'var(--chart-1)',
+  '\u8fc7\u6ee4': 'var(--pt-warn-fg)',
+  '\u4e0b\u8f7d': 'var(--pt-success-fg)',
+  '\u901a\u77e5': 'var(--chart-4)',
+  '\u6570\u636e': 'var(--chart-2)',
+  '\u7ad9\u70b9': 'var(--pt-info-fg)',
+  '\u903b\u8f91': 'var(--pt-danger-fg)',
+  '\u6d41\u7a0b': 'var(--chart-3)',
+  '\u5a92\u4f53': 'var(--chart-4)',
+  '\u6587\u4ef6': 'var(--pt-info-fg)',
 }
 const color = computed(() => (props.data.info && catColor[props.data.info.category]) || 'var(--pt-primary)')
 

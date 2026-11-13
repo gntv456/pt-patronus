@@ -125,7 +125,7 @@ const emit = defineEmits<{
   font-size: var(--fs-sm);
   color: var(--text-muted);
   white-space: nowrap;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-fast) var(--ease-out-smooth), transform var(--dur-fast) var(--ease-out-smooth), opacity var(--dur-fast) var(--ease-out-smooth);
   flex-shrink: 0;
 }
 .sc-tab:hover {

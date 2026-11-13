@@ -162,7 +162,7 @@ function fmtTime(s: string | null): string {
   color: var(--text-muted);
 }
 .am-dot.on {
-  color: #11998e;
+  color: var(--pt-success-fg);
 }
 .am-latest {
   font-size: var(--fs-xs);

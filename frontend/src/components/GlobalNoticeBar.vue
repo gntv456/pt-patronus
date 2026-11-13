@@ -11,8 +11,10 @@ import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { useWs } from '@/composables/useWs'
 import SptIcon from '@/components/SptIcon.vue'
+import { useFeedback } from '@/composables/useFeedback'
 
 const { t } = useI18n()
+const feedback = useFeedback()
 const { hrAlerts, cookieAlerts } = useWs()
 
 const expanded = ref(false)
@@ -54,7 +56,11 @@ watch(
 const visible = computed(() => notices.value.length > 0 && dismissedCount.value === 0)
 
 function dismiss() {
+  const prev = dismissedCount.value
   dismissedCount.value = notices.value.length
+  feedback.undo(t('gnb.dismiss'), () => {
+    dismissedCount.value = prev
+  })
 }
 </script>
 
@@ -62,22 +68,28 @@ function dismiss() {
   <Transition name="gnb-slide">
     <div v-if="visible" class="gnb" role="status">
       <SptIcon name="alert-triangle" :size="18" class="gnb-icon" />
-      <div v-a11y-button class="gnb-body" @click="notices.length > 1 && (expanded = !expanded)">
-        <div class="gnb-summary">
+      <button
+        type="button"
+        class="gnb-body"
+        :aria-expanded="notices.length > 1 ? expanded : undefined"
+        :disabled="notices.length <= 1"
+        @click="expanded = !expanded"
+      >
+        <span class="gnb-summary">
           <span class="gnb-tag">{{ t('gnb.tag') }}</span>
           <span class="gnb-count">{{ notices.length }}</span>
           <span class="gnb-text">
             {{ notices[0].text
             }}<template v-if="notices.length > 1"> {{ t('gnb.moreN', { n: notices.length }) }}</template>
           </span>
-        </div>
-        <div v-if="expanded" class="gnb-detail">
-          <div v-for="n in notices" :key="n.key" class="gnb-item">
+        </span>
+        <span v-if="expanded" class="gnb-detail">
+          <span v-for="n in notices" :key="n.key" class="gnb-item">
             <SptIcon :name="n.icon" :size="14" />
             <span>{{ n.text }}</span>
-          </div>
-        </div>
-      </div>
+          </span>
+        </span>
+      </button>
       <button
         v-if="notices.length > 1"
         class="gnb-btn"
@@ -99,21 +111,30 @@ function dismiss() {
   align-items: flex-start;
   gap: var(--sp-2);
   padding: 9px 14px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #e74c3c, #f39c12);
-  color: #fff;
-  box-shadow: 0 4px 16px var(--pt-danger-bg);
+  border-radius: var(--radius-card);
+  /* 浅底深字：不用红橙渐变（白字在橙端仅 2.19:1），语义色文字在明暗主题都 >= 4.5:1 */
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  color: var(--pt-danger-fg);
   font-size: var(--fs-body);
   line-height: 1.5;
 }
 .gnb-icon {
   flex: none;
   margin-top: 1px;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
 }
 .gnb-body {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gnb-body:disabled {
   cursor: default;
 }
 .gnb-summary {
@@ -126,10 +147,11 @@ function dismiss() {
   flex: none;
   padding: 1px 8px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.25);
-  font-size: var(--fs-2xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  color: var(--pt-danger-fg);
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.02em;
 }
 .gnb-count {
   flex: none;
@@ -137,10 +159,12 @@ function dismiss() {
   height: 18px;
   padding: 0 5px;
   border-radius: var(--radius-pill);
-  background: #fff;
-  color: var(--pt-danger);
-  font-size: var(--fs-2xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  color: var(--pt-danger-fg);
+  font-size: var(--fs-xs);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,48 +180,51 @@ function dismiss() {
   flex-direction: column;
   gap: var(--sp-1);
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-top: 1px solid var(--color-border);
 }
 .gnb-item {
   display: flex;
   align-items: center;
   gap: var(--sp-1);
   font-size: var(--fs-xs);
-  opacity: 0.95;
 }
 .gnb-btn {
   flex: none;
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #fff;
-  padding: 3px;
-  border-radius: var(--radius-xs);
+  color: var(--pt-danger-fg);
+  padding: 4px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.85;
-  transition:
-    opacity var(--dur-base) var(--ease-out-smooth),
-    background var(--dur-base);
+  transition: background var(--dur-fast) var(--ease);
 }
 .gnb-btn:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--color-surface);
 }
 .gnb-chevron {
-  transition: transform var(--dur-base) var(--ease-out-smooth);
+  transition: transform var(--dur-base) var(--ease);
 }
 .gnb-chevron--up {
   transform: rotate(180deg);
 }
 .gnb-slide-enter-active,
 .gnb-slide-leave-active {
-  transition: all var(--dur-slow) var(--ease-out-smooth);
+  transition: opacity var(--dur-fast) var(--ease);
 }
 .gnb-slide-enter-from,
 .gnb-slide-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+}
+
+@media (max-width: 720px) {
+  .gnb-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 </style>

@@ -303,14 +303,14 @@ watch(
               v-a11y-button
               v-for="e in entries"
               :key="e.path"
-              class="grid-card glass glass-hover"
+              class="grid-card solid-card"
               :class="{ sel: !curReadOnly && !e.is_dir && isSelected(e) }"
               @click="e.is_dir ? enter(e) : !curReadOnly && toggleSelect(e)"
             >
               <div v-if="!curReadOnly && !e.is_dir" class="grid-check" :class="{ on: isSelected(e) }">
-                {{ isSelected(e) ? '✓' : '' }}
+                <SptIcon v-if="isSelected(e)" name="check" :size="14" aria-hidden="true" />
               </div>
-              <div class="grid-icon">{{ e.is_dir ? '📁' : '🎬' }}</div>
+              <div class="grid-icon"><SptIcon :name="e.is_dir ? 'folder' : 'film'" :size="34" aria-hidden="true" /></div>
               <div class="grid-name" :title="e.name">{{ e.name }}</div>
               <div class="grid-meta">{{ e.is_dir ? t('filemanager.folder') : fmtBytes(e.size) }}</div>
               <el-button
@@ -330,7 +330,7 @@ watch(
 
       <div v-else class="fm-empty">
         <EmptyState
-          icon="📂"
+          
           :title="list.length ? t('filemanager.selectStorageTitle') : t('filemanager.noStorageTitle2')"
           :description="list.length ? t('filemanager.selectStorageDesc') : t('filemanager.noStorageDesc2')"
         />

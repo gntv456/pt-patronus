@@ -63,10 +63,10 @@ const {
       </div>
     </header>
 
-    <el-tabs v-model="activeTab" class="glass tabs">
+    <el-tabs v-model="activeTab" class="solid-card tabs">
       <!-- Tab1 内置规则 -->
       <el-tab-pane :label="t('filterrules.tab.builtin')" name="builtin">
-        <el-table :data="builtins" v-loading="loadingBuiltins" size="small" :empty-text="t('filterrules.noBuiltins')">
+        <el-table :data="builtins" v-loading="loadingBuiltins" size="small" max-height="480" :empty-text="t('filterrules.noBuiltins')">
           <el-table-column prop="id" label="ID" width="120" />
           <el-table-column prop="name" :label="t('rss.f.name')" min-width="140" show-overflow-tooltip />
           <el-table-column :label="t('filterrules.col.includeFull')" min-width="220">
@@ -88,7 +88,6 @@ const {
         </el-table>
         <EmptyState
           v-if="!loadingBuiltins && !builtins.length"
-          icon="🧩"
           :title="t('filterrules.noBuiltins')"
           :description="t('filterrules.noBuiltinsDesc')"
         />
@@ -101,7 +100,7 @@ const {
           <el-button size="small" type="primary" @click="openCreateCustom">{{ t('filterrules.newRule') }}</el-button>
           <el-button size="small" @click="loadCustom" :loading="loadingCustom">{{ t('common.refresh') }}</el-button>
         </div>
-        <el-table :data="customs" v-loading="loadingCustom" size="small" :empty-text="t('filterrules.noCustoms')">
+        <el-table :data="customs" v-loading="loadingCustom" size="small" max-height="480" :empty-text="t('filterrules.noCustoms')">
           <el-table-column prop="id" label="ID" width="120" />
           <el-table-column prop="name" :label="t('rss.f.name')" min-width="120" show-overflow-tooltip />
           <el-table-column :label="t('filterrules.col.include')" min-width="180">
@@ -134,7 +133,6 @@ const {
         </el-table>
         <EmptyState
           v-if="!loadingCustom && !customs.length"
-          icon="✨"
           :title="t('filterrules.noCustoms')"
           :description="t('filterrules.noCustomsDesc')"
         />
@@ -147,7 +145,7 @@ const {
           <el-button size="small" type="primary" @click="openCreateGroup">{{ t('filterrules.newGroup') }}</el-button>
           <el-button size="small" @click="loadGroups" :loading="loadingGroups">{{ t('common.refresh') }}</el-button>
         </div>
-        <el-table :data="groups" v-loading="loadingGroups" size="small" :empty-text="t('filterrules.noGroups')">
+        <el-table :data="groups" v-loading="loadingGroups" size="small" max-height="480" :empty-text="t('filterrules.noGroups')">
           <el-table-column prop="name" :label="t('filterrules.col.groupName')" min-width="120" show-overflow-tooltip />
           <el-table-column :label="t('filterrules.col.ruleExpr')" min-width="240">
             <template #default="{ row }"
@@ -178,13 +176,12 @@ const {
         </el-table>
         <EmptyState
           v-if="!loadingGroups && !groups.length"
-          icon="🗂"
           :title="t('filterrules.noGroups')"
           :description="t('filterrules.noGroupsDesc')"
         />
 
         <!-- 规则试算 -->
-        <section class="glass test-panel">
+        <section class="solid-card test-panel">
           <h3 class="blk-title">{{ t('filterrules.testPanel') }}</h3>
           <el-input v-model="testRuleString" :placeholder="t('filterrules.f.exprPlaceholder')" />
           <el-input
@@ -220,7 +217,7 @@ const {
         </section>
 
         <!-- 全局绑定 -->
-        <section class="glass bind-panel">
+        <section class="solid-card bind-panel">
           <h3 class="blk-title">{{ t('filterrules.bindPanel') }}</h3>
           <p class="tip">{{ t('filterrules.bindTip') }}</p>
           <el-form label-width="90px" size="small">
@@ -378,7 +375,7 @@ code.re {
   padding: 4px 8px;
   border-radius: var(--radius-xs);
   background: var(--pt-danger-bg);
-  color: var(--pt-danger, #e74c3c);
+  color: var(--pt-danger-fg);
 }
 .muted {
   color: var(--text-muted);

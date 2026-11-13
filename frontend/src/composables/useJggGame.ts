@@ -94,7 +94,7 @@ export function useJggGame(siteId: Ref<number>) {
         }
         result.value = res
         const win = res.prize && res.prize !== '谢谢参与'
-        if (win) ElMessage.success(`🎉 获得 ${res.prize}`)
+        if (win) ElMessage.success(`获得 ${res.prize}`)
         else ElMessage.info(res.message || t('opusejgggame.k1'))
       } else {
         result.value = res
@@ -128,7 +128,7 @@ export function useJggGame(siteId: Ref<number>) {
         bulk.value = res
         bulkCount.value = count
         const wins = (res.prizes || []).filter((p) => p.is_win).length
-        ElMessage.success(`🎉 ${count}连抽完成，中奖 ${wins}/${count}`)
+        ElMessage.success(`${count} 连抽完成，中奖 ${wins}/${count}`)
       } else {
         ElMessage.warning(res.message || t('opusejgggame.k3'))
       }

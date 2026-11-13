@@ -8,13 +8,14 @@
 /* eslint-disable vue/no-mutating-props */
 // MediaServer 的健康检查 + 添加/编辑服务器两个对话框（从 MediaServer.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'
+import { ref, watch, nextTick } from 'vue'
 
 defineModel<boolean>('showHealth', { default: false })
 defineModel<boolean>('healthSubtitles', { default: false })
 defineModel<boolean>('healthUpgradeable', { default: false })
 defineModel<boolean>('showForm', { default: false })
 
-defineProps<{
+const props = defineProps<{
   healthReport: any
   healthLoading: boolean
   fixingSubtitles: boolean
@@ -22,6 +23,7 @@ defineProps<{
   editing: boolean
   form: Record<string, any>
   loading: boolean
+  formError?: string
 }>()
 
 const emit = defineEmits<{
@@ -35,6 +37,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const errorRef = ref<HTMLElement | null>(null)
+watch(() => props.formError, async (v) => {
+  if (v) { await nextTick(); errorRef.value?.focus() }
+})
 </script>
 
 <template>
@@ -118,8 +124,9 @@ const { t } = useI18n()
       width="560px"
       top="8vh"
     >
+      <div v-if="formError" ref="errorRef" role="alert" tabindex="-1" class="form-error-summary">{{ formError }}</div>
       <el-form :model="form" label-width="120px" label-position="right">
-        <el-form-item :label="t('rss.f.name')"
+        <el-form-item :label="t('rss.f.name')" required
           ><el-input v-model="form.name" :placeholder="t('mediaserver.f.nameHint')"
         /></el-form-item>
         <el-form-item :label="t('mediaserver.col.type')">
@@ -132,10 +139,10 @@ const { t } = useI18n()
             <el-option :label="t('mediaserver.type.zspaceFull')" value="zspace" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="t('mediaserver.f.url')">
+        <el-form-item :label="t('mediaserver.f.url')" required>
           <el-input v-model="form.url" placeholder="http://192.168.1.10:8096" />
         </el-form-item>
-        <el-form-item label="API Key / Token">
+        <el-form-item label="API Key / Token" :required="!editing">
           <el-input
             v-model="form.token"
             type="password"
@@ -172,3 +179,15 @@ const { t } = useI18n()
     </el-dialog>
 
 </template>
+
+<style scoped>
+.form-error-summary {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--pt-danger-fg);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-sm);
+}
+</style>

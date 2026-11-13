@@ -4,7 +4,7 @@
 -->
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { mediaConfigApi, type MediaSourceConfig } from '@/api/media'
@@ -18,6 +18,13 @@ const router = useRouter()
 const config = ref<MediaSourceConfig | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const savingGroup = ref<string | null>(null)
+const domainError = ref('')
+
+const dirtyTmdb = computed(() => !!tmdbKey.value.trim() || tmdbDomain.value.trim() !== (config.value?.tmdb_api_domain || ''))
+const dirtyDouban = computed(() => !!doubanSecret.value.trim() || !!doubanAppKey.value.trim())
+const dirtyBangumi = computed(() => !!bangumiToken.value.trim())
+const dirtyOmdb = computed(() => !!omdbKey.value.trim())
 
 // 编辑态：secret 留空=不修改；域名预填当前值便于原地编辑。
 const tmdbKey = ref('')
@@ -39,28 +46,38 @@ async function load() {
   }
 }
 
-async function save() {
+async function save(group?: 'tmdb' | 'douban' | 'bangumi' | 'omdb') {
+  domainError.value = ''
+  if ((!group || group === 'tmdb') && tmdbDomain.value.trim() && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(tmdbDomain.value.trim())) {
+    domainError.value = t('mediasettings.domainInvalid')
+    return
+  }
+  const payload: Record<string, string> = {}
+  if (!group || group === 'tmdb') {
+    payload.tmdb_api_key = tmdbKey.value.trim()
+    payload.tmdb_api_domain = tmdbDomain.value.trim()
+  }
+  if (!group || group === 'douban') {
+    payload.douban_secret = doubanSecret.value.trim()
+    payload.douban_app_key = doubanAppKey.value.trim()
+  }
+  if (!group || group === 'bangumi') payload.bangumi_token = bangumiToken.value.trim()
+  if (!group || group === 'omdb') payload.omdb_api_key = omdbKey.value.trim()
   saving.value = true
+  savingGroup.value = group ?? 'all'
   try {
-    await mediaConfigApi.set({
-      tmdb_api_key: tmdbKey.value.trim(),
-      tmdb_api_domain: tmdbDomain.value.trim(),
-      douban_secret: doubanSecret.value.trim(),
-      douban_app_key: doubanAppKey.value.trim(),
-      bangumi_token: bangumiToken.value.trim(),
-      omdb_api_key: omdbKey.value.trim(),
-    })
+    await mediaConfigApi.set(payload)
     ElMessage.success(t('mediasettings.savedNow'))
-    tmdbKey.value = ''
-    doubanSecret.value = ''
-    doubanAppKey.value = ''
-    bangumiToken.value = ''
-    omdbKey.value = ''
+    if (!group || group === 'tmdb') tmdbKey.value = ''
+    if (!group || group === 'douban') { doubanSecret.value = ''; doubanAppKey.value = '' }
+    if (!group || group === 'bangumi') bangumiToken.value = ''
+    if (!group || group === 'omdb') omdbKey.value = ''
     await load()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('common.saveFailed'))
   } finally {
     saving.value = false
+    savingGroup.value = null
   }
 }
 
@@ -82,7 +99,8 @@ onMounted(load)
       }}</el-button>
     </div>
 
-    <div v-loading="loading" class="card glass">
+    <el-skeleton v-if="loading" :rows="6" animated />
+    <div v-else class="card solid-card">
       <div class="hint">
         {{ t('mediasettings.hint1') }}<code>api.themoviedb.org</code>{{ t('mediasettings.hint2')
         }}{{ t('mediasettings.hint3') }}
@@ -91,7 +109,11 @@ onMounted(load)
       <!-- TMDB -->
       <div class="group">
         <div class="group-title">
-          TMDB <span class="muted">{{ t('mediasettings.tmdbDesc') }}</span>
+          <span>TMDB <span class="muted">{{ t('mediasettings.tmdbDesc') }}</span></span>
+          <span class="group-actions">
+            <span v-if="dirtyTmdb" class="pt-chip pt-chip--warn">{{ t('mediasettings.unsaved') }}</span>
+            <el-button size="small" type="primary" :loading="savingGroup === 'tmdb'" :disabled="!dirtyTmdb" @click="save('tmdb')">{{ t('common.save') }}</el-button>
+          </span>
         </div>
         <div class="field">
           <label>API Key</label>
@@ -109,15 +131,20 @@ onMounted(load)
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.tmdbDomain') }}</label>
-          <el-input v-model="tmdbDomain" clearable placeholder="api.themoviedb.org" />
+          <el-input v-model="tmdbDomain" clearable placeholder="api.themoviedb.org" :aria-invalid="!!domainError" aria-describedby="tmdb-domain-error" @input="domainError = ''" />
           <span class="muted">{{ t('mediasettings.f.tmdbDomainHint') }}</span>
+          <div v-if="domainError" id="tmdb-domain-error" role="alert" class="field-error">{{ domainError }}</div>
         </div>
       </div>
 
       <!-- 豆瓣 -->
       <div class="group">
         <div class="group-title">
-          {{ t('mediasettings.douban') }} <span class="muted">{{ t('mediasettings.doubanDesc') }}</span>
+          <span>{{ t('mediasettings.douban') }} <span class="muted">{{ t('mediasettings.doubanDesc') }}</span></span>
+          <span class="group-actions">
+            <span v-if="dirtyDouban" class="pt-chip pt-chip--warn">{{ t('mediasettings.unsaved') }}</span>
+            <el-button size="small" type="primary" :loading="savingGroup === 'douban'" :disabled="!dirtyDouban" @click="save('douban')">{{ t('common.save') }}</el-button>
+          </span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.doubanSecret') }}</label>
@@ -152,7 +179,11 @@ onMounted(load)
       <!-- Bangumi -->
       <div class="group">
         <div class="group-title">
-          Bangumi <span class="muted">{{ t('mediasettings.bangumiDesc') }}</span>
+          <span>Bangumi <span class="muted">{{ t('mediasettings.bangumiDesc') }}</span></span>
+          <span class="group-actions">
+            <span v-if="dirtyBangumi" class="pt-chip pt-chip--warn">{{ t('mediasettings.unsaved') }}</span>
+            <el-button size="small" type="primary" :loading="savingGroup === 'bangumi'" :disabled="!dirtyBangumi" @click="save('bangumi')">{{ t('common.save') }}</el-button>
+          </span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.bangumiToken') }}</label>
@@ -173,7 +204,11 @@ onMounted(load)
       <!-- IMDb（OMDb）：评分聚合的第四个源，此前界面上没有任何入口 -->
       <div class="group">
         <div class="group-title">
-          IMDb <span class="muted">{{ t('mediasettings.omdbDesc') }}</span>
+          <span>IMDb <span class="muted">{{ t('mediasettings.omdbDesc') }}</span></span>
+          <span class="group-actions">
+            <span v-if="dirtyOmdb" class="pt-chip pt-chip--warn">{{ t('mediasettings.unsaved') }}</span>
+            <el-button size="small" type="primary" :loading="savingGroup === 'omdb'" :disabled="!dirtyOmdb" @click="save('omdb')">{{ t('common.save') }}</el-button>
+          </span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.omdbKey') }}</label>
@@ -191,11 +226,7 @@ onMounted(load)
         </div>
       </div>
 
-      <div class="actions">
-        <el-button type="primary" size="large" :loading="saving" @click="save">{{
-          t('mediasettings.saveNow')
-        }}</el-button>
-      </div>
+
     </div>
   </div>
 </template>
@@ -217,7 +248,7 @@ onMounted(load)
   font-weight: 700;
 }
 .card {
-  padding: 20px;
+  padding: var(--card-padding);
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
@@ -242,11 +273,18 @@ onMounted(load)
   gap: var(--sp-3);
 }
 .group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
   font-weight: 700;
   font-size: var(--fs-lg);
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
+.group-actions { display: inline-flex; align-items: center; gap: var(--space-2); }
+.field-error { grid-column: 2 / -1; color: var(--pt-danger-fg); font-size: var(--fs-xs); }
 .muted {
   color: var(--text-muted);
   font-weight: 400;

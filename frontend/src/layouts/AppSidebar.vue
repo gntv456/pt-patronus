@@ -57,7 +57,13 @@ function noticeBadge(name: string): number {
       <div v-if="!sidebarCollapsed && favoriteItems.length" class="nav-group fav-group">
         <div class="nav-group-title-row">
           <span class="nav-group-title">{{ t('nav.favorites') }}</span>
-          <button type="button" class="group-action" :title="t('nav.clearFavorites')" @click="emit('clearFavorites')">
+          <button
+            type="button"
+            class="group-action"
+            :title="t('nav.clearFavorites')"
+            :aria-label="t('nav.clearFavorites')"
+            @click="emit('clearFavorites')"
+          >
             {{ t('common.clear') }}
           </button>
         </div>
@@ -69,12 +75,13 @@ function noticeBadge(name: string): number {
           :title="t('nav.desc.' + item.name, navDesc[item.name] || item.label)"
           @click="emit('closeMobileNav')"
         >
-          <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
+          <GlassIcon :name="item.icon" :size="30" class="nav-icon" aria-hidden="true" />
           <span class="nav-label">{{ t('nav.items.' + item.name, item.label) }}</span>
           <button
             type="button"
             class="fav-btn on"
             :title="t('nav.unfavorite')"
+            :aria-label="t('nav.unfavorite')"
             @click="emit('onToggleFav', item.name, $event)"
           >
             <el-icon><StarFilled /></el-icon>
@@ -107,27 +114,21 @@ function noticeBadge(name: string): number {
             :title="t('nav.desc.' + item.name, navDesc[item.name] || item.label)"
             @click="emit('closeMobileNav')"
           >
-            <GlassIcon
-              :name="item.icon"
-              :from="item.from"
-              :to="item.to"
-              :size="30"
-              class="nav-icon"
-              :class="{ 'nav-icon--ring': noticeBadge(item.name) > 0 }"
-            />
+            <GlassIcon :name="item.icon" :size="30" class="nav-icon" aria-hidden="true" />
             <span
               v-if="noticeBadge(item.name) > 0"
               class="nav-badge"
               :class="{ 'nav-badge--urgent': noticeUnread && noticeUrgent }"
               >{{ noticeBadge(item.name) > 999 ? '999+' : noticeBadge(item.name) }}</span
             >
-            <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+            <span v-if="!sidebarCollapsed" class="nav-label">{{ t('nav.items.' + item.name, item.label) }}</span>
             <button
               v-if="!sidebarCollapsed"
               type="button"
               class="fav-btn"
               :class="{ on: isFav(item.name) }"
               :title="isFav(item.name) ? t('nav.unfavorite') : t('nav.favorite')"
+              :aria-label="isFav(item.name) ? t('nav.unfavorite') : t('nav.favorite')"
               @click="emit('onToggleFav', item.name, $event)"
             >
               <el-icon>

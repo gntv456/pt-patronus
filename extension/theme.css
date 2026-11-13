@@ -31,7 +31,7 @@
   /* 文字 */
   --ink: #e6e9ef;
   --ink-2: #9aa4b2;
-  --ink-3: #636d7c;
+  --ink-3: #8b95a5; /* 对 #161a21 约 5.8:1，替代旧的 3.33:1 */
 
   /* 几何 */
   --r-lg: 10px;
@@ -42,6 +42,45 @@
   --t-fast: 0.12s;
 
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+
+  /* —— 三端统一语义 token 别名（旧名继续可用，组件可逐步迁移） —— */
+  --color-bg: var(--bg);
+  --color-surface: var(--bg-raised);
+  --color-surface-2: var(--bg-overlay);
+  --color-surface-hover: var(--bg-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-muted: var(--ink-3);
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-strong);
+  --color-primary-soft: var(--accent-dim);
+  --color-success: var(--ok);
+  --color-success-soft: var(--ok-dim);
+  --color-warning: var(--warn);
+  --color-warning-soft: var(--warn-dim);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-dim);
+  --color-focus: var(--accent);
+  /* 亮蓝实色底配深墨字才能 >=4.5:1（白字仅 3.2:1）。与前端 tokens.css 暗色主题一致。 */
+  --color-on-accent: #0b1020;
+  --pt-success-fg: var(--ok);
+  --pt-warn-fg: var(--warn);
+  --pt-danger-fg: var(--danger);
+  --pt-info-fg: var(--accent-strong);
+  --chart-1: var(--accent);
+  --chart-2: var(--ok);
+  --chart-3: var(--warn);
+  --chart-4: #a371f7;
+  --radius-control: var(--r-sm);
+  --radius-card: var(--r-md);
+  --radius-panel: var(--r-lg);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --fs-xs: 12px; --fs-sm: 12px; --fs-md: 12.5px; --fs-lg: 14px;
+  --fs-xl: 16px; --fs-2xl: 20px;
+  --table-row-height: 36px;
+  --dur-fast: var(--t-fast);
 }
 
 * { box-sizing: border-box; }
@@ -85,7 +124,7 @@ body {
 
 /* 小节标签 */
 .eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-2);
 }
@@ -119,11 +158,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chip .k { font-size: 10.5px; color: var(--ink-3); }
+.chip .k { font-size: 12px; color: var(--ink-2); }
 
 /* —— 按钮 —— */
 button, .btn {
   font: 500 12px/1 inherit;
+  min-height: 32px;
   padding: 6px 12px;
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
@@ -140,7 +180,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .btn-lime, .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font-weight: 600;
 }
 .btn-lime:hover, .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
@@ -163,8 +203,9 @@ button.subtle {
   background: transparent;
   border-color: transparent;
   color: var(--ink-2);
-  padding: 3px 8px;
-  font-size: 11.5px;
+  padding: 6px 10px;
+  min-height: 24px;
+  font-size: 12px;
 }
 button.subtle:hover { background: var(--bg-hover); color: var(--ink); border-color: var(--border); }
 button.subtle.ok:hover { color: var(--ok); }
@@ -235,10 +276,10 @@ button.subtle.danger:hover { color: var(--danger); }
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
-  animation: shimmer 1.4s infinite;
+  background: var(--bg-hover);
+  animation: skeleton-pulse 1.4s var(--ease) infinite;
 }
-@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes skeleton-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
 
 /* —— 输入框 —— */
 input, select, textarea {
@@ -248,10 +289,9 @@ input, select, textarea {
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
   background: var(--bg);
-  outline: none;
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
-input::placeholder { color: var(--ink-3); }
+input::placeholder { color: var(--ink-2); }
 input:focus, select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-dim);
@@ -294,9 +334,9 @@ select option { background: var(--bg-raised); color: var(--ink); }
 table { width: 100%; border-collapse: collapse; }
 th {
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink-3);
+  color: var(--ink-2);
   padding: 6px 10px;
   position: sticky;
   top: 0;
@@ -313,12 +353,12 @@ td {
 }
 tbody tr { transition: background var(--t-fast) var(--ease); }
 tbody tr:hover { background: var(--bg-hover); }
-td.num, .num { font-family: var(--mono); font-size: 11.5px; }
+td.num, .num { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 /* —— 状态徽标 —— */
 .tag-pill {
   display: inline-block;
-  font: 500 10.5px/1.5 var(--mono);
+  font: 500 12px/1.5 var(--mono);
   padding: 1px 7px;
   border-radius: 4px;
   white-space: nowrap;
@@ -336,7 +376,7 @@ td.num, .num { font-family: var(--mono); font-size: 11.5px; }
   color: var(--warn);
 }
 .pill-aqua { background: var(--accent-dim); color: var(--accent-strong); }
-.pill-dim { background: var(--bg-overlay); color: var(--ink-3); }
+.pill-dim { background: var(--bg-overlay); color: var(--ink-2); }
 
 /* —— 工具栏（页面顶栏）—— */
 .topbar {
@@ -351,17 +391,17 @@ td.num, .num { font-family: var(--mono); font-size: 11.5px; }
   border-bottom: 1px solid var(--border);
 }
 .topbar h1 { margin: 0; font-size: 13px; font-weight: 600; }
-.topbar button { padding: 4px 10px; font-size: 11.5px; }
+.topbar button { padding: 6px 12px; min-height: 32px; font-size: 12px; }
 
 /* —— 提示/错误 —— */
-.hint { color: var(--ink-3); font-size: 11.5px; }
+.hint { color: var(--ink-2); font-size: 12px; }
 .err  { color: var(--danger); }
 .ok   { color: var(--ok); }
 .warn { color: var(--warn); }
 .mono { font-family: var(--mono); }
-.empty { text-align: center; color: var(--ink-3); padding: 28px 0; }
+.empty { text-align: center; color: var(--ink-2); padding: 28px 0; }
 kbd {
-  font: 500 10px var(--mono);
+  font: 500 12px var(--mono);
   color: var(--ink-3);
   border: 1px solid var(--border);
   border-radius: 4px;

@@ -11,6 +11,7 @@ import { contractApi, type ContractRule, type ContractCheckResult } from '@/api/
 import { siteApi } from '@/api/site'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 const { t } = useI18n()
@@ -174,7 +175,7 @@ onMounted(load)
     />
 
     <div v-loading="loading" class="grid">
-      <div v-for="r in displayRules" :key="r.id" class="glass glass-hover card">
+      <div v-for="r in displayRules" :key="r.id" class="solid-card card">
         <div class="card-head">
           <SiteFavicon :name="siteName(r.site_id)" :base-url="siteBaseUrl(r.site_id)" :size="34" />
           <div class="card-title">
@@ -210,7 +211,7 @@ onMounted(load)
             {{ t('contract.sizeShort') }} {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template
               v-if="results[r.id].unsupported"
             >
-              · ⚠ {{ results[r.id].unsupported }}</template
+              · <SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ results[r.id].unsupported }}</template
             >
           </template>
           <!-- 没取到数（未到生效时间 / 站点被删 / 抓取失败）时四个字段都是零值占位，
@@ -225,7 +226,6 @@ onMounted(load)
       </div>
       <EmptyState
         v-if="!displayRules.length && !loading"
-        icon="🔖"
         :title="focusSiteId ? t('contract.emptySiteTitle') : t('contract.emptyTitle')"
         :description="focusSiteId ? t('contract.emptySiteDesc') : t('contract.emptyDesc')"
       >
@@ -353,7 +353,7 @@ onMounted(load)
 .check-result {
   font-size: var(--fs-xs);
   color: var(--text-muted);
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--color-surface-2);
   border-radius: var(--radius-xs);
   padding: 6px 8px;
 }

@@ -64,7 +64,7 @@ onMounted(async () => {
 <template>
   <div class="lpt-daily">
     <div class="hero">
-      <div class="hero-title">🎊 {{ t('dl.title') }}</div>
+      <div class="hero-title"><SptIcon name="calendar" :size="18" aria-hidden="true" /> {{ t('dl.title') }}</div>
       <div class="hero-sub">
         {{ t('dl.sub', { time: stats?.open_time ? t('dl.openAt', { v: stats.open_time }) : t('dl.sameDay') }) }}
       </div>
@@ -76,7 +76,7 @@ onMounted(async () => {
         <div class="section-title">{{ t('dl.todayPrizes') }}</div>
         <div class="prize-grid">
           <div v-for="p in prizes" :key="p.id" class="prize-card">
-            <span class="p-emoji">{{ emoji(p.name) }}</span>
+            <span class="p-emoji" aria-hidden="true">{{ emoji(p.name) }}</span>
             <span class="p-name">{{ p.name }}</span>
           </div>
           <div v-if="!prizes.length" class="text-muted empty-tip">{{ t('dl.noPrizes') }}</div>
@@ -90,20 +90,20 @@ onMounted(async () => {
           <button class="join-circle" :disabled="joining" @click="join">
             <span v-if="joining" class="spinner" />
             <template v-else>
-              <span class="jc-icon">🎁</span>
+              <SptIcon class="jc-icon" name="gift" :size="28" aria-hidden="true" />
               <span class="jc-text">{{ joined && joined.success ? t('dl.joined') : t('dl.joinNow2') }}</span>
             </template>
           </button>
         </div>
         <div class="join-meta">
           <div v-if="stats?.participants !== undefined" class="meta-row">
-            <span>👥</span><span>{{ t('dl.participants', { n: stats.participants }) }}</span>
+            <SptIcon name="users" :size="14" aria-hidden="true" /><span>{{ t('dl.participants', { n: stats.participants }) }}</span>
           </div>
           <div v-if="stats?.start_time" class="meta-row">
-            <span>🕒</span><span>{{ t('dl.joinWindow', { s: stats.start_time, e: stats.end_time }) }}</span>
+            <SptIcon name="clock" :size="14" aria-hidden="true" /><span>{{ t('dl.joinWindow', { s: stats.start_time, e: stats.end_time }) }}</span>
           </div>
           <div v-if="stats?.open_time" class="meta-row">
-            <span>🔔</span><span>{{ t('dl.openTime', { v: stats.open_time }) }}</span>
+            <SptIcon name="bell" :size="14" aria-hidden="true" /><span>{{ t('dl.openTime', { v: stats.open_time }) }}</span>
           </div>
         </div>
       </div>
@@ -111,7 +111,10 @@ onMounted(async () => {
 
     <!-- 参与提示 -->
     <div v-if="joined" class="result" :class="joined.success ? 'win' : 'lose'">
-      <span class="badge">{{ joined.success ? '✓ ' + t('dl.joined') : '✗ ' + t('dl.fail') }}</span>
+      <span class="badge">
+        <SptIcon :name="joined.success ? 'check' : 'x'" :size="16" aria-hidden="true" />
+        {{ joined.success ? t('dl.joined') : t('dl.fail') }}
+      </span>
       <span v-if="joined.message" class="r-msg">{{ joined.message }}</span>
     </div>
 
@@ -138,19 +141,20 @@ onMounted(async () => {
 .hero {
   padding: 16px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #1e3a8a, #3b5bdb);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
   letter-spacing: 2px;
 }
 .hero-sub {
   margin-top: 4px;
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-secondary);
 }
 
 .board {
@@ -186,8 +190,8 @@ onMounted(async () => {
   gap: var(--sp-1);
   padding: 12px 6px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .p-emoji {
   font-size: var(--fs-hero);
@@ -216,19 +220,19 @@ onMounted(async () => {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  border: 4px solid #fff;
+  border: 4px solid var(--color-surface);
   cursor: pointer;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-on-accent);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 18px var(--pt-success-bg);
-  transition: transform var(--dur-fast) var(--ease-out-smooth);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--dur-fast) var(--ease);
 }
 .join-circle:hover:not(:disabled) {
-  transform: scale(1.04);
+  box-shadow: var(--shadow-popover);
 }
 .join-circle:disabled {
   cursor: wait;
@@ -245,10 +249,15 @@ onMounted(async () => {
 .spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-on-accent);
   border-radius: 50%;
   animation: sp 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
 }
 @keyframes sp {
   to {
@@ -268,7 +277,7 @@ onMounted(async () => {
   gap: var(--sp-2);
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  background: rgba(30, 58, 138, 0.12);
+  background: var(--color-surface-2);
   font-size: var(--fs-xs);
 }
 
@@ -306,20 +315,20 @@ onMounted(async () => {
   align-items: center;
   padding: 5px 0;
   font-size: var(--fs-body);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rec-prize {
   font-weight: 600;
 }
 .rec-prize.muted {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   font-weight: 400;
 }
 .rec-amt {
-  color: var(--pt-warn, #f59e0b);
+  color: var(--pt-warn-fg);
 }
 .rec-time {
   margin-left: auto;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
 }
 </style>

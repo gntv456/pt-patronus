@@ -59,7 +59,7 @@ onMounted(async () => {
 <template>
   <div class="scratch">
     <div class="hero">
-      <div class="hero-title">🎫 {{ t('nsg.title') }}</div>
+      <div class="hero-title"><SptIcon name="bookmark" :size="18" aria-hidden="true" /> {{ t('nsg.title') }}</div>
       <div class="balance">
         {{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b> {{ t('nsg.magic') }}
       </div>
@@ -75,7 +75,7 @@ onMounted(async () => {
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '🎉' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'party-popper' : 'x'" :size="18" aria-hidden="true" /></span>
       <span class="r-msg">{{ last.success ? t('nsg.got', { prize: last.prize, n: last.amount }) : last.message }}</span>
     </div>
 
@@ -110,21 +110,22 @@ onMounted(async () => {
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #e67e22, #f59e0b);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .balance {
   margin-top: 6px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-secondary);
 }
 .balance b {
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--fs-xl);
 }
 
@@ -142,18 +143,19 @@ onMounted(async () => {
 }
 .buy-info {
   font-size: var(--fs-body);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   margin-bottom: 14px;
 }
 .buy-btn {
+  min-height: 24px;
   padding: 11px 24px;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  box-shadow: 0 4px 14px var(--pt-success-bg);
+  color: var(--color-on-accent);
+  background: var(--color-success);
+  box-shadow: var(--shadow-card);
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
@@ -165,10 +167,15 @@ onMounted(async () => {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-on-accent);
   border-radius: 50%;
   animation: sp 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
 }
 @keyframes sp {
   to {
@@ -193,11 +200,11 @@ onMounted(async () => {
   font-size: var(--fs-body);
   font-weight: 600;
   background: var(--pt-warn-bg);
-  color: #b45309;
+  color: var(--pt-warn-fg);
 }
 .rule-card.miss {
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--text-muted, #999);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
 }
 
 .result {
@@ -227,17 +234,17 @@ onMounted(async () => {
   align-items: center;
   padding: 6px 0;
   font-size: var(--fs-body);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rec-row .muted {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .rec-amt {
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
   font-weight: 600;
 }
 .rec-time {
   margin-left: auto;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
 }
 </style>

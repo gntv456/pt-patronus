@@ -43,26 +43,28 @@
 }
 .period-control {
   display: inline-flex;
-  background: var(--surface-muted);
-  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   padding: 2px;
 }
 .period-control button {
   border: 0;
   background: transparent;
-  padding: 4px 10px;
-  border-radius: var(--radius-xs);
+  min-height: 24px;
+  padding: 6px 12px;
+  border-radius: var(--radius-control);
   font-size: var(--fs-xs);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   cursor: pointer;
   transition:
-    background var(--dur-base) var(--ease-out-smooth),
-    color var(--dur-base) var(--ease-out-smooth);
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
 }
 .period-control button.active {
-  background: var(--card);
-  color: var(--text-strong);
-  box-shadow: var(--shadow-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
 }
 .period-control button:disabled {
   opacity: 0.5;
@@ -80,12 +82,12 @@
 }
 .ops-surface,
 .sync-card {
-  background: var(--card);
-  border: 1px solid var(--divider, rgba(0, 0, 0, 0.08));
-  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
   transition:
-    box-shadow var(--dur-base) var(--ease-out-smooth),
-    border-color var(--dur-base) var(--ease-out-smooth);
+    box-shadow var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
 }
 .load-error {
   display: flex;
@@ -137,8 +139,9 @@
   justify-content: space-between;
 }
 .health-foot b {
-  color: var(--text-strong);
+  color: var(--color-text);
   font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 1180px) {
@@ -169,6 +172,12 @@
   }
   .period-control {
     order: 2;
+  }
+  .period-control button {
+    min-height: 44px;
+  }
+  .dashboard {
+    font-size: var(--fs-lg);
   }
 }
 .onboarding-wizard {
@@ -210,14 +219,16 @@
 .ob-num {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: var(--fs-xl);
   font-weight: 700;
-  color: #fff;
-  background: var(--grad-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border-strong);
+  font-variant-numeric: tabular-nums;
 }
 .ob-body {
   text-align: center;
@@ -242,31 +253,7 @@
     max-width: 100%;
   }
 }
-/* 卡片水润 staggered 入场 */
-.zone > * {
-  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
-}
-.zone > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.zone > *:nth-child(2) {
-  animation-delay: 50ms;
-}
-.zone > *:nth-child(3) {
-  animation-delay: 100ms;
-}
-.zone > *:nth-child(4) {
-  animation-delay: 150ms;
-}
-.zone > *:nth-child(5) {
-  animation-delay: 200ms;
-}
-.zone > *:nth-child(6) {
-  animation-delay: 250ms;
-}
-.page-head {
-  animation: pt-fade-in var(--dur-base) var(--ease-out-smooth) both;
-}
+/* 装饰性 staggered 入场动画已移除（去 AI 感） */
 .updated-at {
   transition: color var(--dur-base) var(--ease-out-smooth);
 }

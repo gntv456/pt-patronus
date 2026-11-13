@@ -24,12 +24,15 @@ const wheelStyle = computed(() => {
   const items = state.value?.items ?? []
   if (!items.length) return {}
   const parts = items.map(
-    (it, i) => `${it.color || '#64748b'} ${(360 / items.length) * i}deg ${(360 / items.length) * (i + 1)}deg`,
+    (it, i) => `${it.color || 'var(--color-text-muted)'} ${(360 / items.length) * i}deg ${(360 / items.length) * (i + 1)}deg`,
   )
   return {
     background: `conic-gradient(from -90deg, ${parts.join(',')})`,
     transform: `rotate(${angle.value}deg)`,
-    transition: spinning.value ? 'transform 3s cubic-bezier(0.15, 0.85, 0.25, 1)' : 'none',
+    transition:
+      spinning.value && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'transform 3s cubic-bezier(0.15, 0.85, 0.25, 1)'
+        : 'none',
   }
 })
 const sorted = computed(() =>
@@ -54,8 +57,11 @@ async function draw() {
       count.value > 1
         ? await entertainmentApi.playMulti(props.siteId, props.game, count.value)
         : await entertainmentApi.play(props.siteId, props.game)
-    angle.value += 360 * 5 + Math.floor(Math.random() * 360)
-    await new Promise((r) => setTimeout(r, 3100))
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!reduced) {
+      angle.value += 360 * 5 + Math.floor(Math.random() * 360)
+      await new Promise((r) => setTimeout(r, 3100))
+    }
     last.value = res
     if (res.success) {
       if (res.prizes?.length) {
@@ -82,7 +88,7 @@ onMounted(refresh)
 <template>
   <div class="tpl">
     <div class="hero">
-      <div class="hero-title">🎰 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gift" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div v-if="state" class="hero-sub">
         {{ state.cost_per_draw.toLocaleString() }} 魔力/抽 · 今日剩余 {{ state.daily_remaining }} · 单次上限 {{ state.max_draw_count }}
       </div>
@@ -95,13 +101,14 @@ onMounted(refresh)
             v-for="(it, i) in state?.items ?? []"
             :key="it.id"
             class="slice-label"
+            aria-hidden="true"
             :style="{ transform: `rotate(${(i + 0.5) * slice}deg)` }"
           >
             {{ it.name }}{{ it.amount ? ` ${it.amount >= 1000 ? it.amount.toLocaleString() : it.amount}` : '' }}
           </div>
         </div>
-        <div class="hub">🎲</div>
-        <div class="pointer">▼</div>
+        <div class="hub" aria-hidden="true"><SptIcon name="gamepad" :size="24" aria-hidden="true" /></div>
+        <div class="pointer" aria-hidden="true"><SptIcon name="chevron-down" :size="24" aria-hidden="true" /></div>
       </div>
       <div class="ops">
         <el-input-number v-model="count" :min="1" :max="state?.max_draw_count || 100" />
@@ -112,13 +119,13 @@ onMounted(refresh)
     </section>
 
     <section v-if="sorted.length" class="glass section">
-      <div class="sec-title">📊 奖品与概率</div>
+      <div class="sec-title"><SptIcon name="bar-chart" :size="16" aria-hidden="true" /> 奖品与概率</div>
       <div class="prob-table">
         <div v-for="it in sorted" :key="it.id" class="prob-row">
-          <span class="dot" :style="{ background: it.color || '#64748b' }" />
+          <span class="dot" aria-hidden="true" :style="{ background: it.color || 'var(--color-text-muted)' }" />
           <span class="p-name">{{ it.name }}{{ it.amount ? ` ×${it.amount.toLocaleString()}` : '' }}</span>
           <div class="p-bar">
-            <div class="p-fill" :style="{ width: `${Math.min(100, it.probability * 3)}%`, background: it.color || '#64748b' }" />
+            <div class="p-fill" :style="{ width: `${Math.min(100, it.probability * 3)}%`, background: it.color || 'var(--color-text-muted)' }" />
           </div>
           <span class="p-val">{{ it.probability }}%</span>
         </div>
@@ -126,7 +133,7 @@ onMounted(refresh)
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ last.success ? '中奖' : '未中奖' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.balance" class="r-bal">魔力 {{ last.balance.toLocaleString() }}</span>
@@ -138,28 +145,28 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .tpl { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 620px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0f766e, #14b8a6); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
-.hero-sub { margin-top: 6px; opacity: 0.92; font-size: 13px; }
+.hero-sub { margin-top: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin-bottom: 10px; }
 .wheel-zone { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .wheel-wrap { position: relative; width: 280px; height: 280px; }
-.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,.25); overflow: hidden; }
-.slice-label { position: absolute; left: 50%; top: 10px; transform-origin: 0 128px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); white-space: nowrap; }
-.hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 2px 8px rgba(0,0,0,.3); z-index: 2; }
-.pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-size: 24px; color: #dc2626; z-index: 3; text-shadow: 0 1px 2px #fff; }
+.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid var(--color-surface); box-shadow: var(--shadow-popover); overflow: hidden; }
+.slice-label { position: absolute; left: 50%; top: 10px; transform-origin: 0 128px; font-size: 12px; font-weight: 700; color: var(--color-text-inverse); text-shadow: 0 1px 2px rgba(0,0,0,.6); white-space: nowrap; }
+.hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; border-radius: 50%; background: var(--color-surface); color: var(--color-text); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-popover); z-index: 2; }
+.pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); color: var(--pt-danger-fg); z-index: 3; }
 .ops { display: flex; gap: 12px; align-items: center; }
 .prob-table { display: flex; flex-direction: column; gap: 8px; }
 .prob-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .p-name { min-width: 130px; font-weight: 600; }
-.p-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--border-light, #e5e7eb); overflow: hidden; }
+.p-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--color-border); overflow: hidden; }
 .p-fill { height: 100%; border-radius: 4px; }
-.p-val { min-width: 52px; text-align: right; color: var(--text-muted); }
+.p-val { min-width: 52px; text-align: right; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); color: var(--pt-success-fg); }
+.result.lose { background: var(--color-danger-soft); color: var(--pt-danger-fg); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
 </style>

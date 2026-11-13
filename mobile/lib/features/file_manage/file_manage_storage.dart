@@ -196,9 +196,9 @@ mixin FileManageStorageMixin on State<FileManagePage> {
 
   String _statusDot(String key) {
     final st = _status[key];
-    if (st == _Conn.ok) return '🟢 ';
-    if (st == _Conn.fail) return '🔴 ';
-    if (st == _Conn.checking) return '⚪ ';
+    if (st == _Conn.ok) return '正常 ';
+    if (st == _Conn.fail) return '失败 ';
+    if (st == _Conn.checking) return '检测中 ';
     return '';
   }
 

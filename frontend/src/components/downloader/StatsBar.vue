@@ -59,9 +59,9 @@ defineProps<{
   gap: var(--sp-1);
   overflow: hidden;
   margin-bottom: 10px;
-  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xs);
-  background: var(--glass-border, rgba(127, 127, 127, 0.18));
+  background: var(--color-border);
 }
 .metric {
   display: flex;
@@ -71,13 +71,14 @@ defineProps<{
   gap: var(--sp-1);
   min-height: 48px;
   padding: 8px 12px;
-  background: var(--surface, rgba(255, 255, 255, 0.04));
+  background: var(--color-surface);
 }
 .metric-label {
   color: var(--text-muted);
   font-size: var(--fs-2xs);
 }
 .metric strong {
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -97,7 +98,7 @@ defineProps<{
   color: var(--pt-danger);
 }
 .metric-total {
-  background: color-mix(in srgb, var(--pt-primary-2) 7%, var(--surface, transparent));
+  background: var(--color-primary-soft);
 }
 
 @media (max-width: 760px) {

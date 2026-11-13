@@ -178,10 +178,10 @@ async function syncOne(r: FreeleechResult) {
 }
 
 const statusColor: Record<FreeleechStatus, string> = {
-  active: '#2ecc71',
-  upcoming: '#3498db',
-  none: '#95a5a6',
-  failed: '#f56c6c',
+  active: 'var(--color-success)',
+  upcoming: 'var(--chart-1)',
+  none: 'var(--color-text-muted)',
+  failed: 'var(--color-danger)',
 }
 const statusLabel = computed<Record<FreeleechStatus, string>>(() => ({
   active: t('freeleech.status.active'),
@@ -205,7 +205,7 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
 
     <!-- 汇总筛选条（点 tile 按状态过滤；再点取消）-->
-    <div class="summary glass">
+    <div class="summary solid-card">
       <div
         v-a11y-button
         v-for="tile in tiles"
@@ -231,13 +231,13 @@ onUnmounted(() => abortCtrl?.abort())
 
     <EmptyState
       v-if="!results.length && !loading"
-      icon="🎉"
+      
       :title="t('announcements.emptyTitle')"
       :description="t('freeleech.emptyDesc')"
     />
     <EmptyState
       v-else-if="!filteredResults.length"
-      icon="🔍"
+      
       :title="t('assessment.emptyFilterTitle')"
       :description="t('freeleech.emptyFilterDesc')"
     >
@@ -245,7 +245,7 @@ onUnmounted(() => abortCtrl?.abort())
     </EmptyState>
 
     <div class="cards">
-      <div v-for="r in filteredResults" :key="r.site_id" class="site-card glass">
+      <div v-for="r in filteredResults" :key="r.site_id" class="site-card solid-card">
         <div class="site-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span

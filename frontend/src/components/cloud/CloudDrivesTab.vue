@@ -66,7 +66,7 @@ const { t } = useI18n()
           </div>
           <EmptyState
             v-if="!drives.length && !loading"
-            icon="☁️"
+           
             :title="t('cloud.emptyTitle')"
             :description="t('cloud.emptyDesc')"
           >

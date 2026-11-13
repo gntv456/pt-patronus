@@ -96,7 +96,7 @@ class PTPageScaffold extends StatelessWidget {
     this.floatingActionButtonLocation,
     this.filterOnClearAll,
     this.siteFilter,
-    this.toolbarHeight = 44,
+    this.toolbarHeight = 48,
   });
 
   @override

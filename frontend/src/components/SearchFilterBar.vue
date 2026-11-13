@@ -51,19 +51,26 @@ function selectAll(key: ArrKey) {
 function clearDim(key: ArrKey) {
   filter.value[key] = []
 }
+// 维度图标统一走单色 SptIcon（常量文件里的 emoji 不再渲染）
+function dimIcon(key: ArrKey): string {
+  const map: Record<string, string> = {
+    site: 'globe', promo: 'gift', res: 'grid', codec: 'film', src: 'package', hdr: 'star',
+  }
+  return map[key] || 'filter'
+}
 </script>
 
 <template>
   <div class="sfb">
     <div class="sfb-row">
       <span class="sfb-count">
-        🔍 <b>{{ resultCount }}</b
+        <SptIcon name="search" :size="14" aria-hidden="true" /> <b>{{ resultCount }}</b
         ><span class="text-muted">/{{ totalCount }}</span>
       </span>
 
       <template v-if="sortable">
         <el-dropdown trigger="click" @command="onSortField">
-          <button type="button" class="sfb-sort">{{ t('sfb.sortBy') }}: {{ sortLabel }} ▾</button>
+          <button type="button" class="sfb-sort">{{ t('sfb.sortBy') }}: {{ sortLabel }} <SptIcon name="chevron-down" :size="12" aria-hidden="true" /></button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item
@@ -80,9 +87,11 @@ function clearDim(key: ArrKey) {
           type="button"
           class="sfb-order"
           :title="sort.order === 'desc' ? t('sfb.desc') : t('sfb.asc')"
+          :aria-label="sort.order === 'desc' ? t('sfb.desc') : t('sfb.asc')"
+          :aria-pressed="sort.order === 'desc'"
           @click="toggleOrder"
         >
-          {{ sort.order === 'desc' ? '↓' : '↑' }}
+          <SptIcon :name="sort.order === 'desc' ? 'arrow-down' : 'arrow-up'" :size="14" aria-hidden="true" />
         </button>
       </template>
 
@@ -96,8 +105,8 @@ function clearDim(key: ArrKey) {
           :popper-class="'sfb-popper'"
         >
           <template #reference>
-            <button type="button" class="sfb-pill" :class="{ on: filter[d.key].length }">
-              {{ d.icon }} {{ t(d.labelKey) }}
+            <button type="button" class="sfb-pill" :class="{ on: filter[d.key].length }" :aria-pressed="filter[d.key].length > 0">
+              <SptIcon :name="dimIcon(d.key)" :size="14" aria-hidden="true" /> {{ t(d.labelKey) }}
               <span v-if="filter[d.key].length" class="sfb-badge">{{ filter[d.key].length }}</span>
             </button>
           </template>
@@ -119,9 +128,10 @@ function clearDim(key: ArrKey) {
           type="button"
           class="sfb-pill"
           :class="{ on: filter.onlyCnSub }"
+          :aria-pressed="filter.onlyCnSub"
           @click="filter.onlyCnSub = !filter.onlyCnSub"
         >
-          🔤 {{ t('sfb.cnSub') }}
+          <SptIcon name="tag" :size="14" aria-hidden="true" /> {{ t('sfb.cnSub') }}
         </button>
 
         <button
@@ -132,7 +142,7 @@ function clearDim(key: ArrKey) {
           :aria-pressed="filter.onlyFree"
           @click="filter.onlyFree = !filter.onlyFree"
         >
-          🎁 {{ t('sfb.freeLabel') }}
+          <SptIcon name="gift" :size="14" aria-hidden="true" /> {{ t('sfb.freeLabel') }}
         </button>
 
         <el-popover trigger="click" placement="bottom-end" :width="280" popper-class="sfb-popper">
@@ -144,7 +154,7 @@ function clearDim(key: ArrKey) {
                 on: hasActive && (filter.sizeMinGB || filter.sizeMaxGB || filter.seedersMin || filter.timePreset),
               }"
             >
-              ⚙ {{ t('sfb.advanced') }}
+              <SptIcon name="gear" :size="14" aria-hidden="true" /> {{ t('sfb.advanced') }}
             </button>
           </template>
           <div class="sfb-adv">
@@ -181,6 +191,7 @@ function clearDim(key: ArrKey) {
                   type="button"
                   class="time-chip"
                   :class="{ on: !filter.timePreset }"
+                  :aria-pressed="!filter.timePreset"
                   @click="filter.timePreset = ''"
                 >
                   {{ t('sfb.anyTime') }}
@@ -191,6 +202,7 @@ function clearDim(key: ArrKey) {
                   type="button"
                   class="time-chip"
                   :class="{ on: filter.timePreset === topt.key }"
+                  :aria-pressed="filter.timePreset === topt.key"
                   @click="filter.timePreset = topt.key"
                 >
                   {{ t(topt.labelKey) }}

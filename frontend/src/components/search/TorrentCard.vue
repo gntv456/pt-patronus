@@ -53,8 +53,8 @@ const emit = defineEmits<{
           <span class="sf-site-name">{{ group.primary.site_name }}</span>
         </div>
         <div class="sf-peers">
-          <span class="up">↑ {{ group.primary.seeders ?? 0 }}</span>
-          <span class="down">↓ {{ group.primary.leechers ?? 0 }}</span>
+          <span class="up"><SptIcon name="arrow-up" :size="12" aria-hidden="true" /> {{ group.primary.seeders ?? 0 }}</span>
+          <span class="down"><SptIcon name="arrow-down" :size="12" aria-hidden="true" /> {{ group.primary.leechers ?? 0 }}</span>
         </div>
       </div>
     </header>
@@ -64,7 +64,7 @@ const emit = defineEmits<{
       <div v-if="group.primary.subtitle" class="sf-t-sub text-muted" :title="group.primary.subtitle">
         {{ group.primary.subtitle }}
       </div>
-      <div v-if="group.timeText" class="sf-time text-muted">⏱ {{ group.timeText }}</div>
+      <div v-if="group.timeText" class="sf-time text-muted"><SptIcon name="clock" :size="12" aria-hidden="true" /> {{ group.timeText }}</div>
       <div v-if="group.tags.length" class="sf-tags">
         <span v-for="tag in group.tags" :key="tag.label" class="sf-tag" :class="`tone-${tag.tone}`">{{
           tag.label
@@ -89,7 +89,7 @@ const emit = defineEmits<{
           :aria-label="t('tc.openDetailAria')"
           @click.stop="emit('detail', group.primary)"
         >
-          ⓘ
+          <SptIcon name="info" :size="18" aria-hidden="true" />
         </button>
       </div>
     </footer>

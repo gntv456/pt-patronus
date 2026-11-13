@@ -4,6 +4,45 @@
 - **升级注意**：标注需要用户干预（改配置/改挂载/重登）的破坏性变更
 - 完整历史 releaseNotes 见 `update-manifest.json` 各版本条目
 
+## Unreleased — 全站 UI/交互改版（去 AI 感 · 大厂成熟感）
+
+**升级注意**：默认外观由「iOS 26 液态玻璃」切换为中性实色工具型外观。功能、路由、i18n key、
+后端 API 与业务数据完全不变。存量用户若仍想查看旧观感，可在浏览器控制台执行
+document.body.classList.add('classic-ui') 临时恢复（过渡期保留 1–2 个版本）。
+主题色预设由 5 套（星紫/苍蓝/樱粉/薄荷绿/落橙）收敛为「默认蓝 / 石墨灰」；
+壁纸、遮罩浓度、卡片风格与每日 Bing 壁纸设置下线，历史偏好值自动迁移，不丢用户数据。
+
+### 设计系统
+- 新增 frontend/src/styles/tokens.css 作为三端唯一语义 token 真源：中性 slate 表面、
+  单一信任蓝交互色、对比度达标的语义前景色、--color-on-accent（暗色亮蓝底配深墨字）、
+  图表系列色、8px 网格、36px 行高、240px 侧栏、56px 头栏、120–240ms 无回弹动效。
+- 新增 frontend/src/styles/modern.css 覆盖层：把存量 --pt-* / --glass-* / --grad-* /
+  --radius-* / --fs-* 别名映射到新 token，47 个页面 template 无需改动即整体换肤；
+  去掉全屏渐变、磨砂模糊、rim 高光、spring 回弹、水波纹、stagger 入场与壁纸。
+- glass.css 标注为 LEGACY（保留类名兼容），dialog.css 去回弹并单独补 reduced-motion。
+- 统一单色 Lucide 图标集 SptIcon.vue 扩展到 90+ 字形，替换全站 emoji 与彩虹渐变导航图标。
+- Flutter 端 glass.dart 与扩展 theme.css 同步到同一套语义 token 命名；Flutter 去液态转场、
+  去 BackdropFilter、正文 13→16、工具栏 44→48、入场动效默认关闭并尊重系统减少动效。
+
+### 交互与可访问性
+- 新增 useFeedback（确认 / 8s 撤销 / 带恢复路径的错误提示）、useQueryState（筛选/Tab/视图
+  状态写回 URL，可分享、刷新与后退可恢复）、PtSkeleton（固定高度骨架防 CLS）。
+- 全站对比度实测不达标的 10+ 组颜色组合（最低 2.10:1）改为 >=4.5:1 的语义 token；
+  焦点环 outline:none 清除，图标按钮补 aria-label，小按钮提到 24px（移动 44px），
+  10/11px 小字提到 12px（移动 16px）。
+- 破坏性操作（删除、清空、重置、导入覆盖、一键修复、下注）统一「确认 + 撤销」；
+  表格补粘性表头、36px 行高、批量操作条与横向滚动；表单补可见 label、就近行内错误与
+  可聚焦错误摘要；每屏收敛为 1 个主 CTA；图表补键盘可达与数据表兜底。
+- 主题明暗切换纳入 useUserPrefs 服务端同步（跨浏览器一致），旧 localStorage.theme 自动迁移。
+
+### 工程门禁
+- 新增 scripts/check-ui-a11y.mjs（emoji / outline:none / 小字号 / 渐变 / 装饰模糊 /
+  无限动画 / transition:all / 裸 hex / 品牌色 / views 静态引入 element-plus 共 10 项棘轮门禁）。
+- 新增 scripts/check-contrast.mjs（浅深色 token 前景/背景组合全部 >=4.5:1）。
+- stylelint 规则扩展；package.json 新增 npm run lint:ui 与 npm run check:contrast。
+- 完整审计与逐页修改方案见 design/ui-ux-redesign-plan.md。
+
+
 ## 1.03.29（本地账号升级无感版，2026-11-10）
 
 **升级注意**：好学 VIP 账号体系已下线，登录改为本地用户名密码。存量实例升级后

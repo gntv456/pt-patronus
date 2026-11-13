@@ -183,14 +183,13 @@ function goManage() {
 </style>
 
 <style>
-/* 非 scoped：el-dialog teleport 到 body，scoped 选择器不生效。玻璃化背景融入主题（深色自适应）。 */
+/* 非 scoped：el-dialog teleport 到 body，scoped 选择器不生效。
+   现代外观：中性实色面 + 1px 边框，不使用装饰性磨砂（--blur 已由 modern.css 置 0）。 */
 .site-filter-dialog {
-  --el-dialog-bg-color: transparent;
-  background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-hover-shadow);
+  --el-dialog-bg-color: var(--color-surface);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-popover);
 }
 </style>

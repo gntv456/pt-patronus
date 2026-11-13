@@ -1,5 +1,7 @@
 .table-wrap {
   min-width: 0;
+  overflow-x: auto;
+  --el-table-row-height: 36px;
 }
 .toolbar {
   display: flex;
@@ -14,9 +16,9 @@
   gap: 6px;
   min-width: 180px;
   padding: 0 9px;
-  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.2));
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--surface-muted, rgba(127, 127, 127, 0.05));
+  background: var(--color-surface-2);
 }
 .search-wrap > .el-icon {
   color: var(--text-muted);
@@ -32,7 +34,8 @@
 .result-count {
   flex: 0 0 auto;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .batchbar {
@@ -42,9 +45,9 @@
   gap: 12px;
   padding: 8px 10px;
   margin-bottom: 10px;
-  border: 1px solid color-mix(in srgb, var(--pt-primary-2) 30%, transparent);
+  border: 1px solid var(--color-primary);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--pt-primary-2) 8%, transparent);
+  background: var(--color-primary-soft);
 }
 .selection-summary {
   display: inline-flex;
@@ -92,7 +95,7 @@
   gap: 8px;
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .task-meta span + span::before {
   content: '·';
@@ -102,7 +105,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -150,14 +153,16 @@
 .progress-cell > span {
   width: 34px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 .speed-cell {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -172,6 +177,7 @@
   gap: 4px;
   color: var(--text-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .peers b {
   color: var(--pt-success);
@@ -186,11 +192,11 @@
   overflow: hidden;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--color-surface-2);
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 12px;
 }
 .empty {
   padding: 28px;
@@ -204,13 +210,16 @@
 }
 :deep(.el-table),
 :deep(.el-table tr),
-:deep(.el-table td),
-:deep(.el-table th) {
+:deep(.el-table td) {
   background-color: transparent !important;
 }
-:deep(.el-table th) {
-  color: var(--text-muted);
-  font-size: 11px;
+:deep(.el-table th.el-table__cell) {
+  background-color: var(--color-surface-2) !important;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -237,7 +246,7 @@
 .action-group {
   padding-top: 12px;
   margin-top: 12px;
-  border-top: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
+  border-top: 1px solid var(--color-border);
 }
 .action-group.first {
   padding-top: 0;
@@ -264,13 +273,13 @@
   transition: background var(--dur-fast) var(--ease-out-smooth);
 }
 .action-cell:hover {
-  background: var(--surface-muted, rgba(127, 127, 127, 0.1));
+  background: var(--color-surface-2);
 }
 .action-cell.danger {
   color: var(--pt-danger);
 }
 .action-cell.danger:hover {
-  background: color-mix(in srgb, var(--pt-danger) 12%, transparent);
+  background: var(--color-danger-soft);
 }
 @media (max-width: 480px) {
   .action-grid {

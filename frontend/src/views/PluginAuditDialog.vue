@@ -188,23 +188,39 @@ function permissionRiskType(perm: string) {
       <div class="audit-panel">
         <div class="logs-head">
           <div class="audit-title">{{ t('pad.logs') }}</div>
-          <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{
+          <el-button :icon="Refresh" size="small" :aria-label="t('common.refresh')" :loading="loading" @click="emit('refresh')">{{
             t('common.refresh')
           }}</el-button>
         </div>
         <el-alert v-if="notice" :title="notice" type="warning" show-icon :closable="false" />
-        <el-table v-loading="loading" :data="logs" size="small" :empty-text="t('pad.noLogs')" max-height="320">
+        <div class="table-scroll">
+          <el-table
+            v-loading="loading"
+            :data="logs"
+            size="small"
+            class="pt-table-dense"
+            :empty-text="t('pad.noLogs')"
+            max-height="320"
+          >
           <el-table-column :label="t('pad.time')" width="170">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
           </el-table-column>
           <el-table-column prop="level" :label="t('pad.level')" width="90" />
           <el-table-column prop="event" :label="t('pad.event')" min-width="130" />
           <el-table-column prop="message" :label="t('pad.msg')" min-width="200" show-overflow-tooltip />
-        </el-table>
+          </el-table>
+        </div>
       </div>
       <div class="audit-panel">
         <div class="audit-title">{{ t('pad.releases') }}</div>
-        <el-table :data="releases" size="small" :empty-text="t('pad.noReleases')" max-height="320">
+        <div class="table-scroll">
+          <el-table
+            :data="releases"
+            size="small"
+            class="pt-table-dense"
+            :empty-text="t('pad.noReleases')"
+            max-height="320"
+          >
           <el-table-column prop="version" :label="t('pad.version')" width="120" />
           <el-table-column :label="t('pad.releasedAt')" width="170">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
@@ -226,7 +242,8 @@ function permissionRiskType(perm: string) {
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
       </div>
     </div>
   </el-dialog>

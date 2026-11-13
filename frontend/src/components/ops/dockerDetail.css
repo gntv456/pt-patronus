@@ -56,7 +56,7 @@
   font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 10px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
 }
 .state-dot {
   width: 8px;
@@ -79,20 +79,20 @@
   max-width: 300px;
   height: 20px;
   background: var(--surface-muted);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   position: relative;
   overflow: hidden;
 }
 .bar-fill {
   height: 100%;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .bar--cpu {
-  background: linear-gradient(90deg, var(--pt-primary), var(--pt-primary-2));
+  background: var(--color-primary);
 }
 .bar--mem {
-  background: linear-gradient(90deg, #11998e, #38ef7d);
+  background: var(--color-success);
 }
 .bar-val {
   position: absolute;

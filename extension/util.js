@@ -58,8 +58,8 @@ export function pushFailed(r) {
 // pushResultLabel 推送下载后的按钮文案（三处 popup + 一处 options 共用一份判据）。
 // 三种结局必须分得开：动作失败 / 动作成功但下载历史没记下 / 全部正常。
 // 从前两处读者直接读 r.error，r 为空时那句会抛 TypeError 把回显整个打没。
-export function pushResultLabel(r, okText = '✅ 已推送') {
-  if (pushFailed(r)) return `⚠ ${String((r && r.error) || '后台无响应').slice(0, 24)}`
+export function pushResultLabel(r, okText = '已推送') {
+  if (pushFailed(r)) return `注意：${String((r && r.error) || '后台无响应').slice(0, 24)}`
   if (r.history_error) return `${okText}（历史没记下：${String(r.history_error).slice(0, 24)}）`
   return okText
 }

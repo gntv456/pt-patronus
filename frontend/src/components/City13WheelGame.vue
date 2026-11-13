@@ -24,6 +24,8 @@ const slice = computed(() => {
   const n = state.value?.prizes.length || 8
   return 360 / n
 })
+// reduced-motion：转盘不做旋转动画，直接定格
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const wheelStyle = computed(() => {
   const prizes = state.value?.prizes ?? []
   const n = prizes.length || 8
@@ -33,7 +35,7 @@ const wheelStyle = computed(() => {
   return {
     background: `conic-gradient(from -90deg, ${parts.join(',')})`,
     transform: `rotate(${angle.value}deg)`,
-    transition: spinning.value ? 'transform 3.4s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
+    transition: spinning.value && !reduceMotion() ? 'transform 3.4s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
   }
 })
 
@@ -57,7 +59,7 @@ async function spin(times: number) {
       // 动画：随机整圈 + 落在随机扇区（站点未回 prize index，纯视觉）
       const extra = 360 * (5 + i) + Math.floor(Math.random() * 360)
       angle.value += extra
-      await new Promise((r) => setTimeout(r, i === times - 1 ? 3500 : 350))
+      await new Promise((r) => setTimeout(r, reduceMotion() ? 0 : i === times - 1 ? 3500 : 350))
       if (!res.success) {
         ElMessage.warning(res.message || '抽奖失败')
         break
@@ -76,7 +78,7 @@ onMounted(refresh)
 <template>
   <div class="c13w">
     <div class="hero">
-      <div class="hero-title">🎡 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="target" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div v-if="state" class="hero-sub">
         啤酒瓶 <b>{{ state.balance.toLocaleString() }}</b> · 今日 {{ state.today_used }}/{{ state.daily_limit || '—' }} 次
       </div>
@@ -89,11 +91,13 @@ onMounted(refresh)
             {{ p.name?.slice(0, 6) }}
           </div>
         </div>
-        <div class="hub">🍺</div>
-        <div class="pointer">▼</div>
+        <div class="hub" aria-hidden="true"><SptIcon name="gift" :size="24" aria-hidden="true" /></div>
+        <div class="pointer" aria-hidden="true">▼</div>
       </div>
       <div class="ops">
-        <el-button type="primary" size="large" :loading="spinning" @click="spin(1)">🎡 抽一次</el-button>
+        <el-button type="primary" size="large" :loading="spinning" @click="spin(1)">
+          <SptIcon name="play" :size="16" aria-hidden="true" /> 抽一次
+        </el-button>
         <div class="multi">
           <el-input-number v-model="multiCount" :min="2" :max="10" size="small" />
           <el-button :loading="spinning" @click="spin(multiCount)">连抽 {{ multiCount }}</el-button>
@@ -102,14 +106,14 @@ onMounted(refresh)
     </section>
 
     <section v-if="state?.recent_prizes?.length" class="glass section">
-      <div class="sec-title">📜 最近开奖</div>
+      <div class="sec-title"><SptIcon name="clock" :size="16" aria-hidden="true" /> 最近开奖</div>
       <div class="recent">
         <el-tag v-for="(p, i) in state.recent_prizes" :key="i" size="small" type="info">{{ p || '—' }}</el-tag>
       </div>
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" /></span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.amount" class="r-amt">×{{ last.amount }}</span>
@@ -121,23 +125,23 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .c13w { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 560px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #d97706, #f59e0b); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
 .hero-sub { margin-top: 6px; opacity: 0.92; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin-bottom: 10px; }
 .wheel-zone { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .wheel-wrap { position: relative; width: 260px; height: 260px; }
-.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #fff; box-shadow: 0 8px 24px rgba(0,0,0,.25); overflow: hidden; }
+.wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid var(--color-surface); box-shadow: var(--shadow-card); overflow: hidden; }
 .slice-label { position: absolute; left: 50%; top: 8px; transform-origin: 0 118px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); white-space: nowrap; }
-.hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 2px 8px rgba(0,0,0,.3); z-index: 2; }
-.pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 24px; color: #dc2626; z-index: 3; text-shadow: 0 1px 2px #fff; }
+.hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; border-radius: 50%; background: var(--color-surface); color: var(--color-primary); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-card); z-index: 2; }
+.pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 24px; color: var(--color-danger); z-index: 3; }
 .ops { display: flex; gap: 12px; align-items: center; }
 .multi { display: flex; gap: 6px; align-items: center; }
 .recent { display: flex; flex-wrap: wrap; gap: 6px; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); }
+.result.lose { background: var(--color-danger-soft); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
 </style>

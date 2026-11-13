@@ -11,6 +11,7 @@ import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 const cards = ref<AssessmentCard[]>([])
@@ -91,12 +92,20 @@ function fmtDate(ms?: number) {
   return new Date(ms).toLocaleDateString('zh-CN')
 }
 
+// 语义色（>=4.5:1）：前景用 --pt-*-fg，柔和底用对应 soft token，不再拼 hex + '22'。
 const statusColor: Record<string, string> = {
-  SAFE: '#2ecc71',
-  PROGRESS: '#3498db',
-  DANGER: '#f56c6c',
-  EXEMPT: '#95a5a6',
-  UNKNOWN: '#95a5a6',
+  SAFE: 'var(--pt-success-fg)',
+  PROGRESS: 'var(--color-primary)',
+  DANGER: 'var(--pt-danger-fg)',
+  EXEMPT: 'var(--color-text-muted)',
+  UNKNOWN: 'var(--color-text-muted)',
+}
+const statusSoft: Record<string, string> = {
+  SAFE: 'var(--color-success-soft)',
+  PROGRESS: 'var(--color-primary-soft)',
+  DANGER: 'var(--color-danger-soft)',
+  EXEMPT: 'var(--color-surface-2)',
+  UNKNOWN: 'var(--color-surface-2)',
 }
 
 // 状态英文 → 中文映射（筛选项已是中文，状态标签保持一致）
@@ -121,7 +130,7 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </div>
 
-    <div class="filter-bar glass">
+    <div class="filter-bar solid-card">
       <button class="filter-chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
         {{ t('assessment.filter.all') }} ({{ cards.length }})
       </button>
@@ -146,9 +155,7 @@ onUnmounted(() => abortCtrl?.abort())
       </button>
     </div>
 
-    <p v-if="loading && !cards.length" style="text-align: center; color: var(--text-muted); padding: 40px 0">
-      {{ t('common.loading') }}
-    </p>
+    <el-skeleton v-if="loading && !cards.length" :rows="6" animated />
 
     <el-alert
       v-if="focusFromQuery && !loading"
@@ -163,14 +170,14 @@ onUnmounted(() => abortCtrl?.abort())
       <div
         v-for="c in filtered"
         :key="c.site_id"
-        class="assess-card glass"
+        class="assess-card solid-card"
         :style="{ borderLeftColor: statusColor[c.status] }"
       >
         <div class="card-top">
           <span class="site-name">{{ c.site_name }}</span>
           <span
             class="status-tag"
-            :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }"
+            :style="{ background: statusSoft[c.status], color: statusColor[c.status] }"
             >{{ statusLabel[c.status] || c.status }}</span
           >
           <span class="spacer"></span>
@@ -196,9 +203,7 @@ onUnmounted(() => abortCtrl?.abort())
             <div v-for="(m, i) in c.metrics || []" :key="i" class="metric">
               <span class="m-label">{{ m.label }}</span>
               <span class="m-val">{{ m.current }}/{{ m.required }} {{ m.unit }}</span>
-              <span class="m-met" :style="{ color: m.is_completed ? '#2ecc71' : '#f56c6c' }">{{
-                m.is_completed ? '✓' : '✗'
-              }}</span>
+              <span class="m-met" :style="{ color: m.is_completed ? 'var(--pt-success-fg)' : 'var(--pt-danger-fg)' }"><SptIcon :name="m.is_completed ? 'check' : 'x'" :size="14" aria-hidden="true" /></span>
             </div>
           </div>
         </template>
@@ -206,13 +211,11 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
     <EmptyState
       v-if="!cards.length && !loading"
-      icon="📋"
       :title="t('assessment.emptyTitle')"
       :description="t('assessment.emptyDesc')"
     />
     <EmptyState
       v-else-if="!filtered.length && !loading"
-      icon="🔎"
       :title="t('assessment.emptyFilterTitle')"
       :description="t('assessment.emptyFilterDesc')"
     />
@@ -266,7 +269,7 @@ onUnmounted(() => abortCtrl?.abort())
 }
 .assess-card {
   padding: 14px;
-  border-left: 3px solid #95a5a6;
+  border-left: 3px solid var(--color-border-strong);
 }
 .card-top {
   display: flex;

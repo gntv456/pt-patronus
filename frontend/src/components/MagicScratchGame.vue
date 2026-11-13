@@ -74,7 +74,10 @@ onMounted(refreshStats)
           <span class="cover-hint">{{ t('msg1.hint') }}</span>
         </div>
         <div v-else class="prize-reveal">
-          <div class="reveal-icon">{{ reveal.amount && reveal.amount > 0 ? '✨' : '·' }}</div>
+          <div class="reveal-icon">
+            <SptIcon v-if="reveal.amount && reveal.amount > 0" name="party-popper" :size="28" aria-hidden="true" />
+            <template v-else>·</template>
+          </div>
           <div class="reveal-name">{{ reveal.prize || (reveal.success ? t('msg1.noWin') : t('common.failed')) }}</div>
           <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">
             +{{ t('msg1.sparkN', { n: fmt(reveal.amount) }) }}
@@ -104,20 +107,21 @@ onMounted(refreshStats)
   text-align: center;
   padding: 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #f7971e, #ff5858);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .banner-title {
   display: block;
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
   letter-spacing: 3px;
 }
 .banner-sub {
   display: block;
   margin-top: 3px;
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-secondary);
 }
 .stat-bar {
   display: grid;
@@ -128,18 +132,18 @@ onMounted(refreshStats)
   padding: 12px 8px;
   border-radius: var(--radius-sm);
   text-align: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(247, 151, 30, 0.25);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .stat-val {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffb74d;
+  color: var(--pt-warn-fg);
 }
 .stat-lbl {
   margin-top: 2px;
-  font-size: var(--fs-2xs);
-  color: #9aa5b1;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .card-zone {
   display: flex;
@@ -152,13 +156,18 @@ onMounted(refreshStats)
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #ffd180, #ff8a3d);
-  border: 2px solid #ffb74d;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  transition: all var(--dur-slow) var(--ease-out-smooth);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  transition: background-color var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease), box-shadow var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease);
 }
 .scratch-card.win {
   animation: pulse 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scratch-card.win {
+    animation: none;
+  }
 }
 @keyframes pulse {
   0% {
@@ -179,8 +188,8 @@ onMounted(refreshStats)
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  background: repeating-linear-gradient(45deg, #c9a06a 0 8px, #e0c08a 8px 16px);
-  color: #4a2f00;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 .cover-text {
   font-size: var(--fs-hero);
@@ -188,7 +197,7 @@ onMounted(refreshStats)
   letter-spacing: 6px;
 }
 .cover-hint {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   opacity: 0.7;
 }
 .prize-reveal {
@@ -199,7 +208,7 @@ onMounted(refreshStats)
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  color: #4a2f00;
+  color: var(--color-text);
   padding: 8px;
   text-align: center;
 }
@@ -216,7 +225,7 @@ onMounted(refreshStats)
 }
 .reveal-msg {
   margin-top: 4px;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   opacity: 0.8;
 }
 .actions {
@@ -225,21 +234,22 @@ onMounted(refreshStats)
 }
 .btn {
   flex: 1;
+  min-height: 24px;
   padding: 12px;
   border-radius: var(--radius-sm);
   border: none;
   font-size: var(--fs-lg);
   font-weight: 700;
   cursor: pointer;
-  color: #fff;
-  background: linear-gradient(135deg, #f7971e, #ff5858);
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  color: var(--color-on-accent);
+  background: var(--color-primary);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: progress;
 }
 .btn:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--color-primary-hover);
 }
 </style>

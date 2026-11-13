@@ -19,6 +19,7 @@ import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/lay
 import { useI18n } from 'vue-i18n'
 import { useNotices } from '@/composables/useNotices'
 import { useUiPrefs } from '@/composables/useUiPrefs'
+import { useFeedback } from '@/composables/useFeedback'
 
 // paletteOnly 分组的中文标题 → locale key 映射（navConfig 数据保持纯数据，不 import i18n）
 const PALETTE_GROUP_KEYS: Record<string, string> = {
@@ -45,7 +46,8 @@ export function useMainLayout() {
   const passwordDialogOpen = ref(false)
   // 侧栏默认态偏好（跨浏览器同步）：服务端偏好到达/变化时应用到 collapsed；
   // 用户手动折叠/展开只改运行态（下次进入仍按默认态），符合「默认态」语义。
-  const { prefs: uiPrefs } = useUiPrefs()
+  const { prefs: uiPrefs, set: setUiPrefs } = useUiPrefs()
+  const feedback = useFeedback()
 
   function syncCollapsed() {
     isMobile.value = window.innerWidth <= 720
@@ -103,9 +105,21 @@ export function useMainLayout() {
     e.stopPropagation()
     favorites.value = toggleFavorite(name)
   }
-  function clearFavorites() {
+  async function clearFavorites() {
+    if (!favorites.value.length) return
+    const prev = [...favorites.value]
+    const ok = await feedback.confirm({
+      title: t('nav.clearFavorites'),
+      detail: '确定清空全部收藏？侧栏收藏区将不再显示这些入口，可在 8 秒内撤销。',
+      danger: true,
+    })
+    if (!ok) return
     favorites.value = []
     saveFavorites([])
+    feedback.undo(t('common.removed'), () => {
+      favorites.value = prev
+      saveFavorites(prev)
+    })
   }
 
   watch(
@@ -126,8 +140,6 @@ export function useMainLayout() {
       name: it.name,
       label: t('nav.items.' + it.name, it.label),
       icon: it.icon,
-      from: it.from,
-      to: it.to,
       group: t('nav.groups.' + groupKeyOf(it.group), it.group),
       desc: t('nav.desc.' + it.name, navDesc[it.name] ?? ''),
       aliases: navAliases[it.name],
@@ -138,8 +150,6 @@ export function useMainLayout() {
         name: 'search',
         label: t('nav.top.searchWorkspace'),
         icon: 'search',
-        from: '#a18cd1',
-        to: '#fbc2eb',
         group: t('nav.groups.topbar'),
         desc: t('nav.top.searchWorkspaceDesc'),
         aliases: navAliases.search,
@@ -148,8 +158,6 @@ export function useMainLayout() {
         name: 'assistant',
         label: t('nav.top.assistant'),
         icon: 'bot',
-        from: '#6c5ce7',
-        to: '#a855f7',
         group: t('nav.groups.topbar'),
         desc: t('nav.top.assistantDesc'),
         aliases: navAliases.assistant,
@@ -158,8 +166,6 @@ export function useMainLayout() {
         name: 'settings',
         label: t('nav.top.settings'),
         icon: 'settings',
-        from: '#485563',
-        to: '#29323c',
         group: t('nav.groups.bottom'),
         desc: t('nav.top.settingsDesc'),
         aliases: navAliases.settings,
@@ -169,10 +175,18 @@ export function useMainLayout() {
   })
 
   function toggleTheme() {
-    const dark = document.documentElement.classList.toggle('dark')
-    localStorage.setItem('theme', dark ? 'dark' : 'light')
+    // 走 UiPrefs.set：既即时应用（apply 里切 dark 类 + 写 localStorage），
+    // 也随偏好域 debounce 推送服务端，三端/多浏览器一致。
+    const dark = !document.documentElement.classList.contains('dark')
+    setUiPrefs({ theme: dark ? 'dark' : 'light' })
   }
-  function logout() {
+  async function logout() {
+    const ok = await feedback.confirm({
+      title: t('ml.logout'),
+      detail: '确定退出当前账号？退出后需重新登录才能继续操作。',
+      danger: true,
+    })
+    if (!ok) return
     auth.logout()
     router.push({ name: 'login' })
   }

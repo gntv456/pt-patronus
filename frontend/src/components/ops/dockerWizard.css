@@ -4,19 +4,7 @@
 .wizard-body {
   min-height: 320px;
 }
-.step-panel {
-  animation: fadeIn 0.2s ease;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* 删除 spring/位移入场动画 */
 
 /* 模板选择 */
 .section-title {
@@ -44,12 +32,11 @@
   border: 2px solid var(--divider);
   background: var(--surface-1);
   cursor: pointer;
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .template-card:hover {
   border-color: var(--pt-primary);
   background: var(--surface-hover);
-  transform: translateY(-1px);
   box-shadow: var(--surface-shadow-hover);
 }
 .template-card.selected {
@@ -141,7 +128,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .dyn-remove:hover {
   color: var(--pt-danger);
@@ -157,7 +144,7 @@
   cursor: pointer;
   color: var(--pt-primary);
   font-size: var(--fs-sm);
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .dyn-add:hover {
   background: var(--surface-hover);

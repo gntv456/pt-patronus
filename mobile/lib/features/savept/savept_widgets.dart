@@ -34,7 +34,7 @@ extension on _SaveptPageState {
   bool _isTodayAnniv(String text) => text.contains('今天') || text.contains('0天');
 
   String _annivDisplay(String text) {
-    if (text.contains('今天站庆') || text == '0天') return '🎉 今天站庆！';
+    if (text.contains('今天站庆') || text == '0天') return '今天站庆！';
     return text;
   }
 

@@ -81,6 +81,8 @@ test.describe('登录与会话', () => {
     // 右上角用户菜单 → 退出登录
     await page.locator('.user-name').click()
     await page.getByText('退出登录').click()
+    // 登出改为「确认 + 可撤销」交互：需在确认框点「确认」才真正退出。
+    await page.locator('.el-message-box__btns .el-button--primary').click()
     await page.waitForURL(/\/login/, { timeout: 15_000 })
     // 登录页同源下读 localStorage（此时会话必已清）
     await expect.poll(() => page.evaluate(() => localStorage.getItem('token') || '')).toBe('')

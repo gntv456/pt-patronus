@@ -117,7 +117,7 @@ const { doTask, useRefund, useProp, claimRed, rpAmount, rpCount, rpGreeting, rpS
 const rankTab = ref(0)
 const recTab = ref<'my' | 'all'>('my')
 
-const dotColor = (r: string) => (r === 'big' ? '#ef4444' : r === 'house' ? '#22c55e' : '#3b82f6')
+const dotColor = (r: string) => (r === 'big' ? 'var(--color-danger)' : r === 'house' ? 'var(--color-success)' : 'var(--color-primary)')
 const dotLabel = (r: string) => (r === 'big' ? t('bs.big') : r === 'house' ? t('bs.house') : t('bs.small'))
 
 // 排名配色类名（1/2/3 名）
@@ -163,7 +163,7 @@ onBeforeUnmount(stopTimers)
   <div class="bs">
     <!-- hero -->
     <div class="hero">
-      <div class="hero-title">🎲 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div class="balance">
         {{ t('bs.balance') }} <b>{{ fmt(state?.balance) }}</b>
         <span v-if="state?.currency" class="cur">{{ state.currency }}</span>
@@ -189,7 +189,7 @@ onBeforeUnmount(stopTimers)
           {{ t('bs.roundMeta', { players: state?.round.player_count ?? 0, total: fmt(state?.round.total_bet) }) }}
         </div>
       </div>
-      <button class="refresh-btn" :disabled="loading" :aria-label="t('bs.refreshRound')" @click="load(false)">⟳</button>
+      <button class="refresh-btn" :disabled="loading" :aria-label="t('bs.refreshRound')" @click="load(false)"><SptIcon name="refresh" :size="16" aria-hidden="true" /></button>
     </div>
 
     <!-- 上局结果 -->
@@ -210,7 +210,7 @@ onBeforeUnmount(stopTimers)
       <!-- 左：走势 + 下注 -->
       <div class="left">
         <section class="glass panel">
-          <div class="sec-title">📊 {{ t('bs.trend') }}</div>
+          <div class="sec-title"><SptIcon name="bar-chart" :size="16" aria-hidden="true" /> {{ t('bs.trend') }}</div>
           <div class="trend-row">
             <div class="trend-block">
               <div class="trend-cap">{{ t('bs.last40') }}</div>
@@ -256,7 +256,7 @@ onBeforeUnmount(stopTimers)
         </section>
 
         <section class="glass panel">
-          <div class="sec-title">💰 {{ t('bs.placeBet') }}</div>
+          <div class="sec-title"><SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('bs.placeBet') }}</div>
           <div class="my-bet" v-if="state?.my_bet">
             {{ t('bs.myBet', { side: dotLabel(state.my_bet.bet_type), amount: fmt(state.my_bet.amount) }) }}
           </div>
@@ -319,7 +319,7 @@ onBeforeUnmount(stopTimers)
     <!-- 游戏记录 -->
     <section class="glass panel">
       <div class="sec-title-row">
-        <div class="sec-title">📋 {{ t('bs.records') }}</div>
+        <div class="sec-title"><SptIcon name="list" :size="16" aria-hidden="true" /> {{ t('bs.records') }}</div>
         <div class="tabs sm">
           <button class="tab" :class="{ on: recTab === 'my' }" @click="recTab = 'my'">{{ t('bs.myRec') }}</button>
           <button class="tab" :class="{ on: recTab === 'all' }" @click="recTab = 'all'">{{ t('bs.allRec') }}</button>
@@ -366,7 +366,7 @@ onBeforeUnmount(stopTimers)
 
     <!-- 聊天 -->
     <section class="glass panel chat-panel">
-      <div class="sec-title">💬 {{ t('bs.chat') }}</div>
+      <div class="sec-title"><SptIcon name="message" :size="16" aria-hidden="true" /> {{ t('bs.chat') }}</div>
       <div class="chat-list">
         <div v-for="m in chat" :key="m.id" class="chat-msg">
           <span class="chat-user">{{ m.username }}</span>

@@ -10,7 +10,7 @@ export function buildNumericFields(d: DashboardShareData, config: DashboardExpor
   const totalRatio = d.totals.downloaded > 0 ? d.totals.uploaded / d.totals.downloaded : 0
   const all: NumField[] = [
     { key: 'uploaded', label: '总上传', color: '#2ecc71', value: fmtBytes(d.totals.uploaded) },
-    { key: 'downloaded', label: '总下载', color: '#4285f4', value: fmtBytes(d.totals.downloaded) },
+    { key: 'downloaded', label: '总下载', color: '#2563eb', value: fmtBytes(d.totals.downloaded) },
     { key: 'seeding', label: '总做种', color: '#38ef7d', value: `${d.totals.seeding}` },
     { key: 'seedingSize', label: '做种体积', color: '#43cea2', value: fmtBytes(d.totals.seeding_size) },
     { key: 'bonus', label: '总魔力', color: '#f7971e', value: `${Math.round(d.totals.bonus)}` },
@@ -29,7 +29,7 @@ export function buildNumericFields(d: DashboardShareData, config: DashboardExpor
 
 export const RANK_DEFS: RankDef[] = [
   { key: 'uploaded', label: '上传', color: '#2ecc71', pick: (s) => s.uploaded, fmt: (v) => fmtBytes(v) },
-  { key: 'downloaded', label: '下载', color: '#4285f4', pick: (s) => s.downloaded, fmt: (v) => fmtBytes(v) },
+  { key: 'downloaded', label: '下载', color: '#2563eb', pick: (s) => s.downloaded, fmt: (v) => fmtBytes(v) },
   { key: 'uploads', label: '发布', color: '#9b59b6', pick: (s) => s.uploads, fmt: (v) => `${v}` },
   { key: 'seeding', label: '做种', color: '#38ef7d', pick: (s) => s.seeding, fmt: (v) => `${v}` },
   { key: 'ratio', label: '分享率', color: '#e74c3c', pick: (s) => s.ratio, fmt: (v) => v.toFixed(2) },

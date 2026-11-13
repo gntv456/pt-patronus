@@ -42,7 +42,7 @@ const {
       </div>
       <div v-if="testResults.length" class="test-results">
         <span v-for="r in testResults" :key="r.channel" class="test-tag" :class="r.ok ? 'ok' : 'fail'">
-          {{ r.channel }} {{ r.ok ? '✓' : '✗' }}
+          {{ r.channel }} <SptIcon :name="r.ok ? 'check' : 'x'" :size="14" aria-hidden="true" />
         </span>
       </div>
     </div>

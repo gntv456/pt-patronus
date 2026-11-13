@@ -31,7 +31,7 @@
   align-items: center;
   gap: var(--sp-2);
   padding: 6px 0;
-  border-bottom: 1px dashed var(--border-color, rgba(128, 128, 128, 0.2));
+  border-bottom: 1px dashed var(--color-border);
   flex-wrap: wrap;
 }
 .cal-ep:last-child {
@@ -81,6 +81,9 @@
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   padding: 4px 12px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
   font-size: var(--fs-body);
   color: var(--text-strong);
@@ -91,6 +94,10 @@
 }
 .chip:hover {
   background: var(--surface-hover);
+}
+.filter-chip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .filter-chip.on {
   background: var(--pt-primary-bg);
@@ -114,8 +121,7 @@
     border-color var(--dur-base) var(--ease-out-smooth);
 }
 .clickable:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--surface-shadow-hover);
+  border-color: var(--color-border-strong);
 }
 .poster {
   width: 92px;
@@ -186,4 +192,7 @@
 }
 .pager .no-more {
   font-size: var(--fs-xs);
+}
+@media (max-width: 640px) {
+  .filter-chip { min-height: 44px; }
 }

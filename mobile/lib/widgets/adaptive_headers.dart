@@ -62,7 +62,7 @@ class PTHeaderAction {
 /// 顶栏图标按钮：44×44 触摸区（Material/Apple HIG 最小红线）+ 20px 图标，替代散落的裸 `IconButton`。
 /// 用于各导航页 header 的 actions（刷新 / 添加 / 导出 / 更多等）。`loading` 时显示小 spinner
 /// （替代各页手写的 `CircularProgressIndicator(strokeWidth:2)` 刷新态），loading 态也占 44×44 防跳动。
-/// 与全局 appBarTheme.toolbarHeight(44) 对齐——44×44 正好填满 44 高工具栏的 actions 区。
+/// 与全局 appBarTheme.toolbarHeight(48) 对齐——44×44 触摸区落在 48 高工具栏内，留 2px 上下余量。
 class PTIconAction extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;

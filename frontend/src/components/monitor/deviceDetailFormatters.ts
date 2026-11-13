@@ -188,15 +188,15 @@ export function diskTypeName(raw?: string): string {
 }
 
 export function usageColor(v?: number): string {
-  if ((v ?? 0) >= 90) return '#ef4444'
-  if ((v ?? 0) >= 80) return '#f59e0b'
-  return '#14b8a6'
+  if ((v ?? 0) >= 90) return 'var(--pt-danger-fg)'
+  if ((v ?? 0) >= 80) return 'var(--pt-warn-fg)'
+  return 'var(--pt-success-fg)'
 }
 
 export function donutStyle(v?: number) {
   const p = Math.min(100, Math.max(0, v ?? 0))
   return {
-    background: `conic-gradient(${usageColor(p)} ${p * 3.6}deg, rgba(148, 163, 184, 0.18) 0deg)`,
+    background: `conic-gradient(${usageColor(p)} ${p * 3.6}deg, var(--color-border) 0deg)`,
   }
 }
 

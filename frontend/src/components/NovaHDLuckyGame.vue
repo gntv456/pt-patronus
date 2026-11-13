@@ -69,7 +69,7 @@ onMounted(async () => {
 <template>
   <div class="lucky">
     <div class="hero">
-      <div class="hero-title">🎡 {{ t('nlg.title') }}</div>
+      <div class="hero-title"><SptIcon name="gift" :size="18" aria-hidden="true" /> {{ t('nlg.title') }}</div>
     </div>
 
     <!-- 抽奖信息 -->
@@ -95,7 +95,7 @@ onMounted(async () => {
       <div class="sec-title">{{ t('nlg.prizes') }}</div>
       <div class="prize-strip">
         <div v-for="p in prizes" :key="p.id" class="prize-card">
-          <span class="p-emoji">{{ emoji(p.name) }}</span>
+          <span class="p-emoji" aria-hidden="true">{{ emoji(p.name) }}</span>
           <span class="p-name">{{ p.name }}</span>
         </div>
       </div>
@@ -112,7 +112,7 @@ onMounted(async () => {
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '🎉' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'party-popper' : 'x'" :size="18" aria-hidden="true" /></span>
       <div class="r-detail">
         <div v-if="last.prizes?.length" class="r-list">
           <span v-for="(p, i) in last.prizes.filter((x) => x.is_win).slice(0, 8)" :key="i" class="r-pill">
@@ -147,13 +147,14 @@ onMounted(async () => {
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
   letter-spacing: 1px;
 }
 
@@ -179,16 +180,16 @@ onMounted(async () => {
   gap: var(--sp-1);
   padding: 14px 8px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .info-card b {
   font-size: var(--fs-xl);
-  color: var(--pt-primary-2);
+  color: var(--color-primary);
 }
 .info-card small {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .prize-strip {
@@ -205,15 +206,15 @@ onMounted(async () => {
   gap: var(--sp-1);
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   min-width: 70px;
 }
 .p-emoji {
   font-size: var(--fs-title);
 }
 .p-name {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -225,31 +226,28 @@ onMounted(async () => {
   justify-content: center;
 }
 .op-btn {
+  min-height: 24px;
   padding: 9px 16px;
-  border: 1px solid var(--pt-primary-2);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--fs-body);
   font-weight: 600;
-  color: var(--pt-primary-2);
+  color: var(--color-primary);
   background: transparent;
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition: background-color var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease), opacity var(--dur-base) var(--ease);
 }
 .op-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: var(--pt-primary-2-bg);
-}
-.op-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  background: var(--color-primary-soft);
 }
 .op-btn.primary:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--color-primary-hover);
 }
 .op-btn.primary {
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: var(--color-on-accent);
+  background: var(--color-primary);
   border: 0;
-  box-shadow: 0 4px 12px var(--pt-primary-2-bg);
+  box-shadow: var(--shadow-card);
 }
 .op-btn:disabled {
   opacity: 0.6;
@@ -283,7 +281,7 @@ onMounted(async () => {
   font-size: var(--fs-xs);
   font-weight: 600;
   background: var(--pt-success-bg);
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
 }
 .r-msg {
   font-size: var(--fs-body);
@@ -295,17 +293,17 @@ onMounted(async () => {
   align-items: center;
   padding: 6px 0;
   font-size: var(--fs-body);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rec-row .muted {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .rec-amt {
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
   font-weight: 600;
 }
 .rec-time {
   margin-left: auto;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
 }
 </style>

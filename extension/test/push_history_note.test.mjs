@@ -80,14 +80,14 @@ test('pushResultLabel 分得开"失败 / 成功但历史没记下 / 全部成功
   // 后台 resolve 成 undefined（SW 还没挂上监听）：旧写法在这条路上读 r.error 抛 TypeError，
   // 回显整个打没 ⇒ 这一档必须给出可读文案而不是崩。
   assert.equal(pushFailed(undefined), true)
-  assert.match(pushResultLabel(undefined), /^⚠ 后台无响应$/)
-  assert.equal(pushResultLabel({ ok: false, error: '凭据库读不到' }), '⚠ 凭据库读不到')
-  assert.equal(pushResultLabel({ ok: true }), '✅ 已推送')
-  assert.equal(pushResultLabel({ ok: true }, '✅'), '✅')
+  assert.match(pushResultLabel(undefined), /^注意：后台无响应$/)
+  assert.equal(pushResultLabel({ ok: false, error: '凭据库读不到' }), '注意：凭据库读不到')
+  assert.equal(pushResultLabel({ ok: true }), '已推送')
+  assert.equal(pushResultLabel({ ok: true }, '已推送'), '已推送')
   const withMiss = pushResultLabel({ ok: true, history_error: '「ptp_history」不是列表' })
-  assert.match(withMiss, /^✅ 已推送（历史没记下：/)
+  assert.match(withMiss, /^已推送（历史没记下：/)
   assert.ok(withMiss.includes('不是列表'), '原因被丢了')
-  assert.equal(pushResultLabel({ ok: true, history_error: '坏' }, '✅'), '✅（历史没记下：坏）')
+  assert.equal(pushResultLabel({ ok: true, history_error: '坏' }, '已推送'), '已推送（历史没记下：坏）')
   // 正控：成功档与"历史没记下"档不许同形（同形就等于本轮改动没发生）。
   assert.notEqual(withMiss, pushResultLabel({ ok: true }))
 })
@@ -144,7 +144,7 @@ test('两份文案函数都不许丢掉"历史没记下"这一档', () => {
     // 判活分支：写成 `if (false && x.history_error)` 仍含 history_error 字面，上一版就是被这个糊过去的。
     assert.match(body, /if \(\w+\.history_error\) return/, `${name} 的中间档不是活分支`)
     assert.match(body, /（历史没记下：/, `${name} 的中间档文案变了`)
-    assert.match(body, /⚠/, `${name} 丢了失败档`)
+    assert.match(body, /注意：/, `${name} 丢了失败档`)
   }
   // 正控：死分支写法必须被上面那条判活断言拒掉（拒掉＝门禁会红）。
   assert.equal(

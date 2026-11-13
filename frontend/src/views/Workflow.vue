@@ -12,9 +12,11 @@ import { webhookApi, type Webhook } from '@/api/webhook'
 import { copyText } from '@/utils/clipboard'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
+import { useFeedback } from '@/composables/useFeedback'
 
 // Webhook 创建/编辑/删除/重置是 admin 专属（后端 RequireAdmin）；非 admin 隐藏入口。
 const auth = useAuthStore()
+const feedback = useFeedback()
 
 const { t } = useI18n()
 const router = useRouter()
@@ -99,17 +101,18 @@ async function toggle(w: Workflow) {
 }
 
 async function remove(w: Workflow) {
-  try {
-    await ElMessageBox.confirm(t('workflow.confirmDelete', { name: w.name }), t('common.confirm'), { type: 'warning' })
-  } catch {
-    return
-  }
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    detail: t('workflow.confirmDelete', { name: w.name }),
+    danger: true,
+  })
+  if (!ok) return
   try {
     await workflowApi.remove(w.id)
     await load()
-    ElMessage.success(t('common.deleted'))
+    feedback.toast(t('common.deleted'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || t('common.deleteFailed'))
+    feedback.error((e as Error).message || t('common.deleteFailed'))
   }
 }
 
@@ -155,13 +158,12 @@ async function copyUrl(w: Webhook) {
   await copyText(webhookUrl(w), t('workflow.urlCopied'), webhookUrl(w))
 }
 async function whDelete(w: Webhook) {
-  try {
-    await ElMessageBox.confirm(t('workflow.confirmDeleteWh', { name: w.name }), t('common.confirm'), {
-      type: 'warning',
-    })
-  } catch {
-    return
-  }
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    detail: t('workflow.confirmDeleteWh', { name: w.name }),
+    danger: true,
+  })
+  if (!ok) return
   try {
     await webhookApi.remove(w.id)
     webhooks.value = await webhookApi.list()
@@ -170,11 +172,12 @@ async function whDelete(w: Webhook) {
   }
 }
 async function whRotate(w: Webhook) {
-  try {
-    await ElMessageBox.confirm(t('workflow.confirmRotate'), t('common.confirm'), { type: 'warning' })
-  } catch {
-    return
-  }
+  const ok = await feedback.confirm({
+    title: t('workflow.rotate'),
+    detail: t('workflow.confirmRotate'),
+    danger: true,
+  })
+  if (!ok) return
   try {
     const r = await webhookApi.rotate(w.id)
     webhookTokens.value[w.id] = r.token // rotate 响应一次性下发新 token
@@ -187,16 +190,19 @@ async function whRotate(w: Webhook) {
 
 // webhook 新建表单
 const showWhForm = ref(false)
+const whError = ref('')
 const whForm = ref({ name: '', target_workflow_id: 0, secret: '' })
 function openWhForm() {
   whForm.value = { name: '', target_workflow_id: 0, secret: '' }
+  whError.value = ''
   showWhForm.value = true
 }
 async function whSave() {
-  if (!whForm.value.name) {
-    ElMessage.warning(t('workflow.nameRequired'))
+  if (!whForm.value.name.trim()) {
+    whError.value = t('workflow.nameRequired')
     return
   }
+  whError.value = ''
   try {
     const created = await webhookApi.create(whForm.value)
     if (created.token) webhookTokens.value[created.id] = created.token
@@ -222,15 +228,15 @@ async function whSave() {
 
     <!-- 统计看板 -->
     <div v-if="stats" class="stats">
-      <div class="stat glass-hover">
+      <div class="stat solid-card">
         <div class="s-num">{{ stats.total }}</div>
         <div class="s-lab">{{ t('workflow.title') }}</div>
       </div>
-      <div class="stat glass-hover">
+      <div class="stat solid-card">
         <div class="s-num">{{ stats.enabled }}</div>
         <div class="s-lab">{{ t('workflow.enabled') }}</div>
       </div>
-      <div class="stat glass-hover">
+      <div class="stat solid-card">
         <div class="s-num">{{ stats.runs_total }}</div>
         <div class="s-lab">{{ t('workflow.totalRuns') }}</div>
       </div>
@@ -242,15 +248,16 @@ async function whSave() {
         <div class="s-num">{{ stats.runs_failed }}</div>
         <div class="s-lab">{{ t('transfer.st.failed') }}</div>
       </div>
-      <div class="stat glass-hover">
+      <div class="stat solid-card">
         <div class="s-num">{{ Math.round(stats.avg_duration_ms / 1000) }}s</div>
         <div class="s-lab">{{ t('workflow.avgDuration') }}</div>
       </div>
     </div>
 
-    <div v-loading="loading" class="card glass">
-      <div v-if="list.length" class="grid">
-        <div v-for="w in list" :key="w.id" class="wcard glass-hover">
+    <div v-loading="loading" class="card solid-card">
+      <el-skeleton v-if="loading && !list.length" :rows="4" animated />
+      <div v-else-if="list.length" class="grid">
+        <div v-for="w in list" :key="w.id" class="wcard solid-card">
           <div class="row1">
             <span class="w-name">{{ w.name }}</span>
             <span class="pt-chip" :class="stateClass[w.state]">{{ stateText[w.state] }}</span>
@@ -264,7 +271,7 @@ async function whSave() {
           </div>
           <div v-if="w.last_result" class="result small">{{ t('workflow.lastResult') }}{{ w.last_result }}</div>
           <div class="actions">
-            <el-button size="small" type="primary" plain @click="edit(w)">{{ t('common.edit') }}</el-button>
+            <el-button size="small" @click="edit(w)">{{ t('common.edit') }}</el-button>
             <el-button size="small" type="primary" :loading="running === w.id" @click="run(w)">{{
               t('transfer.run')
             }}</el-button>
@@ -277,7 +284,6 @@ async function whSave() {
       </div>
       <EmptyState
         v-else-if="!loading"
-        icon="🔀"
         :title="t('workflow.emptyTitle')"
         :description="t('workflow.subtitleNoDot')"
       >
@@ -303,7 +309,7 @@ async function whSave() {
       "
       class="monitor"
     >
-      <div v-if="stats.node_timing && stats.node_timing.length" class="card glass">
+      <div v-if="stats.node_timing && stats.node_timing.length" class="card solid-card">
         <div class="m-title">{{ t('workflow.nodeTiming') }}</div>
         <div v-for="n in stats.node_timing.slice(0, 8)" :key="n.node_type" class="nt-row">
           <span class="nt-name">{{ n.node_name || n.node_type }}</span>
@@ -317,7 +323,7 @@ async function whSave() {
           <span v-if="n.failed" class="small err-t">{{ t('transfer.st.failed') }} {{ n.failed }}</span>
         </div>
       </div>
-      <div v-if="stats.recent_failures && stats.recent_failures.length" class="card glass">
+      <div v-if="stats.recent_failures && stats.recent_failures.length" class="card solid-card">
         <div class="m-title">{{ t('workflow.recentFailures') }}</div>
         <div v-for="f in stats.recent_failures" :key="f.id" class="rf-row">
           <span class="rf-id">#{{ f.id }}</span>
@@ -359,9 +365,10 @@ async function whSave() {
     <!-- Webhook 新建 -->
     <el-dialog v-model="showWhForm" :title="t('workflow.newWebhook')" width="480px">
       <el-form label-width="110px" size="small">
-        <el-form-item :label="t('rss.f.name')"
-          ><el-input v-model="whForm.name" :placeholder="t('workflow.f.nameHint')"
-        /></el-form-item>
+        <el-form-item :label="t('rss.f.name')" required :error="whError">
+          <el-input v-model="whForm.name" :placeholder="t('workflow.f.nameHint')" aria-describedby="wh-name-error" @input="whError = ''" />
+          <div v-if="whError" id="wh-name-error" role="alert" class="field-error">{{ whError }}</div>
+        </el-form-item>
         <el-form-item :label="t('workflow.f.triggerWorkflow')">
           <el-select v-model="whForm.target_workflow_id" style="width: 100%">
             <el-option :label="t('workflow.f.noDirectTrigger')" :value="0" />

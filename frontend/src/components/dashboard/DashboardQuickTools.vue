@@ -139,18 +139,18 @@ async function runNet() {
 </script>
 
 <template>
-  <div class="quick-tools glass">
+  <div class="quick-tools solid-card">
     <div class="qt-title">{{ t('dqt.title') }}</div>
     <div class="qt-grid">
       <!-- TOTP -->
       <div class="qt-card">
-        <div class="qt-head">🔐 {{ t('dqt.totp') }}</div>
+        <div class="qt-head"><SptIcon name="lock" :size="16" aria-hidden="true" /> {{ t('dqt.totp') }}</div>
         <div class="qt-body">
           <el-input v-model="totpSecret" :placeholder="t('dqt.totpPh')" size="small" @change="startTotp" />
           <template v-if="totpCodes.length">
             <div v-for="c in totpCodes" :key="c.account" class="totp-row">
               <span class="totp-account">{{ c.account }}</span>
-              <code class="totp-code" @click="copyText(c.code)">{{ c.code }}</code>
+              <button type="button" class="totp-code qt-copy" :aria-label="t('dqt.copy')" @click="copyText(c.code)">{{ c.code }}</button>
               <span class="totp-sec">{{ c.second }}s</span>
             </div>
           </template>
@@ -160,7 +160,7 @@ async function runNet() {
 
       <!-- AES -->
       <div class="qt-card">
-        <div class="qt-head">🗝️ {{ t('dqt.aes') }}</div>
+        <div class="qt-head"><SptIcon name="key" :size="16" aria-hidden="true" /> {{ t('dqt.aes') }}</div>
         <div class="qt-body">
           <el-radio-group v-model="aesBits" size="small">
             <el-radio-button :value="128">AES-128</el-radio-button>
@@ -169,10 +169,10 @@ async function runNet() {
           <el-button size="small" type="primary" @click="genAes">{{ t('dqt.generate') }}</el-button>
           <div v-if="aesKey" class="aes-out">
             <div class="aes-row">
-              <span>Key</span><code @click="copyText(aesKey)">{{ aesKey }}</code>
+              <span>Key</span><button type="button" class="qt-copy" :aria-label="t('dqt.copy')" @click="copyText(aesKey)">{{ aesKey }}</button>
             </div>
             <div class="aes-row">
-              <span>IV</span><code @click="copyText(aesIv)">{{ aesIv }}</code>
+              <span>IV</span><button type="button" class="qt-copy" :aria-label="t('dqt.copy')" @click="copyText(aesIv)">{{ aesIv }}</button>
             </div>
           </div>
           <span v-else class="qt-hint">{{ t('dqt.aesHint') }}</span>
@@ -181,7 +181,7 @@ async function runNet() {
 
       <!-- 网络测试 -->
       <div class="qt-card">
-        <div class="qt-head">📡 {{ t('dqt.net') }}</div>
+        <div class="qt-head"><SptIcon name="wifi" :size="16" aria-hidden="true" /> {{ t('dqt.net') }}</div>
         <div class="qt-body">
           <div style="display: flex; gap: 8px; width: 100%">
             <el-input v-model="netTarget" :placeholder="t('dqt.netPh')" size="small" style="flex: 1" />
@@ -199,7 +199,7 @@ async function runNet() {
 
       <!-- 种子识别：跳转整理设置的识别测试 -->
       <div class="qt-card">
-        <div class="qt-head">🎞️ {{ t('dqt.parse') }}</div>
+        <div class="qt-head"><SptIcon name="film" :size="16" aria-hidden="true" /> {{ t('dqt.parse') }}</div>
         <div class="qt-body">
           <el-button size="small" @click="router.push('/transfer')">{{ t('dqt.openParse') }}</el-button>
           <span class="qt-hint">{{ t('dqt.parseHint') }}</span>
@@ -279,10 +279,20 @@ async function runNet() {
   color: var(--text-muted);
   flex-shrink: 0;
 }
-.aes-row code {
+.aes-row .qt-copy {
   word-break: break-all;
   cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  min-height: 24px;
 }
+.qt-copy:hover { color: var(--color-primary); }
+.qt-copy:focus-visible { outline-offset: 2px; }
+.totp-code.qt-copy { letter-spacing: 2px; }
 .net-list {
   display: flex;
   flex-direction: column;

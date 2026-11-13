@@ -30,7 +30,7 @@ extension on _FileManagePageState {
             (b) => DropdownMenuItem(
               value: b,
               child: Text(
-                  '${_statusDot(b.key)}${b.kind == 'cloud' ? '☁ ' : ''}${b.name}（${b.typeName}）'),
+                  '${_statusDot(b.key)}${b.kind == 'cloud' ? '云盘 ' : ''}${b.name}（${b.typeName}）'),
             ),
           )
           .toList(),

@@ -63,13 +63,13 @@ onMounted(refresh)
 <template>
   <div class="c13d">
     <div class="hero">
-      <div class="hero-title">🎲 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div v-if="state" class="hero-sub">啤酒瓶 <b>{{ state.balance.toLocaleString() }}</b></div>
     </div>
 
     <section class="glass section dice-zone">
       <div class="dice-row">
-        <div v-for="(d, i) in dice" :key="i" class="die" :class="{ rolling }">{{ DICE_FACES[d - 1] }}</div>
+        <div v-for="(d, i) in dice" :key="i" class="die" :class="{ rolling }" aria-hidden="true">{{ DICE_FACES[d - 1] }}</div>
       </div>
       <div class="sum-line text-muted">
         合计 <b>{{ dice[0] + dice[1] + dice[2] }}</b> · {{ dice[0] + dice[1] + dice[2] >= 11 ? '大' : '小' }}
@@ -87,7 +87,7 @@ onMounted(refresh)
     </section>
 
     <section v-if="state?.recent?.length" class="glass section">
-      <div class="sec-title">📜 最近开奖</div>
+      <div class="sec-title"><SptIcon name="clock" :size="16" aria-hidden="true" /> 最近开奖</div>
       <div class="recent">
         <div v-for="(r, i) in state.recent" :key="i" class="rec" :class="r.big ? 'big' : 'small'">
           {{ r.dice.join('+') }}={{ r.sum }} {{ r.big ? '大' : '小' }}
@@ -96,7 +96,7 @@ onMounted(refresh)
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" /></span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.balance" class="r-bal">余 {{ last.balance.toLocaleString() }}</span>
@@ -108,16 +108,17 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .c13d { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 560px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0e7490, #22d3ee); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
 .hero-sub { margin-top: 6px; opacity: 0.92; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin-bottom: 10px; }
 .dice-zone { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .dice-row { display: flex; gap: 18px; }
-.die { width: 76px; height: 76px; border-radius: 14px; background: #fff; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 56px; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,.12); }
-.die.rolling { animation: shake .25s infinite; }
+.die { width: 76px; height: 76px; border-radius: 14px; background: var(--color-surface); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 56px; color: var(--color-text); box-shadow: var(--shadow-card); }
+.die.rolling { animation: shake .25s 3; }
 @keyframes shake { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+@media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
 .sum-line b { font-size: 18px; }
 .bet-panel { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 360px; }
 .amt-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
@@ -125,11 +126,11 @@ onMounted(refresh)
 .ops .el-button { flex: 1; }
 .recent { display: flex; flex-wrap: wrap; gap: 8px; }
 .rec { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-.rec.big { background: #fef2f2; color: #dc2626; }
-.rec.small { background: #eff6ff; color: #2563eb; }
+.rec.big { background: var(--color-danger-soft); color: var(--pt-danger-fg); }
+.rec.small { background: var(--color-primary-soft); color: var(--pt-info-fg); }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); }
+.result.lose { background: var(--color-danger-soft); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
 </style>

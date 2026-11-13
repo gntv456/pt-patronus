@@ -171,8 +171,8 @@ watch(
       />
 
       <div v-if="failedSites.length" class="sf-fail">
-        <button type="button" class="sf-fail-toggle" @click="showFailed = !showFailed">
-          <span>⚠ {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
+        <button type="button" class="sf-fail-toggle" :aria-expanded="showFailed" @click="showFailed = !showFailed">
+          <span><SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
           <span class="text-muted">{{ showFailed ? t('trt.collapse') : t('trt.expand') }}</span>
         </button>
         <ul v-if="showFailed" class="sf-fail-list">
@@ -191,16 +191,21 @@ watch(
       </div>
 
       <div v-else class="sf-grid">
-        <TorrentCard
-          v-for="g in cards"
-          :key="g.key"
-          :group="g"
-          :title="title"
-          :poster-url="posterUrl"
-          @push="startPush"
-          @more="openMore"
-          @detail="openDetail"
-        />
+        <template v-if="loading && !cards.length">
+          <PtSkeleton v-for="i in 6" :key="i" height="190px" />
+        </template>
+        <template v-else>
+          <TorrentCard
+            v-for="g in cards"
+            :key="g.key"
+            :group="g"
+            :title="title"
+            :poster-url="posterUrl"
+            @push="startPush"
+            @more="openMore"
+            @detail="openDetail"
+          />
+        </template>
       </div>
     </div>
 

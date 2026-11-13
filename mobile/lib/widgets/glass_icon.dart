@@ -3,13 +3,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../theme/glass.dart';
 import 'glyphs.dart';
 
-/// 液态玻璃风格应用图标 —— Flutter 端对齐 Web [frontend/src/components/GlassIcon.vue]：
-/// 30% 圆角方块 + 135° 双色渐变底(from→to) + 顶部内高光 rim + 1px 内白边 + 柔和外阴影 +
-/// 居中白色 Lucide 描边字形（字形与 Web GLYPHS 1:1，由 [glyphSvg] 包裹后 flutter_svg 渲染）。
+/// 单色线性应用图标 —— 与 Web 端 SptIcon / Lucide 同一图标族：
+/// 浅主色软底 + 1px 边框 + 8px 圆角 + currentColor（语义主色）描边字形。
+/// 无 135° 渐变 / 内高光 rim / 外发光 / squircle。
 ///
-/// 用法：导航项、品牌位、指标卡图标。`size` 默认 30（导航项），字形按 60% 居中（同 Web）。
+/// 用法：导航项、品牌位、指标卡图标。`size` 默认 30（导航项），字形按 60% 居中。
+/// 兼容旧调用：保留 `from` / `to` 参数名（旧渐变两色），但不再参与渲染，
+/// 避免 20+ 处调用点改动；字形颜色统一随主题主色。
 class GlassIcon extends StatelessWidget {
   final String glyph;
   final Color from;
@@ -26,55 +29,25 @@ class GlassIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = size * 0.30; // squircle 近似：iOS 连续圆角
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glyphColor = Theme.of(context).colorScheme.primary;
     return Container(
       width: size,
       height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [from, to],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: isDark ? PTColors.primarySoftDark : PTColors.primarySoft,
+        borderRadius: BorderRadius.circular(PTRadius.lg),
+        border: Border.all(
+          color: isDark ? PTColors.borderStrongDark : PTColors.border,
         ),
-        borderRadius: BorderRadius.circular(radius),
-        // 内白边（inset 1px white .22）+ 柔和外阴影（rgba(31,38,135,.22)）
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1F2687).withValues(alpha: 0.22),
-            blurRadius: size * 0.40,
-            offset: Offset(0, size * 0.17),
-          ),
-        ],
       ),
-      child: Stack(
-        children: [
-          // 顶部内高光 rim：模拟液态玻璃边缘折射（白→透明，前 45%）。
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(radius),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.55),
-                    Colors.white.withValues(alpha: 0.0),
-                  ],
-                  stops: const [0.0, 0.45],
-                ),
-              ),
-            ),
-          ),
-          // 字形：60% 居中、白色描边（stroke 由 glyphSvg 烧死为 #fff）。
-          Center(
-            child: SvgPicture.string(
-              glyphSvg(glyph),
-              width: size * 0.60,
-              height: size * 0.60,
-            ),
-          ),
-        ],
+      child: SvgPicture.string(
+        glyphSvg(glyph),
+        width: size * 0.60,
+        height: size * 0.60,
+        // glyphSvg 把描边烧成 #fff，用 colorFilter 统一染成语义主色。
+        colorFilter: ColorFilter.mode(glyphColor, BlendMode.srcIn),
       ),
     );
   }

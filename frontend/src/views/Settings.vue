@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQueryState } from '@/composables/useUrlState'
 import { useI18n } from 'vue-i18n'
 // 设置分区内嵌的 9 个重组件改为按需异步加载：进任意 tab 只下载该 tab 代码，
 // 避免首屏一次性解析全部（FileManager/FilterRules 等共 3000+ 行）。
@@ -56,6 +57,27 @@ const mediaTab = ref('mediaquality')
 const notifyTab = ref('notification')
 const maintainTab = ref(pickTab('logs', 'backup'))
 const settingsRouter = useRouter()
+// 分区 / Tab 双向同步到 URL query：切 Tab 也回写，刷新与分享可恢复。
+const sectionQuery = useQueryState('section', 'general')
+const tabQuery = useQueryState('tab', 'general')
+
+function sectionForTab(name: string): string {
+  if (['cloud', 'trakt', 'files', 'oidc', 'llmgateway', 'cookiecloud', 'ocr', 'servarr'].includes(name))
+    return 'connect'
+  if (['mediaquality', 'subtitle', 'media-settings', 'filter-rules'].includes(name)) return 'media'
+  if (['logs', 'backup', 'doctor'].includes(name)) return 'maintain'
+  if (['notification', 'tgbot'].includes(name)) return 'notify'
+  if (name === 'schedule') return 'automation'
+  return 'general'
+}
+function defaultTabOf(s: string): string {
+  if (s === 'connect') return connectTab.value
+  if (s === 'media') return mediaTab.value
+  if (s === 'notify') return notifyTab.value
+  if (s === 'automation') return 'schedule'
+  if (s === 'maintain') return maintainTab.value
+  return 'general'
+}
 
 // 原独立配置页 → 设置分区内嵌 Tab（C 类迁入完成）
 const settingsPageMap: Record<string, { section: string; tab: string }> = {
@@ -127,9 +149,13 @@ function onTabChange(tab: string | number) {
   if (name === 'cookiecloud' && !ccCfg.value) loadCookieCloud()
   if (name === 'tgbot' && !tgCfg.value) loadTgBot()
   if (name === 'schedule' && !schedCfg.value) loadSchedule()
+  tabQuery.value = name
+  sectionQuery.value = sectionForTab(name)
 }
 function onSectionChange(sec: string | number) {
   const s = String(sec)
+  sectionQuery.value = s
+  tabQuery.value = defaultTabOf(s)
   // 切入分区时触发该区默认子 Tab
   if (s === 'connect') onTabChange(connectTab.value)
   else if (s === 'media') onTabChange(mediaTab.value)
@@ -144,7 +170,7 @@ function onSectionChange(sec: string | number) {
   <div class="page">
     <h2 class="title">{{ t('settings.title') }}</h2>
 
-    <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="glass tabs settings-sections">
+    <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="solid-card tabs settings-sections">
       <el-tab-pane :label="t('settings.sections.general')" name="general">
         <GeneralPanel />
       </el-tab-pane>
@@ -177,7 +203,7 @@ function onSectionChange(sec: string | number) {
               <p class="text-muted oidc-help">
                 {{ t('settings.servarr.help', { code: 'API_KEY' }) }}
               </p>
-              <div class="card glass">
+              <div class="card solid-card">
                 <div class="ch-head">
                   <div class="row-title">{{ t('settings.servarr.accessInfo') }}</div>
                 </div>
@@ -254,7 +280,7 @@ function onSectionChange(sec: string | number) {
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--space-4);
 }
 .title {
   margin: 4px 0;
@@ -262,11 +288,11 @@ function onSectionChange(sec: string | number) {
   font-weight: 700;
 }
 .tabs {
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-3);
 }
 .card {
-  padding: 16px 18px;
-  margin-bottom: 12px;
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 .row-title {
   font-weight: 600;
@@ -274,7 +300,7 @@ function onSectionChange(sec: string | number) {
 .oidc-wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--space-3);
   max-width: 640px;
 }
 .oidc-help {
@@ -282,9 +308,9 @@ function onSectionChange(sec: string | number) {
   line-height: 1.6;
 }
 .oidc-help code {
-  background: var(--card);
+  background: var(--color-surface-2);
   padding: 2px 6px;
-  border-radius: var(--radius-2xs);
+  border-radius: var(--radius-control);
 }
 .oidc-save {
   display: flex;
@@ -300,6 +326,6 @@ function onSectionChange(sec: string | number) {
   margin-top: 8px;
 }
 .nested-tabs {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 </style>

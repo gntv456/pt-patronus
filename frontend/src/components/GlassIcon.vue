@@ -6,15 +6,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// GlassIcon — iOS 26 液态玻璃风格应用图标：圆角 squircle 渐变色块 + 顶部玻璃高光 + 白色描边字形。
-// 用于导航栏、品牌 Logo、仪表盘指标卡、下载器类型徽标，替换原先的 emoji。
+// GlassIcon — 单色线性图标容器：浅色实色底 + 1px 边框 + 主色描边字形。
+// 用于导航栏、命令面板、指标卡与下载器类型徽标，替换原先的 emoji 与彩色渐变块。
 //
-// 设计要点（对齐 iOS 26 Liquid Glass）：
-//  - 大圆角 squircle（约 30%，贴近 iOS 连续圆角观感）
-//  - 135° 双色渐变底（from→to），每个图标独立配色
-//  - 顶部内高光 + 1px 内白边，模拟玻璃边缘折射（同 .glass::before 的 overlay 思路）
-//  - 柔和外阴影，营造悬浮厚度
-//  - 字形用 24×24 Lucide 风格描边路径，stroke=currentColor（白色），圆角端点
+// 设计要点（对齐工具型界面）：
+//  - 底 = var(--color-primary-soft)，边 = 1px var(--color-border)
+//  - 字形 = 24×24 Lucide 风格描边路径，stroke=currentColor（var(--color-primary)）
+//  - 圆角 = var(--radius-control)，无渐变 / 无 rim 高光 / 无阴影
+//  - from / to 为兼容旧调用保留，但不再参与渲染（旧调用点的裸 hex 可随后清理）
 //
 // 通过 unplugin-vue-components 自动注册（src/components 默认扫描目录），模板里直接用 <GlassIcon/>。
 
@@ -22,17 +21,17 @@ const props = withDefaults(
   defineProps<{
     /** 字形名称（见 GLYPHS 字典） */
     name: string
-    /** 渐变起点色（默认跟随主题主色——切主题色时 71 个字形同步变色） */
+    /** 兼容旧调用：渐变起点色，已忽略（保留 props 以免旧调用点编译失败） */
     from?: string
-    /** 渐变终点色 */
+    /** 兼容旧调用：渐变终点色，已忽略 */
     to?: string
     /** 尺寸（px 或 CSS 字符串） */
     size?: number | string
   }>(),
   {
-    from: 'var(--pt-primary)',
-    to: 'var(--pt-primary-2)',
-    size: 34,
+    from: '',
+    to: '',
+    size: 20,
   },
 )
 
@@ -192,17 +191,7 @@ const glyph = computed(() => {
 </script>
 
 <template>
-  <span
-    class="glass-icon"
-    :style="{
-      width: dim,
-      height: dim,
-      background: `linear-gradient(135deg, ${from}, ${to})`,
-    }"
-    role="img"
-    aria-hidden="true"
-  >
-    <span class="gi-rim"></span>
+  <span class="glass-icon" :style="{ width: dim, height: dim }" aria-hidden="true">
     <span class="gi-glyph" v-html="glyph"></span>
   </span>
 </template>
@@ -213,24 +202,12 @@ const glyph = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 30%; /* squircle 近似：iOS 连续圆角 */
-  color: #fff;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   flex: none;
-  /* 玻璃边缘：内白边 + 顶部高光 + 柔和外阴影 */
-  box-shadow:
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.65),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
-    0 5px 12px rgba(31, 38, 135, 0.22);
-}
-/* 顶部内高光，模拟液态玻璃边缘折射 */
-.gi-rim {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%);
-  mix-blend-mode: overlay;
-  opacity: 0.7;
 }
 /* 字形容器：绝对填满 tile，给出确定宽高，子 svg 用百分比才能正确解析居中 */
 .gi-glyph {
@@ -240,7 +217,6 @@ const glyph = computed(() => {
   align-items: center;
   justify-content: center;
   line-height: 0;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
 }
 .gi-glyph :deep(svg) {
   display: block;

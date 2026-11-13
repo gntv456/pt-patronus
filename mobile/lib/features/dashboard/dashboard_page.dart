@@ -124,7 +124,7 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
     final wide = isWideScreen(context);
     return PTPageScaffold(
       title: '仪表盘',
-      toolbarHeight: wide ? 44 : 40,
+      toolbarHeight: wide ? 48 : 44,
       actions: [
         PTBarAction(
           icon: Icons.tune,
@@ -252,9 +252,9 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
         const Text('实时运维', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: _kvCell('↓ 总下载', _fmtSpeed(dl), const Color(0xff2563eb))),
+          Expanded(child: _kvCell('↓ 总下载', _fmtSpeed(dl), PTColors.primary)),
           const SizedBox(width: 10),
-          Expanded(child: _kvCell('↑ 总上传', _fmtSpeed(up), const Color(0xff2ecc71))),
+          Expanded(child: _kvCell('↑ 总上传', _fmtSpeed(up), PTColors.success)),
         ]),
         const SizedBox(height: 8),
         Text('下载中 $downloading · 做种 $seeding · ${_snapshots.length} 个下载器',
@@ -304,7 +304,7 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: const Text('契约违约',
-                  style: TextStyle(fontSize: 11, color: Color(0xffdc2626))),
+                  style: TextStyle(fontSize: 12, color: PTColors.danger)),
             ),
         ]),
         const SizedBox(height: 8),
@@ -391,9 +391,9 @@ class _DashboardPageState extends State<DashboardPage> with DashboardDataMixin {
                         style: TextStyle(fontSize: 12.5),
                         overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 8),
-                Text(label, style: TextStyle(fontSize: 10.5, color: context.dimText)),
+                Text(label, style: TextStyle(fontSize: 12, color: context.dimText)),
                 const SizedBox(width: 8),
-                Text(t, style: TextStyle(fontSize: 10.5, color: context.dimText)),
+                Text(t, style: TextStyle(fontSize: 12, color: context.dimText)),
               ]),
             );
           }),

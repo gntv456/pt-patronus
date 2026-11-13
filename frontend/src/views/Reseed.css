@@ -93,12 +93,19 @@
 .table-wrap {
   flex: 1;
   min-height: 0;
+  overflow-x: auto;
+  --el-table-row-height: 36px;
 }
 :deep(.el-table),
 :deep(.el-table tr),
-:deep(.el-table td),
-:deep(.el-table th) {
+:deep(.el-table td) {
   background-color: transparent !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background-color: var(--color-surface-2) !important;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .src-name {
   font-size: var(--fs-body);

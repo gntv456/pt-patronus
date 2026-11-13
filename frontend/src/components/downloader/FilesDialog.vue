@@ -44,7 +44,10 @@ async function changePrio(f: TorrentFile, prio: number) {
 </script>
 
 <template>
-  <div v-loading="loading" class="files">
+  <div v-loading="loading" :aria-busy="loading" class="files">
+    <template v-if="loading">
+      <PtSkeleton v-for="i in 5" :key="i" height="30px" />
+    </template>
     <div v-for="f in files" :key="f.index" class="frow">
       <span class="fname" :title="f.name">{{ f.name }}</span>
       <span class="fsize text-muted">{{ fmtBytes(f.size) }}</span>
@@ -80,6 +83,7 @@ async function changePrio(f: TorrentFile, prio: number) {
   white-space: nowrap;
 }
 .fsize {
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-xs);
   width: 70px;
   text-align: right;

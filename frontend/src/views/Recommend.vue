@@ -231,7 +231,7 @@ onUnmounted(() => {
       <el-button :loading="loading || searchLoading" @click="refresh">{{ t('common.refresh') }}</el-button>
     </div>
 
-    <div class="filter-bar glass">
+    <div class="filter-bar solid-card">
       <div class="filter-group">
         <button
           v-for="s in recommendSources"
@@ -257,21 +257,21 @@ onUnmounted(() => {
       <!-- 开播日历视图：剧集/电影日历 + 我的订阅日历（单集粒度） -->
       <div class="filter-group">
         <button class="filter-chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">
-          📅 {{ t('recommend.tvCalendar') }}
+          <SptIcon name="calendar" :size="16" aria-hidden="true" /> {{ t('recommend.tvCalendar') }}
         </button>
         <button
           class="filter-chip"
           :class="{ on: calMode === 'movie' }"
           @click="selectCalendar(calMode === 'movie' ? '' : 'movie')"
         >
-          📅 {{ t('recommend.movieCalendar') }}
+          <SptIcon name="calendar" :size="16" aria-hidden="true" /> {{ t('recommend.movieCalendar') }}
         </button>
         <button
           class="filter-chip"
           :class="{ on: calMode === 'mine' }"
           @click="selectCalendar(calMode === 'mine' ? '' : 'mine')"
         >
-          🔖 {{ t('recommend.myCalendar') }}
+          <SptIcon name="bookmark" :size="16" aria-hidden="true" /> {{ t('recommend.myCalendar') }}
         </button>
       </div>
       <!-- 搜索框：置于分类筛选右侧，原「探索」并入。回车/点按钮触发，清空回到信息流。 -->
@@ -295,7 +295,7 @@ onUnmounted(() => {
     <!-- 日历视图：按日期分组的开播/上映条目 -->
     <div v-if="calMode" v-loading="calLoading" class="calendar-view">
       <template v-if="calDates.length">
-        <div v-for="d in calDates" :key="d" class="cal-day card glass">
+        <div v-for="d in calDates" :key="d" class="cal-day card solid-card">
           <div class="cal-date">
             {{ fmtDateLabel(d) }}<span class="text-muted small">（{{ d }}）</span>
           </div>
@@ -317,7 +317,7 @@ onUnmounted(() => {
       </template>
       <EmptyState
         v-else-if="!calLoading"
-        icon="📅"
+        
         :title="calMode === 'mine' ? t('recommend.calEmptyMine') : t('recommend.calEmpty')"
         :description="calMode === 'mine' ? t('recommend.calEmptyMineDesc') : t('recommend.calEmptyDesc')"
       />
@@ -328,7 +328,7 @@ onUnmounted(() => {
         v-a11y-button
         v-for="(m, i) in items"
         :key="m.source_id || i"
-        class="rec-card glass clickable"
+        class="rec-card solid-card clickable"
         @click="openMediaDetail(m)"
       >
         <div class="poster"><MediaPoster :url="m.poster_url" :kind="m.type === 'music' ? 'music' : 'movie'" /></div>
@@ -338,7 +338,7 @@ onUnmounted(() => {
             <span v-if="typeBadge(m.type)" class="badge">{{ typeBadge(m.type) }}</span>
             <span class="src" :data-src="m.source">{{ sourceLabel(m.source) }}</span>
             <span v-if="m.year">· {{ m.year }}</span>
-            <span v-if="m.rating">· ⭐ {{ m.rating.toFixed(1) }}</span>
+            <span v-if="m.rating">· <SptIcon name="star" :size="14" aria-hidden="true" /> {{ m.rating.toFixed(1) }}</span>
           </div>
           <!-- 类型/产地：豆瓣榜单自 card_subtitle 结构化，TMDB/寸光集自带；有则展示，与详情页一致 -->
           <div v-if="genreText(m)" class="t-tags">
@@ -355,7 +355,7 @@ onUnmounted(() => {
 
     <EmptyState
       v-if="!items.length && !loading && !searchLoading && !calMode"
-      icon="🎬"
+      
       :title="searchMode ? t('recommend.noSearchResults') : t('recommend.emptyFeed')"
       :description="searchMode ? t('recommend.noSearchResultsDesc') : t('recommend.emptyFeedDesc')"
     >

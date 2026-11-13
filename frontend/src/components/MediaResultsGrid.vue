@@ -31,12 +31,15 @@ function sourceBadge(v: string) {
 </script>
 
 <template>
-  <div v-loading="loading" class="grid">
+  <div v-loading="loading" :aria-busy="loading" class="grid">
+    <template v-if="loading">
+      <PtSkeleton v-for="i in 8" :key="i" height="280px" />
+    </template>
     <div
       v-a11y-button
       v-for="(m, i) in results"
       :key="i"
-      class="glass glass-hover mcard clickable"
+      class="solid-card mcard clickable"
       @click="emit('open', m)"
     >
       <div class="poster">
@@ -48,13 +51,13 @@ function sourceBadge(v: string) {
         <div class="sub">
           <span class="badge">{{ typeBadge(m.type) }}</span>
           <span v-if="m.year" class="year">{{ m.year }}</span>
-          <span v-if="m.rating" class="rating">⭐ {{ m.rating.toFixed(1) }}</span>
+          <span v-if="m.rating" class="rating"><SptIcon name="star" :size="14" aria-hidden="true" /> {{ m.rating.toFixed(1) }}</span>
         </div>
         <div v-if="m.overview" class="overview text-muted">{{ m.overview }}</div>
       </div>
     </div>
   </div>
-  <EmptyState v-if="!results.length && !loading" icon="🎬" :title="t('mrg.title')" :description="t('mrg.desc')" />
+  <EmptyState v-if="!results.length && !loading"  :title="t('mrg.title')" :description="t('mrg.desc')" />
 </template>
 
 <style scoped>
@@ -86,7 +89,7 @@ function sourceBadge(v: string) {
   padding: 2px 8px;
   border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--color-text-inverse);
   font-size: var(--fs-2xs);
 }
 .meta {
@@ -113,10 +116,11 @@ function sourceBadge(v: string) {
 .badge {
   padding: 1px 7px;
   border-radius: var(--radius-xs);
-  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 .rating {
-  color: var(--pt-warn, #f39c12);
+  color: var(--pt-warn-fg);
 }
 .overview {
   font-size: var(--fs-xs);
@@ -127,50 +131,5 @@ function sourceBadge(v: string) {
   overflow: hidden;
 }
 
-/* 影视卡 staggered 入场 + hover 水润反馈 */
-.grid > * {
-  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
-}
-.grid > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.grid > *:nth-child(2) {
-  animation-delay: 40ms;
-}
-.grid > *:nth-child(3) {
-  animation-delay: 80ms;
-}
-.grid > *:nth-child(4) {
-  animation-delay: 120ms;
-}
-.grid > *:nth-child(5) {
-  animation-delay: 160ms;
-}
-.grid > *:nth-child(6) {
-  animation-delay: 200ms;
-}
-.grid > *:nth-child(7) {
-  animation-delay: 240ms;
-}
-.grid > *:nth-child(8) {
-  animation-delay: 280ms;
-}
-.grid > *:nth-child(n + 9) {
-  animation-delay: 320ms;
-}
-.mcard {
-  transition:
-    transform var(--dur-base) var(--ease-out-spring),
-    box-shadow var(--dur-base) var(--ease-out-smooth);
-}
-.mcard:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-.mcard .poster img {
-  transition: transform var(--dur-slow) var(--ease-out-smooth);
-}
-.mcard:hover .poster img {
-  transform: scale(1.06);
-}
+/* 入场动画、hover 位移与图片缩放已移除（去 AI 感） */
 </style>

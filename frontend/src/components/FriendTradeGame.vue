@@ -67,7 +67,7 @@ onMounted(refresh)
 <template>
   <div class="ftgame">
     <div class="hero">
-      <div class="hero-title">🤝 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="users" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div v-if="state" class="hero-sub">
         {{ state.me_name }} · 身价 <b>{{ state.profile_price }}</b>
         <template v-if="state.owner_name"> · 主人 <b>{{ state.owner_name }}</b></template>
@@ -113,14 +113,21 @@ onMounted(refresh)
 
       <section v-if="state.assets.length" class="glass section">
         <div class="sec-title sec-flex">
-          <span>👤 我的奴隶</span>
+          <span><SptIcon name="user" :size="16" aria-hidden="true" /> 我的奴隶</span>
           <span class="batch-btns">
             <el-button size="small" :disabled="working" @click="batch('work')">一键工作</el-button>
             <el-button size="small" :disabled="working" @click="batch('interact')">一键互动</el-button>
           </span>
         </div>
         <div v-for="s in state.assets" :key="s.uid" class="slave-card">
-          <div class="slave slave-row" @click="toggleSlave(s.uid)">
+          <div
+            class="slave slave-row"
+            role="button"
+            tabindex="0"
+            :aria-expanded="expandedSlave === s.uid"
+            @click="toggleSlave(s.uid)"
+            @keydown.enter="toggleSlave(s.uid)"
+          >
             <span class="s-name">{{ expandedSlave === s.uid ? '▾' : '▸' }} {{ s.username }}</span>
             <span class="s-meta text-muted">身价 {{ s.price || '—' }}</span>
             <span class="s-meta text-muted">{{ s.has_work ? `${s.work_label} · ${s.income_amount}` : '今日未安排' }}</span>
@@ -163,7 +170,7 @@ onMounted(refresh)
       </section>
 
       <section v-if="state.tasks?.length" class="glass section">
-        <div class="sec-title">📋 任务</div>
+        <div class="sec-title"><SptIcon name="check-square" :size="16" aria-hidden="true" /> 任务</div>
         <div class="task" v-for="task in state.tasks" :key="task.key">
           <span class="t-name">{{ task.label || task.key }}</span>
           <span class="t-prog text-muted">{{ task.progress }}/{{ task.target }}</span>
@@ -173,7 +180,7 @@ onMounted(refresh)
       </section>
 
       <section v-if="state.feed?.length" class="glass section">
-        <div class="sec-title">📜 动态</div>
+        <div class="sec-title"><SptIcon name="clock" :size="16" aria-hidden="true" /> 动态</div>
         <div class="feed" v-for="(f, i) in state.feed" :key="i">
           <span>{{ f.text }}</span>
           <span class="f-time text-muted">{{ f.created_at }}</span>
@@ -182,7 +189,7 @@ onMounted(refresh)
     </template>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" /></span>
       <div class="r-body">
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
       </div>
@@ -192,43 +199,43 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .ftgame { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #7c3aed, #db2777); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
 .hero-sub { margin-top: 6px; opacity: 0.92; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin-bottom: 10px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .cell { display: flex; flex-direction: column; gap: 4px; }
-.cell .k { font-size: 12px; color: var(--text-muted); }
+.cell .k { font-size: 12px; color: var(--color-text-muted); }
 .cell .v { font-size: 18px; font-weight: 700; }
-.cell .v.accent { color: var(--primary, #409eff); }
-.task, .feed { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-light, #eee); font-size: 13px; }
+.cell .v.accent { color: var(--color-primary); }
+.task, .feed { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--color-border); font-size: 13px; }
 .task:last-child, .feed:last-child { border-bottom: none; }
 .slave { display: flex; gap: 12px; align-items: center; font-size: 13px; }
 .s-name, .t-name { font-weight: 600; min-width: 90px; }
 .t-status { margin-left: auto; }
-.t-status.claimed { color: var(--success, #67c23a); }
-.t-status.completed { color: var(--warning, #e6a23c); }
+.t-status.claimed { color: var(--pt-success-fg); }
+.t-status.completed { color: var(--pt-warn-fg); }
 .f-time { margin-left: auto; font-size: 12px; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); }
+.result.lose { background: var(--color-danger-soft); }
 .badge { font-weight: 800; }
 
 .sec-flex { display: flex; align-items: center; justify-content: space-between; }
 .batch-btns { display: flex; gap: 6px; }
-.slave-card { border: 1px solid var(--border-light, #eee); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.slave-card { border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
 .slave-row { cursor: pointer; padding: 8px 10px; }
-.slave-row:hover { background: var(--bg-hover, #f5f7fa); }
+.slave-row:hover { background: var(--color-surface-hover); }
 .slave { display: flex; gap: 12px; align-items: center; }
 .slave :last-child { margin-left: auto; }
-.slave-detail { padding: 10px 12px; border-top: 1px dashed var(--border-light, #eee); background: var(--bg-card, #fafafa); }
+.slave-detail { padding: 10px 12px; border-top: 1px dashed var(--color-border); background: var(--color-surface-2); }
 .opt-group { margin-bottom: 10px; }
 .opt-group:last-child { margin-bottom: 0; }
-.opt-label { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
-.opt { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 7px 10px; margin-bottom: 4px; border: 1px solid var(--border-light, #e5e7eb); border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
-.opt:hover:not(:disabled) { border-color: var(--primary, #409eff); }
+.opt-label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 6px; }
+.opt { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 24px; text-align: left; padding: 7px 10px; margin-bottom: 4px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); cursor: pointer; font-size: 13px; }
+.opt:hover:not(:disabled) { border-color: var(--color-primary); }
 .opt:disabled { opacity: .55; cursor: not-allowed; }
-.opt span { font-size: 11px; }
+.opt span { font-size: 12px; }
 .no-opts { font-size: 12px; padding: 4px 0; }
 </style>

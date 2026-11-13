@@ -92,7 +92,7 @@ onMounted(loadInfo)
 <template>
   <div class="gcard">
     <div class="hero">
-      <div class="hero-title">🎮 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div v-if="hasStats" class="hero-sub">
         <template v-if="stats?.balance">{{ t('bj.balance') }} <b>{{ stats.balance.toLocaleString() }}</b></template>
         <template v-if="stats?.cost_per_play"> · {{ stats.cost_per_play.toLocaleString() }}/次</template>
@@ -107,7 +107,7 @@ onMounted(loadInfo)
       </el-button>
 
       <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
-        <span class="badge">{{ result.success ? t('entertainment.winMark') : t('entertainment.loseMark') }}</span>
+        <span class="badge"><SptIcon :name="result.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ result.success ? t('entertainment.winMark') : t('entertainment.loseMark') }}</span>
         <div class="r-body">
           <span v-if="result.prize" class="r-prize">{{ result.prize }}</span>
           <span v-if="result.amount" class="r-amt">×{{ result.amount }}</span>
@@ -118,14 +118,14 @@ onMounted(loadInfo)
     </section>
 
     <section v-if="hasPrizes" class="glass section">
-      <div class="sec-title">🎁 {{ t('sp.prizes') }}</div>
+      <div class="sec-title"><SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('sp.prizes') }}</div>
       <div class="prize-tags">
         <el-tag v-for="p in prizes.slice(0, 16)" :key="p.id" size="small">{{ p.name }}</el-tag>
       </div>
     </section>
 
     <section v-if="hasRecords" class="glass section">
-      <div class="sec-title">📜 {{ t('sp.history') }}</div>
+      <div class="sec-title"><SptIcon name="clock" :size="16" aria-hidden="true" /> {{ t('sp.history') }}</div>
       <div class="rec" v-for="(r, i) in records" :key="i">
         <span class="r-name">{{ r.prize_name || '—' }}</span>
         <span v-if="r.amount" class="r-amt">×{{ r.amount }}</span>
@@ -137,22 +137,22 @@ onMounted(loadInfo)
 
 <style scoped lang="css">
 .gcard { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 560px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #475569, #94a3b8); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
-.hero-sub { margin-top: 6px; opacity: .92; font-size: 13px; }
+.hero-sub { margin-top: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin-bottom: 10px; }
 .play-zone { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 90px; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; width: 100%; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); color: var(--pt-success-fg); }
+.result.lose { background: var(--color-danger-soft); color: var(--pt-danger-fg); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
-.r-amt { color: var(--warning, #e6a23c); font-weight: 700; }
-.r-bal { color: var(--text-muted); }
+.r-amt { color: var(--pt-warn-fg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.r-bal { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .prize-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.rec { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed var(--border-light, #eee); font-size: 13px; }
+.rec { display: flex; gap: 10px; align-items: baseline; min-height: 36px; padding: 5px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; font-variant-numeric: tabular-nums; }
 .rec:last-child { border-bottom: none; }
 .r-name { font-weight: 600; }
-.r-time { margin-left: auto; font-size: 11px; }
+.r-time { margin-left: auto; font-size: 12px; }
 </style>

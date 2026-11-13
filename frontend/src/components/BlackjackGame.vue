@@ -41,7 +41,7 @@ const resultText = computed(() => {
     case 'win':
       return t('bj.win')
     case 'blackjack':
-      return '🎉 Blackjack!'
+      return 'Blackjack!'
     case 'lose':
       return t('bj.lose')
     case 'push':
@@ -57,7 +57,7 @@ onMounted(() => act('new'))
 <template>
   <div class="bj">
     <div class="hero">
-      <div class="hero-title">🃏 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div class="balance">
         {{ t('bj.balance') }} <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b>
       </div>
@@ -67,14 +67,14 @@ onMounted(() => act('new'))
       <div class="dealer">
         <div class="who">{{ t('bj.dealer') }}</div>
         <div class="cards">
-          <span v-for="(c, i) in state.dealer_cards" :key="'d' + i" class="card">{{ c }}</span>
+          <span v-for="(c, i) in state.dealer_cards" :key="'d' + i" class="card" aria-hidden="true">{{ c }}</span>
           <span v-if="!state.dealer_cards?.length" class="text-muted">—</span>
         </div>
       </div>
       <div class="player">
         <div class="who">{{ t('bj.player') }}</div>
         <div class="cards">
-          <span v-for="(c, i) in state.player_cards" :key="'p' + i" class="card">{{ c }}</span>
+          <span v-for="(c, i) in state.player_cards" :key="'p' + i" class="card" aria-hidden="true">{{ c }}</span>
           <span v-if="!state.player_cards?.length" class="text-muted">—</span>
         </div>
       </div>
@@ -102,22 +102,24 @@ onMounted(() => act('new'))
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #059669, #14b8a6);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .balance {
   margin-top: 4px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-secondary);
 }
 .balance b {
-  color: #fde68a;
+  color: var(--pt-warn-fg);
   font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
 }
 
 .section {
@@ -132,14 +134,14 @@ onMounted(() => act('new'))
   padding: 6px 0;
 }
 .player {
-  border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--color-border);
   margin-top: 6px;
   padding-top: 12px;
 }
 .who {
   width: 44px;
   font-size: var(--fs-body);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 .cards {
@@ -152,12 +154,13 @@ onMounted(() => act('new'))
   min-width: 30px;
   padding: 6px 8px;
   border-radius: var(--radius-xs);
-  background: #fff;
-  color: #111;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
   font-weight: 700;
   font-size: var(--fs-lg);
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-card);
 }
 
 .result-tag {
@@ -170,16 +173,16 @@ onMounted(() => act('new'))
 }
 .result-tag.win,
 .result-tag.blackjack {
-  background: var(--pt-success-bg);
-  color: var(--pt-success);
+  background: var(--color-success-soft);
+  color: var(--pt-success-fg);
 }
 .result-tag.lose {
-  background: var(--pt-danger-bg);
-  color: var(--pt-danger);
+  background: var(--color-danger-soft);
+  color: var(--pt-danger-fg);
 }
 .result-tag.push {
-  background: rgba(148, 163, 184, 0.2);
-  color: #94a3b8;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
 }
 .msg {
   margin-top: 8px;
@@ -194,28 +197,34 @@ onMounted(() => act('new'))
 }
 .op {
   padding: 10px 18px;
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.2));
+  min-height: 24px;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 600;
   font-size: var(--fs-body);
-  color: inherit;
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
 }
 .op.hit {
-  color: #fff;
-  background: #2563eb;
+  color: var(--color-on-accent);
+  background: var(--color-primary);
   border: 0;
 }
 .op.stand {
-  color: #fff;
-  background: #dc2626;
+  color: var(--color-on-accent);
+  background: var(--color-danger);
   border: 0;
 }
 .op.double {
-  color: #fff;
-  background: #f59e0b;
+  color: var(--color-on-accent);
+  background: var(--color-warning);
   border: 0;
+}
+.op:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-card);
 }
 .op:disabled {
   opacity: 0.5;

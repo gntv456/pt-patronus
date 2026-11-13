@@ -1,18 +1,60 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 The PTPatronus Authors
 
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 设计 token —— 与前端 styles/glass.css 对齐，保持双端视觉统一。
+/// 设计 token —— 与前端 styles/tokens.css 语义层对齐，三端唯一真源。
+/// 组件内禁止裸 hex，一律引用本类常量。
 class PTColors {
-  static const primary = Color(0xFF6C5CE7);
-  static const primary2 = Color(0xFF4285F4);
-  static const success = Color(0xFF2ECC71);
-  static const danger = Color(0xFFE74C3C);
-  static const warn = Color(0xFFF39C12);
+  /// 交互主色（浅 #2563EB / 暗 #4C8DFF）。
+  static const primary = Color(0xFF2563EB);
+  static const primaryDark = Color(0xFF4C8DFF);
+  /// 旧双色渐变副色：收敛为主色悬停态，避免紫→蓝对撞。
+  static const primary2 = Color(0xFF1D4ED8);
+  static const primaryHover = Color(0xFF1D4ED8);
+  static const primarySoft = Color(0xFFEFF6FF);
+  static const primarySoftDark = Color(0x244C8DFF);
+
+  /// 语义状态色（浅色底 >= 4.5:1）。
+  static const success = Color(0xFF15803D);
+  static const successSoft = Color(0xFFF0FDF4);
+  static const danger = Color(0xFFDC2626);
+  static const dangerSoft = Color(0xFFFEF2F2);
+  static const warn = Color(0xFFB45309);
+  static const warning = warn;
+  static const warningSoft = Color(0xFFFFFBEB);
+
+  /// 彩色文字 / 图标前景色。
+  static const successFg = Color(0xFF0F766E);
+  static const warnFg = Color(0xFFB45309);
+  static const dangerFg = Color(0xFFB91C1C);
+  static const infoFg = Color(0xFF1D4ED8);
+
+  /// 表面与文字（浅 / 暗）。
+  static const bg = Color(0xFFF8FAFC);
+  static const bgDark = Color(0xFF0F1115);
+  static const surface = Color(0xFFFFFFFF);
+  static const surfaceDark = Color(0xFF161A21);
+  static const surface2 = Color(0xFFF1F5F9);
+  static const surface2Dark = Color(0xFF1C222C);
+  static const border = Color(0xFFE2E8F0);
+  static const borderDark = Color(0xFF262C36);
+  static const borderStrong = Color(0xFFCBD5E1);
+  static const borderStrongDark = Color(0xFF333B48);
+  static const text = Color(0xFF1E293B);
+  static const textDark = Color(0xFFE6E9EF);
+  static const textSecondary = Color(0xFF475569);
+  static const textSecondaryDark = Color(0xFF9AA4B2);
+  static const textMuted = Color(0xFF64748B);
+  static const textMutedDark = Color(0xFF8B95A5);
+
+  /// 图表系列（配合实线/虚线/直接标注，不只靠颜色区分）。
+  static const chart1 = Color(0xFF2563EB);
+  static const chart2 = Color(0xFF0F766E);
+  static const chart3 = Color(0xFFB45309);
+  static const chart4 = Color(0xFF7C3AED);
 }
 
 /// 间距阶梯（4 倍数网格）—— 与 glass.css --sp-* 对齐。
@@ -28,28 +70,27 @@ class PTSp {
   static const double s10 = 40;
 }
 
-/// 字号阶梯 —— 与 glass.css --fs-* 对齐。
+/// 字号阶梯 —— 移动端正文 >= 16px（中文可读、输入不触发 iOS 缩放），
+/// 密集表格元信息最低 12px；与 Web --fs-* 阶梯对齐。
 class PTFs {
-  // xs 由 11 提到 12：11pt 在手机上低于可读阈值（WCAG），走 token 的最小字号统一兜底到 12。
-  // 装饰性纯图形可用裸值更小，但可读文字最低 12。与 glass.css --fs-xs 同步。
   static const double xs = 12;
-  static const double sm = 12;
-  static const double body = 13;
-  static const double md = 14;
-  static const double lg = 15;
-  static const double xl = 18;
-  static const double title = 22;
+  static const double sm = 13;
+  static const double body = 16;
+  static const double md = 16;
+  static const double lg = 18;
+  static const double xl = 20;
+  static const double title = 24;
   static const double hero = 28;
 }
 
-/// 圆角阶梯 —— 与 glass.css --radius-* 对齐。
+/// 圆角阶梯 —— 8px 网格 / 克制圆角（6 / 8 / 10px），与 Web --radius-* 对齐。
 class PTRadius {
   static const double xs = 6;
-  static const double sm = 10;
-  static const double md = 14;
-  static const double lg = 20;
-  static const double xl = 28;
-  static const double pill = 999;
+  static const double sm = 6;
+  static const double md = 8;
+  static const double lg = 8;
+  static const double xl = 10;
+  static const double pill = 999; // 仅状态点，不用于按钮/徽章
 }
 
 /// 应用主题（Material 3，seed 自品牌主色）。
@@ -59,25 +100,23 @@ ThemeData buildAppTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorSchemeSeed: PTColors.primary,
-    scaffoldBackgroundColor: Colors.transparent,
-    // 统一页面切换动效：淡入+上滑，替代默认 ZoomBuilder 的生硬缩放。
+    // 中性实色底，去掉全屏紫蓝渐变与壁纸。
+    scaffoldBackgroundColor: isDark ? PTColors.bgDark : PTColors.bg,
+    // 平台标准转场（iOS/macOS Cupertino、其余 Material M3），并显式短路
+    // MediaQuery.disableAnimations（系统「减少动态效果」）。
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: _PTLiquidPageTransitionsBuilder(),
-        TargetPlatform.iOS: _PTLiquidPageTransitionsBuilder(),
-        TargetPlatform.macOS: _PTLiquidPageTransitionsBuilder(),
-        TargetPlatform.windows: _PTLiquidPageTransitionsBuilder(),
-        TargetPlatform.linux: _PTLiquidPageTransitionsBuilder(),
-        TargetPlatform.fuchsia: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.android: _PTPlatformPageTransitionsBuilder(),
+        TargetPlatform.iOS: _PTPlatformPageTransitionsBuilder(),
+        TargetPlatform.macOS: _PTPlatformPageTransitionsBuilder(),
+        TargetPlatform.windows: _PTPlatformPageTransitionsBuilder(),
+        TargetPlatform.linux: _PTPlatformPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: _PTPlatformPageTransitionsBuilder(),
       },
     ),
-    // AppBar 回退到可用红线：toolbarHeight 44（Material/Apple HIG 最小触摸高度）+ 图标 20 + 标题 17。
-    // 此前压到 30 导致触摸目标 30×30 低于 44 红线（紧凑度治理过头 → 误触/难点中）。
-    // 44 仍比默认 56 紧凑，但保证按钮命中区。注意：toolbarHeight<48 时 actions 里的裸
-    // IconButton(默认 48) 仍会溢出，故 actions 统一用 PTIconAction(44×44 触摸区)。
-    // 页面级 toolbarHeight 仍可按需覆盖。
+    // 48dp 工具栏：满足 44pt/48dp 触摸下限，actions 的默认 IconButton 不再溢出。
     appBarTheme: AppBarTheme(
-      toolbarHeight: 44,
+      toolbarHeight: 48,
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: Colors.transparent,
@@ -97,7 +136,7 @@ ThemeData buildAppTheme(Brightness brightness) {
   );
 }
 
-/// 液态玻璃（Liquid Glass）背景：浅蓝→浅紫（明）/ 深灰→深紫（暗）渐变。
+/// 背景：纯色（浅 #F8FAFC / 暗 #0F1115），替代旧的全屏紫蓝渐变。
 class GlassBackground extends StatelessWidget {
   final Widget child;
   const GlassBackground({super.key, required this.child});
@@ -105,24 +144,16 @@ class GlassBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF16181F), const Color(0xFF1D1B2E)]
-              : [const Color(0xFFE6F0FF), const Color(0xFFF0E6FF)],
-        ),
-      ),
+    return ColoredBox(
+      color: isDark ? PTColors.bgDark : PTColors.bg,
       child: child,
     );
   }
 }
 
-// 全局玻璃降级开关：true 则所有 GlassCard 跳过 BackdropFilter（纯色卡），省 GPU、避免掉帧。
-// 默认 Web 开（Flutter Web 的 BackdropFilter 慢且不稳）；原生默认关。用户显式设置过则以用户值为准。
-final glassReduced = ValueNotifier<bool>(kIsWeb);
+// 全局降级开关：默认 true —— 所有卡片都是实色卡（无 BackdropFilter），省 GPU。
+// 保留旧开关与持久化入口作为性能模式，用户显式设置过则以用户值为准。
+final glassReduced = ValueNotifier<bool>(true);
 
 const _glassPrefsKey = 'glass_reduced';
 
@@ -131,6 +162,9 @@ Future<void> loadGlassPrefs() async {
   final prefs = await SharedPreferences.getInstance();
   if (prefs.containsKey(_glassPrefsKey)) {
     glassReduced.value = prefs.getBool(_glassPrefsKey) ?? glassReduced.value;
+  } else if (kIsWeb) {
+    // 历史 Web 安装无 pref 时也拿到同一默认值（旧版仅 Web 默认降级）。
+    glassReduced.value = true;
   }
 }
 
@@ -185,11 +219,11 @@ double effectiveGlassSigma(double requested, bool reduced) =>
 double glassCardAlpha(bool isDark, bool reduced) =>
     isDark ? (reduced ? 0.14 : 0.06) : (reduced ? 0.80 : 0.55);
 
-/// 液态玻璃卡片：BackdropFilter 模糊 + 半透明 + 大圆角 + 柔和阴影。
+/// 实色卡片：中性表面 + 1px 边框 + 8px 圆角 + 极轻投影，无模糊/渐变/内高光。
 ///
-/// 优雅降级：`glassReduced`（Web 默认 / 用户「性能模式」）或调用方传 `blurSigma=0` 时
-/// sigma 归零 → **跳过 BackdropFilter**，只渲染圆角实色卡，省掉 backdrop 采集（低端机/大列表不掉帧）。
-/// 无模糊时抬高底色不透明度（见 [glassCardAlpha]）保证可读。
+/// 兼容旧调用：保留 `blurSigma` / `radius` / `padding` / `tint` 参数名，但默认不再模糊
+/// （`blurSigma = 0` 且不再创建 BackdropFilter）。可点击时只保留标准 InkWell 高亮，
+/// 不再做「按进液态玻璃」的缩放位移。
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
@@ -201,143 +235,66 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
-    this.blurSigma = 18,
-    this.radius = 20,
+    this.padding = const EdgeInsets.all(16),
+    this.blurSigma = 0,
+    this.radius = 8,
     this.onTap,
     this.tint,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: glassReduced,
-      builder: (context, _) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final reduced = glassReduced.value;
-        final sigma = effectiveGlassSigma(blurSigma, reduced);
-        var cardColor = Colors.white.withValues(
-          alpha: glassCardAlpha(isDark, reduced),
-        );
-        if (tint != null) {
-          cardColor = Color.alphaBlend(
-            tint!.withValues(alpha: 0.12),
-            cardColor,
-          );
-        }
-        final borderColor = Colors.white.withValues(
-          alpha: isDark ? 0.08 : 0.65,
-        );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    var cardColor = isDark ? PTColors.surfaceDark : PTColors.surface;
+    if (tint != null) {
+      cardColor = Color.alphaBlend(
+        tint!.withValues(alpha: 0.12),
+        cardColor,
+      );
+    }
+    final borderColor = isDark ? PTColors.borderDark : PTColors.border;
 
-        final inner = Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.10),
-                blurRadius: 28,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    final inner = Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
-          padding: padding,
-          child: child,
-        );
-
-        // sigma>0：BackdropFilter 模糊；sigma==0：跳过 BackdropFilter，只留圆角实色卡。
-        final content = ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: sigma > 0
-              ? BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-                  child: inner,
-                )
-              : inner,
-        );
-
-        if (onTap == null) return content;
-        // 可点击卡片：InkWell 水波纹 + 轻微下沉缩放，呼应液态玻璃的触感。
-        return _GlassTapFeedback(
-          onTap: onTap,
-          radius: radius,
-          child: content,
-        );
-      },
+        ],
+      ),
+      padding: padding,
+      child: child,
     );
-  }
-}
 
-
-
-/// GlassCard 的触感反馈：InkWell 水波纹 + 按压时轻微下沉缩放（0.98）。
-/// 让可点击卡片有「按进液态玻璃」的弹性反馈，而非死板的平面。
-class _GlassTapFeedback extends StatefulWidget {
-  final VoidCallback? onTap;
-  final double radius;
-  final Widget child;
-  const _GlassTapFeedback({
-    required this.onTap,
-    required this.radius,
-    required this.child,
-  });
-  @override
-  State<_GlassTapFeedback> createState() => _GlassTapFeedbackState();
-}
-
-class _GlassTapFeedbackState extends State<_GlassTapFeedback>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-      reverseDuration: const Duration(milliseconds: 200),
+    // 不再创建 BackdropFilter：实色卡，无 backdrop 采集、无抖动。
+    final content = ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: inner,
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
-    );
-  }
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) {
-        _ctrl.reverse();
-        widget.onTap?.call();
-      },
-      onTapCancel: () => _ctrl.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(widget.radius),
-            child: widget.child,
-          ),
-        ),
+    if (onTap == null) return content;
+    // 标准 InkWell 高亮，不做缩放/位移，避免布局跳动。
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: content,
       ),
     );
   }
 }
-/// 液态页面切换：淡入 + 轻微上滑（替代默认 ZoomBuilder）。
-/// 感受：像水波纹一样柔和地浮现，而非生硬的放大缩放。
-class _PTLiquidPageTransitionsBuilder extends PageTransitionsBuilder {
-  const _PTLiquidPageTransitionsBuilder();
+
+
+/// 平台标准页面转场：iOS/macOS 用 Cupertino 侧滑，其余用 Material M3 默认。
+/// 显式读取 MediaQuery.disableAnimations（系统「减少动态效果」）并短路为静态切换。
+class _PTPlatformPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _PTPlatformPageTransitionsBuilder();
 
   @override
   Widget buildTransitions<T>(
@@ -347,20 +304,18 @@ class _PTLiquidPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutQuart,
-      reverseCurve: Curves.easeInCubic,
-    );
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.06),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
-      ),
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    final platform = Theme.of(context).platform;
+    final PageTransitionsBuilder standard =
+        (platform == TargetPlatform.iOS || platform == TargetPlatform.macOS)
+            ? const CupertinoPageTransitionsBuilder()
+            : const ZoomPageTransitionsBuilder();
+    return standard.buildTransitions<T>(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
     );
   }
 }

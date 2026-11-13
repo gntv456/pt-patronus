@@ -34,7 +34,9 @@ function toast(text, kind = 'ok') {
   clearTimeout(toastTimer)
   el = document.createElement('div')
   el.className = `toast ${kind}`
-  const ico = kind === 'err' ? '⚠' : kind === 'info' ? 'ℹ' : '✓'
+  el.setAttribute('role', 'status')
+  el.setAttribute('aria-live', kind === 'err' ? 'assertive' : 'polite')
+  const ico = kind === 'err' ? '错误' : kind === 'info' ? '提示' : '成功'
   el.innerHTML = `<span class="t-ico">${ico}</span><span></span>`
   el.lastElementChild.textContent = text
   document.body.appendChild(el)
@@ -56,8 +58,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const navLinks = document.querySelectorAll('#sideNav a')
   const loadOnce = {}
   navLinks.forEach((a) => {
+    // 导航是无 href 的 <a>：补键盘可达（Enter/Space 走同一 onclick），并同步 aria-current。
+    a.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); a.click() }
+    })
     a.onclick = () => {
-      navLinks.forEach((x) => x.classList.toggle('on', x === a))
+      navLinks.forEach((x) => {
+        x.classList.toggle('on', x === a)
+        if (x === a) x.setAttribute('aria-current', 'page')
+        else x.removeAttribute('aria-current')
+      })
       document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === `page-${a.dataset.page}`))
       const key = a.dataset.page
       if (!loadOnce[key]) {
@@ -294,10 +304,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td class="num" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-2)">${esc(e.url || '—')}</td>
         <td>${e.group ? `<span class="tag-pill pill-dim">${esc(e.group)}</span>` : ''}</td>
         <td style="white-space:nowrap">
-          <button class="subtle" data-cop="user" title="复制用户名">👤</button>
-          <button class="subtle" data-cop="pass" title="复制密码">🔑</button>
-          <button class="subtle" data-credi="edit" title="编辑">✎</button>
-          <button class="subtle danger" data-credi="del" title="删除">✕</button>
+          <button class="subtle" data-cop="user" title="复制用户名" aria-label="复制用户名">复制</button>
+          <button class="subtle" data-cop="pass" title="复制密码" aria-label="复制密码">复制</button>
+          <button class="subtle" data-credi="edit" title="编辑" aria-label="编辑">编辑</button>
+          <button class="subtle danger" data-credi="del" title="删除" aria-label="删除">删除</button>
         </td>
       </tr>`).join('') : '<tr><td colspan="5" class="empty">暂无凭据——右上「＋ 添加」或 Bitwarden 导入</td></tr>'
   }
@@ -388,7 +398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (aiHistory.length) {
         for (const m of aiHistory) aiAppend(m.role, m.content)
       } else {
-        aiAppend('assistant', '已连接 LLM 网关。输入问题开始对话（会话保存在本机，可点 🗑 清空）。')
+        aiAppend('assistant', '已连接 LLM 网关。输入问题开始对话（会话保存在本机，可点「清空」按钮清空）。')
       }
     }
 
@@ -465,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         aiHistory.push({ role: 'assistant', content: acc })
         persistAi()
       } catch (e) {
-        assistantEl.textContent = `⚠ ${e.message}`
+        assistantEl.textContent = `错误：${e.message}`
         assistantEl.style.color = 'var(--danger)'
         aiHistory.pop() // 失败不进历史
       }
@@ -508,7 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? `<button class="subtle warn" data-pl="disable" data-id="${esc(p.id)}" data-name="${esc(p.name)}">停用</button>`
             : `<button class="subtle ok" data-pl="enable" data-id="${esc(p.id)}" data-name="${esc(p.name)}">启用</button>`}
           ${(p.contributes && p.contributes.views || []).length
-            ? (p.contributes.views).map((v) => `<button class="subtle" data-pl="view" data-id="${esc(p.id)}" data-view="${esc(v.id)}" data-vtitle="${esc(v.title || v.id)}" data-name="${esc(p.name)}" title="在扩展内打开插件页面">◨ ${esc(v.title || v.id)}</button>`).join(' ')
+            ? (p.contributes.views).map((v) => `<button class="subtle" data-pl="view" data-id="${esc(p.id)}" data-view="${esc(v.id)}" data-vtitle="${esc(v.title || v.id)}" data-name="${esc(p.name)}" title="在扩展内打开插件页面">${esc(v.title || v.id)}</button>`).join(' ')
             : ''}
         </td>
       </tr>`).join('')
@@ -577,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!st) return
     try {
       const has = await chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] })
-      st.textContent = has ? '✅ 已授予全部站点' : '未授予（增强只在白名单/已授权站点生效）'
+      st.textContent = has ? '已授予全部站点' : '未授予（增强只在白名单/已授权站点生效）'
       st.style.color = has ? 'var(--ok, #4caf7d)' : 'var(--ink-2, #98a0b3)'
     } catch { st.textContent = '' }
   }
@@ -609,10 +619,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mkPills = (box, hosts, onRemove) => {
       const el = $(box)
       el.innerHTML = hosts.length
-        ? hosts.map((h) => `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除">${esc(h)} ✕</span>`).join('')
+        ? hosts.map((h) => `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除" role="button" tabindex="0" aria-label="移除 ${esc(h)}">${esc(h)} <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`).join('')
         : '<span class="hint">（空——默认全部站点可用）</span>'
       for (const p of el.querySelectorAll('[data-host]')) {
         p.onclick = async () => { await onRemove(p.dataset.host); renderBlockLists() }
+        p.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); p.click() } }
       }
     }
     const { removeSiteBlacklist, removeCredBlacklist } = await import('./siteblock.js')
@@ -652,12 +663,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
     box.innerHTML = hosts.map((h) =>
-      `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除">${esc(h)} ✕</span>`).join('')
+      `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除" role="button" tabindex="0" aria-label="移除 ${esc(h)}">${esc(h)} <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`).join('')
     for (const el of box.querySelectorAll('[data-host]')) {
       el.onclick = async () => {
         await removeSiteHost(el.dataset.host)
         renderHosts()
       }
+      el.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click() } }
     }
   }
   renderHosts()
@@ -807,6 +819,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       b.querySelector('b')?.remove()
       b.insertAdjacentHTML('beforeend', ` <b style="color:var(--ink-3); font-weight:500">${counts[b.dataset.f] ?? 0}</b>`)
       b.classList.toggle('on', b.dataset.f === ckFilterState)
+      b.setAttribute('aria-pressed', String(b.dataset.f === ckFilterState))
     })
 
     $('ckRows').innerHTML = visible.length ? visible.map(({ s, brow, state, tag }) => {
@@ -817,14 +830,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       return `
       <tr style="box-shadow: inset 2px 0 0 ${stateColor}">
         <td style="font-weight:600; white-space:nowrap">${privacy ? maskDomain(esc(s.name)) : esc(s.name)}${altPill}</td>
-        <td><code class="mono" style="font-size:11px; color:var(--ink-2)">${domTxt(s.base_url)}</code></td>
-        <td>${s.is_active ? '<span class="tag-pill pill-ok">✓</span>' : '<span class="tag-pill pill-dim">停</span>'}</td>
-        <td>${s.has_cookie ? `<code class="mono" style="font-size:11px; color:var(--ink-2)">${fpTxt(s.fingerprint || '?')}</code>` : '<span class="tag-pill pill-dim">无</span>'}</td>
-        <td>${brow.fp ? `<code class="mono" style="font-size:11px; color:var(--ink-2)">${fpTxt(brow.fp)}</code>` : '—'}</td>
+        <td><code class="mono" style="font-size:12px; color:var(--ink-2)">${domTxt(s.base_url)}</code></td>
+        <td>${s.is_active ? '<span class="tag-pill pill-ok">启</span>' : '<span class="tag-pill pill-dim">停</span>'}</td>
+        <td>${s.has_cookie ? `<code class="mono" style="font-size:12px; color:var(--ink-2)">${fpTxt(s.fingerprint || '?')}</code>` : '<span class="tag-pill pill-dim">无</span>'}</td>
+        <td>${brow.fp ? `<code class="mono" style="font-size:12px; color:var(--ink-2)">${fpTxt(brow.fp)}</code>` : '—'}</td>
         <td>${tag}</td>
         <td>
-          <button class="subtle ok" data-act="up" data-id="${s.id}" ${brow.fp ? '' : 'disabled'} title="把浏览器 cookie 上传为服务器凭据">→ 覆盖服务器</button>
-          <button class="subtle" data-act="down" data-id="${s.id}" ${s.has_cookie && isAdmin ? '' : 'disabled'} title="${isAdmin ? '把服务器 cookie 写回浏览器（需管理员）' : '仅管理员可写回'}">← 覆盖浏览器</button>
+          <button class="subtle ok" data-act="up" data-id="${s.id}" ${brow.fp ? '' : 'disabled'} title="把浏览器 cookie 上传为服务器凭据">覆盖服务器</button>
+          <button class="subtle" data-act="down" data-id="${s.id}" ${s.has_cookie && isAdmin ? '' : 'disabled'} title="${isAdmin ? '把服务器 cookie 写回浏览器（需管理员）' : '仅管理员可写回'}">覆盖浏览器</button>
           <button class="subtle" data-act="open" data-url="${esc(s.base_url)}" title="打开站点首页">打开</button>
         </td>
       </tr>`
@@ -876,12 +889,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       if (act === 'up') {
         await pushBrowserToServer(cfgCk, row.s, row.brow.header)
-        btn.textContent = '✅ 已上传'
+        btn.textContent = '已上传'
       } else {
         const detailed = (await serverCookies(cfgCk, true)).find((x) => x.id == row.s.id)
         if (!detailed || !detailed.cookie) throw new Error('未取到明文（该操作需管理员账号）')
         const n = await pullServerToBrowser(row.s, detailed.cookie)
-        btn.textContent = `✅ 写回 ${n} 条`
+        btn.textContent = `写回 ${n} 条`
       }
     } catch (e) {
       btn.textContent = '失败'
@@ -902,7 +915,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fails = []
     for (let i = 0; i < targets.length; i++) {
       const r = targets[i]
-      btn.textContent = `⇈ 上传中 ${i + 1}/${targets.length}…`
+      btn.textContent = `上传中 ${i + 1}/${targets.length}…`
       try {
         const cfgCk = await getConfig()
         await pushBrowserToServer(cfgCk, r.s, r.brow.header)
@@ -910,9 +923,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch { fails.push(r.s.name) }
     }
     btn.disabled = false
-    btn.textContent = '⇈ 覆盖服务器'
+    btn.textContent = '覆盖服务器'
     $('ckMsg').innerHTML = ok && !fails.length
-      ? `<span class="ok">✅ 已覆盖 ${ok} 站到服务器</span>`
+      ? `<span class="ok">已覆盖 ${ok} 站到服务器</span>`
       : ok
         ? `<span class="err">覆盖 ${ok} 站，失败 ${fails.length} 站：${esc(fails.slice(0, 5).join('、'))}${fails.length > 5 ? ' 等' : ''}</span>`
         : '<span class="err">全部失败：请检查服务器连接</span>'
@@ -931,7 +944,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!confirm(`把 ${targets.length} 个站点的服务器 cookie 批量写回本浏览器？\n（同名 cookie 将被服务器值覆盖）`)) return
     const btn = $('pullAll')
     btn.disabled = true
-    btn.textContent = '⇊ 写回中…'
+    btn.textContent = '写回中…'
     try {
       const detailed = await serverCookies(cfgCk, true)
       let ok = 0
@@ -945,13 +958,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch { fails.push(r.s.name) }
       }
       $('ckMsg').innerHTML = ok && !fails.length
-        ? `<span class="ok">✅ 已写回 ${ok} 站到浏览器</span>`
+        ? `<span class="ok">已写回 ${ok} 站到浏览器</span>`
         : `<span class="err">写回 ${ok} 站，失败 ${fails.length} 站：${esc(fails.slice(0, 5).join('、'))}${fails.length > 5 ? ' 等' : ''}</span>`
     } catch (e) {
       $('ckMsg').innerHTML = `<span class="err">${esc(e.message)}</span>`
     }
     btn.disabled = false
-    btn.textContent = '⇊ 覆盖浏览器'
+    btn.textContent = '覆盖浏览器'
     setTimeout(renderCookies, 800)
   }
 
@@ -964,20 +977,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   function colRowsHtml(list, kind) {
     if (!list.length) {
       return kind === 'fav'
-        ? '<p class="empty">暂无收藏——在种子列表页工具栏点「⭐ 收藏本页种子」</p>'
+        ? '<p class="empty">暂无收藏——在种子列表页工具栏点「收藏本页种子」</p>'
         : '<p class="empty">暂无下载历史——推送种子后自动记录（本机保留 300 条）</p>'
     }
     return list.map((f) => `
       <div style="display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:1px solid var(--border)">
         <div style="flex:1; min-width:0">
           <div style="font-weight:600; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${esc(f.title || f.url)}">${esc(f.title || '(未命名)')}</div>
-          <div class="num" style="color:var(--ink-3); font-size:10.5px; margin-top:1px">${esc(f.site || `下载器 #${f.downloader_id ?? '—'}`)} · ${fmtTime(f.added_at)}</div>
+          <div class="num" style="color:var(--ink-3); font-size:12px; margin-top:1px">${esc(f.site || `下载器 #${f.downloader_id ?? '—'}`)} · ${fmtTime(f.added_at)}</div>
         </div>
         <div style="display:flex; gap:4px; flex:none">
-          <button class="subtle" data-name="${esc(f.title || '')}" title="跨站找同种（辅种）">🌱 找同种</button>
+          <button class="subtle" data-name="${esc(f.title || '')}" title="跨站找同种（辅种）">找同种</button>
           ${kind === 'fav'
-            ? `<button class="subtle ok" data-url="${esc(f.url)}">⬇ 推送</button><button class="subtle danger" data-url="${esc(f.url)}" data-delfav="1">✕</button>`
-            : `<button class="subtle ok" data-url="${esc(f.url)}">↻ 重推</button>`}
+            ? `<button class="subtle ok" data-url="${esc(f.url)}">推送</button><button class="subtle danger" data-url="${esc(f.url)}" data-delfav="1" title="删除收藏" aria-label="删除收藏">删除</button>`
+            : `<button class="subtle ok" data-url="${esc(f.url)}">重推</button>`}
         </div>
       </div>`).join('')
   }
@@ -986,6 +999,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 用户以为没变化；而若上层补成 [] 又会显示「暂无收藏」，同样分不出真失败。
   async function renderFav() {
     $('tabFav').classList.add('on'); $('tabHis').classList.remove('on')
+    $('tabFav').setAttribute('aria-pressed', 'true'); $('tabHis').setAttribute('aria-pressed', 'false')
     colTab = 'fav'
     try {
       $('colList').innerHTML = colRowsHtml(await getFavorites(), 'fav')
@@ -995,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   async function renderHis() {
     $('tabHis').classList.add('on'); $('tabFav').classList.remove('on')
+    $('tabHis').setAttribute('aria-pressed', 'true'); $('tabFav').setAttribute('aria-pressed', 'false')
     colTab = 'his'
     try {
       $('colList').innerHTML = colRowsHtml(await getHistory(), 'his')
@@ -1037,10 +1052,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     push.disabled = true
     try {
       const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: push.dataset.url })
-      push.textContent = pushResultLabel(r, '✅')
+      push.textContent = pushResultLabel(r, '已推送')
       if (pushFailed(r)) push.disabled = false
     } catch (e) {
-      push.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) }, '✅')
+      push.textContent = pushResultLabel({ ok: false, error: (e && e.message) || String(e) }, '已推送')
       push.disabled = false
     }
     if (push.dataset.delfav) {
@@ -1050,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     setTimeout(() => {
       push.disabled = false
-      push.textContent = push.classList.contains('danger') ? '✕' : push.classList.contains('ok') && colTab === 'his' ? '↻ 重推' : '⬇ 推送'
+      push.textContent = push.classList.contains('danger') ? '删除' : push.classList.contains('ok') && colTab === 'his' ? '重推' : '推送'
     }, 2500)
   })
 
@@ -1083,17 +1098,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           <b style="font-size:12.5px">「${esc(name.slice(0, 40))}」的同种候选 ${cands.length} 条</b>
           <span class="hint">分数 ≥60 = 名称/大小/ID 指纹匹配</span>
           <span style="flex:1"></span>
-          <button class="btn-ghost" id="reseedClose">✕ 关闭</button>
+          <button class="btn-ghost" id="reseedClose">关闭</button>
         </div>
         ${cands.slice(0, 50).map((c) => `
         <div style="display:flex; align-items:center; gap:10px; padding:7px 14px; border-bottom:1px solid var(--border)">
           <div style="flex:1; min-width:0">
             <div style="font-weight:600; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${esc(c.torrent?.title || '')}">${esc(c.torrent?.title || '(无标题)')}</div>
-            <div class="num" style="color:var(--ink-3); font-size:10.5px; margin-top:1px">${esc(c.site_name)} · 匹配 ${c.score} 分${c.torrent?.size ? ' · ' + esc(c.torrent.size) : ''}${c.torrent?.seeders != null ? ' · 做种 ' + c.torrent.seeders : ''}</div>
+            <div class="num" style="color:var(--ink-3); font-size:12px; margin-top:1px">${esc(c.site_name)} · 匹配 ${c.score} 分${c.torrent?.size ? ' · ' + esc(c.torrent.size) : ''}${c.torrent?.seeders != null ? ' · 做种 ' + c.torrent.seeders : ''}</div>
           </div>
           <div style="display:flex; gap:4px; flex:none">
-            <button class="subtle ok" data-url="${esc(c.torrent?.download_url || '')}">🌱 辅种</button>
-            <a class="btn-ghost" href="${esc(c.torrent?.detail_url || '#')}" target="_blank" style="text-decoration:none; padding:3px 8px; font-size:11.5px">详情</a>
+            <button class="subtle ok" data-url="${esc(c.torrent?.download_url || '')}">辅种</button>
+            <a class="btn-ghost" href="${esc(c.torrent?.detail_url || '#')}" target="_blank" style="text-decoration:none; padding:3px 8px; font-size:12px">详情</a>
           </div>
         </div>`).join('')}`
       $('reseedClose').onclick = () => { layer.style.display = 'none' }
@@ -1117,14 +1132,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('autosyncEnabled').checked = !!st.enabled
     const r = st.lastResult
     let txt = `最近同步：${fmtSyncTime(st.lastRun)}`
-    if (r && r.error) txt += ` · ⚠ ${r.error}`
+    if (r && r.error) txt += ` · 注意：${r.error}`
     else if (r) {
       const failed = (r.failed || []).filter(Boolean)
-      txt += ` · ↑推送 ${r.pushed} 站 · ↓回写 ${r.pulled} 站${r.dead && r.dead.length ? ` · ⚠ ${r.dead.length} 站两侧均无 cookie` : ''}`
+      txt += ` · 推送 ${r.pushed} 站 · 回写 ${r.pulled} 站${r.dead && r.dead.length ? ` · 注意：${r.dead.length} 站两侧均无 cookie` : ''}`
       // 单站失败必须点名（带第一站的原因）：以前只报「同步失败」，看不出是谁、少了哪些站。
       if (failed.length) {
         const first = failed[0]
-        txt += ` · ⚠ ${failed.length} 站本次未同步：${first.name}${first.error ? `（${first.error}）` : ''}${failed.length > 1 ? ' 等' : ''}`
+        txt += ` · 注意：${failed.length} 站本次未同步：${first.name}${first.error ? `（${first.error}）` : ''}${failed.length > 1 ? ' 等' : ''}`
       }
     }
     else if (st.enabled) txt += ' · 等待首轮'
@@ -1151,7 +1166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       feedback(
         r.error
           ? `同步失败：${r.error}`
-          : `同步完成：推送 ${r.pushed} · 回写 ${r.pulled}${r.dead && r.dead.length ? ` · ${r.dead.length} 站需重登` : ''}${failedNow.length ? ` · ⚠ ${failedNow.length} 站本次未同步（${failedNow[0].name}${failedNow[0].error ? `：${failedNow[0].error}` : ''}）` : ''}`,
+          : `同步完成：推送 ${r.pushed} · 回写 ${r.pulled}${r.dead && r.dead.length ? ` · ${r.dead.length} 站需重登` : ''}${failedNow.length ? ` · 注意：${failedNow.length} 站本次未同步（${failedNow[0].name}${failedNow[0].error ? `：${failedNow[0].error}` : ''}）` : ''}`,
         r.error || failedNow.length ? 'err' : 'ok',
       )
     } catch (e) {

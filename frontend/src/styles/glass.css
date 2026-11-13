@@ -3,12 +3,23 @@
 @tailwind utilities;
 
 /* ───────────────────────────────────────────────────────────
-   PTPatronus 液态玻璃（Liquid Glass）设计系统
-   视觉基调：iOS 26 液态玻璃——通透、大圆角、柔和阴影、渐变背景
+   【遗留 / LEGACY】PTPatronus 液态玻璃（Liquid Glass）样式表
+   ------------------------------------------------------------------
+   本文件保留是为了让 47 个存量页面的类名与变量名继续可用（零迁移成本），
+   但**默认外观已由 tokens.css + modern.css 接管**：
+     main.ts 加载顺序 = tokens.css → glass.css → dialog.css → modern.css
+   modern.css 把 --pt-* / --glass-* / --grad-* / --radius-* / --fs-*
+   全部别名映射到语义 token，并把 .glass / .glass-bar 覆盖为实色卡。
+   因此本文件里的渐变背景、磨砂模糊、rim 高光、spring 回弹、水波纹、
+   stagger 入场、壁纸与多套主题色预设在默认外观下均不生效。
+   如需临时回到旧观感：给 <body> 加 class="classic-ui"（过渡期保留）。
 
+   新代码请勿再引用本文件的装饰性类；直接使用 --color-* / --fs-* /
+   --radius-* / --space-* 等语义 token 与 components/ui/ 下的组件。
+   ------------------------------------------------------------------
    Token 阶梯（间距 / 字号 / 圆角）供全站复用，避免每页 scoped CSS 里
-   重新发明轮子。新增页面优先使用 var(--sp-*) / var(--fs-*) / var(--radius-*)
-   及 .pt-btn / .pt-chip / .pt-badge 原子组件类。
+   重新发明轮子。新增页面优先使用 var(--space-*) / var(--fs-*) /
+   var(--radius-*) 及 .pt-btn / .pt-chip / .pt-badge 原子组件类。
    ─────────────────────────────────────────────────────────── */
 
 :root {

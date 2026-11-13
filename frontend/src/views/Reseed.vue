@@ -77,7 +77,7 @@ const taskCntLabel = computed(() => {
     </div>
 
     <!-- 工具栏 -->
-    <div class="toolbar card glass">
+    <div class="toolbar card solid-card">
       <el-select v-model="selectedDl" :placeholder="t('reseed.selectDownloader')" class="dl-select">
         <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
       </el-select>
@@ -90,18 +90,18 @@ const taskCntLabel = computed(() => {
         style="margin-bottom: 12px"
       />
       <el-button type="primary" :loading="reseeding" @click="startReseed">
-        <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
+        <SptIcon name="seed" :size="16" class="btn-ico" aria-hidden="true" />
         <span>{{ t('reseed.start') }}</span>
       </el-button>
-      <el-button @click="openMissing">
-        <GlassIcon name="history" :size="16" class="btn-ico" />
+      <el-button text @click="openMissing">
+        <SptIcon name="clock" :size="16" class="btn-ico" aria-hidden="true" />
         <span>{{ t('reseed.missingCheck') }}</span>
       </el-button>
       <div class="spacer"></div>
       <el-popover trigger="click" placement="bottom-end" :width="380" popper-class="reseed-cfg-pop">
         <template #reference>
-          <el-button class="cfg-btn">
-            <GlassIcon name="settings" :size="16" class="btn-ico" />
+          <el-button text class="cfg-btn">
+            <SptIcon name="gear" :size="16" class="btn-ico" aria-hidden="true" />
             <span>{{ t('settings.tab') }}</span>
           </el-button>
         </template>
@@ -191,7 +191,7 @@ const taskCntLabel = computed(() => {
     />
 
     <!-- 候选任务表 -->
-    <div class="card glass table-card">
+    <div class="card solid-card table-card">
       <div class="card-head">
         <span
           >{{ t('reseed.tasks') }}<span class="cnt text-muted">（{{ taskCntLabel }}）</span></span

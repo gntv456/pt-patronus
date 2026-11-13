@@ -146,7 +146,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
 
           children: [
 
-            Text('⚠ $_error', textAlign: TextAlign.center,
+            Text('加载失败：$_error', textAlign: TextAlign.center,
 
                 style: const TextStyle(color: Colors.redAccent)),
 

@@ -54,27 +54,27 @@ const level = computed(() => {
   font-size: var(--fs-body);
 }
 .mb-label {
-  color: var(--text-muted, #9ca3af);
+  color: var(--color-text-muted);
 }
 .mb-val {
   font-weight: 600;
 }
 .mb-val.ok {
-  color: #11998e;
+  color: var(--pt-success-fg);
 }
 .mb-val.warn {
-  color: #f7971e;
+  color: var(--pt-warn-fg);
 }
 .mb-val.danger {
   color: var(--pt-danger);
 }
 .mb-val.none {
-  color: var(--text-muted, #9ca3af);
+  color: var(--color-text-muted);
 }
 .mb-track {
   height: 8px;
   border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.14);
+  background: var(--color-border);
   overflow: hidden;
 }
 .mb-fill {
@@ -83,16 +83,16 @@ const level = computed(() => {
   transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .mb-fill.ok {
-  background: linear-gradient(90deg, #11998e, #38ef7d);
+  background: var(--pt-success-fg);
 }
 .mb-fill.warn {
-  background: linear-gradient(90deg, #f7971e, #ffd200);
+  background: var(--pt-warn-fg);
 }
 .mb-fill.danger {
-  background: linear-gradient(90deg, #ff5f6d, #ffc371);
+  background: var(--pt-danger-fg);
 }
 .mb-detail {
   font-size: var(--fs-2xs);
-  color: var(--text-muted, #9ca3af);
+  color: var(--color-text-muted);
 }
 </style>

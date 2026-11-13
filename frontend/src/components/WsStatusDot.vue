@@ -22,11 +22,14 @@ const label = computed(() => (connected.value ? t('wsDot.online') : t('wsDot.off
   <span
     class="ws-dot-wrap"
     role="status"
+    aria-live="polite"
     :class="{ off: !connected }"
     :title="label"
     :aria-label="label"
   >
     <span class="ws-dot" :class="{ off: !connected }"></span>
+    <!-- 数字与文字兜底：状态不只靠颜色表达；静态点，不用无限 pulse -->
+    <span class="ws-num" aria-hidden="true">{{ connected ? '1' : '0' }}</span>
     <span v-if="!connected" class="ws-text">{{ t('wsDot.offline') }}</span>
   </span>
 </template>
@@ -43,33 +46,22 @@ const label = computed(() => (connected.value ? t('wsDot.online') : t('wsDot.off
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--pt-success, #2ecc71);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pt-success, #2ecc71) 18%, transparent);
+  background: var(--color-success);
   flex: none;
-  transition: background var(--dur-base) var(--ease-out-smooth);
+  transition: background var(--dur-fast) var(--ease);
 }
 .ws-dot.off {
-  background: var(--pt-warn, #f39c12);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pt-warn, #f39c12) 20%, transparent);
-  animation: ws-pulse 1.6s var(--ease-out-smooth) infinite;
+  background: var(--color-warning);
+}
+.ws-num {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .ws-text {
-  font-size: var(--fs-2xs);
-  color: var(--pt-warn, #f39c12);
+  font-size: var(--fs-xs);
+  color: var(--pt-warn-fg);
   white-space: nowrap;
-}
-@keyframes ws-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ws-dot.off {
-    animation: none;
-  }
 }
 </style>

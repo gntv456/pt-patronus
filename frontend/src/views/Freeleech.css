@@ -120,28 +120,11 @@
   padding: 40px;
   text-align: center;
 }
-/* 免费 seed 卡 staggered 入场 */
-.cards > * {
-  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+/* 免费种卡入场动画已移除（去 AI 感）；.tile .num 保留 tabular-nums */
+.tile:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
-.cards > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.cards > *:nth-child(2) {
-  animation-delay: 50ms;
-}
-.cards > *:nth-child(3) {
-  animation-delay: 100ms;
-}
-.cards > *:nth-child(4) {
-  animation-delay: 150ms;
-}
-.cards > *:nth-child(5) {
-  animation-delay: 200ms;
-}
-.cards > *:nth-child(6) {
-  animation-delay: 250ms;
-}
-.cards > *:nth-child(n + 7) {
-  animation-delay: 300ms;
+@media (max-width: 640px) {
+  .tile { min-height: 44px; }
 }

@@ -44,7 +44,7 @@ const grid = computed(() => {
 const tierColorOf = (tierId: string) => {
   if (!tierId) return ''
   const idx = tiers.value.findIndex((t) => t.id === tierId)
-  if (idx < 0) return '#6366f1'
+  if (idx < 0) return 'var(--color-primary)'
   const t = tiers.value[idx]
   return t.color || tierPalette[idx % tierPalette.length]
 }
@@ -145,7 +145,7 @@ async function flip(index: number) {
     if (res.success) {
       if (res.prize && !res.prize.includes(t('pf.noWinShort'))) {
         lastTier.value = res.prize
-        ElMessage.success(`🎉 ${res.prize}`)
+        ElMessage.success(res.prize)
       } else {
         ElMessage.info(res.message || t('pf.noWin'))
       }
@@ -167,7 +167,7 @@ const RULES = computed(() => [t('pf.r1'), t('pf.r2'), t('pf.r3'), t('pf.r4'), t(
 <template>
   <div class="flip">
     <div class="hero">
-      <div class="hero-title">🃏 {{ t('pf.title') }}</div>
+      <div class="hero-title"><SptIcon name="gamepad" :size="16" aria-hidden="true" /> {{ t('pf.title') }}</div>
       <div class="balance">
         {{ t('bs.balance') }} <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b>
       </div>
@@ -186,8 +186,9 @@ const RULES = computed(() => [t('pf.r1'), t('pf.r2'), t('pf.r3'), t('pf.r4'), t(
         <div class="stat-val">{{ t('bs.roundN', { n: state?.round_number ?? '?' }) }}</div>
         <div class="stat-lbl">{{ t('pf.curRound') }}</div>
       </div>
-      <button class="refresh-btn" :disabled="refreshing" @click="manualRefresh" :title="t('pf.refreshTiles')">
-        {{ refreshing ? '…' : '🔄' }}
+      <button class="refresh-btn" :disabled="refreshing" :aria-label="t('pf.refreshTiles')" @click="manualRefresh" :title="t('pf.refreshTiles')">
+        <SptIcon v-if="!refreshing" name="refresh" :size="16" aria-hidden="true" />
+        <span v-else aria-hidden="true">…</span>
       </button>
     </div>
 
@@ -201,6 +202,7 @@ const RULES = computed(() => [t('pf.r1'), t('pf.r2'), t('pf.r3'), t('pf.r4'), t(
           :class="{ flipped: t.flipped, active: playing === t.index }"
           :style="t.flipped && t.tierId ? { background: tierColorOf(t.tierId) } : {}"
           :disabled="playing !== null || t.flipped"
+          :aria-label="t.flipped && t.tierId ? tierNameOf(t.tierId) : pfTileN(t.index)"
           :title="t.flipped && t.tierId ? tierNameOf(t.tierId) : pfTileN(t.index)"
           @click="flip(t.index)"
         >

@@ -94,7 +94,7 @@ function removeEnv(i: number) {
             :class="{ selected: selectedTemplate === tpl.id }"
             @click="emit('applyTemplate', tpl)"
           >
-            <span class="tpl-icon" :style="{ background: tpl.color + '20', color: tpl.color }">{{ tpl.icon }}</span>
+            <span class="tpl-icon"><SptIcon :name="tpl.icon" :size="18" aria-hidden="true" /></span>
             <div class="tpl-info">
               <span class="tpl-name">{{ tpl.name }}</span>
               <span class="tpl-desc">{{ tpl.description }}</span>
@@ -142,7 +142,7 @@ function removeEnv(i: number) {
         </el-form-item>
         <el-form-item :label="t('dw.privileged')">
           <el-switch v-model="form.privileged" />
-          <span class="field-hint field-warn">⚠ {{ t('dw.privWarn') }}</span>
+          <span class="field-hint field-warn"><SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ t('dw.privWarn') }}</span>
         </el-form-item>
         <el-form-item :label="t('dw.autoStart')">
           <el-switch v-model="form.autoStart" />
@@ -157,7 +157,7 @@ function removeEnv(i: number) {
           <el-select v-model="form.networkMode" style="width: 280px">
             <el-option v-for="o in networkOptions" :key="o.value" :value="o.value" :label="o.label" />
           </el-select>
-          <span v-if="form.networkMode === 'host'" class="field-hint">⚠ {{ t('dw.hostPortWarn') }}</span>
+          <span v-if="form.networkMode === 'host'" class="field-hint"><SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ t('dw.hostPortWarn') }}</span>
         </el-form-item>
         <el-form-item v-if="form.networkMode !== 'host'" :label="t('dw.portMap')">
           <div class="dynamic-rows">
@@ -169,7 +169,7 @@ function removeEnv(i: number) {
                 <el-option value="tcp" label="TCP" />
                 <el-option value="udp" label="UDP" />
               </el-select>
-              <button class="dyn-remove" :aria-label="t('dw.removePort')" @click="removePort(i)">✕</button>
+              <button class="dyn-remove" :aria-label="t('dw.removePort')" @click="removePort(i)"><SptIcon name="x" :size="14" aria-hidden="true" /></button>
             </div>
             <button class="dyn-add" @click="addPort">+ {{ t('dw.addPort') }}</button>
           </div>
@@ -190,7 +190,7 @@ function removeEnv(i: number) {
                 <el-option value="rw" :label="t('dw.rw')" />
                 <el-option value="ro" :label="t('dw.ro')" />
               </el-select>
-              <button class="dyn-remove" :aria-label="t('dw.removeVol')" @click="removeVolume(i)">✕</button>
+              <button class="dyn-remove" :aria-label="t('dw.removeVol')" @click="removeVolume(i)"><SptIcon name="x" :size="14" aria-hidden="true" /></button>
             </div>
             <button class="dyn-add" @click="addVolume">+ {{ t('dw.addVol') }}</button>
           </div>
@@ -207,7 +207,7 @@ function removeEnv(i: number) {
               <el-input v-model="e.key" :placeholder="t('dw.keyPh')" class="dyn-input-md" />
               <span class="dyn-arrow">=</span>
               <el-input v-model="e.value" :placeholder="t('dw.valuePh')" class="dyn-input-lg" />
-              <button class="dyn-remove" :aria-label="t('dw.removeEnv')" @click="removeEnv(i)">✕</button>
+              <button class="dyn-remove" :aria-label="t('dw.removeEnv')" @click="removeEnv(i)"><SptIcon name="x" :size="14" aria-hidden="true" /></button>
             </div>
             <button class="dyn-add" @click="addEnv">+ {{ t('dw.addEnv') }}</button>
           </div>

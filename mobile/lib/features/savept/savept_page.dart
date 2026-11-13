@@ -90,10 +90,10 @@ class _SaveptPageState extends State<SaveptPage>
       if (t.isNotEmpty) g[level]!.add(t);
     }
     return [
-      ('critical', '⚠️ 病危通知', g['critical']!),
-      ('success', '✅ 恢复公告', g['success']!),
-      ('info', '🎉 站庆预告', g['info']!),
-      ('error', '🕯️ 死亡讣告', g['error']!),
+      ('critical', '病危通知', g['critical']!),
+      ('success', '恢复公告', g['success']!),
+      ('info', '站庆预告', g['info']!),
+      ('error', '死亡讣告', g['error']!),
     ].map((e) => _NoticeSection(e.$1, e.$2, e.$3)).toList();
   }
 

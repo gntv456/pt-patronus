@@ -256,11 +256,11 @@ class _CommandPaletteSheetState extends State<CommandPaletteSheet> {
                 padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
                 child: Row(
                   children: [
-                    Text('↑↓/点选', style: TextStyle(fontSize: 11, color: context.dimText)),
+                    Text('↑↓/点选', style: TextStyle(fontSize: 12, color: context.dimText)),
                     const SizedBox(width: 12),
-                    Text('回车打开', style: TextStyle(fontSize: 11, color: context.dimText)),
+                    Text('回车打开', style: TextStyle(fontSize: 12, color: context.dimText)),
                     const Spacer(),
-                    Text('Esc/关闭', style: TextStyle(fontSize: 11, color: context.dimText)),
+                    Text('Esc/关闭', style: TextStyle(fontSize: 12, color: context.dimText)),
                   ],
                 ),
               ),

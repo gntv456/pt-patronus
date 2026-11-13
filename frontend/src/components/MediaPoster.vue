@@ -55,7 +55,7 @@ onUnmounted(() => {
 
 <template>
   <img v-if="src && !failed" :src="src" alt="" loading="lazy" @error="failed = true" />
-  <div v-else class="no-poster">{{ kind === 'music' ? '🎵' : kind === 'person' ? '👤' : '🎬' }}</div>
+  <div v-else class="no-poster"><SptIcon :name="kind === 'music' ? 'music' : kind === 'person' ? 'user' : 'film'" :size="32" aria-hidden="true" /></div>
 </template>
 
 <style scoped>

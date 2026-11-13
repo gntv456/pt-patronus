@@ -88,15 +88,15 @@ function factText(m: MediaInfo) {
       <el-button size="small" @click="router.back()">← {{ t('mediadetail.back') }}</el-button>
     </div>
 
-    <div v-if="error" class="empty glass error-state">
-      <div class="err-text">⚠ {{ error }}</div>
+    <div v-if="error" class="empty solid-card error-state">
+      <div class="err-text" role="alert"><SptIcon name="alert-triangle" :size="16" aria-hidden="true" /> {{ error }}</div>
       <el-button size="small" @click="load">{{ t('common.retry') }}</el-button>
     </div>
 
     <div v-loading="loading">
       <template v-if="detail">
         <!-- 顶部：背景图 + 海报 + 标题/评分/操作 -->
-        <div class="hero glass">
+        <div class="hero solid-card">
           <div class="backdrop">
             <MediaPoster
               v-if="detail.backdrop_url || detail.poster_url"
@@ -121,7 +121,7 @@ function factText(m: MediaInfo) {
               </div>
               <div class="badges">
                 <span class="badge type">{{ typeBadge(detail.type) }}</span>
-                <span v-if="detail.rating" class="badge rating">⭐ {{ detail.rating.toFixed(1) }}</span>
+                <span v-if="detail.rating" class="badge rating"><SptIcon name="star" :size="14" aria-hidden="true" /> {{ detail.rating.toFixed(1) }}</span>
                 <span class="badge src">{{ sourceBadge(detail.source) }}</span>
               </div>
               <div v-if="genreText(detail)" class="genre-row text-muted">{{ genreText(detail) }}</div>
@@ -130,21 +130,21 @@ function factText(m: MediaInfo) {
               </div>
               <div v-if="factText(detail)" class="fact-row text-muted">{{ factText(detail) }}</div>
               <div class="actions">
-                <el-button type="primary" @click="searchResources">🔍 {{ t('mediadetail.searchRes') }}</el-button>
-                <el-button :loading="subscribing" @click="subscribe">❤ {{ t('mediadetail.subscribe') }}</el-button>
+                <el-button type="primary" @click="searchResources"><SptIcon name="search" :size="16" aria-hidden="true" /> {{ t('mediadetail.searchRes') }}</el-button>
+                <el-button :loading="subscribing" @click="subscribe"><SptIcon name="heart" :size="16" aria-hidden="true" /> {{ t('mediadetail.subscribe') }}</el-button>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 简介 -->
-        <div v-if="detail.overview" class="card glass section">
+        <div v-if="detail.overview" class="card solid-card section">
           <div class="sec-title">{{ t('mediadetail.overview') }}</div>
           <div class="overview">{{ detail.overview }}</div>
         </div>
 
         <!-- 演员 -->
-        <div v-if="detail.cast?.length" class="card glass section">
+        <div v-if="detail.cast?.length" class="card solid-card section">
           <div class="section-head">
             <div class="sec-title">
               {{ t('mediadetail.cast') }} <span class="sec-count">{{ detail.cast.length }}</span>
@@ -177,7 +177,7 @@ function factText(m: MediaInfo) {
         </div>
 
         <!-- 推荐 -->
-        <div v-if="detail.recommendations?.length" class="card glass section">
+        <div v-if="detail.recommendations?.length" class="card solid-card section">
           <div class="section-head">
             <div class="sec-title">
               {{ t('mediadetail.recommendations') }} <span class="sec-count">{{ detail.recommendations.length }}</span>
@@ -198,12 +198,12 @@ function factText(m: MediaInfo) {
               v-a11y-button
               v-for="(m, i) in visibleRecommendations"
               :key="`${m.source}-${m.source_id}-${i}`"
-              class="rec glass-hover"
+              class="rec"
               @click="openRec(m)"
             >
               <div class="rec-poster"><MediaPoster :url="m.poster_url" :kind="m.type" /></div>
               <div class="rec-title">{{ m.title }}</div>
-              <div v-if="m.rating" class="rec-rating text-muted">⭐ {{ m.rating.toFixed(1) }}</div>
+              <div v-if="m.rating" class="rec-rating text-muted"><SptIcon name="star" :size="14" aria-hidden="true" /> {{ m.rating.toFixed(1) }}</div>
             </div>
           </div>
         </div>
@@ -234,12 +234,12 @@ function factText(m: MediaInfo) {
               v-a11y-button
               v-for="(m, i) in detail.recommendations"
               :key="`${m.source}-${m.source_id}-${i}`"
-              class="rec glass-hover"
+              class="rec"
               @click="openRec(m)"
             >
               <div class="rec-poster"><MediaPoster :url="m.poster_url" :kind="m.type" /></div>
               <div class="rec-title">{{ m.title }}</div>
-              <div v-if="m.rating" class="rec-rating text-muted">⭐ {{ m.rating.toFixed(1) }}</div>
+              <div v-if="m.rating" class="rec-rating text-muted"><SptIcon name="star" :size="14" aria-hidden="true" /> {{ m.rating.toFixed(1) }}</div>
             </div>
           </div>
         </el-dialog>

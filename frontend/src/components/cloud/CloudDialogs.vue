@@ -278,10 +278,10 @@ const { t } = useI18n()
           class="browse-item"
           @click="emit('enterDir', f)"
         >
-          📁 {{ f.name }}
+          <SptIcon name="folder" :size="14" aria-hidden="true" /> {{ f.name }}
         </div>
         <div v-for="f in browseFiles.filter((x) => !x.is_dir)" :key="f.path" class="browse-item file">
-          🎬 {{ f.name }}
+          <SptIcon name="film" :size="14" aria-hidden="true" /> {{ f.name }}
           <span class="meta">{{ fmtSize(f.size) }}</span>
         </div>
         <div v-if="!browseFiles.length && !browseLoading" class="meta" style="padding: 20px; text-align: center">

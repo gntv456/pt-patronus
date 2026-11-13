@@ -52,15 +52,15 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
 }
 .spt-notice-card {
   border-radius: var(--spt-radius);
-  border: 1px solid rgba(var(--spt-border), var(--spt-border-opacity));
-  background: rgb(var(--spt-surface));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
 }
 .spt-notice-card__title {
-  font-size: 0.84rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -70,9 +70,9 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
   gap: var(--sp-1);
 }
 .spt-notice-card__item {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
-  color: rgba(var(--spt-on-surface), 0.68);
+  color: var(--color-text-secondary);
 }
 .spt-notice-tag {
   display: inline-flex;
@@ -80,7 +80,7 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
   padding: 1px 8px;
   margin: 0 3px;
   border-radius: var(--spt-radius-pill);
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1.4;
   vertical-align: baseline;
@@ -95,15 +95,15 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
 }
 .spt-notice-tag--info {
   background: var(--pt-warn-bg);
-  color: #d97706;
+  color: var(--pt-warn-fg);
 }
 .spt-notice-tag--error {
-  background: rgba(148, 163, 184, 0.16);
-  color: rgba(var(--spt-on-surface), 0.68);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 .spt-notice-card__empty {
-  font-size: 0.78rem;
-  color: rgba(var(--spt-on-surface), 0.38);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
 }
 .spt-notice-card--critical {
   background: var(--pt-danger-bg);
@@ -127,10 +127,10 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
   color: var(--spt-color-anniv);
 }
 .spt-notice-card--error {
-  background: rgba(148, 163, 184, 0.06);
-  border-color: rgba(148, 163, 184, 0.16);
+  background: var(--color-surface-2);
+  border-color: var(--color-surface-2);
 }
 .spt-notice-card--error .spt-notice-card__title {
-  color: rgba(var(--spt-on-surface), 0.58);
+  color: var(--color-text-secondary);
 }
 </style>

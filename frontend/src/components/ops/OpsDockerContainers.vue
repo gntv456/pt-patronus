@@ -14,9 +14,9 @@ import { a11yButton as vA11yButton } from '@/directives/a11yButton'
 import type { DockerContainer } from '@/api/docker'
 
 // el-progress 的 color prop 需要具体色值（不接受 CSS var 字符串）——运行时从根元素读
-// 主题 token，切主题色后进度条同步变色（此前硬编码 #6c5ce7 不跟随主题）。
+// 主题 token，切主题色后进度条同步变色（此前硬编码旧品牌色不跟随主题）。
 function cssVar(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#6c5ce7'
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#2563eb'
 }
 
 const props = defineProps<{

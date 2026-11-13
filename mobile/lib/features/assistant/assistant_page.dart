@@ -36,7 +36,8 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
     final approved = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('⚠️ 危险操作确认'),
+        icon: const Icon(Icons.warning_amber, color: PTColors.warn),
+        title: const Text('危险操作确认'),
         content: Text('$summary\n工具：$name$argLine'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('拒绝')),
@@ -82,8 +83,9 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        icon: const Icon(Icons.delete_outline, color: PTColors.danger),
         title: const Text('删除会话'),
-        content: const Text('确定删除该会话？'),
+        content: const Text('确定删除该会话？删除后 8 秒内可撤销。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
@@ -91,13 +93,42 @@ class _AssistantPageState extends State<AssistantPage> with AssistantOpsMixin {
       ),
     );
     if (ok != true) return;
+    if (!mounted) return;
+    // 破坏性操作：先乐观移除，给 8s 撤销窗口；撤销只恢复本地列表，不落库。
+    final index = _convs.indexWhere((c) => c.id == id);
+    final removed = index >= 0 ? _convs[index] : null;
+    if (removed != null) {
+      setState(() => _convs = [..._convs]..removeAt(index));
+    }
+    var undone = false;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final snack = messenger.showSnackBar(
+      SnackBar(
+        content: const Text('会话已删除'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: '撤销',
+          onPressed: () {
+            undone = true;
+            if (removed != null && mounted) {
+              setState(() => _convs = [..._convs]..insert(index, removed));
+            }
+          },
+        ),
+      ),
+    );
+    await snack.closed;
+    if (undone || !mounted) return;
     try {
       await _api.deleteConversation(id);
     } catch (e) {
       // 没有这层兜底，异常会逃出 async 的 onPressed 进未处理 Future：
       // 弹窗已关、列表没变、也不吭声——看起来就像「删除点了没反应」。
-      // （同仓 filter_rules 的 _deleteCustom 就是这个写法。）
       _toast('删除会话失败：$e');
+      if (removed != null) {
+        setState(() => _convs = [..._convs]..insert(index, removed));
+      }
       return;
     }
     if (_activeId == id) _newChat();

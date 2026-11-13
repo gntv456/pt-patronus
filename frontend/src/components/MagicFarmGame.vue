@@ -64,7 +64,7 @@ onMounted(refresh)
 <template>
   <div class="farm">
     <div class="hero">
-      <div class="hero-title">🚜 {{ farm?.farm_name || t('mf.title') }}</div>
+      <div class="hero-title"><SptIcon name="seed" :size="18" aria-hidden="true" /> {{ farm?.farm_name || t('mf.title') }}</div>
       <div class="hero-sub">
         {{ t('mf.curMagic') }}: <b>{{ farm?.balance?.toLocaleString() ?? '—' }}</b>
       </div>
@@ -74,23 +74,24 @@ onMounted(refresh)
     </div>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" /></span>
       <span class="r-msg">{{ last.message }}</span>
     </div>
 
     <section v-if="farm" class="glass section">
       <div class="sec-title">
-        🌾 {{ t('mf.crops') }} <small>{{ t('mf.valid2d') }}</small>
+        <SptIcon name="seed" :size="16" aria-hidden="true" /> {{ t('mf.crops') }} <small>{{ t('mf.valid2d') }}</small>
       </div>
       <div class="grid">
         <div v-for="c in farm.crops" :key="'c' + c.id" class="item">
-          <div class="i-emoji">{{ emoji(c.name) }}</div>
+          <div class="i-emoji" aria-hidden="true">{{ emoji(c.name) }}</div>
           <div class="i-name">{{ c.name }}</div>
           <div class="i-meta">
             {{ c.reward ? t('mf.metaR', { h: c.grow_hours, p: c.price, r: c.reward }) : t('mf.meta', { h: c.grow_hours, p: c.price }) }}
           </div>
           <div class="i-status" :class="c.status">
-            {{ c.locked ? '🔒 ' + t('mf.locked') : statusText(c.status) }}
+            <template v-if="c.locked"><SptIcon name="lock" :size="12" aria-hidden="true" /> {{ t('mf.locked') }}</template>
+            <template v-else>{{ statusText(c.status) }}</template>
           </div>
           <div v-if="c.locked" class="i-unlock text-muted">{{ c.unlock_text }}</div>
           <button
@@ -106,11 +107,11 @@ onMounted(refresh)
 
     <section v-if="farm" class="glass section">
       <div class="sec-title">
-        🐔 {{ t('mf.animals') }} <small>{{ t('mf.valid5d') }}</small>
+        <SptIcon name="heart" :size="16" aria-hidden="true" /> {{ t('mf.animals') }} <small>{{ t('mf.valid5d') }}</small>
       </div>
       <div class="grid">
         <div v-for="a in farm.animals" :key="'a' + a.id" class="item">
-          <div class="i-emoji">{{ emoji(a.name) }}</div>
+          <div class="i-emoji" aria-hidden="true">{{ emoji(a.name) }}</div>
           <div class="i-name">{{ a.name }}</div>
           <div class="i-meta">{{ t('mf.meta', { h: a.grow_hours, p: a.price }) }}</div>
           <div class="i-status" :class="a.status">{{ statusText(a.status) }}</div>
@@ -126,7 +127,7 @@ onMounted(refresh)
     </section>
 
     <section v-if="farm?.warehouse?.length" class="glass section">
-      <div class="sec-title">📦 {{ t('mf.barn') }}</div>
+      <div class="sec-title"><SptIcon name="package" :size="16" aria-hidden="true" /> {{ t('mf.barn') }}</div>
       <div class="list">
         <div v-for="(w, i) in farm.warehouse" :key="i" class="row">
           <span class="row-name">{{ w.name }} ×{{ w.count }}</span>
@@ -138,7 +139,7 @@ onMounted(refresh)
 
     <section v-if="farm?.market?.length" class="glass section">
       <div class="sec-title">
-        🛒 {{ t('mf.market') }} <small>{{ t('mf.marketHint') }}</small>
+        <SptIcon name="tag" :size="16" aria-hidden="true" /> {{ t('mf.market') }} <small>{{ t('mf.marketHint') }}</small>
       </div>
       <div class="list">
         <div v-for="(m, i) in farm.market" :key="i" class="row">
@@ -164,33 +165,35 @@ onMounted(refresh)
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #166534, #16a34a);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .hero-sub {
   margin-top: 4px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-secondary);
 }
 .hero-sub b {
-  color: #fef08a;
+  color: var(--pt-warn-fg);
   font-size: var(--fs-lg);
 }
 .harvest-all {
   margin-top: 12px;
+  min-height: 24px;
   padding: 9px 22px;
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 700;
-  color: #166534;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--color-on-accent);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-card);
 }
 .harvest-all:disabled {
   opacity: 0.7;
@@ -208,7 +211,7 @@ onMounted(refresh)
 }
 .sec-title small {
   font-weight: 400;
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   font-size: var(--fs-xs);
   margin-left: 6px;
 }
@@ -230,8 +233,8 @@ onMounted(refresh)
   gap: var(--sp-1);
   padding: 12px 8px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .i-emoji {
   font-size: var(--fs-hero);
@@ -240,39 +243,41 @@ onMounted(refresh)
   font-weight: 700;
 }
 .i-meta {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .i-status {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--radius-xs);
 }
 .i-status.ready {
   background: var(--pt-success-bg);
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
 }
 .i-status.growing {
   background: var(--pt-warn-bg);
-  color: var(--pt-warn);
+  color: var(--pt-warn-fg);
 }
 .i-status.idle {
-  background: rgba(148, 163, 184, 0.18);
-  color: #94a3b8;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
 }
 .i-btn {
   margin-top: 6px;
+  min-height: 24px;
   padding: 5px 14px;
   border: 0;
   border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: #fff;
-  background: #16a34a;
+  color: var(--color-on-accent);
+  background: var(--color-success);
 }
 .i-btn:disabled {
-  background: #94a3b8;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
   cursor: not-allowed;
 }
 
@@ -287,24 +292,25 @@ onMounted(refresh)
   gap: var(--sp-3);
   padding: 7px 4px;
   font-size: var(--fs-body);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .row-name {
   font-weight: 600;
 }
 .mkt-price {
   margin-left: auto;
-  color: var(--pt-warn);
+  color: var(--pt-warn-fg);
 }
 .sell-btn {
   margin-left: auto;
+  min-height: 24px;
   padding: 3px 12px;
   border: 0;
   border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: var(--fs-xs);
-  color: #fff;
-  background: #3b82f6;
+  color: var(--color-on-accent);
+  background: var(--color-primary);
 }
 .sell-btn:disabled {
   opacity: 0.6;
@@ -331,5 +337,5 @@ onMounted(refresh)
   font-size: var(--fs-body);
 }
 
-.i-unlock { font-size: 11px; line-height: 1.3; margin: 2px 0; }
+.i-unlock { font-size: 12px; line-height: 1.3; margin: 2px 0; }
 </style>

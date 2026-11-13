@@ -7,8 +7,6 @@ export interface NavItem {
   name: string
   label: string
   icon: string
-  from: string
-  to: string
 }
 export interface NavGroup {
   /** locale 查找键（nav.groups.<key>）；title 仍是折叠状态的持久化键（稳定不随 locale 变） */
@@ -18,75 +16,76 @@ export interface NavGroup {
 }
 
 // P2: 侧栏收敛到定稿主菜单；移出项保留在 paletteOnly（⌘K/收藏/深链）。
+// 图标统一由 SptIcon / GlassIcon 按单色描边渲染，不再携带每项独立的渐变配色。
 export const navGroups: NavGroup[] = [
   {
     key: 'overview',
     title: '概览',
     items: [
-      { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
-      { name: 'search', label: '搜索', icon: 'search', from: '#f7971e', to: '#ff6a00' },
-      { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
-      { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
-      { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },
+      { name: 'dashboard', label: '仪表盘', icon: 'dashboard' },
+      { name: 'search', label: '搜索', icon: 'search' },
+      { name: 'recommend', label: '推荐', icon: 'recommend' },
+      { name: 'subscriptions', label: '订阅', icon: 'subscribe' },
+      { name: 'sites', label: '站点', icon: 'sites' },
     ],
   },
   {
     key: 'activity',
     title: '动态',
     items: [
-      { name: 'notices', label: '通知中心', icon: 'bell', from: '#6c5ce7', to: '#a18cd1' },
-      { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
-      { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
-      { name: 'site-requests', label: '求种', icon: 'seed', from: '#11998e', to: '#38ef7d' },
+      { name: 'notices', label: '通知中心', icon: 'bell' },
+      { name: 'messages', label: '消息', icon: 'message' },
+      { name: 'announcements', label: '公告', icon: 'announcement' },
+      { name: 'site-requests', label: '求种', icon: 'seed' },
     ],
   },
   {
     key: 'site',
     title: '站点活动',
     items: [
-      { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
-      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
-      { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
-      { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d' },
-      { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2' },
-      { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d' },
-      { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
-      { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00' },
-      { name: 'contract', label: '保种契约', icon: 'contract', from: '#6c5ce7', to: '#4285f4' },
+      { name: 'entertainment', label: '娱乐', icon: 'entertainment' },
+      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall' },
+      { name: 'harem', label: '后宫', icon: 'harem' },
+      { name: 'reseed', label: '辅种', icon: 'seeding' },
+      { name: 'assessment', label: '考核', icon: 'assessment' },
+      { name: 'freeleech', label: '站免', icon: 'freeleech' },
+      { name: 'savept', label: '监护室', icon: 'savept' },
+      { name: 'brushflow', label: '刷流', icon: 'brushflow' },
+      { name: 'contract', label: '保种契约', icon: 'contract' },
     ],
   },
   {
     key: 'infra',
     title: '基础设施',
     items: [
-      { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
-      { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
-      { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
-      { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
-      { name: 'ops-center', label: '运维', icon: 'server', from: '#11998e', to: '#38ef7d' },
+      { name: 'downloaders', label: '下载器', icon: 'downloaders' },
+      { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver' },
+      { name: 'files', label: '文件', icon: 'files' },
+      { name: 'nas-server', label: 'NAS', icon: 'server' },
+      { name: 'ops-center', label: '运维', icon: 'server' },
     ],
   },
   {
     key: 'automation',
     title: '自动化',
     items: [
-      { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
-      { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
+      { name: 'workflow', label: '工作流', icon: 'workflow' },
+      { name: 'plugins', label: '插件', icon: 'plugin' },
     ],
   },
 ]
 
 // P2 移出侧栏但仍可 ⌘K / 深链 / 收藏：全局页与配置页保留在 paletteOnly。
 export const paletteOnly: (NavItem & { group: string })[] = [
-  { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00', group: '内容获取' },
-  { name: 'transfer', label: '整理', icon: 'files', from: '#6c5ce7', to: '#00b894', group: '内容获取' },
-  { name: 'filter-rules', label: '过滤规则', icon: 'settings', from: '#6c5ce7', to: '#4285f4', group: '内容获取' },
-  { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee', group: '基础设施' },
-  { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7', group: '基础设施' },
-  { name: 'trakt', label: 'Trakt', icon: 'trakt', from: '#b5179e', to: '#f72585', group: '基础设施' },
-  { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', from: '#f12711', to: '#f5af19', group: '基础设施' },
-  { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50', group: '基础设施' },
-  { name: 'doctor', label: '诊断', icon: 'stethoscope', from: '#0f2027', to: '#ef4444', group: '基础设施' },
+  { name: 'rss', label: 'RSS', icon: 'rss', group: '内容获取' },
+  { name: 'transfer', label: '整理', icon: 'files', group: '内容获取' },
+  { name: 'filter-rules', label: '过滤规则', icon: 'settings', group: '内容获取' },
+  { name: 'cloud', label: '云盘·STRM', icon: 'cloud', group: '基础设施' },
+  { name: 'subtitle', label: '字幕', icon: 'subtitle', group: '基础设施' },
+  { name: 'trakt', label: 'Trakt', icon: 'trakt', group: '基础设施' },
+  { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', group: '基础设施' },
+  { name: 'backup', label: '备份', icon: 'backup', group: '基础设施' },
+  { name: 'doctor', label: '诊断', icon: 'stethoscope', group: '基础设施' },
 ]
 
 export const navDesc: Record<string, string> = {

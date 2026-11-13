@@ -6,9 +6,9 @@
 <script setup lang="ts">
 // 通用分区内容：主题切换、版本/更新检查、帮助/反馈/更新日志入口与弹窗。
 // 状态与逻辑来自 useGeneralSettings 组合式函数（与 Settings.vue 共享单例）。
-import { ref } from 'vue'
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
 import { useI18n } from 'vue-i18n'
+import SptIcon from '@/components/SptIcon.vue'
 // #405 下载地址来自环境变量/更新接口，仍走协议白名单（收口一致，勿让某处裸绑 href）。
 import { safeUrl } from '@/utils/safeUrl'
 
@@ -29,26 +29,12 @@ const {
   openChangelog,
 } = useGeneralSettings()
 
-// 界面定制：主题色/风格/壁纸/遮罩/卡片风格，偏好随账号同步。
-const { normalized, set, fetchBingDaily } = useUiPrefs()
-const wallpaperFile = ref<File | null>(null)
-
-function onWallpaperFile(f: File | null) {
-  wallpaperFile.value = f
-  if (!f) return
-  // 本地文件转 base64 存偏好（64KB 服务端上限：超大图直接读会超，提示用网络地址）
-  if (f.size > 48 * 1024) {
-    ElMessage.warning(t('gp.wallpaperTooLarge'))
-    return
-  }
-  const reader = new FileReader()
-  reader.onload = () => set({ wallpaperKind: 'local', wallpaperUrl: String(reader.result) })
-  reader.readAsDataURL(f)
-}
+// 界面定制：仅保留主题色与侧栏默认态（偏好随账号同步）。
+const { normalized, set } = useUiPrefs()
 </script>
 
 <template>
-  <div class="card glass">
+  <div class="card solid-card">
     <div class="row">
       <div class="row-label">
         <span class="row-title">{{ t('gp.darkTheme') }}</span>
@@ -69,88 +55,11 @@ function onWallpaperFile(f: File | null) {
           :class="{ active: normalized().accent === p.value }"
           :style="{ background: p.color }"
           :title="p.label"
+          :aria-label="p.label"
+          :aria-pressed="normalized().accent === p.value"
           @click="set({ accent: p.value })"
         />
       </div>
-    </div>
-    <div class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.uiStyle') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.uiStyleHint') }}</span>
-      </div>
-      <el-select :model-value="normalized().uiStyle" style="width: 120px" @change="(v: string) => set({ uiStyle: v })">
-        <el-option :label="t('gp.styleGlass')" value="glass" />
-        <el-option :label="t('gp.styleModern')" value="modern" />
-      </el-select>
-    </div>
-    <div class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.wallpaper') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.wallpaperHint') }}</span>
-      </div>
-      <el-select
-        :model-value="normalized().wallpaperKind"
-        style="width: 130px"
-        @change="
-          (v: string) => {
-            if (v === 'bing') fetchBingDaily()
-            set({ wallpaperKind: v })
-          }
-        "
-      >
-        <el-option :label="t('gp.wpNone')" value="none" />
-        <el-option :label="t('gp.wpBing')" value="bing" />
-        <el-option :label="t('gp.wpUrl')" value="url" />
-        <el-option :label="t('gp.wpLocal')" value="local" />
-      </el-select>
-    </div>
-    <div v-if="normalized().wallpaperKind === 'url'" class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.wallpaperUrl') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.wallpaperUrlHint') }}</span>
-      </div>
-      <el-input
-        :model-value="normalized().wallpaperUrl"
-        placeholder="https://example.com/bg.jpg"
-        style="width: 320px"
-        @change="(v: string) => set({ wallpaperUrl: v.trim() })"
-      />
-    </div>
-    <div v-else-if="normalized().wallpaperKind === 'local'" class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.pickFile') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.pickFileHint') }}</span>
-      </div>
-      <input
-        type="file"
-        accept="image/*"
-        @change="(e: Event) => onWallpaperFile((e.target as HTMLInputElement).files?.[0] ?? null)"
-      />
-    </div>
-    <div v-if="normalized().wallpaperKind !== 'none'" class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.mask') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.maskHint') }}</span>
-      </div>
-      <el-select :model-value="normalized().mask" style="width: 120px" @change="(v: string) => set({ mask: v })">
-        <el-option :label="t('gp.maskLight')" value="light" />
-        <el-option :label="t('gp.maskStandard')" value="standard" />
-        <el-option :label="t('gp.maskStrong')" value="strong" />
-      </el-select>
-    </div>
-    <div class="row">
-      <div class="row-label">
-        <span class="row-title">{{ t('gp.cardStyle') }}</span>
-        <span class="text-muted row-hint">{{ t('gp.cardStyleHint') }}</span>
-      </div>
-      <el-select
-        :model-value="normalized().cardStyle"
-        style="width: 120px"
-        @change="(v: string) => set({ cardStyle: v })"
-      >
-        <el-option :label="t('gp.cardShadow')" value="shadow" />
-        <el-option :label="t('gp.cardBorder')" value="border" />
-      </el-select>
     </div>
     <div class="row">
       <div class="row-label">
@@ -163,7 +72,7 @@ function onWallpaperFile(f: File | null) {
       />
     </div>
   </div>
-  <div class="card glass">
+  <div class="card solid-card">
     <div class="row about">
       <div class="row-label">
         <span class="row-title">PTPatronus</span>
@@ -182,28 +91,28 @@ function onWallpaperFile(f: File | null) {
   </div>
 
   <!-- 帮助 / 反馈 / 更新日志 -->
-  <div class="card glass help-card">
-    <div v-a11y-button class="help-row" @click="helpVisible = true">
-      <div class="row-label">
+  <div class="card solid-card help-card">
+    <button type="button" class="help-row" @click="helpVisible = true">
+      <span class="row-label">
         <span class="row-title">{{ t('gp.help') }}</span>
         <span class="text-muted row-hint">{{ t('gp.helpHint') }}</span>
-      </div>
-      <span class="help-arrow">›</span>
-    </div>
-    <div v-a11y-button class="help-row" @click="openIssues">
-      <div class="row-label">
+      </span>
+      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+    </button>
+    <button type="button" class="help-row" @click="openIssues">
+      <span class="row-label">
         <span class="row-title">{{ t('gp.feedback') }}</span>
         <span class="text-muted row-hint">{{ t('gp.feedbackHint') }}</span>
-      </div>
-      <span class="help-arrow">›</span>
-    </div>
-    <div v-a11y-button class="help-row" @click="openChangelog">
-      <div class="row-label">
+      </span>
+      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+    </button>
+    <button type="button" class="help-row" @click="openChangelog">
+      <span class="row-label">
         <span class="row-title">{{ t('gp.changelog') }}</span>
         <span class="text-muted row-hint">{{ t('gp.changelogHint') }}</span>
-      </div>
-      <span class="help-arrow">›</span>
-    </div>
+      </span>
+      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+    </button>
   </div>
 
   <!-- 在线更新检查弹窗 -->

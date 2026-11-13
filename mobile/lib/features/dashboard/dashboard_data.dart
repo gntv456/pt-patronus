@@ -302,7 +302,7 @@ mixin DashboardDataMixin on State<DashboardPage> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('📊 ${site.siteName} 的连通状态没读到'),
+        title: Text('${site.siteName} 的连通状态没读到'),
         content: Text(
           reason ??
               '这次没读到连通状态（不是「站点掉线」）：请下拉后重试。',

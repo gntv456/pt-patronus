@@ -16,11 +16,13 @@ import MetricBar from '@/components/monitor/MetricBar.vue'
 // 组件 catch 后优雅降级提示，不轮询。
 const { t } = useI18n()
 const metrics = ref<SystemMetrics | null>(null)
+const loading = ref(true)
 const forbidden = ref(false)
 const errorMsg = ref('')
 let stopPolling: (() => void) | null = null
 
 async function load() {
+  loading.value = true
   try {
     metrics.value = await systemApi.metrics()
     forbidden.value = false
@@ -33,6 +35,8 @@ async function load() {
     } else {
       errorMsg.value = (e as Error).message || t('drsc.collectFailed')
     }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -60,7 +64,8 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
       </div>
     </div>
 
-    <div v-if="forbidden" class="dc-empty">{{ t('drsc.forbidden') }}</div>
+    <div v-if="loading" class="dc-empty" aria-busy="true"><el-skeleton :rows="4" animated style="width: 100%" /></div>
+    <div v-else-if="forbidden" class="dc-empty">{{ t('drsc.forbidden') }}</div>
     <div v-else-if="errorMsg" class="dc-empty">{{ errorMsg }}</div>
     <div v-else-if="!metrics" class="dc-empty">{{ t('drsc.collecting') }}</div>
     <div v-else class="dc-body">
@@ -123,6 +128,7 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
   color: var(--text-muted);
 }
 .load-row {
+  font-variant-numeric: tabular-nums;
   margin-top: auto;
   padding-top: 8px;
   border-top: 1px solid var(--divider);

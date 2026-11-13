@@ -67,7 +67,9 @@
   border: 1px solid var(--divider);
   background: var(--surface-muted);
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
 }
 .wb-node:hover {
   border-color: var(--pt-primary);
@@ -81,6 +83,10 @@
 }
 .wb-node-count {
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wb-node-ico {
+  color: var(--color-text-muted);
 }
 .wb-flow-arrow {
   color: var(--text-disabled);

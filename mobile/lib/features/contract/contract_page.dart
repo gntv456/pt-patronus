@@ -93,7 +93,7 @@ class _ContractPageState extends State<ContractPage> with ContractOpsMixin {
           if (res.unsupported.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              '⚠ ${res.unsupported}',
+              '不支持：${res.unsupported}',
               style: const TextStyle(fontSize: 12, color: PTColors.warn),
             ),
           ],

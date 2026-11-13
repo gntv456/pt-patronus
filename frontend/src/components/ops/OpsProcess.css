@@ -15,7 +15,7 @@
 }
 .target-label {
   font-size: var(--fs-body);
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 .view-switch {
@@ -24,13 +24,14 @@
   margin-left: 8px;
 }
 .view-switch button {
+  min-height: 24px;
   padding: 6px 16px;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border: 1px solid var(--color-border);
   background: transparent;
   border-radius: var(--radius-xs);
   cursor: pointer;
   font-size: var(--fs-body);
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
 }
 .view-switch button.active {
   background: var(--accent);
@@ -38,7 +39,7 @@
   border-color: transparent;
 }
 .proc-error {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   margin-bottom: 12px;
   padding: 8px 14px;
   background: var(--pt-danger-bg);
@@ -47,7 +48,7 @@
 .proc-empty {
   padding: 28px;
   text-align: center;
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
 }
 .proc-table-wrap {
   padding: 12px 16px;
@@ -67,16 +68,17 @@
 }
 .sort-label {
   font-size: var(--fs-xs);
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
 }
 .sort-btn {
+  min-height: 24px;
   padding: 4px 10px;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.2));
+  border: 1px solid var(--color-border);
   background: transparent;
   border-radius: var(--radius-2xs);
   cursor: pointer;
   font-size: var(--fs-xs);
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
 }
 .sort-btn.active {
   background: var(--accent);
@@ -95,17 +97,18 @@
 }
 .proc-table th {
   text-align: left;
-  padding: 8px 10px;
+  height: 36px;
+  padding: 0 12px;
   font-weight: 600;
   position: sticky;
   top: 0;
-  background: var(--bg-th, rgba(0, 0, 0, 0.06));
-  backdrop-filter: blur(4px);
+  background: var(--color-surface-2);
   white-space: nowrap;
 }
 .proc-table td {
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
 }
 .proc-table tbody tr:hover {
@@ -113,6 +116,7 @@
 }
 .td-mono {
   font-family: monospace;
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-xs);
 }
 .td-name {
@@ -121,7 +125,7 @@
   text-overflow: ellipsis;
 }
 .td-hot {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   font-weight: 600;
 }
 .td-actions {
@@ -130,11 +134,11 @@
 .td-empty {
   text-align: center;
   padding: 24px;
-  color: var(--text-tertiary, #aaa);
+  color: var(--color-text-muted);
 }
 .table-count {
   font-size: var(--fs-xs);
-  color: var(--text-secondary, #888);
+  color: var(--color-text-secondary);
   margin-top: 8px;
   padding: 4px 2px;
 }
@@ -145,37 +149,39 @@
 }
 .state-chip.R {
   background: var(--pt-success-bg);
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
 }
 .state-chip.S {
   background: rgba(52, 152, 219, 0.18);
-  color: var(--pt-primary-2);
+  color: var(--pt-info-fg);
 }
 .state-chip.Z {
   background: var(--pt-danger-bg);
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .state-chip.D,
 .state-chip.T {
   background: var(--pt-warn-bg);
-  color: var(--pt-warn);
+  color: var(--pt-warn-fg);
 }
 .proto-chip {
   font-size: var(--fs-2xs);
   padding: 1px 6px;
   border-radius: var(--radius-2xs);
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--color-surface-2);
   font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
 .conn-state {
   font-size: var(--fs-2xs);
   font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
 .conn-state.ESTAB {
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
 }
 .conn-state.LISTEN {
-  color: var(--pt-primary-2);
+  color: var(--pt-info-fg);
 }
 .conn-state.TIME-WAIT,
 .conn-state.CLOSE-WAIT {

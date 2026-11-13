@@ -64,7 +64,7 @@ defineExpose({
     <!-- 单站失败折叠提示（聚合容错：失败不影响已返回的结果） -->
     <div v-if="failedSites.length" class="fail-bar glass">
       <button class="fail-toggle" @click="showFailed = !showFailed">
-        <span class="warn">⚠ {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
+        <span class="warn"><SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
         <span class="caret">{{ showFailed ? t('trt.collapse') : t('trt.expand') }}</span>
       </button>
       <ul v-if="showFailed" class="fail-list">
@@ -162,7 +162,6 @@ defineExpose({
       <!-- 空态：区分「未搜」/「搜了无果」/「筛选无结果」 -->
       <EmptyState
         v-else-if="!loading"
-        :icon="searched ? (filter.hasActive.value ? '🔎' : '🔍') : '🌱'"
         :title="
           searched ? (filter.hasActive.value ? t('trt.emptyFiltered') : t('trt.emptyNoResult')) : t('trt.emptyIdle')
         "

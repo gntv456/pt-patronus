@@ -8,6 +8,8 @@ PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署�
 
 架构与各模块设计见 [README/00-项目总览.md](README/00-项目总览.md) 与 [README/01-架构设计.md](README/01-架构设计.md)。
 
+> **UI 设计系统**：三端统一语义 token 见 [frontend/src/styles/tokens.css](frontend/src/styles/tokens.css)（浅/深色），默认现代外观覆盖层见 [frontend/src/styles/modern.css](frontend/src/styles/modern.css)；完整审计与改版方案见 [design/ui-ux-redesign-plan.md](design/ui-ux-redesign-plan.md)。门禁：`cd frontend && npm run lint:ui`、`npm run check:contrast`、`npm run lint:css`。
+
 > **新用户从这里开始**：[快速开始（用户指南）](README/快速开始.md)——部署、登录、加站点、加下载器五步走。版本变更与升级注意事项见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可证
@@ -23,7 +25,7 @@ PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署�
 ```
 D:\PTPatronus\
 ├── backend/     # Go 后端（Gin + GORM + SQLite/PG）
-├── frontend/    # Vue3 + Element Plus + Tailwind（液态玻璃 Web UI；图表零依赖手绘 SVG/Canvas）
+├── frontend/    # Vue3 + Element Plus + Tailwind（现代工具型 UI：中性实色表面 + 语义 token；图表零依赖手绘 SVG/Canvas）
 ├── mobile/      # Flutter 客户端（含鸿蒙 ohos 说明）
 └── docker-compose.yml
 ```

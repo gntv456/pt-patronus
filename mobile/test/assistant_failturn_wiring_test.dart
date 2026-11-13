@@ -21,7 +21,8 @@ void main() {
   final view = _code('lib/features/assistant/assistant_widgets.dart');
 
   test('失败原因必须落进会话记录（只弹 2 秒 SnackBar 等于没留痕）', () {
-    expect(ops, contains(r"'⚠ $liveError'"));
+    // UI 改版去 emoji：前缀由 ⚠ 改为「流式输出失败：」（语义不变，见 redesign 方案）。
+    expect(ops, contains(r"'流式输出失败：$liveError'"));
     expect(ops, contains("AgentMessage(id: -2, role: 'assistant'"));
     // 用户主动「停止」和真失败要分开写：停止不该按「发送失败」出声。
     expect(ops, contains('本轮已停止'));

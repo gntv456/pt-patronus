@@ -233,9 +233,9 @@ function fmtTime(t?: string) {
       <el-button type="primary" @click="openCreate">{{ t('rss.add') }}</el-button>
     </div>
 
-    <div v-loading="loading" class="card glass">
+    <div v-loading="loading" class="card solid-card">
       <div v-if="list.length" class="subs">
-        <div v-for="r in list" :key="r.id" class="sub glass-hover">
+        <div v-for="r in list" :key="r.id" class="sub">
           <div class="info">
             <div class="row1">
               <span class="s-title">{{ r.name }}</span>
@@ -262,7 +262,7 @@ function fmtTime(t?: string) {
           </div>
         </div>
       </div>
-      <EmptyState v-else-if="!loading" icon="📡" :title="t('rss.emptyTitle')" :description="t('rss.emptyDesc')">
+      <EmptyState v-else-if="!loading"  :title="t('rss.emptyTitle')" :description="t('rss.emptyDesc')">
         <el-button type="primary" @click="openCreate">{{ t('rss.add') }}</el-button>
       </EmptyState>
     </div>

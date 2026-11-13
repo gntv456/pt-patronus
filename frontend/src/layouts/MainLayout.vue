@@ -11,12 +11,20 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import WsStatusDot from '@/components/WsStatusDot.vue'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 import AppSidebar from '@/layouts/AppSidebar.vue'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMainLayout } from '@/layouts/useMainLayout'
 import { Key, Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
+
+// 命令面板快捷键按平台显示：mac 用 ⌘，其余平台用 Ctrl（不硬编码 ⌘K）。
+const isMac = /Mac|iP(hone|ad|od)/.test(
+  typeof navigator === 'undefined' ? '' : navigator.userAgent || navigator.platform,
+)
+const paletteShortcut = computed(() => (isMac ? '⌘K' : 'Ctrl K'))
+
 const {
   router,
   auth,
@@ -84,7 +92,7 @@ function onSetupDone() {
       @close-mobile-nav="closeMobileNav"
     />
     <div class="main">
-      <header class="topbar glass-bar">
+      <header class="topbar solid-card">
         <button
           class="icon-btn"
           :title="isMobile ? t('ml.openNav') : t('ml.collapseNav')"
@@ -102,7 +110,7 @@ function onSetupDone() {
         >
           <el-icon><Search /></el-icon>
           <span v-if="!isMobile" class="search-placeholder">{{ t('ml.jumpTo') }}</span>
-          <kbd v-if="!isMobile" class="search-kbd">⌘K</kbd>
+          <kbd v-if="!isMobile" class="search-kbd">{{ paletteShortcut }}</kbd>
         </button>
         <div class="spacer"></div>
         <WsStatusDot />
@@ -114,14 +122,13 @@ function onSetupDone() {
           :title="t('ml.aiAssistant')"
           :aria-label="t('ml.aiAssistant')"
         >
-          <GlassIcon name="bot" :size="24" />
-          <span class="ai-label">AI</span>
+          <SptIcon name="bot" :size="18" aria-hidden="true" />
         </router-link>
         <el-dropdown trigger="click" @command="onUserCommand">
-          <div class="user-trigger">
+          <button type="button" class="user-trigger">
             <span class="user-name">{{ auth.username || '—' }}</span>
-            <span class="caret">▾</span>
-          </div>
+            <span class="caret" aria-hidden="true">▾</span>
+          </button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="theme"
@@ -191,70 +198,77 @@ function onSetupDone() {
   flex: 1;
 }
 .icon-btn {
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: none;
   cursor: pointer;
   font-size: var(--fs-lg);
-  color: var(--text-strong);
+  color: var(--color-text);
   padding: 6px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-card);
   transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
 .icon-btn:hover {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .search-trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  background: var(--pt-primary-bg);
-  border: 1px solid var(--pt-primary-bg);
+  min-height: 24px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   padding: 6px 10px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   min-width: 0;
   font-size: var(--fs-body);
   transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
 .search-trigger:hover {
-  background: var(--pt-primary-bg);
-  color: var(--text-strong);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
 }
 .search-placeholder {
-  opacity: 0.75;
+  color: var(--color-text-secondary);
 }
 .search-kbd {
   font-family: inherit;
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   padding: 1px 6px;
-  border-radius: var(--radius-xs);
-  background: var(--pt-primary-bg);
-  border: 1px solid var(--pt-primary-bg);
-  color: var(--text-muted);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   margin-left: 4px;
 }
 .user-trigger {
   display: flex;
   align-items: center;
   gap: var(--sp-1);
+  min-height: 24px;
   cursor: pointer;
   padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  outline: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
   transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
 .user-trigger:hover {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .user-name {
   font-weight: 600;
@@ -266,23 +280,28 @@ function onSetupDone() {
 .ai-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   gap: var(--sp-1);
   text-decoration: none;
-  color: var(--text-strong);
-  padding: 3px 10px 3px 5px;
-  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 4px 8px;
+  border-radius: var(--radius-control);
   font-size: var(--fs-body);
   font-weight: 600;
   transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
 .ai-btn:hover {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .ai-btn.router-link-active {
-  background: linear-gradient(135deg, var(--pt-primary-bg), rgba(168, 85, 247, 0.18));
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 .content {
   flex: 1;
@@ -303,7 +322,6 @@ function onSetupDone() {
     inset: 0;
     z-index: var(--z-sticky);
     background: rgba(15, 23, 42, 0.32);
-    backdrop-filter: blur(4px);
   }
   .main {
     height: calc(100dvh - 16px);
@@ -326,8 +344,11 @@ function onSetupDone() {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ai-label {
-    display: none;
+  .icon-btn,
+  .user-trigger,
+  .ai-btn,
+  .search-trigger {
+    min-height: 44px;
   }
   .content {
     min-width: 0;

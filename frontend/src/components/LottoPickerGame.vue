@@ -98,7 +98,7 @@ onMounted(() => {
 <template>
   <div class="lotto">
     <div class="hero">
-      <div class="hero-title">🎱 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="target" :size="16" aria-hidden="true" /> {{ name }}</div>
       <div class="hero-sub">
         {{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b>
         <template v-if="nextPoolDraw"> · {{ nextPoolDraw }}</template>
@@ -116,6 +116,7 @@ onMounted(() => {
           :key="n"
           class="ball red-ball"
           :class="{ on: selectedRed.includes(n) }"
+          :aria-pressed="selectedRed.includes(n)"
           :disabled="playing"
           @click="toggleRed(n)"
         >
@@ -133,6 +134,7 @@ onMounted(() => {
           :key="n"
           class="ball blue-ball"
           :class="{ on: selectedBlue === n }"
+          :aria-pressed="selectedBlue === n"
           :disabled="playing"
           @click="toggleBlue(n)"
         >
@@ -141,7 +143,7 @@ onMounted(() => {
       </div>
 
       <div class="ops">
-        <el-button :disabled="playing" @click="quickPick">🎲 机选一注</el-button>
+        <el-button :disabled="playing" @click="quickPick"><SptIcon name="zap" :size="16" aria-hidden="true" /> 机选一注</el-button>
         <el-button :disabled="playing" @click="clearAll">清空</el-button>
         <el-button type="primary" size="large" :loading="playing" :disabled="!ready" @click="bet">
           {{ playing ? '投注中…' : '投注' }}
@@ -155,7 +157,7 @@ onMounted(() => {
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ last.success ? '成功' : '失败' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
@@ -166,30 +168,30 @@ onMounted(() => {
 
 <style scoped lang="css">
 .lotto { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 680px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #b91c1c, #f59e0b); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
-.hero-sub { margin-top: 6px; opacity: 0.92; font-size: 13px; }
+.hero-sub { margin-top: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .section { padding: 16px; }
 .sec-title { font-weight: 700; margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; }
 .sec-title .hint { font-weight: 400; font-size: 12px; }
 .cnt { font-size: 14px; }
-.cnt.ok { color: var(--success, #67c23a); }
+.cnt.ok { color: var(--pt-success-fg); }
 .blue-title { margin-top: 16px; }
 .balls { display: flex; flex-wrap: wrap; gap: 8px; }
-.ball { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; font-size: 14px; font-weight: 800; cursor: pointer; color: #fff; transition: transform .12s; }
-.ball:hover { transform: scale(1.12); }
+.ball { width: 40px; height: 40px; min-height: 24px; border-radius: 50%; border: 2px solid transparent; font-size: 14px; font-weight: 800; cursor: pointer; color: var(--color-on-accent); font-variant-numeric: tabular-nums; transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.ball:hover:not(:disabled) { border-color: var(--color-border-strong); }
 .ball:disabled { opacity: .55; cursor: not-allowed; }
-.red-ball { background: linear-gradient(160deg, #ef4444, #b91c1c); }
-.blue-ball { background: linear-gradient(160deg, #3b82f6, #1d4ed8); }
-.ball.on { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251, 191, 36, .45); transform: scale(1.08); }
+.red-ball { background: var(--color-danger); }
+.blue-ball { background: var(--color-primary); }
+.ball.on { border-color: var(--color-warning); box-shadow: 0 0 0 3px var(--color-warning-soft); }
 .ops { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
 .ops .el-button--primary { margin-left: auto; }
 .preview { margin-top: 12px; font-size: 14px; }
-.pv-red { color: #dc2626; font-weight: 800; letter-spacing: 2px; }
-.pv-blue { color: #2563eb; font-weight: 800; margin-left: 4px; }
+.pv-red { color: var(--pt-danger-fg); font-weight: 800; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+.pv-blue { color: var(--color-primary); font-weight: 800; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); color: var(--pt-success-fg); }
+.result.lose { background: var(--color-danger-soft); color: var(--pt-danger-fg); }
 .badge { font-weight: 800; }
 .r-prize { font-weight: 800; margin-right: 8px; }
 </style>

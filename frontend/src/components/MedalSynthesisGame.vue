@@ -68,7 +68,7 @@ onMounted(loadAll)
             class="t-img"
             @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
           />
-          <div v-else class="t-img placeholder">🏅</div>
+          <div v-else class="t-img placeholder"><SptIcon name="medal" :size="40" aria-hidden="true" /></div>
           <div class="t-name">{{ selected.name }}</div>
           <div class="t-progress">
             <div class="bar"><div class="fill" :style="{ width: progressPct + '%' }" /></div>
@@ -93,7 +93,7 @@ onMounted(loadAll)
                 class="frag-img"
                 @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
               />
-              <div v-else class="frag-img placeholder">💠</div>
+              <div v-else class="frag-img placeholder"><SptIcon name="package" :size="24" aria-hidden="true" /></div>
               <div class="frag-name">{{ f.name || t('msg2.frag') }}</div>
               <div class="frag-count">
                 <span class="cur">{{ f.current }}</span

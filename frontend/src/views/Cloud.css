@@ -9,7 +9,7 @@
 .page.embedded .embedded-sub {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
 }
 .page {
   display: flex;
@@ -76,7 +76,7 @@
   flex-wrap: wrap;
 }
 .meta {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -86,7 +86,7 @@
   gap: var(--sp-1);
 }
 .hint {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   display: block;
   margin-top: 4px;

@@ -27,7 +27,7 @@ class PTPageAppBar extends StatefulWidget {
     this.trailing,
     this.filterOnClearAll,
     this.siteFilter,
-    this.toolbarHeight = 44,
+    this.toolbarHeight = 48,
   });
 
   @override

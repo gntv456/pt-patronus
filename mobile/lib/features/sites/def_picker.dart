@@ -113,7 +113,7 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
                       ? Text(
                           _candidateSubtitle(d),
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: d.dead ? context.dimText : context.mainText,
                           ),
                         )

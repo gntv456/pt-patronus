@@ -151,13 +151,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="task-cards" v-loading="loading">
+  <div class="task-cards" :aria-busy="loading">
     <div class="head">
       <h3>{{ t('dt2.title') }}</h3>
       <p>{{ t('dt2.sub') }}</p>
       <button type="button" class="refresh" @click="refresh">{{ t('common.refresh') }}</button>
     </div>
-    <div class="grid">
+    <el-skeleton v-if="loading" :rows="3" animated class="tc-sk" />
+    <div v-else class="grid">
       <button v-for="c in cards" :key="c.key" type="button" class="card" :class="'tone-' + c.tone" @click="open(c)">
         <span class="title">{{ c.title }}</span>
         <span class="value">{{ c.value }}</span>
@@ -190,11 +191,12 @@ onMounted(() => {
   flex: 1;
 }
 .refresh {
-  border: none;
-  background: var(--pt-primary-bg);
-  color: var(--text-strong);
-  border-radius: var(--radius-pill);
-  padding: 4px 10px;
+  min-height: 24px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-radius: var(--radius-control);
+  padding: 6px 12px;
   cursor: pointer;
   font-size: var(--fs-xs);
 }
@@ -218,10 +220,8 @@ onMounted(() => {
   color: var(--text-strong);
   cursor: pointer;
   transition:
-    transform var(--dur-base) var(--ease-out-smooth),
-    box-shadow var(--dur-base) var(--ease-out-smooth),
-    background var(--dur-base) var(--ease-out-smooth),
-    border-color var(--dur-base) var(--ease-out-smooth);
+    background-color var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
 }
 .card:hover {
   background: var(--pt-primary-bg);
@@ -234,6 +234,10 @@ onMounted(() => {
   font-size: var(--fs-title);
   font-weight: 700;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.tc-sk {
+  min-height: 120px;
 }
 .card .hint {
   font-size: var(--fs-2xs);

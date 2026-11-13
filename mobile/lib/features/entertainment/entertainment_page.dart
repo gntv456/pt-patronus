@@ -7,6 +7,7 @@ import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
@@ -41,6 +42,9 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
   List<Game> _games = [];
   String? _gameId;
   bool _loadingGames = false;
+  // 加载失败状态：用「空态 + 重试」替代泛化 toast（对齐 dashboard_page.dart）。
+  String? _sitesError;
+  String? _gamesError;
   // 通用兜底玩法（无富 UI 的游戏）
   final _playing = <String, bool>{};
   final _results = <String, PlayResult>{};
@@ -52,6 +56,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
   }
 
   Future<void> _loadSites() async {
+    if (mounted) setState(() => _sitesError = null);
     try {
       _sites = await _entApi.sites();
       if (_sites.isNotEmpty) {
@@ -59,8 +64,8 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
         setState(() => _siteId = _sites.first.id);
         _loadGames();
       }
-    } catch (_) {
-      _toast('加载站点失败');
+    } catch (e) {
+      if (mounted) setState(() => _sitesError = '加载站点失败：$e');
     }
   }
 
@@ -69,15 +74,16 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
     setState(() {
       _loadingGames = true;
       _games = [];
+      _gamesError = null;
       _results.clear();
     });
     try {
       _games = await _entApi.games(_siteId!);
       _gameId = _games.isNotEmpty ? _games.first.id : null;
-    } catch (_) {
-      _toast('加载游戏失败');
+    } catch (e) {
+      if (mounted) setState(() => _gamesError = '加载游戏失败：$e');
     } finally {
-      if (mounted) setState(() => _loadingGames = _loadingGames = false);
+      if (mounted) setState(() => _loadingGames = false);
     }
   }
 
@@ -109,13 +115,29 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
                   .toList(),
             ),
       filterDimensions: _games.length > 1 ? _gameDimension() : const [],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_loadingGames) const LinearProgressIndicator(minHeight: 2),
-          Expanded(child: _bodyWrapped()),
-        ],
-      ),
+      body: _sitesError != null
+          ? PTEmptyState(
+              icon: Icons.error_outline,
+              text: '站点加载失败',
+              description: _sitesError,
+              onRetry: _loadSites,
+            )
+          : _gamesError != null
+              ? PTEmptyState(
+                  icon: Icons.error_outline,
+                  text: '游戏列表加载失败',
+                  description: _gamesError,
+                  onRetry: _loadGames,
+                )
+              : _loadingGames && _games.isEmpty
+                  ? const PTLoadingView()
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_loadingGames) const LinearProgressIndicator(minHeight: 2),
+                        Expanded(child: _bodyWrapped()),
+                      ],
+                    ),
     );
   }
 

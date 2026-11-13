@@ -43,13 +43,20 @@
   border: none;
   cursor: pointer;
   padding: 6px 14px;
+  min-height: 32px;
   border-radius: var(--radius-xs);
   font-size: var(--fs-body);
   color: var(--text-strong);
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
+}
+.filter-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .filter-btn:hover:not(.on) {
   background: var(--surface-muted);
@@ -65,7 +72,7 @@
   padding: 0 4px;
   border-radius: var(--radius-pill);
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-text-inverse);
   font-size: var(--fs-2xs);
   font-weight: 700;
   display: inline-flex;
@@ -216,6 +223,10 @@
   cursor: pointer;
   color: var(--text-muted);
   padding: 4px;
+  min-height: 24px;
+  min-width: 24px;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-xs);
   display: inline-flex;
   transition:
@@ -243,6 +254,7 @@
   color: var(--pt-primary);
   font-size: var(--fs-xs);
   padding: 4px 8px;
+  min-height: 24px;
   border-radius: var(--radius-xs);
   transition:
     background var(--dur-fast) var(--ease-out-smooth),
@@ -257,4 +269,12 @@
 }
 .g-foot-btn--danger:hover {
   background: var(--pt-danger-bg);
+}
+@media (max-width: 640px) {
+  .filter-btn,
+  .group-head,
+  .item-act,
+  .g-foot-btn {
+    min-height: 44px;
+  }
 }

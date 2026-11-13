@@ -41,9 +41,7 @@
 }
 .backdrop :deep(img.backdrop-image) {
   object-fit: cover;
-  filter: blur(8px) saturate(0.9);
-  transform: scale(1.06);
-  opacity: 0.72;
+  opacity: 1;
 }
 .backdrop :deep(.no-poster.backdrop-image) {
   display: none;
@@ -51,7 +49,7 @@
 .overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, var(--bg, #fff) 26%, transparent 72%);
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
 }
 .hero-body {
   position: relative;
@@ -87,11 +85,12 @@
   font-size: var(--fs-xs);
 }
 .badge.type {
-  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 .badge.rating {
   background: var(--pt-warn-bg);
-  color: var(--pt-warn, #f39c12);
+  color: var(--pt-warn-fg);
 }
 .badge.src {
   background: var(--surface-muted);
@@ -237,8 +236,8 @@
 }
 .cast-item.clickable {
   cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease-out-smooth);
+  transition: border-color var(--dur-fast) var(--ease-out-smooth);
 }
 .cast-item.clickable:hover {
-  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
 }

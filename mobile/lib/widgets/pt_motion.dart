@@ -6,26 +6,26 @@ import 'package:ptpatronus/theme/glass.dart';
 
 part 'pt_motion_spinners.dart';
 
-// Unified motion system for the Liquid Glass design language.
-// Curves and durations are tuned to feel "watery and fluid" (水润灵动):
-// soft springs for interactive elements, gentle deceleration for transitions.
+// Unified motion system for the modern tool-type UI (Minimalism & Swiss).
+// 克制、无回弹、无过冲：状态过渡只做 120–240ms 的淡入；
+// 所有入场动效都遵循系统「减少动效」偏好，默认不做列表 stagger。
 
 /// Motion timing tokens shared app-wide.
 class PTMotion {
   PTMotion._();
 
-  /// Snappy-but-soft curve for card taps, toggles, chips.
-  static const Curve soft = Curves.easeOutCubic;
+  /// 通用减速曲线（无过冲）。
+  static const Curve soft = Curves.easeOut;
 
-  /// Fluid entrance curve for page/list reveals.
-  static const Curve fluid = Curves.easeOutQuart;
+  /// 入场/退场曲线（无回弹）。
+  static const Curve fluid = Curves.easeOut;
 
-  /// Playful spring used for press/scale feedback (slight overshoot).
-  static const Curve spring = Curves.easeOutBack;
+  /// 兼容旧调用点：不再使用 spring / overshoot。
+  static const Curve spring = Curves.easeOut;
 
-  static const Duration fast = Duration(milliseconds: 180);
-  static const Duration normal = Duration(milliseconds: 300);
-  static const Duration slow = Duration(milliseconds: 480);
+  static const Duration fast = Duration(milliseconds: 120);
+  static const Duration normal = Duration(milliseconds: 180);
+  static const Duration slow = Duration(milliseconds: 240);
 }
 
 /// Staggered fade + slide-up entrance for list/grid items.
@@ -42,7 +42,7 @@ class PTListItemEntrance extends StatefulWidget {
     super.key,
     required this.index,
     required this.child,
-    this.enabled = true,
+    this.enabled = false,
   });
 
   @override
@@ -87,7 +87,7 @@ class _PTListItemEntranceState extends State<PTListItemEntrance>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
+    if (!widget.enabled || MediaQuery.disableAnimationsOf(context)) return widget.child;
     return FadeTransition(
       opacity: _fade,
       child: SlideTransition(position: _slide, child: widget.child),
@@ -106,7 +106,7 @@ class PTPressScale extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.scaleDown = 0.97,
+    this.scaleDown = 1.0,
   });
 
   @override
@@ -181,7 +181,7 @@ class _PTEntranceState extends State<PTEntrance>
     final curved =
         CurvedAnimation(parent: _ctrl, curve: PTMotion.fluid);
     _fade = Tween(begin: 0.0, end: 1.0).animate(curved);
-    _scale = Tween(begin: 0.94, end: 1.0).animate(curved);
+    _scale = Tween(begin: 1.0, end: 1.0).animate(curved);
     _ctrl.forward();
   }
 
@@ -193,6 +193,7 @@ class _PTEntranceState extends State<PTEntrance>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return FadeTransition(
       opacity: _fade,
       child: ScaleTransition(scale: _scale, child: widget.child),
@@ -200,9 +201,9 @@ class _PTEntranceState extends State<PTEntrance>
   }
 }
 
-/// 柔和的呼吸图标：无限循环的轻微缩放（1.0 ↔ 1.06）+ 透明度脉动。
-/// 用于空状态、引导提示等，让静态画面有「呼吸感」而非死板。
-class PTBreathIcon extends StatefulWidget {
+/// 静态状态图标（原「呼吸」无限缩放/透明度循环已移除：
+/// 后台工具不需要装饰性循环动效，skill 规定无限动画只用于加载指示器）。
+class PTBreathIcon extends StatelessWidget {
   final IconData icon;
   final double size;
   final Color? color;
@@ -212,48 +213,10 @@ class PTBreathIcon extends StatefulWidget {
     required this.size,
     this.color,
   });
-  @override
-  State<PTBreathIcon> createState() => _PTBreathIconState();
-}
-
-class _PTBreathIconState extends State<PTBreathIcon>
-    with TickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        final t = Curves.easeInOut.transform(_ctrl.value);
-        return Opacity(
-          opacity: 0.55 + 0.45 * t,
-          child: Transform.scale(
-            scale: 1.0 + 0.06 * t,
-            child: child,
-          ),
-        );
-      },
-      child: Icon(
-        widget.icon,
-        size: widget.size,
-        color: widget.color,
-      ),
-    );
+    return Icon(icon, size: size, color: color);
   }
 }
+

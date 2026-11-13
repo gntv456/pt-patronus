@@ -132,7 +132,7 @@
   gap: 10px;
   flex-wrap: wrap;
   padding: 8px 0 14px;
-  border-bottom: 1px solid var(--border-color, #eee);
+  border-bottom: 1px solid var(--color-border);
   margin-bottom: 12px;
 }
 .batch-check {
@@ -145,7 +145,8 @@
   padding: 0 4px;
 }
 .sub.selected {
-  outline: 2px solid var(--pt-primary);
+  border: 2px solid var(--color-primary);
+  background: var(--color-primary-soft);
 }
 .rss-embed :deep(.page) {
   padding: 0;
@@ -154,34 +155,4 @@
   font-size: var(--fs-lg);
 }
 
-/* 订阅卡 staggered 入场 + hover */
-.subs > * {
-  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
-}
-.subs > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.subs > *:nth-child(2) {
-  animation-delay: 50ms;
-}
-.subs > *:nth-child(3) {
-  animation-delay: 100ms;
-}
-.subs > *:nth-child(4) {
-  animation-delay: 150ms;
-}
-.subs > *:nth-child(5) {
-  animation-delay: 200ms;
-}
-.subs > *:nth-child(n + 6) {
-  animation-delay: 250ms;
-}
-.sub {
-  transition:
-    transform var(--dur-base) var(--ease-out-spring),
-    box-shadow var(--dur-base) var(--ease-out-smooth);
-}
-.sub:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
+/* 订阅卡入场动画与 hover 位移已移除（去 AI 感） */

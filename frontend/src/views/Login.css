@@ -27,7 +27,7 @@
 }
 .subtitle {
   margin: 4px 0 22px;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--fs-md);
 }
 .mode-tabs {
@@ -46,8 +46,8 @@
   font-size: var(--fs-md);
 }
 .mode-tabs button.active {
-  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
-  color: var(--text-strong);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-weight: 600;
 }
 .mode-tabs button {
@@ -56,55 +56,62 @@
 .boot-panel {
   margin: -6px 0 16px;
   padding: 10px 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--glass-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
 }
 .boot-panel.bad {
-  border-color: var(--pt-danger-bg);
+  border-color: var(--color-danger);
 }
 .boot-row {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   font-size: var(--fs-body);
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--color-text-muted);
 }
 .dot.ok {
-  background: var(--pt-success);
+  background: var(--color-success);
 }
 .dot.warn {
-  background: var(--pt-warn);
+  background: var(--color-warning);
 }
 .dot.bad {
-  background: var(--pt-danger);
+  background: var(--color-danger);
 }
 .boot-version {
   margin-left: auto;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: var(--fs-xs);
 }
 .boot-desc {
   margin: 6px 0 0;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: var(--fs-xs);
   line-height: 1.5;
 }
 .field {
   margin-bottom: 14px;
 }
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
 .submit {
   width: 100%;
   margin-top: 4px;
-  background: var(--grad-primary);
+  background: var(--color-primary);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   height: 44px;
   font-weight: 600;
 }
@@ -125,52 +132,60 @@
 .hint {
   margin-top: 10px;
   font-size: var(--fs-xs);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 .err {
-  margin-top: 12px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
   font-size: var(--fs-body);
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-control);
+}
+.err:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .deploy-hint {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--glass-border);
-  color: var(--text-muted);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-size: var(--fs-xs);
   line-height: 1.55;
 }
 .deploy-hint code {
-  color: var(--text-strong);
+  color: var(--color-text);
 }
-.demo-btn {
-  width: 100%;
-  margin-top: 12px;
-  height: 38px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--glass-input);
-  color: var(--pt-primary);
+/* 次要登录方式：次级 link，置于分隔线以下，保证每屏仅 1 个主 CTA */
+.alt-divider {
+  margin: 18px 0 12px;
+  border-top: 1px solid var(--color-border);
+}
+.alt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+.link-btn {
+  min-height: 24px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.demo-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.link-btn:hover:not(:disabled) {
+  color: var(--color-primary-hover);
 }
-.oidc-btn {
-  width: 100%;
-  margin-top: 8px;
-  height: 38px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--pt-primary-bg);
-  color: var(--pt-primary);
-  font-weight: 600;
-  cursor: pointer;
-}
-.oidc-btn:disabled {
+.link-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -186,48 +201,27 @@
   .brand h1 {
     font-size: var(--fs-title);
   }
+  /* 移动端正文 >= 16px，并避免 iOS 聚焦输入框时自动缩放 */
+  .subtitle,
+  .boot-row,
+  .boot-version,
+  .boot-desc,
+  .field-label,
+  .hint,
+  .err,
+  .deploy-hint,
+  .link-btn {
+    font-size: 16px;
+  }
+  .form :deep(.el-input__inner) {
+    font-size: 16px;
+  }
+  .link-btn {
+    min-height: 44px;
+  }
 }
 
-/* 水润动效增强 */
-.login-card {
-  animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both;
-}
-.mode-tabs button {
-  transition: all var(--dur-base) var(--ease-out-smooth);
-}
-.mode-tabs button:hover {
-  transform: translateY(-1px);
-}
-.submit {
-  transition:
-    transform var(--dur-fast) var(--ease-out-smooth),
-    box-shadow var(--dur-base) var(--ease-out-smooth),
-    filter var(--dur-fast) var(--ease-out-smooth);
-  box-shadow: var(--shadow-primary);
-}
-.submit:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary-lg);
-  filter: brightness(1.05);
-}
-.submit:active {
-  transform: translateY(0) scale(0.985);
-}
-.demo-btn {
-  transition: all var(--dur-base) var(--ease-out-smooth);
-}
-.demo-btn:hover {
-  transform: translateY(-1px);
-  background: var(--pt-primary-bg);
-}
-.captcha-img {
-  transition:
-    transform var(--dur-fast) var(--ease-out-spring),
-    opacity var(--dur-fast) var(--ease-out-smooth);
-}
-.captcha-img:hover {
-  transform: scale(1.04);
-}
+/* 装饰性入场 / 位移 / 发光动效已移除；过渡由 modern.css 全局收敛为具体属性。 */
 .dot {
-  transition: background var(--dur-base) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease);
 }

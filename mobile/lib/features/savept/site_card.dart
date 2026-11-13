@@ -103,7 +103,7 @@ class _SiteCardState extends State<_SiteCard> {
                     add(widget.annivDisplay(c.anniversaryText), const Color(0xFFF59E0B));
                   }
                   if (c.faultDuration.isNotEmpty) {
-                    add('⏱ 抢救 ${c.faultDuration}', const Color(0xFFEF4444));
+                    add('抢救 ${c.faultDuration}', const Color(0xFFEF4444));
                   }
                   return Text.rich(
                     TextSpan(children: spans, style: const TextStyle(fontSize: 11, height: 1.3)),

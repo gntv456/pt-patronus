@@ -1,0 +1,119 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * PTPatronus 语义设计 token —— 三端唯一真源（Web / Flutter / 扩展）。
+ * 方向：Minimalism & Swiss + data-dense-dashboard（ui-ux-pro-max skill 验证）。
+ * 组件内禁止裸 hex，一律引用本文件的语义变量。 */
+
+:root {
+  /* 表面（浅色） */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f5f9;
+  --color-surface-hover: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* 文字：全部对 #ffffff / #f8fafc 达到 >= 4.5:1 */
+  --color-text: #1e293b;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #ffffff;
+
+  /* 交互与语义 */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #eff6ff;
+  --color-success: #15803d;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-focus: #2563eb;
+  /* 实色按钮/徽章上的文字色：浅色用白，深色用深墨（亮蓝底配深字才能 >=4.5:1） */
+  --color-on-accent: #ffffff;
+
+  /* 语义前景色：用于「彩色文字/图标」，全部 >= 4.5:1 浅色底 */
+  --pt-success-fg: #0f766e;
+  --pt-warn-fg: #b45309;
+  --pt-danger-fg: #b91c1c;
+  --pt-info-fg: #1d4ed8;
+
+  /* 图表系列（不只靠颜色区分，配合实线/虚线/直接标注） */
+  --chart-1: #2563eb;
+  --chart-2: #0f766e;
+  --chart-3: #b45309;
+  --chart-4: #7c3aed;
+
+  /* 几何：8px 网格 / 克制圆角 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-panel: 10px;
+  --radius-pill: 999px; /* 仅状态点 */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-popover: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* 排版 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans CJK SC', Inter, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --line-height: 1.5;
+
+  /* 布局基准（data-dense-dashboard） */
+  --grid-gap: 8px;
+  --card-padding: 12px;
+  --table-row-height: 36px;
+  --sidebar-width: 240px;
+  --header-height: 56px;
+
+  /* 动效：无 spring、退场快于入场 */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root.dark {
+  --color-bg: #0f1115;
+  --color-surface: #161a21;
+  --color-surface-2: #1c222c;
+  --color-surface-hover: #1f2530;
+  --color-border: #262c36;
+  --color-border-strong: #333b48;
+  --color-text: #e6e9ef;
+  --color-text-secondary: #9aa4b2;
+  --color-text-muted: #8b95a5;
+  --color-primary: #4c8dff;
+  --color-primary-hover: #6ea1ff;
+  --color-primary-soft: rgba(76, 141, 255, 0.14);
+  --color-success: #3fb950;
+  --color-success-soft: rgba(63, 185, 80, 0.13);
+  --color-warning: #d29922;
+  --color-warning-soft: rgba(210, 153, 34, 0.13);
+  --color-danger: #f85149;
+  --color-danger-soft: rgba(248, 81, 73, 0.12);
+  --color-focus: #4c8dff;
+  --color-on-accent: #0b1020;
+  --pt-success-fg: #56d364;
+  --pt-warn-fg: #e3b341;
+  --pt-danger-fg: #ff7b72;
+  --pt-info-fg: #79b8ff;
+  --chart-1: #4c8dff;
+  --chart-2: #3fb950;
+  --chart-3: #d29922;
+  --chart-4: #a371f7;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

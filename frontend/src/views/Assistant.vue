@@ -4,12 +4,15 @@
 -->
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { agentApi, type AgentConfig, type ToolCatalogEntry, type AgentStats } from '@/api/agent'
 import { useAgentChat, type Unit } from '@/composables/useAgentChat'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
+import SptIcon from '@/components/SptIcon.vue'
+import { useQueryState } from '@/composables/useUrlState'
+import { useFeedback } from '@/composables/useFeedback'
 import { allowAllToggleBlocked, cfgReadFailText, toolsReadFailText } from './assistantHelpers'
 
 const { t } = useI18n()
@@ -31,16 +34,57 @@ const {
   loadConversations,
   selectConversation,
   newConversation,
-  deleteConversation,
   send,
   stop,
 } = useAgentChat(() => scroller.value)
+
+const feedback = useFeedback()
+const cfgTab = ref('settings')
+// 会话 ID 写回 URL query（c），支持刷新 / 分享恢复。
+const convQuery = useQueryState('c', '')
+let restoringConv = true
+watch(activeId, (id) => {
+  if (restoringConv) return
+  convQuery.value = id == null ? '' : String(id)
+})
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     send()
   }
+}
+
+// 删除会话：确认 + 8s 撤销。撤销窗口内只做乐观移除，真正删除延后到窗口结束，
+// 这样「撤销」能真实恢复，而不是对着已删除的后端数据撒谎。
+async function onDeleteConversation(id: number) {
+  const conv = conversations.value.find((c) => c.id === id)
+  const name = conv?.title || t('assistant.untitledChat')
+  const ok = await feedback.confirm({
+    title: t('common.confirm'),
+    detail: `${t('common.delete')}「${name}」？`,
+    danger: true,
+  })
+  if (!ok) return
+  const snapshot = [...conversations.value]
+  conversations.value = conversations.value.filter((c) => c.id !== id)
+  if (activeId.value === id) newConversation()
+  let undone = false
+  feedback.undo(`${t('common.delete')}「${name}」`, () => {
+    undone = true
+    conversations.value = snapshot
+    void selectConversation(id)
+  })
+  await new Promise((r) => setTimeout(r, 8000))
+  if (undone) return
+  try {
+    await agentApi.deleteConversation(id)
+  } catch (e: unknown) {
+    conversations.value = snapshot
+    feedback.error((e as Error).message)
+    return
+  }
+  await loadConversations()
 }
 
 // —— 配置 ——
@@ -152,8 +196,11 @@ async function saveConfig() {
   }
 }
 
-onMounted(() => {
-  if (auth.isAdmin) void loadConversations()
+onMounted(async () => {
+  if (auth.isAdmin) await loadConversations()
+  const c = convQuery.value
+  if (c && /^\d+$/.test(c)) await selectConversation(Number(c))
+  restoringConv = false
 })
 </script>
 
@@ -162,18 +209,19 @@ onMounted(() => {
     <!-- 非管理员：入口收成一句说明，不给「暂无会话」的死胡同，也不发必然 403 的请求 -->
     <EmptyState
       v-if="!auth.isAdmin"
-      icon="🔒"
       :title="t('assistant.adminOnly')"
       :description="t('assistant.adminOnlyDesc')"
     />
     <div v-else class="layout">
       <!-- 会话侧栏 -->
-      <aside class="glass sidebar">
+      <aside class="solid-card sidebar">
         <div class="side-head">
           <span>{{ t('assistant.conversations') }}</span>
           <div class="side-actions">
             <el-button size="small" type="primary" @click="newConversation">{{ t('assistant.newChat') }}</el-button>
-            <el-button size="small" @click="openConfig">⚙</el-button>
+            <el-button size="small" :aria-label="t('assistant.configTitle')" @click="openConfig">
+              <SptIcon name="gear" :size="16" aria-hidden="true" />
+            </el-button>
           </div>
         </div>
         <div class="conv-list">
@@ -193,17 +241,25 @@ onMounted(() => {
             @click="selectConversation(c.id)"
           >
             <span class="conv-title">{{ c.title || t('assistant.untitledChat') }}</span>
-            <el-button class="conv-del" size="small" link @click.stop="deleteConversation(c.id)">🗑</el-button>
+            <el-button
+              class="conv-del"
+              size="small"
+              link
+              :aria-label="t('common.delete')"
+              @click.stop="onDeleteConversation(c.id)"
+            >
+              <SptIcon name="trash" :size="14" aria-hidden="true" />
+            </el-button>
           </div>
-          <EmptyState v-if="!conversations.length" icon="💬" :title="t('assistant.noConversations')" />
+          <EmptyState v-if="!conversations.length" :title="t('assistant.noConversations')" />
         </div>
       </aside>
 
       <!-- 对话区 -->
-      <section class="glass chat">
+      <section class="solid-card chat">
         <div ref="scroller" class="msg-list">
           <template v-if="!units.length && !pending">
-            <EmptyState icon="💬" :title="t('assistant.chatTitle')" :description="t('assistant.chatSub')" />
+            <EmptyState :title="t('assistant.chatTitle')" :description="t('assistant.chatSub')" />
           </template>
           <template v-for="u in units" :key="u.id">
             <!-- 用户 -->
@@ -214,7 +270,7 @@ onMounted(() => {
             <div v-else-if="u.data.kind === 'assistant'" class="row assistant">
               <div class="bubble assistant-bubble">
                 <details v-if="u.data.reasoning" class="reasoning">
-                  <summary>🧠 {{ t('assistant.reasoning') }}</summary>
+                  <summary><SptIcon name="brain" :size="14" aria-hidden="true" /> {{ t('assistant.reasoning') }}</summary>
                   <pre>{{ u.data.reasoning }}</pre>
                 </details>
                 <div class="content">{{ u.data.content }}</div>
@@ -224,7 +280,7 @@ onMounted(() => {
             <div v-else class="row assistant">
               <div class="tool-step">
                 <details>
-                  <summary>🔧 {{ t('assistant.toolCalls', { n: (u.data as any).calls.length }) }}</summary>
+                  <summary><SptIcon name="wrench" :size="14" aria-hidden="true" /> {{ t('assistant.toolCalls', { n: (u.data as any).calls.length }) }}</summary>
                   <div v-for="(t, i) in (u.data as any).calls" :key="i" class="tool-item">
                     <div class="tool-name">{{ t.name }}</div>
                     <pre class="tool-args">{{ t.arguments }}</pre>
@@ -238,7 +294,7 @@ onMounted(() => {
           <div v-if="pending" class="row assistant">
             <div class="bubble assistant-bubble">
               <details v-if="(pending.data as any).reasoning" class="reasoning">
-                <summary>🧠 {{ t('assistant.reasoning') }}</summary>
+                <summary><SptIcon name="brain" :size="14" aria-hidden="true" /> {{ t('assistant.reasoning') }}</summary>
                 <pre>{{ (pending.data as any).reasoning }}</pre>
               </details>
               <div class="content">{{ (pending.data as any).content || '…' }}</div>
@@ -251,8 +307,8 @@ onMounted(() => {
             class="input"
             rows="2"
             :placeholder="t('assistant.inputPlaceholder')"
+            :aria-label="t('assistant.inputPlaceholder')"
             @keydown="onKey"
-            :disabled="sending"
           />
           <el-button v-if="!sending" type="primary" @click="send" :disabled="!input.trim()">{{
             t('assistant.send')
@@ -263,47 +319,10 @@ onMounted(() => {
     </div>
 
     <!-- 配置 -->
-    <el-dialog v-model="showConfig" :title="t('assistant.configTitle')" width="560px">
+    <el-dialog v-model="showConfig" :title="t('assistant.configTitle')" width="min(560px, 92vw)">
       <el-form :model="cfg" label-width="120px" size="small">
-        <el-form-item v-if="!stats && statsError" :label="t('assistant.stats.usage')">
-          <span class="stat-warn">{{ t('assistant.stats.readFailed', { reason: statsError }) }}</span>
-        </el-form-item>
-        <el-form-item v-if="stats" :label="t('assistant.stats.usage')">
-          <div class="stats-grid">
-            <div class="stat">
-              <span class="stat-num">{{ stats.total_requests }}</span
-              ><span class="stat-label">{{ t('assistant.stats.requests') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ stats.total_input_tokens + stats.total_output_tokens }}</span
-              ><span class="stat-label">Token</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">${{ stats.total_cost_usd.toFixed(4) }}</span
-              ><span class="stat-label">{{ t('assistant.stats.cost') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ stats.avg_latency_ms }}ms</span
-              ><span class="stat-label">{{ t('assistant.stats.avgLatency') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ stats.error_count }}</span
-              ><span class="stat-label">{{ t('assistant.stats.errors') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ stats.rate_limit_count }}</span
-              ><span class="stat-label">{{ t('assistant.stats.rateLimited') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ stats.tool_calls }}</span
-              ><span class="stat-label">{{ t('assistant.stats.toolCalls') }}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num">{{ toolSuccessRate }}%</span
-              ><span class="stat-label">{{ t('assistant.stats.toolSuccess') }}</span>
-            </div>
-          </div>
-        </el-form-item>
+        <el-tabs v-model="cfgTab">
+          <el-tab-pane :label="t('assistant.configTitle')" name="settings">
         <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="cfg.enabled" /></el-form-item>
         <el-form-item label="Provider">
           <el-select v-model="cfg.provider" style="width: 100%">
@@ -342,7 +361,9 @@ onMounted(() => {
         <el-form-item :label="t('assistant.systemPrompt')"
           ><el-input v-model="cfg.system_prompt" type="textarea" :rows="4"
         /></el-form-item>
-        <el-form-item :label="t('assistant.toolPerms')">
+          </el-tab-pane>
+          <el-tab-pane :label="t('assistant.toolPerms')" name="tools">
+            <el-form-item :label="t('assistant.toolPerms')">
           <div class="tool-perms">
             <el-switch
               :model-value="toolAllowAll"
@@ -370,6 +391,49 @@ onMounted(() => {
             </div>
           </div>
         </el-form-item>
+          </el-tab-pane>
+          <el-tab-pane :label="t('assistant.stats.usage')" name="stats">
+            <el-form-item v-if="!stats && statsError" :label="t('assistant.stats.usage')">
+          <span class="stat-warn">{{ t('assistant.stats.readFailed', { reason: statsError }) }}</span>
+        </el-form-item>
+        <el-form-item v-if="stats" :label="t('assistant.stats.usage')">
+          <div class="stats-grid">
+            <div class="stat">
+              <span class="stat-num">{{ stats.total_requests }}</span
+              ><span class="stat-label">{{ t('assistant.stats.requests') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ stats.total_input_tokens + stats.total_output_tokens }}</span
+              ><span class="stat-label">Token</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">${{ stats.total_cost_usd.toFixed(4) }}</span
+              ><span class="stat-label">{{ t('assistant.stats.cost') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ stats.avg_latency_ms }}ms</span
+              ><span class="stat-label">{{ t('assistant.stats.avgLatency') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ stats.error_count }}</span
+              ><span class="stat-label">{{ t('assistant.stats.errors') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ stats.rate_limit_count }}</span
+              ><span class="stat-label">{{ t('assistant.stats.rateLimited') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ stats.tool_calls }}</span
+              ><span class="stat-label">{{ t('assistant.stats.toolCalls') }}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">{{ toolSuccessRate }}%</span
+              ><span class="stat-label">{{ t('assistant.stats.toolSuccess') }}</span>
+            </div>
+          </div>
+        </el-form-item>
+          </el-tab-pane>
+        </el-tabs>
       </el-form>
       <template #footer>
         <el-button @click="showConfig = false">{{ t('common.cancel') }}</el-button>

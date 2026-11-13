@@ -40,7 +40,7 @@
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
   color: var(--text-muted);
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   text-align: left;
   width: 100%;
 }
@@ -68,12 +68,12 @@
   color: var(--text-muted);
   background: var(--surface-muted);
   padding: 1px 8px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   font-weight: 400;
 }
 .cat-item.active .cat-count {
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 /* 右侧主区域 */
@@ -129,12 +129,11 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--divider);
   background: var(--surface-1);
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .store-app-card:hover {
   border-color: var(--pt-primary);
   box-shadow: var(--surface-shadow-hover);
-  transform: translateY(-2px);
 }
 .app-card-top {
   display: flex;
@@ -206,17 +205,17 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-text-inverse);
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .app-install-btn:hover {
-  background: var(--pt-primary-dark, #5b4bc4);
+  background: var(--color-primary-hover);
 }
 .app-install-btn:active {
-  transform: scale(0.98);
+  opacity: 0.9;
 }
 .app-install-btn svg {
   width: 16px;
@@ -276,7 +275,7 @@
   font-size: var(--fs-xs);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   font-weight: 500;
 }
 .mode-tab:hover {
@@ -284,7 +283,7 @@
 }
 .mode-tab.active {
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-text-inverse);
   font-weight: 600;
 }
 
@@ -307,12 +306,11 @@
   padding: 2px 8px;
   border-radius: var(--radius-xs);
   background: var(--pt-primary);
-  color: #fff;
-  opacity: 0.85;
+  color: var(--color-text-inverse);
 }
 .app-install-btn--compose {
-  background: var(--pt-success, #18a058);
+  background: var(--color-success);
 }
 .app-install-btn--compose:hover {
-  background: var(--pt-success-dark, #0f7a3e);
+  background: var(--color-success);
 }

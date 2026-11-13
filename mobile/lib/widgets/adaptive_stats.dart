@@ -35,7 +35,9 @@ class PTStatStrip extends StatelessWidget {
   const PTStatStrip({
     super.key,
     required this.items,
-    this.height = 40,
+    // 48：值行 PTFs.lg(18) + 2 间距 + 标签 xs(12) ≈ 45px；40 会溢出 5px
+    // （改版提字号后实测），对齐工具栏 48 的口径。
+    this.height = 48,
     this.dividers = false,
     this.padding = const EdgeInsets.symmetric(horizontal: 4),
   });

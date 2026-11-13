@@ -10,6 +10,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 const medals = ref<Medal[]>([])
@@ -87,14 +88,14 @@ const statusLabel = computed<Record<string, string>>(() => ({
   UNKNOWN: t('medalwall.status.unknown'),
 }))
 const statusColor: Record<string, string> = {
-  OWNED: '#2ecc71',
-  AVAILABLE: '#3498db',
-  OUT_OF_STOCK: '#f56c6c',
-  NOT_ON_SALE: '#95a5a6',
-  GRANT_ONLY: '#95a5a6',
-  SYNTHESIS: '#9b59b6',
-  DISCONTINUED: '#7f8c8d',
-  UNKNOWN: '#95a5a6',
+  OWNED: 'var(--pt-success-fg)',
+  AVAILABLE: 'var(--color-primary)',
+  OUT_OF_STOCK: 'var(--pt-danger-fg)',
+  NOT_ON_SALE: 'var(--color-text-muted)',
+  GRANT_ONLY: 'var(--color-text-muted)',
+  SYNTHESIS: 'var(--color-primary-hover)',
+  DISCONTINUED: 'var(--color-text-muted)',
+  UNKNOWN: 'var(--color-text-muted)',
 }
 
 function fmtDate(ms?: number) {
@@ -155,7 +156,7 @@ onUnmounted(() => abortCtrl?.abort())
       <el-button :loading="loading" @click="load(true)">{{ t('common.refresh') }}</el-button>
     </div>
 
-    <div class="filter-bar glass">
+    <div class="filter-bar solid-card">
       <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('medalwall.siteFilterTitle')" />
       <button class="filter-chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
         {{ t('assessment.filter.all') }} ({{ counts.total }})
@@ -194,7 +195,7 @@ onUnmounted(() => abortCtrl?.abort())
       </button>
     </div>
 
-    <details v-if="siteIssues.length" class="site-issues glass" :open="counts.total === 0">
+    <details v-if="siteIssues.length" class="site-issues solid-card" :open="counts.total === 0">
       <summary class="issues-head">
         <strong>{{ t('medalwall.siteCheck') }}</strong>
         <span>{{ t('medalwall.issuesCount', { n: siteIssues.length }) }}</span>
@@ -207,22 +208,20 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </details>
 
-    <p v-if="loading && !medals.length" style="text-align: center; color: var(--text-muted); padding: 40px 0">
-      {{ t('common.loading') }}
-    </p>
+    <el-skeleton v-if="loading && !medals.length" :rows="6" animated />
 
     <div class="cards">
       <div
         v-a11y-button
         v-for="(m, i) in filtered"
         :key="m.site_id + '-' + m.medal_id + '-' + i"
-        class="medal-card glass glass-hover"
+        class="medal-card solid-card"
         @click="openDetail(m)"
       >
         <div class="img-wrap">
           <img v-if="m.image_small" :src="m.image_small" :alt="m.name" referrerpolicy="no-referrer" />
           <span v-else class="placeholder">{{ m.name?.slice(0, 1) || '?' }}</span>
-          <span v-if="m.is_owned" class="badge owned">✓</span>
+          <span v-if="m.is_owned" class="badge owned"><SptIcon name="check" :size="14" aria-hidden="true" /></span>
           <span v-else-if="m.purchase_status === 'OUT_OF_STOCK'" class="badge stock">{{
             t('medalwall.shortStockMark')
           }}</span>
@@ -230,7 +229,7 @@ onUnmounted(() => abortCtrl?.abort())
         <div class="m-name" :title="m.name">{{ m.name || t('medalwall.unnamed') }}</div>
         <div class="m-meta">
           <span v-if="m.price > 0" class="price"
-            >💰<span v-if="m.original_price && m.original_price < m.price" class="price-orig">{{
+            ><SptIcon name="medal" :size="14" aria-hidden="true" /><span v-if="m.original_price && m.original_price < m.price" class="price-orig">{{
               m.original_price
             }}</span
             ><span :class="m.original_price && m.original_price < m.price ? 'price-premium' : ''">{{ m.price }}</span>
@@ -244,7 +243,6 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
     <EmptyState
       v-if="!medals.some((m) => !m.error) && !loading && !siteIssues.length"
-      icon="🎖️"
       :title="t('medalwall.emptyTitle')"
       :description="t('medalwall.emptyDesc')"
     />

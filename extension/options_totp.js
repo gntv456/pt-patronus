@@ -135,7 +135,7 @@ export async function initTotpPage($, feedback, armVaultAutolock) {
               <div style="font-weight:600; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(e.label)}</div>
               <div class="bar" style="height:3px; border-radius:2px; background:var(--bg); margin-top:6px; overflow:hidden"><div style="height:100%; width:0%; background:var(--accent)"></div></div>
             </div>
-            <button class="subtle danger" data-del="${i}" title="删除">✕</button>
+            <button class="subtle danger" data-del="${i}" title="删除" aria-label="删除">删除</button>
           </div>`).join('')
       : '<p class="hint empty">暂无条目。到站点「账号安全」里拿 otpauth:// 链接或 base32 秘钥粘贴添加。</p>'
   }

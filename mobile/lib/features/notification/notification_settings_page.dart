@@ -155,7 +155,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> wit
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '⚠ $_error',
+          '加载失败：$_error',
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.redAccent),
         ),

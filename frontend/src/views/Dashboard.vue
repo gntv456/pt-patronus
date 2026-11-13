@@ -5,11 +5,11 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue'
 import { siteApi } from '@/api/site'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
-import { useDashboardData } from '@/composables/useDashboardData'
+import { useDashboardData, type TrendMode } from '@/composables/useDashboardData'
 import { useDashboardSync } from '@/composables/useDashboardSync'
 import { useDashboardActions } from '@/composables/useDashboardActions'
 // 导出对话框含 661 行 canvas 绘制逻辑，仅在用户点「导出图片」时需要 → 异步加载，不进首屏 chunk。
@@ -27,8 +27,10 @@ import DashboardHealthStrip from '@/components/dashboard/DashboardHealthStrip.vu
 import DashboardWorkbench from '@/components/dashboard/DashboardWorkbench.vue'
 import DashboardWidgets from '@/components/dashboard/DashboardWidgets.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SptIcon from '@/components/SptIcon.vue'
+import { useQueryStates } from '@/composables/useUrlState'
 
-const { overview, trendDays, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } =
+const { overview, trendDays, trendMode, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } =
   useDashboardData()
 const { syncing, syncTotal, syncDone, syncStats, abortSync } = useDashboardSync()
 const { refreshing, loadCached, refreshConnectivity, connectedCount, disabledCount, healthSegments, unreadCount } =
@@ -48,6 +50,34 @@ const timelineCard = ref<{ refresh: () => Promise<void> } | null>(null)
 
 const auth = useAuthStore()
 const exportVisible = ref(false)
+
+// 周期(7/30/90)与趋势指标写回 URL query：刷新 / 分享 / 后退可恢复（skill: deep-linking）。
+const qs = useQueryStates({ days: '30', mode: 'traffic' })
+const VALID_DAYS = [7, 30, 90]
+const VALID_MODES: TrendMode[] = ['traffic', 'seeding', 'size', 'bonus']
+// 首载前用 query 初始化内部 ref（load() 会按 trendDays 拉趋势数据）。
+const initDays = Number(qs.days.value)
+if (VALID_DAYS.includes(initDays)) trendDays.value = initDays as 7 | 30 | 90
+if (VALID_MODES.includes(qs.mode.value as TrendMode)) trendMode.value = qs.mode.value as TrendMode
+watch(trendDays, (v) => {
+  if (qs.days.value !== String(v)) qs.days.value = String(v)
+})
+watch(trendMode, (v) => {
+  if (qs.mode.value !== v) qs.mode.value = v
+})
+watch(
+  () => qs.days.value,
+  (v) => {
+    const n = Number(v)
+    if (VALID_DAYS.includes(n) && n !== trendDays.value) void changeTrendDays(n as 7 | 30 | 90)
+  },
+)
+watch(
+  () => qs.mode.value,
+  (v) => {
+    if (VALID_MODES.includes(v as TrendMode) && v !== trendMode.value) trendMode.value = v as TrendMode
+  },
+)
 
 function onSyncDone() {
   void loadCached().then(() => refreshConnectivity(true))
@@ -142,11 +172,11 @@ onUnmounted(() => abortSync())
           </button>
         </div>
         <el-button :disabled="!overview" @click="openExport">
-          <GlassIcon name="download" from="#2563eb" to="#0f766e" :size="16" class="btn-ico" />
+          <SptIcon name="download" :size="16" class="btn-ico" aria-hidden="true" />
           <span>{{ t('dashboard.exportImage') }}</span>
         </el-button>
         <el-button type="primary" :loading="syncing" @click="() => syncStats()">
-          <GlassIcon name="refresh" from="#ffffff" to="#dbeafe" :size="16" class="btn-ico" />
+          <SptIcon name="refresh" :size="16" class="btn-ico" aria-hidden="true" />
           <span>{{
             syncing
               ? syncTotal
@@ -171,7 +201,7 @@ onUnmounted(() => abortSync())
             <h4>{{ t('dashboard.welcome.step1Title') }}</h4>
             <p>{{ t('dashboard.welcome.step1Desc') }}</p>
             <router-link to="/sites"
-              ><el-button type="primary" size="small">{{ t('dashboard.addSite') }}</el-button></router-link
+              ><el-button size="small">{{ t('dashboard.addSite') }}</el-button></router-link
             >
           </div>
         </div>
@@ -181,7 +211,7 @@ onUnmounted(() => abortSync())
             <h4>{{ t('dashboard.welcome.step2Title') }}</h4>
             <p>{{ t('dashboard.welcome.step2Desc') }}</p>
             <router-link to="/downloaders"
-              ><el-button type="primary" size="small">{{ t('dashboard.addDownloader') }}</el-button></router-link
+              ><el-button size="small">{{ t('dashboard.addDownloader') }}</el-button></router-link
             >
           </div>
         </div>
@@ -190,7 +220,7 @@ onUnmounted(() => abortSync())
           <div class="ob-body">
             <h4>{{ t('dashboard.welcome.step3Title') }}</h4>
             <p>{{ t('dashboard.welcome.step3Desc') }}</p>
-            <el-button type="primary" size="small" :loading="syncing" @click="() => syncStats()">{{
+            <el-button size="small" :loading="syncing" @click="() => syncStats()">{{
               t('dashboard.welcome.refreshNow')
             }}</el-button>
           </div>
@@ -223,7 +253,7 @@ onUnmounted(() => abortSync())
       <DashboardSyncCard />
 
       <!-- 加载失败：overview 为空且出错时显示带重试的错误条 -->
-      <div v-if="loadError && !overview && !loading" class="ops-surface load-error">
+      <div v-if="loadError && !overview && !loading" class="ops-surface load-error" role="alert">
         <span class="le-msg">{{ t('dashboard.loadFailed', { err: loadError }) }}</span>
         <el-button size="small" @click="load">{{ t('dashboard.retry') }}</el-button>
       </div>
@@ -271,9 +301,9 @@ onUnmounted(() => abortSync())
       </div>
 
       <div v-if="!loading && overview && !overview.sites?.length" class="setup-card ops-surface">
-        <EmptyState icon="🧭" :title="t('dashboard.emptyTitle')" :description="t('dashboard.emptyDesc')">
+        <EmptyState :title="t('dashboard.emptyTitle')" :description="t('dashboard.emptyDesc')">
           <router-link to="/sites"
-            ><el-button type="primary">{{ t('dashboard.addSite') }}</el-button></router-link
+            ><el-button>{{ t('dashboard.addSite') }}</el-button></router-link
           >
           <router-link to="/downloaders"
             ><el-button>{{ t('dashboard.addDownloader') }}</el-button></router-link

@@ -34,6 +34,8 @@ function switchTab(name) {
     $('panel-' + t).classList.toggle('on', t === name)
     const btn = { home: 'tabHome', search: 'tabSearch', dl: 'tabDl', quick: 'tabQuick' }[t]
     $(btn).classList.toggle('on', t === name)
+    if (t === name) $(btn).setAttribute('aria-current', 'page')
+    else $(btn).removeAttribute('aria-current')
   }
   // 首次进入下载 Tab 才拉数据（懒加载）。
   if (name === 'dl' && !$('dlList').dataset.loaded) loadDownloads()
@@ -81,7 +83,7 @@ async function loadDownloads() {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
     $('dlName').textContent = '未登录'
-    $('dlList').innerHTML = '<div class="dlitem"><div class="t" style="color:var(--warn)">点右上角 ⚙ 登录后查看下载任务</div></div>'
+    $('dlList').innerHTML = '<div class="dlitem"><div class="t" style="color:var(--warn)">点右上角「设置」登录后查看下载任务</div></div>'
     $('dlList').dataset.loaded = '1'
     return
   }
@@ -152,8 +154,9 @@ function renderDlList(cfg, dlId, arr, readError = '') {
     const paused = /paused/i.test(t.state || '')
     const btn = document.createElement('button')
     btn.className = 'btn-ghost'
-    btn.textContent = paused ? '▶' : '⏸'
+    btn.textContent = paused ? '继续' : '暂停'
     btn.title = paused ? '继续' : '暂停'
+    btn.setAttribute('aria-label', btn.title)
     btn.onclick = async () => {
       btn.disabled = true
       try {
@@ -237,11 +240,13 @@ function openDetailDrawer(t) {
   const mask = document.createElement('div')
   mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:flex-end'
   const sheet = document.createElement('div')
+  sheet.setAttribute('role', 'dialog')
+  sheet.setAttribute('aria-label', '种子详情')
   Object.assign(sheet.style, {
     width: '100%', maxHeight: '72%', overflowY: 'auto', boxSizing: 'border-box',
-    background: '#1c222c', borderTop: '1px solid #333b48',
-    borderRadius: '12px 12px 0 0', padding: '14px 14px 18px',
-    font: '12.5px system-ui, sans-serif', color: '#e6e9ef',
+    background: 'var(--bg-overlay)', borderTop: '1px solid var(--border-strong)',
+    borderRadius: '10px 10px 0 0', padding: '14px 14px 18px',
+    font: '12.5px system-ui, sans-serif', color: 'var(--ink)',
   })
   const head = document.createElement('div')
   head.style.cssText = 'font-weight:700; font-size:13px; margin-bottom:10px; line-height:1.5; word-break:break-all'
@@ -256,9 +261,9 @@ function openDetailDrawer(t) {
   ]
   for (const [k, v] of fields) {
     const line = document.createElement('div')
-    line.style.cssText = 'display:flex; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05)'
+    line.style.cssText = 'display:flex; gap:10px; padding:5px 0; border-bottom:1px solid var(--border)'
     const kEl = document.createElement('span')
-    kEl.style.cssText = 'width:80px; flex:none; color:#636d7c'
+    kEl.style.cssText = 'width:80px; flex:none; color:var(--ink-2)'
     kEl.textContent = k
     const vEl = document.createElement('span')
     vEl.style.wordBreak = 'break-all'
@@ -270,7 +275,7 @@ function openDetailDrawer(t) {
   btns.style.cssText = 'display:flex; gap:8px; margin-top:12px'
   const push = document.createElement('button')
   push.className = 'btn-primary'
-  push.textContent = '⬇ 推送下载'
+  push.textContent = '推送下载'
   push.onclick = async () => {
     push.disabled = true; push.textContent = '推送中…'
     try {
@@ -328,7 +333,7 @@ function renderMediaItem(cfg, m, box) {
 async function runSearch(keyword) {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
-    $('status').innerHTML = '<span class="warn">未登录：点右上角 ⚙ 用本地账号登录</span>'
+    $('status').innerHTML = '<span class="warn">未登录：点右上角「设置」用本地账号登录</span>'
     return
   }
   switchTab('search')
@@ -392,7 +397,7 @@ async function subscribe(cfg, keyword, ref, btn) {
     const m = media[0]
     btn.textContent = '订阅中…'
     await createSubscription(cfg, m)
-    btn.textContent = `✅ 已订阅 ${m.title || m.name || ''}`
+    btn.textContent = `已订阅 ${m.title || m.name || ''}`
   } catch (e) {
     btn.textContent = `失败: ${e.message.slice(0, 20)}`
   }
@@ -400,14 +405,14 @@ async function subscribe(cfg, keyword, ref, btn) {
 
 // ============ 快捷 Tab：站内高频入口（弹窗内动作优先，Web 版作深链） ============
 const QUICK_LINKS = [
-  { ico: '📚', label: '我的订阅', url: (b) => `${b}/subscriptions` },
-  { ico: '🌐', label: '站点管理', url: (b) => `${b}/sites` },
-  { ico: '✉️', label: '站内消息', url: (b) => `${b}/messages` },
-  { ico: '🔔', label: '通知中心', url: (b) => `${b}/notices` },
-  { ico: '💾', label: '做种辅种', url: (b) => `${b}/reseed` },
-  { ico: '🤖', label: 'AI 助手', url: (b) => `${b}/assistant` },
-  { ico: '📈', label: '数据趋势', url: (b) => `${b}/dashboard` },
-  { ico: '⚙', label: '插件设置', url: () => '__options__' },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>', label: '我的订阅', url: (b) => `${b}/subscriptions` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.8 2.6 15.2 0 18"/><path d="M12 3c-2.6 2.8-2.6 15.2 0 18"/></svg>', label: '站点管理', url: (b) => `${b}/sites` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>', label: '站内消息', url: (b) => `${b}/messages` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>', label: '通知中心', url: (b) => `${b}/notices` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2c1 2 1.8 4.18 1.8 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>', label: '做种辅种', url: (b) => `${b}/reseed` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>', label: 'AI 助手', url: (b) => `${b}/assistant` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>', label: '数据趋势', url: (b) => `${b}/dashboard` },
+  { svg: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>', label: '插件设置', url: () => '__options__' },
 ]
 
 function renderQuick(cfg) {
@@ -417,7 +422,7 @@ function renderQuick(cfg) {
     const a = document.createElement('a')
     const ico = document.createElement('span')
     ico.className = 'ico'
-    ico.textContent = q.ico
+    ico.innerHTML = q.svg // 静态内联 SVG，无插值；字形带 aria-hidden
     const label = document.createElement('span')
     label.textContent = q.label
     a.append(ico, label)
@@ -441,16 +446,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('tabSearch').onclick = () => switchTab('search')
   $('tabDl').onclick = () => switchTab('dl')
   $('tabQuick').onclick = () => switchTab('quick')
+  $('modeTorrent').setAttribute('aria-pressed', 'true')
+  $('modeMedia').setAttribute('aria-pressed', 'false')
   $('modeTorrent').onclick = () => {
     searchMode = 'torrent'
     $('modeTorrent').classList.add('on')
     $('modeMedia').classList.remove('on')
+    $('modeTorrent').setAttribute('aria-pressed', 'true')
+    $('modeMedia').setAttribute('aria-pressed', 'false')
     $('keyword').placeholder = '跨站搜索全部 PT 站…'
   }
   $('modeMedia').onclick = () => {
     searchMode = 'media'
     $('modeMedia').classList.add('on')
     $('modeTorrent').classList.remove('on')
+    $('modeMedia').setAttribute('aria-pressed', 'true')
+    $('modeTorrent').setAttribute('aria-pressed', 'false')
     $('keyword').placeholder = '影视名 / 剧集名（TMDB 豆瓣）…'
   }
   $('search').onclick = () => runSearch($('keyword').value.trim())
@@ -479,7 +490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       span.textContent = `拖放的链接：${sess.ptp_last_drag_url.slice(0, 60)}`
       const push = document.createElement('button')
       push.className = 'btn-primary'
-      push.textContent = '⬇ 推送'
+      push.textContent = '推送'
       push.onclick = async () => {
         push.disabled = true; push.textContent = '推送中…'
         try {
@@ -508,16 +519,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const body = await api(cfg, '/api/v1/sites/checkin', { method: 'POST' })
       // 后端读不出站点清单时回 {results: [], list_error:'原因'}：只取 results 会把一次
-      // 查询失败渲染成绿色 ✅ 0/0 —— 用户以为「签过了，只是没有站」，实际是数据库读不动（#263）。
+      // 查询失败渲染成绿色「成功 0/0」—— 用户以为「签过了，只是没有站」，实际是数据库读不动（#263）。
       if (body && body.list_error) {
-        $('checkinTxt').textContent = `⚠ 清单读不出：${String(body.list_error).slice(0, 14)}`
+        $('checkinTxt').textContent = `清单读不出：${String(body.list_error).slice(0, 14)}`
         return
       }
       const rs = body.results || []
       const ok = rs.filter((r) => r.success).length
-      $('checkinTxt').textContent = `✅ ${ok}/${rs.length}`
+      $('checkinTxt').textContent = `签到成功 ${ok}/${rs.length}`
     } catch (e) {
-      $('checkinTxt').textContent = `⚠ ${String(e.message).slice(0, 12)}`
+      $('checkinTxt').textContent = `签到失败：${String(e.message).slice(0, 12)}`
     }
     setTimeout(() => { $('checkinTxt').textContent = '签到'; $('checkin').classList.remove('busy'); checkinBusy = false }, 3500)
   }

@@ -4,10 +4,11 @@
   gap: var(--sp-3);
   max-width: 720px;
   margin: 0 auto;
-  background: #fff5f7;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 16px;
-  color: #4a2f35;
+  color: var(--color-text);
 }
 .topbar {
   display: flex;
@@ -17,14 +18,13 @@
 .title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ff69b4;
-  letter-spacing: 2px;
+  color: var(--color-primary);
 }
 .balance {
   padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  background: #ffc107;
-  color: #4a2f00;
+  border-radius: var(--radius-control);
+  background: var(--color-warning);
+  color: var(--color-on-accent);
   font-weight: 700;
   font-size: var(--fs-body);
 }
@@ -40,18 +40,19 @@
   flex-wrap: wrap;
 }
 .tab {
+  min-height: 24px;
   padding: 5px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(106, 90, 205, 0.3);
-  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
   cursor: pointer;
   font-size: var(--fs-xs);
-  color: #6a5acd;
+  color: var(--color-primary);
 }
 .tab.active {
-  background: #6a5acd;
-  color: #fff;
-  border-color: #6a5acd;
+  background: var(--color-primary);
+  color: var(--color-on-accent);
+  border-color: var(--color-primary);
 }
 /* 面板 */
 .panel {
@@ -65,21 +66,22 @@
   }
 }
 .target-card {
-  background: linear-gradient(135deg, #6a5acd, #8e6fd0);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--sp-1);
-  color: #fff;
+  color: var(--color-text);
 }
 .t-img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-border);
 }
 .t-img.placeholder {
   display: flex;
@@ -102,18 +104,19 @@
 .bar {
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-border-strong);
   border-radius: var(--radius-2xs);
   overflow: hidden;
 }
 .fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffc107, #ff69b4);
+  background: var(--color-primary);
   transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .t-pity {
   font-size: var(--fs-2xs);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--pt-warn-fg);
+  font-weight: 600;
 }
 /* 碎片网格 */
 .right {
@@ -129,8 +132,8 @@
 .frag {
   padding: 5px;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid #e0c0c8;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -138,11 +141,11 @@
   text-align: center;
 }
 .frag.collected {
-  border-color: var(--pt-success);
-  background: var(--pt-success-bg);
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
 }
 .frag.rare {
-  border-color: #a855f7;
+  border-color: var(--chart-4);
 }
 .frag-img {
   width: 34px;
@@ -155,11 +158,11 @@
   align-items: center;
   justify-content: center;
   font-size: var(--fs-title);
-  background: rgba(106, 90, 205, 0.1);
+  background: var(--color-primary-soft);
 }
 .frag-name {
   font-size: var(--fs-2xs);
-  color: #6a5acd;
+  color: var(--color-primary);
   line-height: 1.1;
   max-width: 100%;
   overflow: hidden;
@@ -171,10 +174,10 @@
   font-weight: 700;
 }
 .frag-count .cur {
-  color: #ff69b4;
+  color: var(--color-primary);
 }
 .frag-count .req {
-  color: #555;
+  color: var(--color-text-muted);
 }
 .frag-empty {
   grid-column: 1 / -1;
@@ -189,11 +192,12 @@
   gap: var(--sp-1);
 }
 .op {
+  min-height: 24px;
   padding: 8px 4px;
   border: none;
   border-radius: var(--radius-xs);
   cursor: pointer;
-  color: #fff;
+  color: var(--color-on-accent);
   font-weight: 700;
   font-size: var(--fs-body);
   display: flex;
@@ -212,34 +216,42 @@
   cursor: not-allowed;
 }
 .op:hover:not(:disabled) {
-  filter: brightness(1.08);
+  border-color: var(--color-border-strong);
 }
 .draw1 {
-  background: #ff69b4;
+  background: var(--color-primary);
+  color: var(--color-on-accent);
 }
 .draw10 {
-  background: #ffc107;
-  color: #4a2f00;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 .draw100 {
-  background: #f44336;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 .synth {
-  background: #ffebee;
-  color: #ff69b4;
-  border: 1px solid #ff69b4;
+  background: var(--color-success-soft);
+  color: var(--pt-success-fg);
+  border: 1px solid var(--color-success);
 }
 .hist {
-  background: #2196f3;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 .hist.active {
-  background: #6a5acd;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 /* 上次结果 */
 .last-draw {
   padding: 8px 10px;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-surface);
   font-size: var(--fs-xs);
   display: flex;
   flex-wrap: wrap;
@@ -248,13 +260,13 @@
 }
 .ld-label {
   font-weight: 700;
-  color: #6a5acd;
+  color: var(--color-primary);
 }
 .ld-frag {
   padding: 1px 8px;
-  border-radius: var(--radius-pill);
-  background: #6a5acd;
-  color: #fff;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-accent);
   font-size: var(--fs-2xs);
   font-weight: 600;
 }
@@ -263,12 +275,12 @@
   margin-top: 4px;
   padding: 8px 10px;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-surface);
 }
 .hd-label {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #6a5acd;
+  color: var(--color-primary);
   margin-bottom: 6px;
 }
 .hist-empty {
@@ -287,14 +299,16 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-height: var(--table-row-height);
   padding: 4px 6px;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-surface-2);
   font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
 }
 .hist-row .h-frag {
   font-weight: 600;
-  color: #ff69b4;
+  color: var(--color-primary);
   flex: 1;
 }
 .hist-row .h-syn {
@@ -305,7 +319,7 @@
   white-space: nowrap;
 }
 .hist-row .h-cost {
-  color: var(--pt-warn);
+  color: var(--pt-warn-fg);
   font-weight: 600;
 }
 .hist-row .h-time {
@@ -316,13 +330,20 @@
 /* 暗色适配：游戏卡原本只有亮粉底+深字（暗色主题下是一块刺眼亮板）。
    保留粉系品牌感，底色加深、文字转亮，白 tile 降透明度融入暗底。 */
 :root.dark .card-synth {
-  background: #3a2430;
-  color: #f3d9e2;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 :root.dark .tab {
-  background: rgba(255, 255, 255, 0.08);
-  color: #d9b8c8;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 :root.dark .frag {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill,
+  .op {
+    transition: none;
+  }
 }

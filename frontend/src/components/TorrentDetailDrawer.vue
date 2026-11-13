@@ -66,7 +66,7 @@ function imdbUrl(id: string) {
               >
             </div>
             <div v-if="detail.download_url" class="dl-row">
-              <el-button type="primary" @click="openDl(detail)">⬇ {{ t('trt.download') }}</el-button>
+              <el-button type="primary" @click="openDl(detail)"><SptIcon name="download" :size="14" aria-hidden="true" /> {{ t('trt.download') }}</el-button>
               <el-button @click="copyDl(detail)">{{ t('tddr.copyLink') }}</el-button>
             </div>
           </div>
@@ -105,7 +105,7 @@ function imdbUrl(id: string) {
           </div>
           <div class="file-list">
             <div v-for="(f, i) in detail.file_list" :key="i" class="file-row">
-              <span class="file-ic">📄</span>{{ f }}
+              <span class="file-ic"><SptIcon name="file" :size="14" aria-hidden="true" /></span>{{ f }}
             </div>
           </div>
         </div>

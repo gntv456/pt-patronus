@@ -5,9 +5,10 @@
 //
 // 触发场景正是 Vue 渲染失败 / 样式未就绪 / 脚本运行时抛错，所以浮层必须自给自足：
 //   - 直接操作 document.body，不走 Vue 渲染（此时 Vue 可能已经崩了）
-//   - 样式全部内联，不依赖任何 CSS 文件加载
-// 终端用户不再面对纯白板；开发者也能从用户截图直接拿到错误名 + 堆栈定位根因，
-// 无需让用户打开 F12。
+//   - 样式全部内联，且每个语义色都带字面回退 var(--x, #fallback)，
+//     即使 tokens.css 尚未加载也能完整显示，只是回退到浅色基线
+//   - 图标用内联 SVG 而非 emoji，避免字体依赖与「AI 感」
+// 终端用户不再面对纯白板；开发者也能从用户截图直接拿到错误名 + 堆栈定位根因。
 //
 // 由 main.ts 的 app.config.errorHandler + window error/unhandledrejection 三路触发。
 
@@ -46,25 +47,25 @@ function ensureOverlay(): HTMLDivElement {
     ].join(';'),
   )
   el.innerHTML = `
-    <div style="max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;background:#ffffff;color:#0f172a;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden">
-      <div style="padding:18px 20px;border-bottom:1px solid #eef0f4">
+    <div role="alertdialog" aria-label="页面出了点问题" style="max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;background:var(--color-surface,#ffffff);color:var(--color-text,#1e293b);border:1px solid var(--color-border,#e2e8f0);border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden">
+      <div style="padding:18px 20px;border-bottom:1px solid var(--color-border,#eef0f4)">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">⚠️</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--pt-danger-fg,#b91c1c);flex:none" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
           <span style="font-size:16px;font-weight:600">页面出了点问题</span>
         </div>
-        <div class="pt-err-ctx" style="margin-top:6px;font-size:13px;color:#64748b"></div>
+        <div class="pt-err-ctx" style="margin-top:6px;font-size:14px;color:var(--color-text-secondary,#475569)"></div>
       </div>
       <div style="padding:14px 20px;overflow:auto;flex:1">
-        <div class="pt-err-msg" style="font-family:Menlo,Consolas,monospace;font-size:13px;color:#be123c;background:#fff5f5;border:1px solid #fecaca;padding:10px 12px;border-radius:8px;white-space:pre-wrap;word-break:break-all"></div>
+        <div class="pt-err-msg" role="alert" style="font-family:var(--font-mono,Menlo,Consolas,monospace);font-size:13px;line-height:1.5;color:var(--pt-danger-fg,#b91c1c);background:var(--color-danger-soft,#fff5f5);border:1px solid var(--color-border,#fecaca);padding:10px 12px;border-radius:6px;white-space:pre-wrap;word-break:break-all"></div>
         <details style="margin-top:10px">
-          <summary style="cursor:pointer;font-size:12px;color:#64748b">技术详情（堆栈）</summary>
-          <pre class="pt-err-stack" style="margin-top:8px;font-size:11px;line-height:1.5;background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:8px;overflow:auto;white-space:pre-wrap;word-break:break-word"></pre>
+          <summary style="cursor:pointer;font-size:12px;color:var(--color-text-secondary,#475569);min-height:24px">技术详情（堆栈）</summary>
+          <pre class="pt-err-stack" style="margin-top:8px;font-size:12px;line-height:1.5;background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:6px;overflow:auto;white-space:pre-wrap;word-break:break-word"></pre>
         </details>
       </div>
-      <div style="padding:12px 20px;border-top:1px solid #eef0f4;display:flex;gap:8px;justify-content:flex-end;background:#f8fafc">
-        <button class="pt-err-reload" style="padding:8px 14px;font-size:13px;border:none;border-radius:8px;background:#6c5ce7;color:#fff;cursor:pointer">刷新页面</button>
-        <button class="pt-err-home" style="padding:8px 14px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;cursor:pointer">回到首页</button>
-        <button class="pt-err-close" style="padding:8px 14px;font-size:13px;border:none;border-radius:8px;background:transparent;color:#94a3b8;cursor:pointer">忽略</button>
+      <div style="padding:12px 20px;border-top:1px solid var(--color-border,#eef0f4);display:flex;gap:8px;justify-content:flex-end;background:var(--color-surface-2,#f8fafc);flex-wrap:wrap">
+        <button class="pt-err-reload" type="button" style="padding:8px 14px;min-height:32px;font-size:13px;border:none;border-radius:6px;background:var(--color-primary,#2563eb);color:var(--color-on-accent,#ffffff);cursor:pointer">刷新页面</button>
+        <button class="pt-err-home" type="button" style="padding:8px 14px;min-height:32px;font-size:13px;border:1px solid var(--color-border,#e2e8f0);border-radius:6px;background:var(--color-surface,#ffffff);color:var(--color-text-secondary,#475569);cursor:pointer">回到首页</button>
+        <button class="pt-err-close" type="button" style="padding:8px 14px;min-height:32px;font-size:13px;border:none;border-radius:6px;background:transparent;color:var(--color-text-muted,#64748b);cursor:pointer">忽略</button>
       </div>
     </div>
   `

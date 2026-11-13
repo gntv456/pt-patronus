@@ -89,7 +89,7 @@ onMounted(refresh)
 <template>
   <div class="fishgame">
     <div class="hero">
-      <div class="hero-title">🎣 {{ name }}</div>
+      <div class="hero-title"><SptIcon name="target" :size="18" aria-hidden="true" /> {{ name }}</div>
       <div v-if="state" class="hero-sub">
         魔力 <b>{{ state.balance.toLocaleString() }}</b> · 鱼竿 {{ state.selected_rod || '—' }}
         <template v-if="state.selected_lure"> · 鱼饵 {{ state.selected_lure }}</template>
@@ -105,7 +105,7 @@ onMounted(refresh)
         />
         <div class="casts">
           <el-button type="primary" :loading="fishing" :disabled="state.attempts_used >= state.attempts_limit" @click="cast(1)">
-            🎣 抛竿一次
+            抛竿一次
           </el-button>
           <el-button :loading="fishing" :disabled="state.attempts_used >= state.attempts_limit" @click="cast(5)">
             连抛 5 次
@@ -115,7 +115,7 @@ onMounted(refresh)
       </section>
 
       <section v-if="state.rods?.length || state.lures?.length" class="glass section">
-        <div class="sec-title">🎣 装备</div>
+        <div class="sec-title"><SptIcon name="wrench" :size="16" aria-hidden="true" /> 装备</div>
         <div v-if="state.rods?.length" class="equip-group">
           <div class="equip-label">鱼竿</div>
           <div class="equip-grid">
@@ -155,7 +155,7 @@ onMounted(refresh)
       </section>
 
       <section class="glass section">
-        <div class="sec-title">🐟 图鉴 {{ state.discovered_count }}/{{ state.total_species }}</div>
+        <div class="sec-title"><SptIcon name="grid" :size="16" aria-hidden="true" /> 图鉴 {{ state.discovered_count }}/{{ state.total_species }}</div>
         <div class="codex">
           <div
             v-for="f in codexSorted"
@@ -173,7 +173,7 @@ onMounted(refresh)
     </template>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" /></span>
       <div class="r-body">
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
       </div>
@@ -183,7 +183,7 @@ onMounted(refresh)
 
 <style scoped lang="css">
 .fishgame { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #0ea5e9, #22c55e); color: #fff; text-align: center; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text); text-align: center; }
 .hero-title { font-size: var(--fs-title); font-weight: 800; }
 .hero-sub { margin-top: 6px; opacity: 0.92; }
 .section { padding: 16px; }
@@ -191,33 +191,33 @@ onMounted(refresh)
 .casts { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
 .caught { margin-left: auto; font-size: 13px; }
 .codex { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.fish { border: 1px solid var(--border-light, #e5e7eb); border-radius: var(--radius-sm, 6px); padding: 8px; text-align: center; font-size: 12px; }
+.fish { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 8px; text-align: center; font-size: 12px; }
 .fish.unknown { opacity: 0.45; filter: grayscale(0.8); }
 .fish .f-name { font-weight: 700; }
-.fish .f-meta { color: var(--text-muted, #909399); margin-top: 2px; }
+.fish .f-meta { color: var(--color-text-muted); margin-top: 2px; }
 .fish .f-qty { margin-top: 2px; }
-.fish.rare { border-color: #60a5fa; }
-.fish.epic { border-color: #a78bfa; }
-.fish.legendary { border-color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+.fish.rare { border-color: var(--pt-info-fg); }
+.fish.epic { border-color: var(--chart-4); }
+.fish.legendary { border-color: var(--color-warning); }
 .result { display: flex; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); align-items: flex-start; }
-.result.win { background: var(--success-bg, #f0f9eb); }
-.result.lose { background: var(--danger-bg, #fef0f0); }
+.result.win { background: var(--color-success-soft); }
+.result.lose { background: var(--color-danger-soft); }
 .badge { font-weight: 800; }
 
 .equip-group { margin-bottom: 14px; }
 .equip-group:last-child { margin-bottom: 0; }
-.equip-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.equip-label { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; font-weight: 600; }
 .equip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
-.equip { border: 1.5px solid var(--border-light, #e5e7eb); border-radius: 10px; padding: 10px; text-align: left; background: var(--bg-card, #fff); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-.equip:hover:not(:disabled) { border-color: var(--primary, #409eff); }
-.equip.sel { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .35); }
+.equip { border: 1px solid var(--color-border); border-radius: 10px; padding: 10px; text-align: left; background: var(--color-surface); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.equip:hover:not(:disabled) { border-color: var(--color-primary); }
+.equip.sel { border-color: var(--color-warning); box-shadow: 0 0 0 2px var(--color-warning-soft); }
 .equip.locked { opacity: .55; }
 .equip.rod, .equip.lure { display: block; }
 .equip .e-main { all: unset; display: block; width: 100%; cursor: pointer; }
 .equip .e-main:disabled { cursor: not-allowed; }
 .e-name { display: block; font-weight: 700; font-size: 13px; }
-.e-meta { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.e-buy { margin-top: 6px; width: 100%; border: none; border-radius: 6px; background: #f59e0b; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 0; cursor: pointer; }
-.e-buy:hover:not(:disabled) { background: #d97706; }
-.e-buy:disabled { background: #d1d5db; cursor: not-allowed; }
+.e-meta { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+.e-buy { margin-top: 6px; width: 100%; min-height: 24px; border: none; border-radius: 6px; background: var(--color-warning); color: var(--color-on-accent); font-size: 12px; font-weight: 700; padding: 4px 0; cursor: pointer; }
+.e-buy:hover:not(:disabled) { background: var(--pt-warn-fg); }
+.e-buy:disabled { background: var(--color-surface-2); color: var(--color-text-muted); cursor: not-allowed; }
 </style>

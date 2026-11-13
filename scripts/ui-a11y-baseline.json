@@ -1,0 +1,15 @@
+{
+  "note": "UI 视觉/无障碍指标基线；只许减不许增",
+  "counts": {
+    "emoji": 70,
+    "outlineNone": 0,
+    "tinyFont": 0,
+    "gradient": 18,
+    "decorativeBlur": 6,
+    "infiniteAnim": 10,
+    "transitionAll": 0,
+    "rawHex": 798,
+    "brandHex": 6,
+    "epStaticInViews": 18
+  }
+}

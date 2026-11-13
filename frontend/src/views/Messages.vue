@@ -168,7 +168,7 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </div>
 
-    <div class="tabs glass">
+    <div class="tabs solid-card">
       <button
         v-for="mb in mailboxes"
         :key="mb.key"
@@ -181,7 +181,7 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
 
     <div class="groups">
-      <div v-for="r in filtered" :key="r.site_id" class="group glass">
+      <div v-for="r in filtered" :key="r.site_id" class="group solid-card">
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.error" class="err-tag" :title="r.error">{{ friendlyError(r.error) }}</span>
@@ -212,7 +212,7 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
     <EmptyState
       v-if="!filtered.length && !loading"
-      icon="✉️"
+      
       :title="selectedSiteIds.length === 0 ? t('messages.emptyTitle') : t('messages.emptySiteTitle')"
       :description="selectedSiteIds.length === 0 ? t('messages.emptyDesc') : t('messages.emptySiteDesc')"
     />
@@ -285,7 +285,7 @@ onUnmounted(() => abortCtrl?.abort())
   cursor: pointer;
   font-size: var(--fs-md);
   color: var(--text-strong);
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition: background-color var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth), color var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), transform var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth);
 }
 .tab:hover {
   background: var(--surface-muted);

@@ -4,9 +4,10 @@
 -->
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
+import SptIcon from '@/components/SptIcon.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { systemApi, type DoctorReport } from '@/api/system'
 
 const { t } = useI18n()
@@ -15,8 +16,17 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: fa
 const report = ref<DoctorReport | null>(null)
 const loading = ref(false)
 const fixing = ref(false)
+const errorSummary = ref('')
+const errorBox = ref<HTMLElement | null>(null)
+const { confirm, undo, error: feedbackError } = useFeedback()
 
-const sevColor: Record<string, string> = { info: '#52c41a', warn: '#faad14', error: '#ff4d4f' }
+const sevColor: Record<string, string> = {
+  info: 'var(--pt-success-fg)',
+  warn: 'var(--pt-warn-fg)',
+  error: 'var(--pt-danger-fg)',
+}
+// 状态不只靠颜色：不同严重级别用不同图标 + aria-label。
+const sevIcon: Record<string, string> = { info: 'check-circle', warn: 'alert-triangle', error: 'alert-octagon' }
 const statusType: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
   ok: 'success',
   skipped: 'info',
@@ -26,12 +36,33 @@ const statusType: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
 }
 
 async function run(fix: boolean) {
+  errorSummary.value = ''
+  if (fix) {
+    // 破坏性操作：确认 + 列出将处理的项（复用现有文案与 findings 标题，不新增 i18n key）。
+    const items = report.value?.findings?.map((f) => f.title) ?? []
+    const ok = await confirm({
+      title: t('doctor.fix'),
+      detail: items.length ? `${t('doctor.fix')}：${items.join('、')}` : t('doctor.fix'),
+      danger: true,
+    })
+    if (!ok) return
+  }
+  const snapshot = report.value
   if (fix) fixing.value = true
   else loading.value = true
   try {
     report.value = fix ? await systemApi.fixDoctor() : await systemApi.runDoctor()
+    if (fix) {
+      // 修复前快照 + 8s 撤销：恢复修复前报告并重新诊断。
+      undo(t('doctor.fix'), () => {
+        report.value = snapshot
+        void run(false)
+      })
+    }
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || t('doctor.runFailed'))
+    errorSummary.value = (e as Error).message || t('doctor.runFailed')
+    feedbackError(errorSummary.value)
+    void nextTick(() => errorBox.value?.focus())
   } finally {
     loading.value = false
     fixing.value = false
@@ -70,6 +101,13 @@ onMounted(() => run(false))
       </div>
     </div>
 
+    <!-- 可聚焦的错误摘要：失败时不仅弹 toast，页内也给出可重试入口并移入焦点 -->
+    <div v-if="errorSummary" ref="errorBox" class="doctor-error" role="alert" tabindex="-1">
+      <SptIcon name="alert-circle" :size="16" aria-hidden="true" />
+      <span>{{ errorSummary }}</span>
+      <el-button size="small" @click="run(false)">{{ t('common.retry') }}</el-button>
+    </div>
+
     <el-alert
       v-if="report?.environment?.safe_mode"
       type="warning"
@@ -78,10 +116,24 @@ onMounted(() => run(false))
       :description="t('doctor.safeModeDesc')"
     />
 
-    <div v-loading="loading" class="findings">
-      <div v-for="f in report?.findings ?? []" :key="f.id" class="card glass finding">
+    <div v-if="loading" class="findings" aria-busy="true">
+      <el-skeleton :rows="5" animated class="doctor-skeleton" />
+    </div>
+    <div v-else-if="!report?.findings?.length" class="doctor-empty solid-card">
+      <SptIcon name="check-circle" :size="28" aria-hidden="true" />
+      <span>{{ t('common.noData') }}</span>
+      <el-button size="small" @click="run(false)">{{ t('doctor.rerun') }}</el-button>
+    </div>
+    <div v-else class="findings">
+      <div v-for="f in report?.findings ?? []" :key="f.id" class="card solid-card finding">
         <div class="f-head">
-          <span class="dot" :style="{ background: sevColor[f.severity] }" />
+          <SptIcon
+            :name="sevIcon[f.severity] ?? 'info'"
+            :size="16"
+            class="f-sev"
+            :style="{ color: sevColor[f.severity] }"
+            :aria-label="f.severity"
+          />
           <span class="f-title">{{ f.title }}</span>
           <el-tag size="small" :type="statusType[f.status] ?? 'info'">{{ f.status }}</el-tag>
           <span class="f-id text-muted">{{ f.id }}</span>
@@ -123,11 +175,35 @@ onMounted(() => run(false))
   align-items: center;
   gap: var(--sp-2);
 }
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
+.f-sev {
+  flex: 0 0 auto;
+}
+.doctor-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px 12px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-soft);
+  color: var(--pt-danger-fg);
+  font-size: var(--fs-sm);
+}
+.doctor-error:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.doctor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+.doctor-skeleton {
+  padding: 12px;
 }
 .f-title {
   font-weight: 600;
@@ -143,7 +219,7 @@ onMounted(() => run(false))
 .f-rec {
   margin-top: 4px;
   font-size: var(--fs-xs);
-  opacity: 0.7;
+  color: var(--color-text-muted);
 }
 .doctor-wrap.embedded {
   padding: 0;
@@ -153,33 +229,12 @@ onMounted(() => run(false))
   font-weight: 600;
   margin: 0;
 }
+@media (max-width: 640px) {
+  .f-id,
+  .f-rec {
+    font-size: var(--fs-lg);
+  }
+}
 
-/* 诊断结果 staggered 入场 */
-.findings > * {
-  animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both;
-}
-.findings > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.findings > *:nth-child(2) {
-  animation-delay: 60ms;
-}
-.findings > *:nth-child(3) {
-  animation-delay: 120ms;
-}
-.findings > *:nth-child(4) {
-  animation-delay: 180ms;
-}
-.findings > *:nth-child(5) {
-  animation-delay: 240ms;
-}
-.findings > *:nth-child(n + 6) {
-  animation-delay: 300ms;
-}
-.finding {
-  transition: transform var(--dur-fast) var(--ease-out-smooth);
-}
-.finding:hover {
-  transform: translateX(2px);
-}
+/* 装饰性 staggered 入场与 hover 位移已移除（去 AI 感） */
 </style>

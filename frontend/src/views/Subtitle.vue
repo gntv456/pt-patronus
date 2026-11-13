@@ -14,7 +14,7 @@ import {
   type SubtitleConfig,
   type LangCode,
 } from '@/api/subtitle'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
@@ -119,11 +119,18 @@ async function saveConfig() {
   }
 }
 
+// 语义色 + soft 底，避免 hex 与 +'22' 拼接（拼接对 CSS 变量无效）。
 const sourceColor: Record<string, string> = {
-  assrt: '#4361ee',
-  opensubtitles: '#f77f00',
-  subhd: '#06a77d',
-  zimuku: '#9d4edd',
+  assrt: 'var(--color-primary)',
+  opensubtitles: 'var(--pt-warn-fg)',
+  subhd: 'var(--pt-success-fg)',
+  zimuku: 'var(--color-primary-hover)',
+}
+const sourceSoft: Record<string, string> = {
+  assrt: 'var(--color-primary-soft)',
+  opensubtitles: 'var(--color-warning-soft)',
+  subhd: 'var(--color-success-soft)',
+  zimuku: 'var(--color-primary-soft)',
 }
 
 onMounted(() => {})
@@ -140,8 +147,8 @@ onMounted(() => {})
       {{ t('subtitle.subtitle') }}
     </p>
 
-    <div class="search-bar glass">
-      <GlassIcon name="subtitle" :size="28" from="#4cc9f0" to="#4361ee" />
+    <div class="search-bar solid-card">
+      <SptIcon name="message" :size="28" aria-hidden="true" />
       <el-input v-model="q" :placeholder="t('subtitle.searchPlaceholder')" class="search-input" @keyup.enter="search" />
       <el-select v-model="language" :placeholder="t('subtitle.langPlaceholder')" class="lang-select" clearable>
         <el-option :label="t('subtitle.lang.chs')" value="chs" />
@@ -151,12 +158,13 @@ onMounted(() => {})
       <el-button type="primary" :loading="loading" @click="search">{{ t('common.search') }}</el-button>
     </div>
 
-    <div v-loading="loading" class="results">
-      <div v-for="(s, i) in results" :key="`${s.source}:${s.source_id}:${i}`" class="glass glass-hover result">
+    <el-skeleton v-if="loading" :rows="5" animated />
+    <div v-else class="results">
+      <div v-for="(s, i) in results" :key="`${s.source}:${s.source_id}:${i}`" class="solid-card result">
         <div class="result-main">
           <el-tag
             size="small"
-            :style="{ backgroundColor: sourceColor[s.source] + '22', color: sourceColor[s.source], border: 'none' }"
+            :style="{ backgroundColor: sourceSoft[s.source], color: sourceColor[s.source], border: 'none' }"
           >
             {{ SOURCE_LABEL[s.source] }}
           </el-tag>
@@ -173,21 +181,21 @@ onMounted(() => {})
           >{{ t('harem.down') }}</el-button
         >
       </div>
-      <EmptyState v-if="error && !loading" icon="⚠️" :title="t('subtitle.searchFailed')" :description="error">
+      <EmptyState v-if="error && !loading" :title="t('subtitle.searchFailed')" :description="error">
         <el-button @click="search">{{ t('common.retry') }}</el-button>
       </EmptyState>
       <EmptyState
         v-if="searched && !results.length && !loading"
-        icon="💬"
         :title="t('subtitle.notFound')"
         :description="t('subtitle.notFoundDesc')"
       />
       <EmptyState
         v-if="!searched && !loading"
-        icon="💬"
         :title="t('subtitle.searchTitle')"
         :description="t('subtitle.searchDesc')"
-      />
+      >
+        <el-button @click="openConfig">{{ t('subtitle.sourcesCfg') }}</el-button>
+      </EmptyState>
     </div>
 
     <!-- 字幕源配置 -->

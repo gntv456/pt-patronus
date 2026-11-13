@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { entertainmentApi, type BetEvent, type BetEventDetail, type PlayResult } from '@/api/entertainment'
 import { entFail } from '@/utils/entFail'
+import { useFeedback } from '@/composables/useFeedback'
 
 // OurBits 赛事押注（菠菜）：列表 → 盘口（选项+赔率）→ 下单 → 结果。
 const props = defineProps<{ siteId: number; game?: string }>()
@@ -23,6 +24,8 @@ const selectedOpt = ref<string>('')
 const amount = ref(100)
 const playing = ref(false)
 const last = ref<PlayResult | null>(null)
+const betError = ref('') // 行内错误：就近显示在金额输入下方
+const { confirm } = useFeedback()
 
 // 选项按赔率升序（热门在前，更直观）。
 const sortedOptions = computed(() =>
@@ -48,6 +51,7 @@ async function openEvent(ev: BetEvent) {
   detailLoading.value = true
   selectedOpt.value = ''
   last.value = null
+  betError.value = ''
   try {
     detail.value = await entertainmentApi.eventDetail(props.siteId, game, ev.id)
     if (detail.value.my_option) selectedOpt.value = ''
@@ -64,23 +68,46 @@ function backToList() {
   detail.value = null
   selectedOpt.value = ''
   last.value = null
+  betError.value = ''
 }
 
 async function doBet() {
-  if (!selectedOpt.value || amount.value <= 0) {
-    ElMessage.warning(t('eb.needInput'))
+  betError.value = ''
+  if (!selectedOpt.value) {
+    betError.value = t('eb.needInput')
     return
   }
+  // 金额就近校验：空/非数/非整数/≤0 一律行内拦截，不发请求
+  const amt = Math.floor(Number(amount.value))
+  if (!Number.isFinite(amt) || amt < 1) {
+    betError.value = t('eb.amountInvalid')
+    return
+  }
+  amount.value = amt
   if (playing.value) return
+  // 下注不可撤销：先确认对象（赛事+选项+金额+赔率）再下单
+  const opt = sortedOptions.value.find((o) => o.id === selectedOpt.value)
+  const ok = await confirm({
+    title: t('eb.betGo'),
+    detail: t('eb.betConfirmDetail', {
+      event: detail.value?.event.title ?? '',
+      opt: opt?.name ?? selectedOpt.value,
+      amt,
+      unit: t('eb.magic'),
+      odds: opt?.odds ?? '',
+    }),
+    confirmText: t('eb.betGo'),
+  })
+  if (!ok) return
   playing.value = true
   try {
-    const res = await entertainmentApi.bet(props.siteId, game, { selection: selectedOpt.value, amount: amount.value })
+    const res = await entertainmentApi.bet(props.siteId, game, { selection: selectedOpt.value, amount: amt })
     last.value = res
     if (res.success) {
       ElMessage.success(res.message || t('eb.betOk'))
       if (res.balance) balance.value = res.balance
     } else {
-      ElMessage.warning(res.message || t('eb.betFailed'))
+      betError.value = res.message || t('eb.betFailed')
     }
     await refresh()
     if (detail.value) {
@@ -89,7 +116,7 @@ async function doBet() {
     }
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || t('common.requestFailed'))
+    betError.value = msg || t('common.requestFailed')
   } finally {
     playing.value = false
   }
@@ -103,7 +130,7 @@ onMounted(refresh)
 <template>
   <div class="eventbet" v-loading="loading">
     <div class="hero">
-      <div class="hero-title">⚽ {{ t('eb.title') }}</div>
+      <div class="hero-title"><SptIcon name="trophy" :size="16" aria-hidden="true" /> {{ t('eb.title') }}</div>
       <div class="balance">
         {{ t('bs.balance') }} <b>{{ balance != null ? fmt(Math.floor(balance)) : '—' }}</b> {{ t('eb.magic') }}
       </div>
@@ -114,7 +141,7 @@ onMounted(refresh)
       <div class="glass section">
         <div class="ev-head">
           <span class="ev-title">{{ detail.event.title }}</span>
-          <button class="link-btn" @click="backToList">‹ {{ t('eb.backList') }}</button>
+          <button class="link-btn" @click="backToList"><SptIcon name="arrow-left" :size="16" aria-hidden="true" /> {{ t('eb.backList') }}</button>
         </div>
         <div class="ev-meta">
           <span>{{ t('eb.deadline', { v: detail.event.end_time }) }}</span>
@@ -141,11 +168,12 @@ onMounted(refresh)
         <template v-if="!detail.my_option">
           <div class="bet-row">
             <span class="lbl">{{ t('eb.stakeMagic') }}</span>
-            <input v-model.number="amount" type="number" class="amt" min="1" />
+            <input v-model.number="amount" type="number" class="amt" min="1" step="1" :aria-invalid="!!betError" />
             <button class="op primary" :disabled="playing || !selectedOpt" @click="doBet">
               {{ playing ? t('eb.submitting') : t('eb.betGo') }}
             </button>
           </div>
+          <p v-if="betError" class="bet-error" role="alert">{{ betError }}</p>
           <p class="hint">{{ t('eb.payoutHint') }}</p>
         </template>
       </div>
@@ -169,12 +197,12 @@ onMounted(refresh)
           <span>{{ t('eb.totalStake', { v: fmt(Math.floor(ev.total_stake)) }) }}</span>
           <span :class="{ mine: ev.my_stake !== '-' && ev.my_stake !== '' }">{{ t('eb.me', { v: ev.my_stake }) }}</span>
         </div>
-        <div class="ev-card-go">{{ t('eb.viewOdds') }} ›</div>
+        <div class="ev-card-go">{{ t('eb.viewOdds') }} <SptIcon name="chevron-right" :size="16" aria-hidden="true" /></div>
       </div>
     </template>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
-      <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
+      <span class="badge"><SptIcon :name="last.success ? 'check' : 'x'" :size="16" aria-hidden="true" />{{ last.success ? '成功' : '失败' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         <span v-if="last.balance" class="r-bal">{{ t('bs.balance') }} {{ fmt(Math.floor(last.balance)) }}</span>

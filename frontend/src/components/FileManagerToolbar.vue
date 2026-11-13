@@ -65,7 +65,7 @@ const emit = defineEmits<{
               size="small"
               @click="emit('toggleView')"
               :title="viewMode === 'list' ? t('filemanager.grid') : t('filemanager.list')"
-              >{{ viewMode === 'list' ? '▤' : '☰' }}</el-button
+              ><SptIcon :name="viewMode === 'list' ? 'list' : 'grid'" :size="16" aria-hidden="true" /></el-button
             >
             <el-button size="small" :icon="Refresh" circle @click="emit('refresh')" />
           </div>

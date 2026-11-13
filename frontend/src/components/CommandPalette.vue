@@ -7,15 +7,20 @@
 import { useI18n } from 'vue-i18n'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
+
+// 键位按平台显示，与顶栏保持一致。
+const isMac = /Mac|iP(hone|ad|od)/.test(
+  typeof navigator === 'undefined' ? '' : navigator.userAgent || navigator.platform,
+)
+const shortcutKey = isMac ? '⌘K' : 'Ctrl K'
 
 export interface PaletteItem {
   name: string
   label: string
   icon?: string
-  from?: string
-  to?: string
   group?: string
   /** 额外别名（PT 黑话等），参与 fuzzy */
   aliases?: string[]
@@ -40,6 +45,7 @@ const router = useRouter()
 const query = ref('')
 const active = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
+let lastFocused: HTMLElement | null = null
 
 const open = computed({
   get: () => props.modelValue,
@@ -97,6 +103,9 @@ const filtered = computed(() => {
   return scored.slice(0, 30).map((x) => x.it)
 })
 
+// listbox / combobox 的 aria-activedescendant 指向当前高亮选项。
+const activeOptionId = computed(() => (filtered.value.length ? `cp-option-${active.value}` : undefined))
+
 watch(filtered, () => {
   active.value = 0
 })
@@ -105,10 +114,15 @@ watch(
   () => props.modelValue,
   async (v) => {
     if (v) {
+      lastFocused = document.activeElement as HTMLElement | null
       query.value = ''
       active.value = 0
       await nextTick()
       inputRef.value?.focus()
+    } else {
+      // 关闭后把焦点归还触发者（deep-linking / focus-return）。
+      lastFocused?.focus?.()
+      lastFocused = null
     }
   },
 )
@@ -148,6 +162,12 @@ function onKeydown(e: KeyboardEvent) {
     if (filtered.value.length) active.value = (active.value - 1 + filtered.value.length) % filtered.value.length
     return
   }
+  if (e.key === 'Tab') {
+    // 面板内仅输入框可聚焦：Tab 不逃出 dialog（简化焦点陷阱）。
+    e.preventDefault()
+    inputRef.value?.focus()
+    return
+  }
   if (e.key === 'Enter') {
     e.preventDefault()
     const it = filtered.value[active.value]
@@ -180,24 +200,29 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <div v-a11y-button v-if="open" class="cp-backdrop" @click.self="close">
-      <div v-a11y-button class="cp-panel glass" role="dialog" aria-modal="true" :aria-label="t('cpa.aria')" @click.stop>
+    <div v-if="open" class="cp-backdrop" @click.self="close">
+      <div class="cp-panel solid-card" role="dialog" aria-modal="true" :aria-label="t('cpa.aria')" @click.stop>
         <div class="cp-input-row">
-          <span class="cp-search-icon">🔍</span>
+          <SptIcon name="search" :size="18" class="cp-search-icon" aria-hidden="true" />
           <input
             ref="inputRef"
             v-model="query"
             class="cp-input"
             type="search"
+            role="combobox"
+            aria-controls="cp-list"
+            :aria-expanded="true"
+            :aria-activedescendant="activeOptionId"
             :placeholder="t('cpa.placeholder')"
             autocomplete="off"
             spellcheck="false"
           />
           <kbd class="cp-kbd">Esc</kbd>
         </div>
-        <ul class="cp-list" role="listbox">
+        <ul id="cp-list" class="cp-list" role="listbox" :aria-activedescendant="activeOptionId">
           <li
             v-for="(item, i) in filtered"
+            :id="'cp-option-' + i"
             :key="item.name + item.label"
             class="cp-item"
             :class="{ active: i === active }"
@@ -206,15 +231,8 @@ onUnmounted(() => {
             @mouseenter="active = i"
             @click="run(item)"
           >
-            <GlassIcon
-              v-if="item.icon"
-              :name="item.icon"
-              :from="item.from || 'var(--pt-primary)'"
-              :to="item.to || 'var(--pt-primary-2)'"
-              :size="28"
-              class="cp-icon"
-            />
-            <span v-else class="cp-icon-fallback">↗</span>
+            <GlassIcon v-if="item.icon" :name="item.icon" :size="28" class="cp-icon" aria-hidden="true" />
+            <span v-else class="cp-icon-fallback"><SptIcon name="arrow-right" :size="16" aria-hidden="true" /></span>
             <div class="cp-meta">
               <div class="cp-label">{{ item.label }}</div>
               <div v-if="item.group || item.desc" class="cp-sub">
@@ -223,7 +241,7 @@ onUnmounted(() => {
                 <span v-if="item.desc">{{ item.desc }}</span>
               </div>
             </div>
-            <span class="cp-hint">↵</span>
+            <span class="cp-hint"><SptIcon name="arrow-right" :size="14" aria-hidden="true" /></span>
           </li>
           <li v-if="!filtered.length" class="cp-empty">
             {{ t('cpa.noMatchPre') }}{{ query }}{{ t('cpa.noMatchPost') }}
@@ -231,9 +249,9 @@ onUnmounted(() => {
         </ul>
         <div class="cp-footer">
           <span><kbd>↑↓</kbd> {{ t('cpa.select') }}</span>
-          <span><kbd>↵</kbd> {{ t('cpa.open') }}</span>
+          <span><kbd><SptIcon name="arrow-right" :size="12" aria-hidden="true" /></kbd> {{ t('cpa.open') }}</span>
           <span><kbd>Esc</kbd> {{ t('common.close') }}</span>
-          <span class="cp-foot-right"><kbd>⌘K</kbd> {{ t('cpa.toggle') }}</span>
+          <span class="cp-foot-right"><kbd>{{ shortcutKey }}</kbd> {{ t('cpa.toggle') }}</span>
         </div>
       </div>
     </div>
@@ -245,8 +263,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: rgba(15, 23, 42, 0.42);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--color-text) 42%, transparent);
   display: flex;
   justify-content: center;
   padding-top: 15vh;
@@ -256,41 +273,38 @@ onUnmounted(() => {
   max-height: min(70vh, 560px);
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-panel);
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--shadow-popover);
 }
 .cp-input-row {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   padding: 14px 16px;
-  border-bottom: 1px solid var(--pt-primary-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 .cp-search-icon {
-  font-size: var(--fs-lg);
-  opacity: 0.7;
+  color: var(--color-text-secondary);
 }
 .cp-input {
   flex: 1;
   border: none;
-  outline: none;
   background: transparent;
   font-size: var(--fs-lg);
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .cp-input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.7;
+  color: var(--color-text-muted);
 }
 .cp-kbd {
   font-family: inherit;
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  background: var(--pt-primary-bg);
-  color: var(--text-muted);
-  border: 1px solid var(--pt-primary-bg);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 .cp-list {
   list-style: none;
@@ -301,16 +315,28 @@ onUnmounted(() => {
   min-height: 120px;
 }
 .cp-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   cursor: pointer;
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .cp-item.active {
-  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.cp-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--color-primary);
 }
 .cp-icon {
   flex-shrink: 0;
@@ -320,7 +346,7 @@ onUnmounted(() => {
   height: 28px;
   display: grid;
   place-items: center;
-  opacity: 0.5;
+  color: var(--color-text-muted);
 }
 .cp-meta {
   flex: 1;
@@ -332,37 +358,42 @@ onUnmounted(() => {
 }
 .cp-sub {
   font-size: var(--fs-xs);
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cp-hint {
-  opacity: 0.35;
+  color: var(--color-text-muted);
   font-size: var(--fs-xs);
 }
 .cp-empty {
   padding: 24px 12px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--fs-body);
 }
 .cp-footer {
   display: flex;
+  align-items: center;
   gap: var(--sp-3);
   padding: 8px 14px;
-  font-size: var(--fs-2xs);
-  color: var(--text-muted);
-  border-top: 1px solid var(--pt-primary-bg);
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border);
 }
 .cp-footer kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: inherit;
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   padding: 1px 4px;
-  border-radius: var(--radius-2xs);
-  background: var(--pt-primary-bg);
-  border: 1px solid var(--pt-primary-bg);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
 }
 .cp-foot-right {
   margin-left: auto;

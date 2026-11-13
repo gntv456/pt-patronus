@@ -8,21 +8,21 @@
 .hero {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #db2777, #f59e0b);
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
   text-align: center;
 }
 .hero-title {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #fff;
+  color: var(--color-text);
 }
 .balance {
   margin-top: 4px;
   font-size: var(--fs-body);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-secondary);
 }
 .balance b {
-  color: #fde68a;
+  color: var(--color-primary);
   font-size: var(--fs-lg);
 }
 .cur {
@@ -43,8 +43,8 @@
   text-align: center;
   padding: 10px 4px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .stat-val {
   font-size: var(--fs-xl);
@@ -52,19 +52,23 @@
   color: var(--pt-primary);
 }
 .stat-val.warn {
-  color: var(--pt-warn, #f59e0b);
+  color: var(--pt-warn-fg);
 }
 .stat-lbl {
   font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 .refresh-btn {
   width: 40px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   color: inherit;
   cursor: pointer;
   font-size: var(--fs-xl);
@@ -122,7 +126,7 @@
 }
 .empty {
   font-size: var(--fs-body);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   padding: 8px 0;
 }
 
@@ -136,7 +140,7 @@
 }
 .trend-cap {
   font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   margin-bottom: 4px;
 }
 .bar-row {
@@ -147,17 +151,17 @@
   display: inline-block;
   height: 18px;
   line-height: 18px;
-  color: #fff;
+  color: var(--color-on-accent);
   font-size: var(--fs-2xs);
   border-radius: var(--radius-2xs);
   padding: 0 6px;
   white-space: nowrap;
 }
 .bar.big {
-  background: #ef4444;
+  background: var(--color-danger);
 }
 .bar.small {
-  background: #3b82f6;
+  background: var(--color-primary);
 }
 .trend-house {
   font-size: var(--fs-2xs);
@@ -174,7 +178,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--color-on-accent);
   font-size: var(--fs-2xs);
   line-height: 20px;
   text-align: center;
@@ -190,7 +194,7 @@
 /* 下注 */
 .my-bet {
   font-size: var(--fs-xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   margin-bottom: 8px;
 }
 .bet-amount {
@@ -203,14 +207,14 @@
   flex: 1;
   padding: 8px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   font-size: var(--fs-lg);
 }
 .hint {
   font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .quicks {
   display: flex;
@@ -219,17 +223,18 @@
   margin-bottom: 8px;
 }
 .quick {
+  min-height: 24px;
   padding: 5px 10px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   cursor: pointer;
   font-size: var(--fs-xs);
 }
 .quick.allin {
-  background: linear-gradient(135deg, #f59e0b, #db2777);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-on-accent);
   border: 0;
   font-weight: 700;
 }
@@ -237,8 +242,8 @@
   width: 100%;
   padding: 7px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   font-size: var(--fs-body);
   margin-bottom: 8px;
@@ -256,13 +261,13 @@
   cursor: pointer;
   font-weight: 800;
   font-size: var(--fs-lg);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .op.big {
-  background: linear-gradient(135deg, #dc2626, #ef4444);
+  background: var(--color-danger);
 }
 .op.small {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: var(--color-primary);
 }
 .op:disabled {
   opacity: 0.45;
@@ -292,7 +297,7 @@
 }
 .bet-name {
   display: block;
-  color: var(--text-muted, #aaa);
+  color: var(--color-text-secondary);
 }
 
 /* 排行 */
@@ -307,34 +312,46 @@
   padding: 3px 8px;
 }
 .tab {
+  min-height: 24px;
   padding: 4px 10px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  border: 1px solid var(--color-border);
   background: transparent;
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   cursor: pointer;
   font-size: var(--fs-xs);
 }
 .tab.on {
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: transparent;
 }
 
 /* 记录 */
 .rec-table {
   font-size: var(--fs-xs);
+  max-height: 320px;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 .rec-head,
 .rec-row {
   display: grid;
   grid-template-columns: 1.2fr 1.4fr 1.4fr 0.5fr 1fr 0.6fr 1.4fr;
   gap: var(--sp-1);
+  min-width: 720px;
+  min-height: 36px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
   padding: 5px 0;
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rec-head {
-  color: var(--text-muted, #999);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 .rec-row .big {
@@ -350,7 +367,7 @@
   font-weight: 700;
 }
 .muted {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .bets-cell {
   font-size: var(--fs-2xs);
@@ -388,8 +405,8 @@
   flex: 1;
   padding: 7px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   font-size: var(--fs-body);
 }
@@ -398,7 +415,7 @@
   border: 0;
   border-radius: var(--radius-xs);
   background: var(--pt-primary);
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   font-size: var(--fs-body);
 }

@@ -12,7 +12,7 @@ import { brushflowApi, type BrushFlowTask, type BrushFlowSeed } from '@/api/brus
 import { siteApi } from '@/api/site'
 import { downloaderApi } from '@/api/downloader'
 import { filterApi } from '@/api/filter'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
@@ -267,7 +267,7 @@ onMounted(() => {
     <!-- 首屏骨架（W3）：任务卡结构已知（图标+标题+三列统计），骨架屏比转圈更
          传达「内容即将就位」；glass.css 的 .pt-skeleton 此前零使用。 -->
     <div v-if="loading && !displayTasks.length" class="grid" aria-busy="true">
-      <div v-for="i in 4" :key="'sk' + i" class="glass card sk-card">
+      <div v-for="i in 4" :key="'sk' + i" class="solid-card card sk-card">
         <div class="card-head">
           <div class="pt-skeleton sk-icon"></div>
           <div class="card-title">
@@ -285,9 +285,9 @@ onMounted(() => {
       </div>
     </div>
     <div v-else v-loading="loading" class="grid">
-      <div v-for="task in displayTasks" :key="task.id" class="glass glass-hover card">
+      <div v-for="task in displayTasks" :key="task.id" class="solid-card card">
         <div class="card-head">
-          <GlassIcon name="brushflow" :size="34" from="#f7971e" to="#ff6a00" />
+          <SptIcon name="trending-up" :size="34" aria-hidden="true" />
           <div class="card-title">
             <div class="name">{{ task.name }}</div>
             <div class="meta">{{ siteName(task.site_id) }} → {{ dlName(task.downloader_id) }}</div>
@@ -310,7 +310,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="task.last_error" class="err">⚠ {{ task.last_error }}</div>
+        <div v-if="task.last_error" class="err"><SptIcon name="alert-triangle" :size="14" aria-hidden="true" /> {{ task.last_error }}</div>
 
         <div class="actions">
           <el-button size="small" :loading="running === `${task.id}:select`" @click="runAction(task, 'select')">{{
@@ -326,7 +326,6 @@ onMounted(() => {
       </div>
       <EmptyState
         v-if="!displayTasks.length && !loading"
-        icon="🚀"
         :title="focusSiteId ? t('brushflow.emptySiteTitle') : t('brushflow.emptyTitle')"
         :description="focusSiteId ? t('brushflow.emptySiteDesc') : t('brushflow.emptyDesc')"
       >

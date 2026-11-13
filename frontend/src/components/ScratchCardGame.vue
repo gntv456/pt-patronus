@@ -44,7 +44,7 @@ const { stats, options, prizes, history, playing, buying, autoPlaying, autoCount
       <div class="section-label">{{ t('sc.prizes') }}</div>
       <div class="prize-row">
         <div v-for="p in prizes" :key="p.id" class="prize-chip">
-          <span class="prize-icon">{{ p.name.slice(0, 1) }}</span>
+          <span class="prize-icon" aria-hidden="true">{{ p.name.slice(0, 1) }}</span>
           <span class="prize-name">{{ p.name }}</span>
         </div>
       </div>
@@ -58,7 +58,10 @@ const { stats, options, prizes, history, playing, buying, autoPlaying, autoCount
           <span class="cover-hint">{{ t('msg1.hint') }}</span>
         </div>
         <div v-else class="prize-reveal">
-          <div class="reveal-icon">{{ reveal.amount && reveal.amount > 0 ? '🎊' : '·' }}</div>
+          <div class="reveal-icon">
+            <SptIcon v-if="reveal.amount && reveal.amount > 0" name="party-popper" :size="28" aria-hidden="true" />
+            <template v-else>·</template>
+          </div>
           <div class="reveal-name">{{ reveal.prize || (reveal.success ? t('sp.thanks') : t('msg1.noWin')) }}</div>
           <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">×{{ fmt(reveal.amount) }}</div>
           <div v-if="reveal.message" class="reveal-msg">{{ reveal.message }}</div>

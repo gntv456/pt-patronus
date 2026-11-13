@@ -231,7 +231,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="search-bar glass">
+    <div class="search-bar solid-card">
       <div class="search-main">
         <el-input
           v-model="keyword"
@@ -263,8 +263,8 @@ onUnmounted(() => {
     </div>
 
     <!-- 顶层请求失败 -->
-    <div v-if="error" class="empty glass error-state">
-      <div class="err-text">⚠ {{ error }}</div>
+    <div v-if="error" class="empty solid-card error-state">
+      <div class="err-text" role="alert"><SptIcon name="alert-triangle" :size="16" aria-hidden="true" /> {{ error }}</div>
       <el-button size="small" @click="search">{{ t('search.retry') }}</el-button>
     </div>
 

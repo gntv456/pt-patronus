@@ -140,7 +140,7 @@ mixin AssistantOpsMixin on State<AssistantPage> {
     // 出错那一轮后端不落助手消息：刷新后记录里只剩用户那句，用户看不出这轮跑过、
     // 也不知道为什么没结果（重发还可能再触发一次写工具）。把原因钉进会话记录。
     if (liveError.isNotEmpty && mounted && _activeId == conv) {
-      setState(() => _messages = [..._messages, AgentMessage(id: -2, role: 'assistant', content: '⚠ $liveError')]);
+      setState(() => _messages = [..._messages, AgentMessage(id: -2, role: 'assistant', content: '流式输出失败：$liveError')]);
       _scrollToBottom();
     }
   }

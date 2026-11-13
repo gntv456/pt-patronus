@@ -4,7 +4,7 @@
 -->
 
 <script setup lang="ts">
-import { VueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -16,10 +16,14 @@ import type { WorkflowRun } from '@/api/workflow'
 import WorkflowNode from '@/components/workflow/WorkflowNode.vue'
 import NodeParamForm from '@/components/workflow/NodeParamForm.vue'
 import { useWorkflowEditor } from '@/composables/useWorkflowEditor'
+import { useFeedback } from '@/composables/useFeedback'
 import type { NodeInfo } from '@/api/workflow'
 
 const FLOW_ID = 'wf-editor'
 const { t } = useI18n()
+const feedback = useFeedback()
+const fileRef = ref<HTMLInputElement | null>(null)
+const { addNodes } = useVueFlow(FLOW_ID)
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave } from 'vue-router'
@@ -115,7 +119,7 @@ function onKeydown(e: KeyboardEvent) {
   // Delete/Backspace 删除选中的节点或边
   if ((e.key === 'Delete' || e.key === 'Backspace') && selected.value) {
     e.preventDefault()
-    deleteSelected()
+    confirmDeleteSelected()
     return
   }
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge.value) {
@@ -131,6 +135,33 @@ function onKeydown(e: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+// 破坏性操作：删除节点确认 + 8s 撤销（快照恢复到画布）。
+async function confirmDeleteSelected() {
+  const node = selected.value
+  if (!node) return
+  const label = (node.data as any)?.name || node.id
+  const ok = await feedback.confirm({ title: t('common.confirm'), detail: t('wfe.deleteNode') + '：' + label, danger: true })
+  if (!ok) return
+  const snapshot = JSON.parse(JSON.stringify(node))
+  deleteSelected()
+  feedback.undo(t('common.deleted'), () => {
+    addNodes([snapshot])
+    selected.value = snapshot
+  })
+}
+
+// 拖拽替代：键盘 Enter/Space 直接把节点加入画布。
+function addNodeFromPalette(a: NodeInfo) {
+  const id = a.type + '-' + Date.now()
+  addNodes([{
+    id,
+    type: 'wf',
+    position: { x: 80 + Math.round(Math.random() * 120), y: 80 + Math.round(Math.random() * 120) },
+    data: { type: a.type, name: a.name, params: { ...((a as any).default_params || {}) }, info: a, branch: a.type === 'condition' },
+  }])
+  dirty.value = true
+}
 
 // P0: 未保存拦截
 onBeforeRouteLeave(async (_to, _from, next) => {
@@ -151,24 +182,22 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 <template>
   <div class="editor">
     <!-- 顶栏 -->
-    <div class="toolbar glass-bar">
-      <el-button size="small" @click="router.push({ name: 'workflow' })">← {{ t('wfe.back') }}</el-button>
+    <div class="toolbar solid-card">
+      <el-button size="small" @click="router.push({ name: 'workflow' })"><SptIcon name="arrow-left" :size="14" /> {{ t('wfe.back') }}</el-button>
       <span class="t-title">{{ wfId ? t('wfe.editWf') : t('wfe.newWf') }}</span>
       <div class="spacer"></div>
-      <el-button size="small" @click="openTemplates">📋 {{ t('wfe.templates') }}</el-button>
-      <el-button size="small" @click="exportJSON">⬆ {{ t('wfe.export') }}</el-button>
-      <label class="import-btn">
-        ⬇ {{ t('wfe.import') }}
-        <input type="file" accept="application/json" hidden @change="onImportFile" />
-      </label>
-      <el-button size="small" :loading="running" type="primary" @click="run">▶ {{ t('wfe.run') }}</el-button>
+      <el-button size="small" @click="openTemplates"><SptIcon name="layers" :size="14" /> {{ t('wfe.templates') }}</el-button>
+      <el-button size="small" @click="exportJSON"><SptIcon name="upload" :size="14" /> {{ t('wfe.export') }}</el-button>
+      <el-button size="small" @click="fileRef?.click()"><SptIcon name="download" :size="14" /> {{ t('wfe.import') }}</el-button>
+      <input ref="fileRef" type="file" accept="application/json" hidden @change="onImportFile" />
+      <el-button size="small" :loading="running" type="primary" @click="run"><SptIcon name="play" :size="14" /> {{ t('wfe.run') }}</el-button>
       <el-button v-if="wfId" size="small" @click="openHistory">{{ t('wfe.history') }}</el-button>
-      <el-button size="small" type="success" :loading="saving" @click="save">💾 {{ t('common.save') }}</el-button>
+      <el-button size="small" type="success" :loading="saving" @click="save"><SptIcon name="save" :size="14" /> {{ t('common.save') }}</el-button>
     </div>
 
     <div class="body">
       <!-- 左：节点库 -->
-      <aside class="palette glass">
+      <aside class="palette solid-card">
         <div class="p-title">{{ t('wfe.palette') }}</div>
         <el-input
           v-model="paletteSearch"
@@ -186,7 +215,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
               :key="a.type"
               class="cat-item"
               draggable="true"
+              tabindex="0"
+              role="button"
+              :aria-label="t('common.add') + ' ' + a.name"
               @dragstart="onDragStart($event, a)"
+              @keydown.enter="addNodeFromPalette(a)"
+              @keydown.space.prevent="addNodeFromPalette(a)"
               :title="a.description"
             >
               {{ a.name }}
@@ -199,9 +233,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
       </aside>
 
       <!-- 中：画布 -->
-      <div class="canvas-wrap glass" @drop="onDrop" @dragover="onDragOver">
-        <VueFlow :id="FLOW_ID" :default-edge-options="{ animated: true }" fit-view-on-init>
-          <Background pattern-color="#aaa" :gap="16" />
+      <div class="canvas-wrap solid-card" @drop="onDrop" @dragover="onDragOver">
+        <VueFlow :id="FLOW_ID" :default-edge-options="{ animated: false }" fit-view-on-init>
+          <Background pattern-color="var(--color-border)" :gap="16" />
           <Controls />
           <MiniMap />
           <template #node-wf="props">
@@ -211,7 +245,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
       </div>
 
       <!-- 右：配置面板 -->
-      <aside class="config glass">
+      <aside class="config solid-card">
         <div class="p-title">{{ t('wfe.wfSettings') }}</div>
         <div class="wf-form">
           <div class="field">
@@ -260,7 +294,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
             :schema="(selected.data as any).info.param_schema"
             v-model:params="(selected.data as any).params"
           />
-          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="deleteSelected">{{
+          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="confirmDeleteSelected">{{
             t('wfe.deleteNode')
           }}</el-button>
         </div>
@@ -313,12 +347,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
     <!-- 模板 -->
     <el-dialog v-model="showTemplates" :title="t('wfe.tplTitle')" width="560px">
       <div class="tpl-list">
-        <div v-a11y-button v-for="t in templates" :key="t.key" class="tpl-item" @click="applyTemplate(t)">
+        <button type="button" v-for="t in templates" :key="t.key" class="tpl-item" :aria-label="t.name" @click="applyTemplate(t)">
           <div class="tpl-name">
             {{ t.name }} <span class="tpl-cat">{{ t.category }}</span>
           </div>
           <div class="text-muted small">{{ t.description }}</div>
-        </div>
+        </button>
       </div>
     </el-dialog>
   </div>

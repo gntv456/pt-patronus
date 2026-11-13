@@ -144,10 +144,10 @@ export function useTransferRules() {
       // 「媒体源挂了」与「库里真没这部片」分开：前者提示的是源/网络问题，
       // 后者才是要补识别词或换名——混成一句会让人照着错的方向改文件名。
       const mediaPart = r.media_error
-        ? `⚠️ 媒体源查询失败：${r.media_error}`
+        ? `注意：媒体源查询失败：${r.media_error}`
         : r.matched
-          ? `✅ 媒体源匹配：${r.matched.title}${r.matched.year ? `(${r.matched.year})` : ''}`
-          : '⚠️ 媒体源未匹配（可补识别词或换名）'
+          ? `媒体源匹配：${r.matched.title}${r.matched.year ? `(${r.matched.year})` : ''}`
+          : '注意：媒体源未匹配（可补识别词或换名）'
       const parts = [
         `规整后：${r.normalized}`,
         `标题「${r.title}」${r.year ? `(${r.year})` : ''}`,

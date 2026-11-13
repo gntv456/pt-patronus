@@ -108,7 +108,7 @@ describe('媒体源设置页的 IMDb(OMDb) 入口', () => {
     input.value = 'omdb-real-key'
     input.dispatchEvent(new Event('input'))
     await new Promise((r) => setTimeout(r, 0))
-    ;(host.querySelector('.actions button') as HTMLButtonElement).click()
+    ;(imdbGroup(host).querySelector('.group-actions button') as HTMLButtonElement).click()
     for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0))
     expect(setCalls).toHaveLength(1)
     expect(setCalls[0].omdb_api_key).toBe('omdb-real-key')

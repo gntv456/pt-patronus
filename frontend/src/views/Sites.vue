@@ -15,7 +15,7 @@ import { useWs } from '@/composables/useWs'
 import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 import { useSitesForm, defUrls } from '@/composables/useSitesForm'
-import { ruleRequired, ruleRequiredChange, ruleURL } from '@/composables/useFormRules'
+import { ruleRequired, ruleURL } from '@/composables/useFormRules'
 import { useSitesActions } from '@/composables/useSitesActions'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
@@ -137,7 +137,6 @@ const { t } = useI18n()
 const siteFormRef = ref()
 const siteFormRules = {
   name: [ruleRequired(t('sites.name'))],
-  definition: [ruleRequiredChange(t('sites.definition'))],
   base_url: [ruleRequired(t('sites.address')), ruleURL(t('sites.address'))],
 }
 async function submitValidated() {
@@ -145,6 +144,9 @@ async function submitValidated() {
     try {
       await siteFormRef.value.validate()
     } catch {
+      // 校验失败：滚动并聚焦第一个错误字段，避免静默无响应。
+      const firstErr = siteFormRef.value?.$el?.querySelector?.('.el-form-item.is-error input, .el-form-item.is-error textarea')
+      firstErr?.focus?.()
       return
     }
   }
@@ -159,14 +161,15 @@ onMounted(load)
     <div class="head">
       <h2 class="page-title">{{ t('sites.title') }}</h2>
       <div class="head-actions">
-        <el-button @click="openRecords()">{{ t('sites.records') }}</el-button>
+        <el-button text @click="openRecords()">{{ t('sites.records') }}</el-button>
         <el-tooltip :content="t('sites.checkinAllHint')" placement="bottom" :disabled="!checkinAllLoading">
-          <el-button :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
+          <el-button text :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
         </el-tooltip>
-        <el-button :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
+        <el-button text :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
           t('sites.refreshStatus')
         }}</el-button>
         <el-button
+          text
           :loading="staleVisitLoading"
           :disabled="!inactiveSiteCount || staleVisitLoading"
           :title="t('sites.staleVisitTitle')"
@@ -372,9 +375,14 @@ onMounted(load)
 }
 :deep(.el-table),
 :deep(.el-table tr),
-:deep(.el-table td),
-:deep(.el-table th) {
+:deep(.el-table td) {
   background-color: transparent !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background-color: var(--color-surface-2) !important;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 :deep(.el-table) {
   --el-table-border-color: var(--divider);

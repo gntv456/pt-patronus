@@ -253,11 +253,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
+    <el-tabs v-model="mainTab" class="page-tabs solid-card" @tab-change="onMainTab">
       <el-tab-pane :label="t('subscriptions.tabMedia')" name="media">
         <SubscriptionGlobalDialog v-model:open="globalOpen" :form="globalForm" :saving="savingGlobal" :all-sites="sites" @save="saveGlobal" />
 
-        <div v-loading="loading" class="card glass">
+        <div v-loading="loading" class="card solid-card">
           <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->
           <div v-if="batchMode" class="batch-bar">
             <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">{{
@@ -330,7 +330,7 @@ onMounted(() => {
           </div>
           <EmptyState
             v-else-if="!loading"
-            icon="🔖"
+            
             :title="t('subscriptions.emptyTitle')"
             :description="t('subscriptions.emptyDesc')"
           >

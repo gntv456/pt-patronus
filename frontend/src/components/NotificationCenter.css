@@ -7,21 +7,21 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--text-strong);
+  color: var(--color-text);
   padding: 6px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-card);
   display: inline-flex;
   align-items: center;
-  transition: background var(--dur-base) var(--ease-out-smooth);
+  transition: background var(--dur-base) var(--ease);
 }
 .nc-bell:hover {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .nc-bell--has {
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .nc-bell--urgent {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .nc-badge {
   position: absolute;
@@ -31,18 +31,19 @@
   height: 16px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--text-muted);
-  color: #fff;
-  font-size: var(--fs-2xs);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  color: var(--pt-danger-fg);
+  font-size: var(--fs-xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.72));
+  font-variant-numeric: tabular-nums;
 }
 .nc-bell--urgent .nc-badge {
-  background: #e74c3c;
+  outline: 2px solid var(--color-danger-soft);
 }
 .nc-panel {
   position: absolute;
@@ -55,23 +56,19 @@
   flex-direction: column;
   overflow: hidden;
   z-index: var(--z-float);
-  /* 磨砂玻璃（与命令面板同体系）。下拉面板无全屏遮罩打底，背景要比命令面板更实，
-     否则背后复杂图文透出会压低文字对比、看不清字。 */
-  border-radius: var(--radius-md);
-  background: var(--glass-bg-strong);
-  backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
-  -webkit-backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
-  box-shadow:
-    var(--glass-hover-shadow),
-    0 18px 40px rgba(15, 23, 42, 0.18);
+  /* 实色卡：1px 边框分层，无 backdrop-filter，避免透出背后图文压低对比度。 */
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-popover);
 }
 .nc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--divider);
-  background: var(--surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
 }
 .nc-title {
   font-weight: 700;
@@ -79,18 +76,19 @@
 }
 .nc-title small {
   margin-left: 6px;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 .nc-action {
+  min-height: 24px;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--pt-primary);
+  color: var(--color-primary);
   font-size: var(--fs-xs);
 }
 .nc-action:hover {
-  text-decoration: underline;
+  color: var(--color-primary-hover);
 }
 .nc-actions {
   display: inline-flex;
@@ -98,7 +96,7 @@
   gap: var(--sp-3);
 }
 .nc-action--danger {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .nc-list {
   overflow-y: auto;
@@ -107,7 +105,7 @@
 .nc-empty {
   padding: 36px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--fs-body);
 }
 .nc-item {
@@ -115,20 +113,20 @@
   align-items: flex-start;
   gap: var(--sp-2);
   padding: 10px 14px;
-  border-bottom: 1px solid var(--divider);
-  transition: background var(--dur-fast) var(--ease-out-smooth);
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--dur-fast) var(--ease);
 }
 .nc-item:hover {
-  background: var(--surface-hover);
+  background: var(--color-surface-hover);
 }
 .nc-item--unread {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .nc-ic {
   flex: none;
   width: 30px;
   height: 30px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -147,43 +145,49 @@
 .nc-name {
   font-size: var(--fs-body);
   font-weight: 600;
-  color: var(--text-strong);
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .nc-time {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
   flex: none;
 }
 .nc-text {
   font-size: var(--fs-xs);
-  color: var(--text-strong);
-  opacity: 0.82;
+  color: var(--color-text-secondary);
   margin-top: 2px;
   line-height: 1.45;
   word-break: break-word;
 }
 .nc-del {
   flex: none;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-muted);
-  padding: 2px;
-  opacity: 0.5;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: var(--radius-control);
   transition:
-    opacity var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast);
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 .nc-del:hover {
-  opacity: 1;
-  color: var(--pt-danger);
+  background: var(--color-danger-soft);
+  color: var(--pt-danger-fg);
 }
 .nc-slide-enter-active,
 .nc-slide-leave-active {
-  transition: all var(--dur-base) var(--ease-out-smooth);
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .nc-slide-enter-from,
 .nc-slide-leave-to {
@@ -193,7 +197,7 @@
 
 /* 分组折叠样式 */
 .nc-group-wrap {
-  border-bottom: 1px solid var(--divider);
+  border-bottom: 1px solid var(--color-border);
 }
 .nc-group {
   display: flex;
@@ -201,13 +205,13 @@
   gap: var(--sp-3);
   padding: 12px 14px;
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out-smooth);
+  transition: background var(--dur-fast) var(--ease);
 }
 .nc-group:hover {
-  background: var(--surface-hover);
+  background: var(--color-surface-hover);
 }
 .nc-group--unread {
-  background: var(--pt-primary-bg);
+  background: var(--color-primary-soft);
 }
 .nc-group-body {
   flex: 1;
@@ -217,20 +221,20 @@
   flex: none;
   width: 36px;
   height: 36px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--color-border);
 }
 .nc-group-name {
   font-size: var(--fs-md);
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .nc-group-time {
   margin-top: 2px;
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
 }
 .nc-unread-pill {
   flex: none;
@@ -238,26 +242,28 @@
   height: 20px;
   padding: 0 6px;
   border-radius: var(--radius-pill);
-  color: #fff;
-  font-size: var(--fs-2xs);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  color: var(--pt-danger-fg);
+  font-size: var(--fs-xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+  font-variant-numeric: tabular-nums;
 }
 .nc-count {
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   font-weight: 600;
   font-size: var(--fs-xs);
 }
 .nc-chevron {
   flex: none;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
-  transition: transform var(--dur-base) var(--ease-out-smooth);
+  transition: transform var(--dur-base) var(--ease);
   margin-top: 6px;
 }
 .nc-chevron--open {
@@ -274,18 +280,18 @@
   border: none;
   border-radius: var(--radius-xs, 6px);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition:
-    background var(--dur-base) var(--ease-out-smooth),
-    color var(--dur-base) var(--ease-out-smooth);
+    background var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
 }
 .nc-group-read:hover {
-  background: var(--pt-success-bg, rgba(46, 204, 113, 0.14));
-  color: var(--pt-success, #2ecc71);
+  background: var(--color-success-soft);
+  color: var(--pt-success-fg);
 }
 .nc-group-items {
-  background: var(--surface-muted, rgba(0, 0, 0, 0.02));
+  background: var(--color-surface-2);
 }
 .nc-group-items .nc-item {
   padding-left: 50px;
@@ -293,46 +299,11 @@
 .nc-ic--sub {
   width: 26px;
   height: 26px;
-  opacity: 0.85;
 }
 
-/* 铃铛图标摇晃动画（有未读时） */
+/* 铃铛静态：有未读靠角标数字与 color 表达，不用无限动画 */
 .nc-bell-ic {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transform-origin: top center;
-}
-.nc-bell-ic--ring {
-  animation: nc-bell-ring 2s ease-in-out infinite;
-}
-.nc-bell--urgent .nc-bell-ic--ring {
-  animation-duration: 1.2s;
-}
-@keyframes nc-bell-ring {
-  0%,
-  65%,
-  100% {
-    transform: rotate(0deg);
-  }
-  70% {
-    transform: rotate(14deg);
-  }
-  76% {
-    transform: rotate(-14deg);
-  }
-  82% {
-    transform: rotate(10deg);
-  }
-  88% {
-    transform: rotate(-10deg);
-  }
-  94% {
-    transform: rotate(4deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nc-bell-ic--ring {
-    animation: none;
-  }
 }

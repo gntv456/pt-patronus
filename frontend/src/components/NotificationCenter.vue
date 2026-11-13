@@ -14,9 +14,11 @@ import { useWs } from '@/composables/useWs'
 import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import type { Notice, NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
+import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const feedback = useFeedback()
 
 const router = useRouter()
 const {
@@ -63,22 +65,49 @@ async function readOne(n: Notice) {
   await readOneApi(n.id)
 }
 async function readAll() {
+  if (!unread.value) return
+  const ok = await feedback.confirm({
+    title: t('nc.readAll'),
+    detail: t('nc.confirmReadAll'),
+  })
+  if (!ok) return
+  // 服务端无「恢复未读」接口：撤销在本次会话内回填本地状态，刷新后以服务端为准。
+  const snapshot = new Map<number, boolean>(
+    notices.value.map((n): [number, boolean] => [n.id, n.read]),
+  )
   await readAllApi()
+  feedback.undo(t('notices.allReadOk'), () => {
+    notices.value.forEach((n) => {
+      const prev = snapshot.get(n.id)
+      if (prev !== undefined) n.read = prev
+    })
+  })
 }
 async function removeOne(n: Notice) {
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    detail: t('nc.confirmDelete', { title: n.title }),
+    danger: true,
+  })
+  if (!ok) return
   await removeOneApi(n.id)
+  // 服务端无「恢复单条」接口：撤销在本次会话内回填本地列表，刷新后以服务端为准。
+  feedback.undo(t('common.removed'), () => {
+    if (!notices.value.some((x) => x.id === n.id)) notices.value = [n, ...notices.value]
+  })
 }
 async function clearAll() {
-  try {
-    await ElMessageBox.confirm(t('notices.clearConfirm'), t('notices.clearTitle'), {
-      type: 'warning',
-      confirmButtonText: t('nc.clearGo'),
-      cancelButtonText: t('common.cancel'),
-    })
-  } catch {
-    return // 用户取消
-  }
+  const ok = await feedback.confirm({
+    title: t('notices.clearTitle'),
+    detail: t('notices.clearConfirm'),
+    danger: true,
+  })
+  if (!ok) return
+  const snapshot = notices.value.map((n) => ({ ...n }))
   await clearAllApi()
+  feedback.undo(t('notices.cleared'), () => {
+    notices.value = snapshot.map((n) => ({ ...n }))
+  })
 }
 
 // 点击通知体：标已读 + 按 source 跳转对应页面
@@ -164,7 +193,7 @@ function onGroupEnter(el: Element) {
   e.style.height = '0'
   e.style.overflow = 'hidden'
   void e.offsetHeight
-  e.style.transition = 'height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)'
+  e.style.transition = 'height var(--dur-base) var(--ease), opacity var(--dur-base) var(--ease)'
   e.style.height = e.scrollHeight ? e.scrollHeight + 'px' : 'auto'
   e.style.opacity = '1'
 }
@@ -179,7 +208,7 @@ function onGroupLeave(el: Element) {
   e.style.height = e.scrollHeight + 'px'
   e.style.overflow = 'hidden'
   void e.offsetHeight
-  e.style.transition = 'height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)'
+  e.style.transition = 'height var(--dur-base) var(--ease), opacity var(--dur-base) var(--ease)'
   e.style.height = '0'
   e.style.opacity = '0'
 }
@@ -193,16 +222,20 @@ function onGroupLeave(el: Element) {
       :title="
         urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('notices.title')
       "
+      :aria-label="
+        urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('notices.title')
+      "
+      :aria-expanded="open"
       @click.stop="open = !open"
     >
-      <span class="nc-bell-ic" :class="{ 'nc-bell-ic--ring': unread > 0 }">
+      <span class="nc-bell-ic">
         <SptIcon name="bell" :size="20" />
       </span>
       <span v-if="unread > 0" class="nc-badge">{{ badgeText }}</span>
     </button>
 
     <Transition name="nc-slide">
-      <div v-if="open" class="nc-panel glass">
+      <div v-if="open" class="nc-panel solid-card">
         <div class="nc-head">
           <span class="nc-title"
             >{{ t('notices.title') }}
@@ -233,7 +266,7 @@ function onGroupLeave(el: Element) {
               :class="{ 'nc-group--unread': g.unreadCount > 0 }"
               @click="toggleGroup(g.source)"
             >
-              <span class="nc-group-ic" :style="{ color: '#fff', background: meta(g.source).color }">
+              <span class="nc-group-ic" :style="{ color: meta(g.source).color, background: 'var(--color-surface-2)' }">
                 <SptIcon :name="meta(g.source).icon" :size="18" />
               </span>
               <div class="nc-group-body">
@@ -241,9 +274,7 @@ function onGroupLeave(el: Element) {
                   <span class="nc-group-name"
                     >{{ meta(g.source).label }}<span class="nc-count"> · {{ g.items.length }}</span></span
                   >
-                  <span v-if="g.unreadCount > 0" class="nc-unread-pill" :style="{ background: meta(g.source).color }">{{
-                    g.unreadCount
-                  }}</span>
+                  <span v-if="g.unreadCount > 0" class="nc-unread-pill">{{ g.unreadCount }}</span>
                 </div>
                 <div class="nc-text">
                   {{ g.unreadCount > 0 ? t('nc.nUnread', { n: g.unreadCount }) : '' }}{{ g.latest.title }}
@@ -257,6 +288,7 @@ function onGroupLeave(el: Element) {
                 v-if="g.unreadCount > 0"
                 class="nc-group-read"
                 :title="t('notices.markGroupRead')"
+                :aria-label="t('notices.markGroupRead')"
                 @click.stop="readGroup(g)"
               >
                 <SptIcon name="check-circle" :size="14" />
@@ -274,7 +306,7 @@ function onGroupLeave(el: Element) {
                 <div v-for="n in g.items" :key="n.id" class="nc-item" :class="{ 'nc-item--unread': !n.read }">
                   <span
                     class="nc-ic nc-ic--sub"
-                    :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }"
+                    :style="{ color: meta(n.source).color, background: 'var(--color-surface-2)' }"
                   >
                     <SptIcon :name="meta(n.source).icon" :size="14" />
                   </span>
@@ -285,7 +317,7 @@ function onGroupLeave(el: Element) {
                     </div>
                     <div v-if="n.body" class="nc-text">{{ n.body }}</div>
                   </div>
-                  <button class="nc-del" :title="t('common.delete')" @click.stop="removeOne(n)">
+                  <button class="nc-del" :title="t('common.delete')" :aria-label="t('common.delete')" @click.stop="removeOne(n)">
                     <SptIcon name="trash" :size="14" />
                   </button>
                 </div>

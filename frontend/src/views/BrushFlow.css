@@ -67,8 +67,11 @@
   color: var(--text-muted);
 }
 .err {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--fs-xs);
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .actions {
   display: flex;
@@ -85,36 +88,12 @@
   color: var(--text-muted);
 }
 
-/* 刷流卡 staggered 入场 + hover */
-.grid > * {
-  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
-}
-.grid > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.grid > *:nth-child(2) {
-  animation-delay: 50ms;
-}
-.grid > *:nth-child(3) {
-  animation-delay: 100ms;
-}
-.grid > *:nth-child(4) {
-  animation-delay: 150ms;
-}
-.grid > *:nth-child(5) {
-  animation-delay: 200ms;
-}
-.grid > *:nth-child(n + 6) {
-  animation-delay: 250ms;
-}
+/* 卡片 hover 只改阴影，不做位移；删除 staggered 入场动画 */
 .card {
-  transition:
-    transform var(--dur-base) var(--ease-out-spring),
-    box-shadow var(--dur-base) var(--ease-out-smooth);
+  transition: box-shadow var(--dur-base) var(--ease);
 }
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-popover);
 }
 
 /* ---- 首屏骨架尺寸（对齐真实卡片结构：34px 图标 / 三列统计） ---- */

@@ -48,6 +48,7 @@ extension on _LoginPageState {
         controller: _user,
         autofillHints: const [AutofillHints.username],
         textInputAction: TextInputAction.next,
+        style: const TextStyle(fontSize: 16),
         decoration: const InputDecoration(labelText: '用户名'),
       ),
       const SizedBox(height: 12),
@@ -56,6 +57,7 @@ extension on _LoginPageState {
         autofillHints: const [AutofillHints.password],
         // 密码可见切换 + 回车提交（输完密码不必手点登录按钮）。
         obscureText: !_showPass,
+        style: const TextStyle(fontSize: 16),
         onSubmitted: (_) => _loading ? null : _localLogin(),
         decoration: InputDecoration(
           labelText: '密码',
@@ -69,7 +71,7 @@ extension on _LoginPageState {
       const SizedBox(height: 8),
       Text(
         '首次登录自动创建账号（成为管理员）；已有账号请用原密码登录',
-        style: TextStyle(fontSize: 12, color: context.dimText),
+        style: TextStyle(fontSize: 14, color: context.dimText),
       ),
       const SizedBox(height: 22),
       FilledButton(

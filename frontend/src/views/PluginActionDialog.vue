@@ -61,8 +61,8 @@ const emit = defineEmits<{
       <pre>{{ output }}</pre>
     </div>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">{{ t('common.close') }}</el-button>
-      <el-button type="primary" :icon="VideoPlay" :loading="running" @click="emit('run')">{{ t('pa2.run') }}</el-button>
+      <el-button :aria-label="t('common.close')" @click="emit('update:visible', false)">{{ t('common.close') }}</el-button>
+      <el-button type="primary" :icon="VideoPlay" :aria-label="t('pa2.run')" :loading="running" @click="emit('run')">{{ t('pa2.run') }}</el-button>
     </template>
   </el-dialog>
 </template>

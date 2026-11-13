@@ -70,7 +70,7 @@ const emit = defineEmits<{
       </el-collapse>
     </div>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button :aria-label="t('common.cancel')" @click="emit('update:visible', false)">{{ t('common.cancel') }}</el-button>
       <el-button type="primary" :icon="Tickets" :loading="saving" @click="emit('save')">{{
         t('common.save')
       }}</el-button>

@@ -4,7 +4,7 @@
 -->
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
@@ -24,6 +24,12 @@ const serviceErr = ref('')
 // 登录表单与各登录方式抽出为 composable（useLoginAuth）。
 // 旧好学账号/Cookie 登录 Tab 已随站点改版（FluxTorrent）下线删除。
 const { auth, loading, err, acc, localLogin, demoLogin, oidcLogin } = useLoginAuth()
+
+// 登录失败后把焦点移到可聚焦的错误摘要，便于键盘 / 读屏用户感知。
+const errRef = ref<HTMLElement | null>(null)
+watch(err, (v) => {
+  if (v) void nextTick(() => errRef.value?.focus())
+})
 
 function goDashboard() {
   router.push({ name: 'dashboard' })
@@ -79,7 +85,7 @@ function doDemoLogin() {
 
 <template>
   <div class="login-wrap">
-    <div class="login-card glass">
+    <div class="login-card solid-card">
       <div class="brand">
         <img src="/logo-mark.svg" alt="PTPatronus" class="logo" />
         <h1>PTPatronus</h1>
@@ -102,24 +108,36 @@ function doDemoLogin() {
         <p v-else class="boot-desc">{{ t('login.boot.localOn') }}</p>
       </div>
 
-      <!-- 本地密码登录（好学站点关闭后的主路径，#<issue>） -->
-      <form class="form" @submit.prevent="doLocalLogin">
-        <el-input
-          v-model="acc.username"
-          :placeholder="t('login.localForm.username')"
-          size="large"
-          autocomplete="username"
-          class="field"
-        />
-        <el-input
-          v-model="acc.password"
-          type="password"
-          :placeholder="t('login.localForm.password')"
-          size="large"
-          show-password
-          autocomplete="current-password"
-          class="field"
-        />
+      <!-- 本地密码登录（好学站点关闭后的主路径） -->
+      <form class="form" novalidate @submit.prevent="doLocalLogin">
+        <div class="field">
+          <label class="field-label" for="login-username">{{ t('login.localForm.username') }}</label>
+          <el-input
+            id="login-username"
+            v-model="acc.username"
+            :placeholder="t('login.localForm.username')"
+            size="large"
+            autocomplete="username"
+            aria-describedby="login-hint"
+            :aria-invalid="!!err"
+          />
+        </div>
+        <div class="field">
+          <label class="field-label" for="login-password">{{ t('login.localForm.password') }}</label>
+          <el-input
+            id="login-password"
+            v-model="acc.password"
+            type="password"
+            :placeholder="t('login.localForm.password')"
+            size="large"
+            show-password
+            autocomplete="current-password"
+            :aria-invalid="!!err"
+          />
+        </div>
+
+        <p v-if="err" ref="errRef" class="err" role="alert" tabindex="-1">{{ err }}</p>
+
         <el-button
           type="primary"
           size="large"
@@ -129,19 +147,25 @@ function doDemoLogin() {
         >
           {{ t('login.submit') }}
         </el-button>
-        <p class="hint">{{ t('login.localForm.firstLoginHint') }}</p>
+        <p id="login-hint" class="hint">{{ t('login.localForm.firstLoginHint') }}</p>
       </form>
 
-      <p v-if="err" class="err">{{ err }}</p>
-      <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="doDemoLogin">
-        {{ t('login.demo') }}
-      </button>
-      <button v-if="authStatus?.oidc_enabled" class="oidc-btn" type="button" :disabled="loading" @click="oidcLogin">
-        {{ authStatus?.oidc_display_name || 'OIDC / SSO' }} {{ t('login.oidcSuffix') }}
-      </button>
+      <div
+        v-if="authStatus?.demo_mode || authStatus?.oidc_enabled"
+        class="alt-divider"
+        role="separator"
+      ></div>
+      <div class="alt-actions">
+        <button v-if="authStatus?.demo_mode" class="link-btn" type="button" :disabled="loading" @click="doDemoLogin">
+          {{ t('login.demo') }}
+        </button>
+        <button v-if="authStatus?.oidc_enabled" class="link-btn" type="button" :disabled="loading" @click="oidcLogin">
+          {{ authStatus?.oidc_display_name || 'OIDC / SSO' }} {{ t('login.oidcSuffix') }}
+        </button>
+      </div>
       <div class="deploy-hint">
         {{ t('login.deployHint') }}
-        <code>http://192.168.1.10:8088</code>。
+        <code>http://your-server:8088</code>。
       </div>
     </div>
   </div>

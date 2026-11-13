@@ -154,14 +154,14 @@ onMounted(refresh)
 <template>
   <div class="lpt-medal" v-loading="loading">
     <div class="banner">
-      <span class="banner-title">☯ {{ t('mg.banner') }}</span>
+      <span class="banner-title"><SptIcon name="medal" :size="18" aria-hidden="true" /> {{ t('mg.banner') }}</span>
       <span class="banner-sub">{{ t('mg.bannerSub') }}</span>
     </div>
 
     <!-- 碎片栏 -->
     <div class="shard-bar glass">
       <div class="shard">
-        <span class="shard-icon">⚊</span>
+        <span class="shard-icon" aria-hidden="true">⚊</span>
         <div>
           <div class="shard-val">{{ shards?.yang_yao ?? '--' }}</div>
           <div class="shard-lbl">{{ t('mg.yang') }}</div>
@@ -175,7 +175,7 @@ onMounted(refresh)
         >
       </div>
       <div class="shard">
-        <span class="shard-icon">⚋</span>
+        <span class="shard-icon" aria-hidden="true">⚋</span>
         <div>
           <div class="shard-val">{{ shards?.yin_yao ?? '--' }}</div>
           <div class="shard-lbl">{{ t('mg.yin') }}</div>
@@ -207,8 +207,10 @@ onMounted(refresh)
               class="node-img"
               :class="{ gray: !node.owned }"
             />
-            <span v-else class="node-placeholder">☯</span>
-            <span v-if="node.owned" class="owned-badge">✓</span>
+            <SptIcon v-else class="node-placeholder" name="medal" :size="40" aria-hidden="true" />
+            <span v-if="node.owned" class="owned-badge" :aria-label="t('mg.owned')">
+              <SptIcon name="check" :size="12" aria-hidden="true" />
+            </span>
           </div>
           <div class="node-name">{{ node.name }}</div>
           <div class="node-cost text-muted">{{ costText(node) }}</div>
@@ -254,20 +256,21 @@ onMounted(refresh)
   text-align: center;
   padding: 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #2d3436, #636e72);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .banner-title {
   display: block;
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-text);
   letter-spacing: 2px;
 }
 .banner-sub {
   display: block;
   margin-top: 3px;
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-secondary);
 }
 
 .shard-bar {
@@ -285,19 +288,19 @@ onMounted(refresh)
 }
 .shard-icon {
   font-size: var(--fs-hero);
-  color: var(--pt-primary);
+  color: var(--color-primary);
 }
 .shard-val {
   font-size: var(--fs-title);
   font-weight: 800;
 }
 .shard-lbl {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .convert-tip {
   width: 100%;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   margin-top: 4px;
 }
 
@@ -330,12 +333,12 @@ onMounted(refresh)
   gap: var(--sp-1);
   padding: 12px 8px;
   border-radius: var(--radius-sm);
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   text-align: center;
 }
 .node.owned {
-  border-color: var(--pt-success-bg);
+  border-color: var(--color-success);
 }
 .node-img-wrap {
   position: relative;
@@ -351,8 +354,7 @@ onMounted(refresh)
   filter: grayscale(1) opacity(0.5);
 }
 .node-placeholder {
-  font-size: 40px;
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
 }
 .owned-badge {
   position: absolute;
@@ -361,8 +363,8 @@ onMounted(refresh)
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #2ecc71;
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-on-accent);
   font-size: var(--fs-xs);
   display: flex;
   align-items: center;
@@ -373,13 +375,13 @@ onMounted(refresh)
   font-weight: 600;
 }
 .node-cost {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   line-height: 1.3;
   min-height: 26px;
 }
 .owned-tag {
   font-size: var(--fs-xs);
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
   font-weight: 600;
   height: 24px;
   line-height: 24px;
@@ -389,7 +391,7 @@ onMounted(refresh)
   text-align: center;
 }
 .err {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   font-size: var(--fs-body);
   word-break: break-all;
 }

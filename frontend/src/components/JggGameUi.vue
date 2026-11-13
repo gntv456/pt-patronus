@@ -61,7 +61,7 @@ onMounted(() => {
           <button v-if="pos === -1" class="cell center" :disabled="spinning || bulkSpinning" @click="spin">
             <span v-if="spinning || bulkSpinning" class="spinner" />
             <template v-else>
-              <span class="center-icon">⚡</span>
+              <SptIcon class="center-icon" name="zap" :size="24" aria-hidden="true" />
               <span class="center-text">{{ t('sp.hub') }}</span>
             </template>
           </button>
@@ -72,7 +72,7 @@ onMounted(() => {
             :class="{ lit: highlight === pos, win: result && highlight === pos && !spinning }"
             :style="highlight === pos && pos < clockwise.length ? { '--pc': clockwise[pos].color } : {}"
           >
-            <span class="p-icon">{{ clockwise[pos]?.icon }}</span>
+            <span class="p-icon" aria-hidden="true">{{ clockwise[pos]?.icon }}</span>
             <span class="p-name">{{ clockwise[pos]?.name }}</span>
           </div>
         </template>
@@ -81,7 +81,10 @@ onMounted(() => {
 
     <!-- 结果 -->
     <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
-      <span class="badge">{{ result.success ? '🎉 ' + t('wh.win') : '✗ ' + t('dl.fail') }}</span>
+      <span class="badge">
+        <SptIcon :name="result.success ? 'party-popper' : 'x'" :size="16" aria-hidden="true" />
+        {{ result.success ? t('wh.win') : t('dl.fail') }}
+      </span>
       <span v-if="result.prize" class="r-prize">{{ result.prize }}</span>
       <span v-if="result.amount" class="r-amt">×{{ result.amount }}</span>
       <div v-if="result.message" class="r-msg text-muted">{{ result.message }}</div>
@@ -90,23 +93,24 @@ onMounted(() => {
     <!-- 连抽（站点 /jgg/magic_grid_bulk.php 仅接受 10/20/50/100） -->
     <div class="multi">
       <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(10)">
-        <span>🎀</span> {{ t('jgg.multi', { n: 10 }) }}
+        <SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('jgg.multi', { n: 10 }) }}
       </button>
       <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(20)">
-        <span>💖</span> {{ t('jgg.multi', { n: 20 }) }}
+        <SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('jgg.multi', { n: 20 }) }}
       </button>
       <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(50)">
-        <span>✨</span> {{ t('jgg.multi', { n: 50 }) }}
+        <SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('jgg.multi', { n: 50 }) }}
       </button>
       <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(100)">
-        <span>🌸</span> {{ t('jgg.multi', { n: 100 }) }}
+        <SptIcon name="gift" :size="16" aria-hidden="true" /> {{ t('jgg.multi', { n: 100 }) }}
       </button>
     </div>
 
     <!-- 连抽结果（按奖品名分组统计） -->
     <div v-if="bulk" class="bulk">
       <div class="bulk-head">
-        🎉 {{ t('jgg.bulkDone', { n: bulkCount, won: (bulk.prizes || []).filter((p) => p.is_win).length }) }}
+        <SptIcon name="party-popper" :size="16" aria-hidden="true" />
+        {{ t('jgg.bulkDone', { n: bulkCount, won: (bulk.prizes || []).filter((p) => p.is_win).length }) }}
       </div>
       <div v-for="(s, i) in bulkStats" :key="i" class="bulk-row" :class="{ muted: s.name === t('jgg.thanks') }">
         <span>{{ s.name }}</span>
@@ -124,7 +128,7 @@ onMounted(() => {
 
     <!-- 抽奖历史 -->
     <section v-if="records.length" class="history">
-      <div class="hist-title">📜 {{ t('jgg.history') }}</div>
+      <div class="hist-title"><SptIcon name="clock" :size="16" aria-hidden="true" /> {{ t('jgg.history') }}</div>
       <div v-for="(r, i) in records.slice(0, 20)" :key="i" class="hist-row">
         <span :class="{ muted: r.prize_name === t('jgg.thanks') }">{{ r.prize_name }}</span>
         <span class="hist-cost">-{{ Math.round(r.cost) }}</span>

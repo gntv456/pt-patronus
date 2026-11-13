@@ -22,9 +22,10 @@
   gap: var(--sp-2);
   align-items: center;
 }
-.glass.card {
+.card.solid-card {
   padding: 12px;
   border-radius: var(--radius-md);
+  --el-table-row-height: 36px;
 }
 .media-cell {
   display: flex;
@@ -108,7 +109,7 @@
   opacity: 0.7;
 }
 .load-failed {
-  color: #f59e0b;
+  color: var(--pt-warn-fg);
   font-size: var(--fs-xs);
 }
 .unit {

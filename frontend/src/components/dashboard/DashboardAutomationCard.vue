@@ -61,10 +61,10 @@ const contractSegments = computed<RingSegment[]>(() => {
   const en = contract.value.filter((r) => r.enabled)
   const cnt = (s: string) => en.filter((r) => r.last_status === s).length
   return [
-    { label: t('dac.ok'), value: cnt('ok'), color: '#16a34a' },
-    { label: t('dac.breach'), value: cnt('breach'), color: '#dc2626' },
-    { label: t('dac.error'), value: cnt('error'), color: '#d97706' },
-    { label: t('dac.unchecked'), value: en.filter((r) => !r.last_status).length, color: '#94a3b8' },
+    { label: t('dac.ok'), value: cnt('ok'), color: 'var(--chart-2)' },
+    { label: t('dac.breach'), value: cnt('breach'), color: 'var(--chart-3)' },
+    { label: t('dac.error'), value: cnt('error'), color: 'var(--chart-4)' },
+    { label: t('dac.unchecked'), value: en.filter((r) => !r.last_status).length, color: 'var(--color-border-strong)' },
   ]
 })
 const breachCount = computed(() => contractSegments.value[1]?.value ?? 0)
@@ -159,7 +159,7 @@ const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').
   font-size: var(--fs-2xs);
 }
 .dc-tag.danger {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   background: var(--pt-danger-bg);
 }
 .auto-body {
@@ -191,6 +191,7 @@ const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').
   font-weight: 700;
   letter-spacing: -0.3px;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 .auto-cell strong small {
   font-size: var(--fs-body);
@@ -198,7 +199,7 @@ const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').
   color: var(--text-muted);
 }
 .auto-cell strong.danger {
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
 }
 .ac-sub {
   font-size: var(--fs-2xs);
@@ -206,8 +207,8 @@ const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').
 }
 .ac-sub2 {
   font-size: var(--fs-2xs);
-  color: var(--text-muted);
-  opacity: 0.85;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .auto-ring {
   flex: none;

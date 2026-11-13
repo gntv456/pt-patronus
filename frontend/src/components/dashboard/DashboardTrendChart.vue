@@ -89,6 +89,18 @@ function onMove(event: MouseEvent) {
 function shortDay(day: string): string {
   return day.length >= 10 ? day.slice(5) : day
 }
+// 图表可访问：含各系列最新数值的 aria-label + 方向键切换数据点。
+const ariaLabel = computed(() => {
+  if (!geometry.value) return t('dtc.empty')
+  const parts = props.series.map((s) => `${s.label} ${fmtValue(s.values[s.values.length - 1] ?? 0)}`)
+  return `${t('dtc.aria')}：${parts.join('、')}`
+})
+function stepHover(dir: -1 | 1) {
+  if (!geometry.value) return
+  const n = geometry.value.length
+  const cur = hoverIndex.value ?? 0
+  hoverIndex.value = Math.max(0, Math.min(n - 1, cur + dir))
+}
 </script>
 
 <template>
@@ -99,8 +111,13 @@ function shortDay(day: string): string {
       :viewBox="`0 0 ${VB_W} ${VB_H}`"
       preserveAspectRatio="none"
       role="img"
-      :aria-label="t('dtc.aria')"
+      tabindex="0"
+      :aria-label="ariaLabel"
+      @keydown.left.prevent="stepHover(-1)"
+      @keydown.right.prevent="stepHover(1)"
+      @keydown.esc="hoverIndex = null"
     >
+      <title>{{ ariaLabel }}</title>
       <g v-for="tick in geometry.yTicks" :key="tick.y">
         <line :x1="PAD.left" :x2="VB_W - PAD.right" :y1="tick.y" :y2="tick.y" class="grid-line" />
         <text :x="PAD.left - 9" :y="tick.y + 4" text-anchor="end" class="axis-text">{{ fmtValue(tick.value) }}</text>
@@ -172,14 +189,13 @@ function shortDay(day: string): string {
   letter-spacing: 0;
 }
 .hover-rule {
-  stroke: var(--text-muted);
+  stroke: var(--color-border-strong);
   stroke-width: 1;
   stroke-dasharray: 4 4;
-  opacity: 0.45;
   vector-effect: non-scaling-stroke;
 }
 .hover-dot {
-  stroke: var(--glass-bg-strong);
+  stroke: var(--color-surface);
   stroke-width: 2;
 }
 .chart-tooltip {
@@ -191,8 +207,8 @@ function shortDay(day: string): string {
   transform: translateX(-50%);
   border: 1px solid var(--divider);
   border-radius: var(--radius-xs);
-  background: var(--glass-bg-strong);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  background: var(--color-surface-2);
+  box-shadow: var(--shadow-popover);
   font-size: var(--fs-xs);
   pointer-events: none;
 }

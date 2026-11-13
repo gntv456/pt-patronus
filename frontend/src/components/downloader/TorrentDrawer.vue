@@ -229,7 +229,7 @@ onUnmounted(() => {
         {{ downloader.url }}<span v-if="lastUpdated"> · {{ lastUpdated.toLocaleTimeString() }}</span>
       </span>
       <div class="workspace-actions">
-        <el-button size="small" :icon="Refresh" @click="refresh">{{ t('common.refresh') }}</el-button>
+        <el-button size="small" :icon="Refresh" :aria-label="t('common.refresh')" @click="refresh">{{ t('common.refresh') }}</el-button>
         <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">{{
           t('tw.catManage')
         }}</el-button>
@@ -303,12 +303,12 @@ onUnmounted(() => {
       </div>
       <div v-else-if="activeDialog?.kind === 'limits'">
         <div class="lim-row">
-          <span>↑ {{ t('tw.upload') }}</span>
+          <span><SptIcon name="arrow-up" :size="12" aria-hidden="true" /> {{ t('tw.upload') }}</span>
           <el-input-number v-model="dlgUpLimit" :min="0" controls-position="right" />
           <span class="text-muted">KB/s</span>
         </div>
         <div class="lim-row">
-          <span>↓ {{ t('tw.download') }}</span>
+          <span><SptIcon name="arrow-down" :size="12" aria-hidden="true" /> {{ t('tw.download') }}</span>
           <el-input-number v-model="dlgDlLimit" :min="0" controls-position="right" />
           <span class="text-muted">KB/s</span>
         </div>

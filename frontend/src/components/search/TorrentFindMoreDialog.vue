@@ -55,9 +55,9 @@ function openDetail(row: FindRow) {
         </div>
         <div class="sf-more-right">
           <span v-if="formatTorrentSize(item.size)" class="sf-size">{{ formatTorrentSize(item.size) }}</span>
-          <span class="up">↑ {{ item.seeders ?? 0 }}</span>
-          <span class="down">↓ {{ item.leechers ?? 0 }}</span>
-          <span v-if="item.detail_url" class="sf-ext" :title="t('tfd.detail')" @click.stop="openDetail(item)">↗</span>
+          <span class="up"><SptIcon name="arrow-up" :size="12" aria-hidden="true" /> {{ item.seeders ?? 0 }}</span>
+          <span class="down"><SptIcon name="arrow-down" :size="12" aria-hidden="true" /> {{ item.leechers ?? 0 }}</span>
+          <button v-if="item.detail_url" type="button" class="sf-ext" :aria-label="t('tfd.detail')" :title="t('tfd.detail')" @click.stop="openDetail(item)"><SptIcon name="external-link" :size="14" aria-hidden="true" /></button>
         </div>
       </button>
     </div>

@@ -45,12 +45,23 @@ const segments = computed(() => {
   })
 })
 const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 100) : 0)
+const ariaLabel = computed(() =>
+  props.items.map((i) => `${i.label} ${i.value}`).join('、') || t('common.noData'),
+)
 </script>
 
 <template>
   <div class="ring-chart">
     <div class="ring-wrap" :style="{ width: size + 'px', height: size + 'px' }">
-      <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
+      <svg
+        :width="size"
+        :height="size"
+        :viewBox="`0 0 ${size} ${size}`"
+        role="img"
+        tabindex="0"
+        :aria-label="ariaLabel"
+      >
+        <title>{{ ariaLabel }}</title>
         <g :transform="`rotate(-90 ${size / 2} ${size / 2})`">
           <circle :cx="size / 2" :cy="size / 2" :r="radius" fill="none" :stroke-width="thickness" class="ring-track" />
           <circle
@@ -95,7 +106,7 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
   flex: none;
 }
 .ring-track {
-  stroke: rgba(148, 163, 184, 0.2);
+  stroke: var(--color-border);
 }
 .ring-center {
   position: absolute;
@@ -145,6 +156,7 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
 .leg-val {
   font-weight: 600;
   color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
 }
 .leg-pct {
   color: var(--text-muted);

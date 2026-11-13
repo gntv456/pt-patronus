@@ -19,7 +19,9 @@
     "format": "prettier --write \"src/**/*.{ts,vue,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,vue,css}\"",
     "lint:css": "stylelint \"src/**/*.{css,vue}\"",
-    "lint:css:ci": "stylelint \"src/**/*.{css,vue}\" --quiet"
+    "lint:css:ci": "stylelint \"src/**/*.{css,vue}\" --quiet",
+    "lint:ui": "node ../scripts/check-ui-a11y.mjs",
+    "check:contrast": "node ../scripts/check-contrast.mjs"
   },
   "dependencies": {
     "@types/dompurify": "^3.0.5",

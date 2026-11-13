@@ -19,12 +19,11 @@ import {
 import type { StrmRule, StrmRecord } from '@/api/cloud'
 import { registerPolling } from '@/composables/usePolling'
 import { strmRepairNotices } from './strmRepairNotices'
-import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
 import { useCloudDriveBrowse, fmtSize } from '@/composables/useCloudDriveBrowse'
 import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
+import { useQueryState } from '@/composables/useUrlState'
 import CloudDialogs from '@/components/cloud/CloudDialogs.vue'
 import CloudDrivesTab from '@/components/cloud/CloudDrivesTab.vue'
 import CloudRecordsTab from '@/components/cloud/CloudRecordsTab.vue'
@@ -67,7 +66,10 @@ async function doMkdir() {
 }
 async function doOffline() {
   try {
-    const { value } = await ElMessageBox.prompt(t('cloud.offlinePrompt'), t('cloud.offlineTitle'))
+    const { value } = await ElMessageBox.prompt(t('cloud.offlinePrompt'), t('cloud.offlineTitle'), {
+      inputPattern: /^https?:\/\//i,
+      inputErrorMessage: t('common.urlFormat'),
+    })
     await cloudApi.fileOp('offline', { drive_id: curDrive.value!.id, path: browsePath.value, url: value.trim() })
     ElMessage.success(t('cloud.offlineSubmitted'))
   } catch {
@@ -76,7 +78,10 @@ async function doOffline() {
 }
 async function doShareSave() {
   try {
-    const { value } = await ElMessageBox.prompt(t('cloud.sharePrompt'), t('cloud.shareTitle'))
+    const { value } = await ElMessageBox.prompt(t('cloud.sharePrompt'), t('cloud.shareTitle'), {
+      inputPattern: /^https?:\/\//i,
+      inputErrorMessage: t('common.urlFormat'),
+    })
     // 密码弹窗取消即中止整个转存流程（不再以空密码提交）。
     const { value: pwd } = await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle'))
     await cloudApi.fileOp('share-save', {
@@ -246,7 +251,7 @@ async function doImportTree() {
 
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
-const activeTab = ref('drives')
+const activeTab = useQueryState('tab', 'drives')
 
 // 网盘 CRUD/测试/配额拆出 useCloudDrives
 const {

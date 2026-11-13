@@ -8,6 +8,7 @@
 // 状态来自 useDashboardSync 组合式函数。
 import { useI18n } from 'vue-i18n'
 import { useDashboardSync } from '@/composables/useDashboardSync'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 
@@ -17,12 +18,12 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
 <template>
   <div
     v-if="syncing || syncErrors.length"
-    class="sync-card glass"
+    class="sync-card solid-card"
     :class="{ 'has-error': syncErrors.length && !syncing }"
   >
     <div class="sync-head">
       <div class="sync-title">
-        <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
+        <SptIcon name="refresh" :size="22" aria-hidden="true" />
         <div>
           <strong v-if="syncing">{{ t('dsync.running', { done: syncDone, total: syncTotal || '—' }) }}</strong>
           <strong v-else>{{ t('dsync.done', { ok: syncSuccess, fail: syncErrors.length }) }}</strong>
@@ -59,7 +60,7 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
 <style scoped>
 .sync-card {
   padding: 14px 16px;
-  border-left: 3px solid #11998e;
+  border-left: 3px solid var(--color-primary);
 }
 .sync-card.has-error {
   border-left-color: var(--pt-danger);
@@ -92,7 +93,8 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   flex: 0 0 auto;
   font-size: var(--fs-body);
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .sync-log-box {
   margin-top: 12px;
@@ -119,7 +121,7 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   gap: var(--sp-2);
   padding: 7px 9px;
   border-radius: var(--radius-xs);
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--color-surface-2);
   font-size: var(--fs-xs);
 }
 .sync-logs .log-time {
@@ -143,10 +145,10 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   color: var(--pt-primary-2);
 }
 .sync-logs .log-success {
-  background: rgba(17, 153, 142, 0.1);
+  background: var(--color-success-soft);
 }
 .sync-logs .log-success b {
-  color: #11998e;
+  color: var(--pt-success-fg);
 }
 .sync-logs .log-error {
   background: var(--pt-danger-bg);

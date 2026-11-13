@@ -2,8 +2,8 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 // content script：PT 站种子页增强。
-// 1) 详情页：右下「⬇ 推送到 PTPatronus」浮钮（download.php?id= / unit3d / magnet 识别）
-// 2) 列表页（NexusPHP torrents.php 等）：右下角悬浮球（N 个种子 ⬇）——点击上弹
+// 1) 详情页：右下「推送到 PTPatronus」浮钮（download.php?id= / unit3d / magnet 识别）
+// 2) 列表页（NexusPHP torrents.php 等）：右下角悬浮球（N 个种子 + 下载字形）——点击上弹
 //    批量菜单（全部推送 / 复制链接 / 收藏），不再挤占页面顶部
 // 3) 免费/促销标签高亮：NexusPHP pro_free/pro_free2up/pro_50pctdown 等图标行首加彩色徽标
 // 命名空间隔离：全部挂 ptp- 前缀，避免污染站点样式。
@@ -59,15 +59,23 @@
     Object.assign(btn.style, {
       position: 'fixed', right: '18px', bottom: '268px', zIndex: 2147483648,
       padding: '9px 14px', borderRadius: '22px', cursor: 'pointer',
-      background: 'linear-gradient(135deg,#4f7cff,#7a5cff)', color: '#fff',
+      background: '#4c8dff', color: '#0b1020',
       font: '600 13px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.28)',
-      userSelect: 'none',
+      userSelect: 'none', minHeight: '24px',
     })
-    btn.textContent = '⬇ 推送到 PTPatronus'
+    btn.textContent = '推送到 PTPatronus'
+    // 实色品牌蓝 + 深墨字（与 theme.css --accent / --color-on-accent 同值）；
+    // 内容脚本注入在站点页里拿不到扩展 CSS 变量，故用同值字面量。
+    btn.setAttribute('role', 'button')
+    btn.setAttribute('tabindex', '0')
+    btn.setAttribute('aria-label', '推送到 PTPatronus')
     btn.addEventListener('click', (ev) => {
       ev.preventDefault()
       ev.stopPropagation()
       chrome.runtime.sendMessage({ type: 'ptp-push-download', url }, onReply)
+    })
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); btn.click() }
     })
     document.documentElement.appendChild(btn)
   }
@@ -76,25 +84,30 @@
   // 动作成功但下载历史没记下 / 全部正常）。内容脚本是 classic script 不能 import，
   // 所以这份只能抄；测试 test/push_history_note.test.mjs 钉住「两边都不许少中间那一档」。
   function pushLabel(res, okText) {
-    if (!res || !res.ok) return `⚠ ${String((res && res.error) || '失败').slice(0, 26)}`
+    if (!res || !res.ok) return `注意：${String((res && res.error) || '失败').slice(0, 26)}`
     if (res.history_error) return `${okText}（历史没记下：${String(res.history_error).slice(0, 26)}）`
     return okText
   }
 
   function onReply(res) {
     if (!res || !btn) return
-    btn.textContent = pushLabel(res, '✅ 已加入下载器')
-    btn.style.background = res.ok
-      ? 'linear-gradient(135deg,#2e9d4f,#1d7a3a)'
-      : 'linear-gradient(135deg,#c0392b,#8e2b20)'
+    btn.textContent = pushLabel(res, '已加入下载器')
+    // 成功/失败语义走 ok/danger 类 + 实色语义底（--ok/--danger 同值），不再用渐变与 emoji。
+    btn.classList.add(res.ok ? 'ok' : 'danger')
+    btn.style.background = res.ok ? '#3fb950' : '#f85149'
+    btn.style.color = '#0b1020'
     setTimeout(() => {
-      if (btn) { btn.style.background = 'linear-gradient(135deg,#4f7cff,#7a5cff)'; btn.textContent = '⬇ 推送到 PTPatronus' }
+      if (btn) {
+        btn.classList.remove('ok', 'danger')
+        btn.style.background = '#4c8dff'; btn.style.color = '#0b1020'
+        btn.textContent = '推送到 PTPatronus'
+      }
     }, 3200)
   }
 
   // —— 列表页批量工具：右下角悬浮球 + 上弹菜单 ——
   // 旧版是 sticky 顶栏（挤占页面顶部、推下站点内容）；改为与详情页浮钮同区的
-  // 悬浮球：平时只显示「N 个种子 ⬇」小球，点击向上弹出三个操作，再点收起。
+  // 悬浮球：平时只显示「N 个种子」小球（下载字形为内联 SVG），点击向上弹出三个操作，再点收起。
   // 右下角槽位带（#359，与 #358 同一套约定）：
   //   批量栏 bottom 18px（常驻，最低）→ 菜单 bottom 64px（展开时盖住批量栏）
   //   → 浮钮 bottom 268px（浮于气泡之上）。
@@ -123,13 +136,20 @@
       padding: '9px 14px', borderRadius: '22px', cursor: 'pointer',
       background: 'rgba(27,30,40,.94)', color: '#e8eaf0',
       font: '600 13px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.28)',
-      userSelect: 'none', border: '1px solid #3a3f4f',
+      userSelect: 'none', border: '1px solid #3a3f4f', minHeight: '24px',
     })
-    bar.innerHTML = `<span class="ptp-count">${urls.length} 个种子</span><span style="font-size:15px">⬇</span>`
+    bar.innerHTML = `<span class="ptp-count">${urls.length} 个种子</span><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 4v11"/><path d="M7.5 11l4.5 4.5L16.5 11"/><path d="M5 19.5h14"/></svg>`
+    bar.setAttribute('role', 'button')
+    bar.setAttribute('tabindex', '0')
+    bar.setAttribute('aria-label', '种子批量操作')
+    bar.setAttribute('aria-expanded', 'false')
     bar.addEventListener('click', (ev) => {
       ev.preventDefault()
       ev.stopPropagation()
       toggleMenu()
+    })
+    bar.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); bar.click() }
     })
     document.documentElement.appendChild(bar)
 
@@ -143,26 +163,28 @@
       font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
       border: '1px solid #3a3f4f',
     })
+    menu.setAttribute('role', 'group')
+    menu.setAttribute('aria-label', '种子批量操作')
     const mk = (text, bg, onclick) => {
       const b = document.createElement('button')
       b.textContent = text
       Object.assign(b.style, {
         padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
         background: bg, color: '#fff', font: '600 12.5px system-ui, sans-serif',
-        textAlign: 'left', whiteSpace: 'nowrap',
+        textAlign: 'left', whiteSpace: 'nowrap', minHeight: '24px',
       })
       b.addEventListener('click', (ev) => { ev.stopPropagation(); onclick(ev) })
       menu.appendChild(b)
       return b
     }
-    mk('⬇ 全部推送下载', 'linear-gradient(135deg,#4f7cff,#7a5cff)', async (ev) => {
+    mk('全部推送下载', '#2563eb', async (ev) => {
       const b = ev.target
       b.disabled = true
       let ok = 0
       let fail = 0
       // #380 批量推送此前只报计数、丢掉原因：`else fail++` 把 pushDownload 回的 error
       // 直接扔了。而后台那个出口的原因相当具体（凭据库读不到 / 下载器连不上 / 没登录…），
-      // 用户看到「⚠ 3」无从判断该重试、该登录还是该去设置页，只会反复点。
+      // 用户看到「失败 3」无从判断该重试、该登录还是该去设置页，只会反复点。
       // 同菜单 25 行外的批量收藏（#362）已经这么做了 —— 两个出口不该有两种披露标准。
       let reason = ''
       let historyMiss = 0
@@ -190,19 +212,33 @@
       // 只在全成功时报会让 20 条里 3 条没入账的用户以为台账是完整的。
       const miss = historyMiss ? `（其中 ${historyMiss} 条历史没记下）` : ''
       b.textContent = (fail
-        ? `✅ ${ok} / ⚠ 失败 ${fail}${reason ? `：${reason}` : ''}`
-        : `✅ ${ok}`) + miss
-      setTimeout(() => { b.textContent = '⬇ 全部推送下载'; b.disabled = false }, reason || historyMiss ? 4500 : 3500)
+        ? `已推送 ${ok} / 失败 ${fail}${reason ? `：${reason}` : ''}`
+        : `已推送 ${ok}`) + miss
+      // 成功/失败语义靠 ok/danger 类与实色语义底表达，不再用 emoji 前缀。
+      b.classList.add(fail ? 'danger' : 'ok')
+      b.style.background = fail ? '#f85149' : '#3fb950'
+      b.style.color = '#0b1020'
+      setTimeout(() => {
+        b.textContent = '全部推送下载'; b.disabled = false
+        b.classList.remove('ok', 'danger'); b.style.background = '#2563eb'; b.style.color = '#fff'
+      }, reason || historyMiss ? 4500 : 3500)
     })
-    mk('📋 复制全部链接', '#2c3145', async (ev) => {
+    mk('复制全部链接', '#2c3145', async (ev) => {
       const b = ev.target
       try {
         await navigator.clipboard.writeText(listUrls.join('\n'))
-        b.textContent = '✅ 已复制'
-      } catch { b.textContent = '⚠ 复制失败' }
-      setTimeout(() => { b.textContent = '📋 复制全部链接' }, 2500)
+        b.textContent = '已复制'
+        b.classList.add('ok'); b.style.background = '#3fb950'; b.style.color = '#0b1020'
+      } catch {
+        b.textContent = '复制失败'
+        b.classList.add('danger'); b.style.background = '#f85149'; b.style.color = '#0b1020'
+      }
+      setTimeout(() => {
+        b.textContent = '复制全部链接'
+        b.classList.remove('ok', 'danger'); b.style.background = '#2c3145'; b.style.color = '#fff'
+      }, 2500)
     })
-    mk('⭐ 收藏本页种子', '#8a6d1a', async (ev) => {
+    mk('收藏本页种子', '#8a6d1a', async (ev) => {
       const b = ev.target
       let n = 0
       let fail = 0
@@ -224,7 +260,7 @@
           continue
         }
         // #362 从前是 `if (r && r.ok) n++`：后台失败时连回调都没有（r === undefined），
-        // 于是这条批量操作**一条都没存**，按钮却显示「⭐ 已收藏 0」——那句话读起来
+        // 于是这条批量操作**一条都没存**，按钮却显示「已收藏 0」——那句话读起来
         // 像「收藏成功了 0 条」，而不是「全失败了」。用户只会反复点，不会去查存储。
         // 现在失败单独计数，并把后台给的真实原因带出来（同一批只报第一个不同原因）。
         if (r && r.ok) { n++; continue }
@@ -232,9 +268,15 @@
         if (!reason && r && r.error) reason = String(r.error)
       }
       b.textContent = fail
-        ? `✅ 已收藏 ${n} / ⚠ 失败 ${fail}${reason ? `：${reason}` : ''}`
-        : `✅ 已收藏 ${n}`
-      setTimeout(() => { b.textContent = '⭐ 收藏本页种子' }, reason ? 4500 : 2500)
+        ? `已收藏 ${n} / 失败 ${fail}${reason ? `：${reason}` : ''}`
+        : `已收藏 ${n}`
+      b.classList.add(fail ? 'danger' : 'ok')
+      b.style.background = fail ? '#f85149' : '#3fb950'
+      b.style.color = '#0b1020'
+      setTimeout(() => {
+        b.textContent = '收藏本页种子'
+        b.classList.remove('ok', 'danger'); b.style.background = '#8a6d1a'; b.style.color = '#fff'
+      }, reason ? 4500 : 2500)
     })
     document.documentElement.appendChild(menu)
     // 点球外任意处收起菜单。
@@ -245,6 +287,7 @@
   function toggleMenu() {
     if (!menu) return
     menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex'
+    if (bar) bar.setAttribute('aria-expanded', menu.style.display === 'flex' ? 'true' : 'false')
   }
 
   // —— 免费/促销标签高亮（NexusPHP 图标体系）——
@@ -269,7 +312,7 @@
         Object.assign(tag.style, {
           display: 'inline-block', padding: '1px 7px', marginRight: '5px',
           borderRadius: '9px', background: p.color, color: '#fff',
-          font: '600 11px system-ui, sans-serif', verticalAlign: 'middle',
+          font: '600 12px system-ui, sans-serif', verticalAlign: 'middle',
         })
         const nameCell = row.querySelector('td a[href*="details.php"]')?.closest('td') || row.querySelector('td')
         if (nameCell) nameCell.prepend(tag)

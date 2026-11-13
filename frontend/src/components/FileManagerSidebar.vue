@@ -87,7 +87,7 @@ const emit = defineEmits<{
       <div v-else-if="fsFailed" class="sb-fail">{{ t('common.loadFailed') }}</div>
       <div v-if="drivesFailed" class="sb-fail">{{ t('common.loadFailed') }}</div>
       <div v-if="!list.length && !loading && !drivesFailed && !fsFailed && !fsForbidden" class="sb-empty">
-        <EmptyState icon="📁" :title="t('filemanager.noStorageTitle')" :description="t('filemanager.noStorageDesc')" />
+        <EmptyState :title="t('filemanager.noStorageTitle')" :description="t('filemanager.noStorageDesc')" />
       </div>
     </div>
     <div class="sb-actions">

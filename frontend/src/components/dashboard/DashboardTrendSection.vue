@@ -11,6 +11,7 @@ import DashboardTrendChart from '@/components/dashboard/DashboardTrendChart.vue'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import { useDashboardData } from '@/composables/useDashboardData'
 import { useDashboardActions } from '@/composables/useDashboardActions'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 const {
@@ -29,7 +30,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
 
 <template>
   <div class="operations-grid">
-    <section class="trend-panel ops-surface" v-loading="trendLoading">
+    <section class="trend-panel ops-surface" :aria-busy="trendLoading">
       <div class="section-head">
         <div>
           <h3>{{ t('dts.title') }}</h3>
@@ -70,7 +71,8 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
           <i :style="{ backgroundColor: item.color }" />{{ item.label }}
         </span>
       </div>
-      <DashboardTrendChart :days="trendDaysAxis" :series="trendSeries" :unit="trendUnit" />
+      <el-skeleton v-if="trendLoading" :rows="6" animated class="trend-sk" />
+      <DashboardTrendChart v-else :days="trendDaysAxis" :series="trendSeries" :unit="trendUnit" />
     </section>
 
     <aside class="action-panel ops-surface">
@@ -95,11 +97,11 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
             <span>{{ action.title }}</span>
             <small>{{ action.detail }}</small>
           </span>
-          <i class="action-severity" :class="`tone-${action.tone}`" />
+          <i class="action-severity" :class="`tone-${action.tone}`" :aria-label="action.tone" :title="action.tone" />
         </button>
       </div>
       <div v-else class="action-empty">
-        <span class="empty-check">✓</span>
+        <span class="empty-check"><SptIcon name="check" :size="18" aria-hidden="true" /></span>
         <strong>{{ t('dts.noIssues') }}</strong>
         <p>{{ t('dts.noIssuesHint') }}</p>
       </div>

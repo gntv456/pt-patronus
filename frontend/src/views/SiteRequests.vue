@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div v-loading="loading" class="card glass list-card">
+    <div v-loading="loading" class="card solid-card list-card">
       <template v-if="groups.length">
         <div v-for="g in groups" :key="g.site_id" class="site-group">
           <div class="site-head">
@@ -52,7 +52,7 @@
       </template>
       <EmptyState
         v-else-if="!loading"
-        icon="🙏"
+        
         :title="t('siterequests.emptyTitle')"
         :description="t('siterequests.emptyDesc')"
       />
@@ -137,7 +137,7 @@ onMounted(load)
   font-weight: 700;
 }
 .err {
-  color: var(--pt-warn, #f39c12);
+  color: var(--pt-warn-fg);
 }
 .req-link {
   color: var(--pt-primary);

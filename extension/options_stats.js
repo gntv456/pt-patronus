@@ -30,13 +30,13 @@ export function initStatsPage($, feedback, getStatsPrivacy) {
     const noData = new Set((data.no_data_sites || []).map((x) => x.site_id))
     const sites = (data.sites || []).slice().sort((a, b) => (b.uploaded || 0) - (a.uploaded || 0))
     if (!sites.length) {
-      $('rows').innerHTML = '<tr><td colspan="9" class="empty">暂无数据——点「⟳ 即时抓取」</td></tr>'
+      $('rows').innerHTML = '<tr><td colspan="9" class="empty">暂无数据——点「即时抓取」</td></tr>'
       return
     }
     $('rows').innerHTML = sites.map((s) => `
       <tr${noData.has(s.site_id) ? ' style="color:var(--danger)"' : ''}>
-        <td style="font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${esc(s.site_name)}${noData.has(s.site_id) ? '（无数据，疑似 cookie 失效）' : ''}">${getStatsPrivacy() ? maskDomain(esc(s.site_name)) : esc(s.site_name)}${noData.has(s.site_id) ? ' ⚠' : ''}</td>
-        <td style="color:var(--ink-2); font-size:11px">${esc(s.level || '—')}</td>
+        <td style="font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${esc(s.site_name)}${noData.has(s.site_id) ? '（无数据，疑似 cookie 失效）' : ''}">${getStatsPrivacy() ? maskDomain(esc(s.site_name)) : esc(s.site_name)}${noData.has(s.site_id) ? ' · 无数据' : ''}</td>
+        <td style="color:var(--ink-2); font-size:12px">${esc(s.level || '—')}</td>
         <td class="num">${fmtBytes(s.uploaded)}</td>
         <td class="num">${fmtBytes(s.downloaded)}</td>
         <td class="num">${fmtRatio(s.uploaded, s.downloaded)}</td>
@@ -151,7 +151,7 @@ export function initStatsPage($, feedback, getStatsPrivacy) {
         $('totals').innerHTML = `<div class="err" style="grid-column:1/-1; padding:8px">${esc(e.message)}</div>`
       }
       $('sync').disabled = false
-      $('sync').textContent = '⟳ 即时抓取'
+      $('sync').textContent = '即时抓取'
     }
     $('expJson').onclick = () => exportStats('json')
     $('expCsv').onclick = () => exportStats('csv')

@@ -46,7 +46,7 @@ extension on _MonitorPageState {
         type.toUpperCase(),
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -90,7 +90,7 @@ extension on _MonitorPageState {
                         t.lastError,
                         style: const TextStyle(
                           color: Colors.redAccent,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -130,7 +130,7 @@ extension on _MonitorPageState {
     if (!m.online) {
       return Text(
         '离线',
-        style: TextStyle(color: context.dimText, fontSize: 11),
+        style: TextStyle(color: context.dimText, fontSize: 12),
       );
     }
     final cpu = m.cpuUsage ?? 0;
@@ -154,7 +154,7 @@ extension on _MonitorPageState {
       children: [
         Text(
           label,
-          style: TextStyle(color: context.dimText, fontSize: 11),
+          style: TextStyle(color: context.dimText, fontSize: 12),
         ),
         const SizedBox(width: 4),
         SizedBox(
@@ -173,7 +173,7 @@ extension on _MonitorPageState {
         Text(
           '${p.toStringAsFixed(0)}%',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             color: color,
             fontWeight: FontWeight.w600,
           ),

@@ -9,21 +9,21 @@
   text-align: center;
   padding: 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--pt-primary), #8e44ad);
-  border: 1px solid rgba(255, 215, 106, 0.4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .banner-title {
   display: block;
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-text);
   letter-spacing: 3px;
 }
 .banner-sub {
   display: block;
   margin-top: 3px;
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);
 }
 .stat-bar {
   display: grid;
@@ -34,19 +34,19 @@
   padding: 10px 8px;
   border-radius: var(--radius-sm);
   text-align: center;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
 }
 .stat-val {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-primary);
 }
 .stat-lbl {
   margin-top: 2px;
-  font-size: var(--fs-2xs);
-  color: #4b5563;
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 /* 九宫格 */
 .grid {
@@ -64,19 +64,19 @@
   gap: var(--sp-1);
   padding: 6px;
   text-align: center;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: border-color var(--dur-fast) var(--ease-out-smooth), background-color var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth);
 }
 .prize {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
 }
 .prize.lit {
   opacity: 1;
   background: var(--pc);
-  border-color: #ffd76a;
+  border-color: var(--color-primary);
   transform: scale(1.04);
-  box-shadow: 0 0 16px var(--pc);
+  box-shadow: none;
 }
 .prize.win {
   animation: winpop 0.5s ease;
@@ -96,24 +96,24 @@
   font-size: var(--fs-hero);
 }
 .p-name {
-  font-size: var(--fs-2xs);
-  color: #fff;
+  font-size: 12px;
+  color: var(--color-on-accent);
   font-weight: 600;
   line-height: 1.2;
 }
 .prize:not(.lit) .p-name {
-  color: #374151;
+  color: var(--color-text);
 }
 /* 中心按钮 */
 .center {
   border: none;
   cursor: pointer;
-  background: var(--grad-primary);
-  color: #fff;
-  box-shadow: 0 4px 14px var(--pt-primary-bg);
+  background: var(--color-primary);
+  color: var(--color-on-accent);
+  box-shadow: none;
 }
 .center:hover:not(:disabled) {
-  filter: brightness(1.1);
+  background: var(--color-primary-hover);
 }
 .center:disabled {
   cursor: progress;
@@ -129,10 +129,10 @@
 .spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
-  animation: rot 0.8s linear infinite;
+  animation: rot 0.8s linear 6;
 }
 @keyframes rot {
   to {
@@ -159,11 +159,11 @@
   font-weight: 800;
 }
 .r-prize {
-  color: #ffd76a;
+  color: var(--color-primary);
   font-weight: 700;
 }
 .r-amt {
-  color: var(--pt-warn);
+  color: var(--pt-warn-fg);
   font-weight: 700;
 }
 .r-msg {
@@ -177,26 +177,26 @@
   gap: var(--sp-2);
 }
 .mbtn {
+  min-height: 24px;
   padding: 10px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--pt-primary-bg);
-  background: rgba(255, 255, 255, 0.72);
-  color: #4b5563;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   font-size: var(--fs-body);
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
-  box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
+  transition: border-color var(--dur-fast) var(--ease-out-smooth), background-color var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth);
+  box-shadow: none;
 }
 .mbtn span {
   margin-right: 4px;
   font-size: var(--fs-lg);
 }
 .mbtn:hover:not(:disabled) {
-  background: var(--grad-primary);
-  color: #fff;
-  border-color: transparent;
-  transform: translateY(-1px);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .mbtn:disabled {
   opacity: 0.5;
@@ -208,13 +208,13 @@
   padding: 12px;
   border-radius: var(--radius-sm);
   background: var(--pt-success-bg);
-  border: 1px solid var(--pt-success-bg);
+  border: 1px solid var(--color-border);
 }
 .bulk-head {
   font-weight: 800;
   font-size: var(--fs-body);
   margin-bottom: 8px;
-  color: var(--pt-success);
+  color: var(--pt-success-fg);
 }
 .bulk-row {
   display: flex;
@@ -223,24 +223,24 @@
   font-size: var(--fs-body);
 }
 .bulk-row.muted {
-  color: #9aa5b1;
+  color: var(--color-text-muted);
 }
 .bulk-cnt {
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-primary);
 }
 .bulk-foot {
   margin-top: 8px;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
 }
 
 /* 抽奖历史 */
 .history {
   padding: 12px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(31, 38, 135, 0.06);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
 }
 .hist-title {
   font-weight: 800;
@@ -253,60 +253,73 @@
   gap: var(--sp-2);
   padding: 5px 2px;
   font-size: var(--fs-xs);
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+  border-bottom: 1px dashed var(--color-border);
 }
 .hist-row:last-child {
   border-bottom: none;
 }
 .hist-row .muted {
-  color: #9aa5b1;
+  color: var(--color-text-muted);
 }
 .hist-cost {
   margin-left: auto;
-  color: var(--pt-danger);
+  color: var(--pt-danger-fg);
   font-weight: 700;
 }
 .hist-time {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   white-space: nowrap;
 }
 
 /* 暗色主题：还原深色玻璃风格（亮色液态玻璃为默认基准） */
 :root.dark .stat-tile {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 215, 106, 0.18);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
   box-shadow: none;
 }
 :root.dark .stat-lbl {
-  color: #9aa5b1;
+  color: var(--color-text-muted);
 }
 :root.dark .prize {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
   box-shadow: none;
   opacity: 0.55;
 }
 :root.dark .p-name {
-  color: #fff;
+  color: var(--color-on-accent);
 }
 :root.dark .prize:not(.lit) .p-name {
-  color: #cdd6e0;
+  color: var(--color-text-secondary);
 }
 :root.dark .mbtn {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 215, 106, 0.18);
-  color: #cdd6e0;
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
   box-shadow: none;
 }
 :root.dark .bulk {
   background: var(--pt-success-bg);
-  border-color: var(--pt-success-bg);
+  border-color: var(--color-border);
 }
 :root.dark .history {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface);
+  border-color: var(--color-border);
   box-shadow: none;
 }
 :root.dark .hist-row {
-  border-bottom-color: rgba(255, 255, 255, 0.06);
+  border-bottom-color: var(--color-border);
+}
+
+/* reduced-motion：高亮缩放与中奖弹跳静止，spinner 停转 */
+@media (prefers-reduced-motion: reduce) {
+  .prize.lit {
+    transform: none;
+  }
+  .prize.win {
+    animation: none;
+  }
+  .spinner {
+    animation: none;
+  }
 }

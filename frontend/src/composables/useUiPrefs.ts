@@ -4,101 +4,75 @@
 import { watch } from 'vue'
 import { useUserPrefs } from '@/composables/useUserPrefs'
 
-// 界面偏好：主题明暗已在 useMainLayout（localStorage['theme']），
-// 此处补：主题色 accent（violet 默认/azure/rose/green/amber）、风格 uiStyle（glass 默认/modern）、
-// 壁纸 wallpaper（{kind: none|url|bing|local, url}，bing=必应每日）、遮罩浓度 mask（light/standard/strong）、
-// 卡片风格 cardStyle（shadow 默认/border）、侧栏默认态 sidebarCollapsed（bool）。
-// 全部写入 <body data-*> + 偏好同步（useUserPrefs 落 localStorage + 服务端跨浏览器同步）。
+// 界面偏好：主题明暗已在 useMainLayout（localStorage['theme']）。
+// 此处只保留：主题色 accent、外观 uiStyle（modern 默认 / classic 过渡逃生）、
+// 侧栏默认态 sidebarCollapsed。壁纸 / 遮罩 / 卡片风格等装饰性设置已下线。
+// 偏好同步（useUserPrefs 落 localStorage + 服务端跨浏览器同步）保持不变。
 
 export interface UiPrefs {
   accent: string
   uiStyle: string
-  wallpaperKind: string
-  wallpaperUrl: string
-  mask: string
-  cardStyle: string
   sidebarCollapsed: boolean
+  /** 主题明暗：纳入服务端偏好同步，避免切换只停留在 localStorage */
+  theme: 'light' | 'dark'
 }
 
 export const UI_PREF_DEFAULTS: UiPrefs = {
-  accent: 'violet',
-  uiStyle: 'glass',
-  wallpaperKind: 'none',
-  wallpaperUrl: '',
-  mask: 'standard',
-  cardStyle: 'shadow',
+  accent: 'blue',
+  uiStyle: 'modern',
   sidebarCollapsed: false,
+  theme: 'light',
 }
 
+// 两套中性主题色：默认蓝 + 石墨灰；颜色用语义 token 名，组件内不再出现裸 hex。
 export const ACCENT_PRESETS = [
-  { value: 'violet', label: '星紫（默认）', color: '#6c5ce7' },
-  { value: 'azure', label: '苍蓝', color: '#2f80ed' },
-  { value: 'rose', label: '樱粉', color: '#e84393' },
-  { value: 'green', label: '薄荷绿', color: '#00b894' },
-  { value: 'amber', label: '落橙', color: '#e17055' },
+  { value: 'blue', label: '默认蓝', color: 'var(--color-primary)' },
+  { value: 'graphite', label: '石墨灰', color: 'var(--color-text-secondary)' },
 ]
-
-let bingFetchedToday = ''
 
 export function useUiPrefs() {
   const { prefs, update, loadFromServer } = useUserPrefs('ui')
 
   function normalized(): UiPrefs {
-    return { ...UI_PREF_DEFAULTS, ...(prefs.value ?? {}) }
+    const merged = { ...UI_PREF_DEFAULTS, ...(prefs.value ?? {}) } as UiPrefs
+    // 旧值自动迁移：历史「星紫/樱粉…」预设与 glass 风格统一落到 modern 外观，不丢用户数据。
+    if (!ACCENT_PRESETS.some((p) => p.value === merged.accent)) merged.accent = UI_PREF_DEFAULTS.accent
+    if (merged.uiStyle === 'glass') merged.uiStyle = 'modern'
+    merged.sidebarCollapsed = !!merged.sidebarCollapsed
+    // 旧版本把主题只存在 localStorage['theme']：偏好域无 theme 字段时沿用，
+    // 避免存量深色用户升级后被强制切成浅色。
+    if (merged.theme !== 'dark' && merged.theme !== 'light') {
+      merged.theme =
+        typeof localStorage !== 'undefined' && localStorage.getItem('theme') === 'dark'
+          ? 'dark'
+          : 'light'
+    }
+    return merged
   }
 
   function apply() {
     const p = normalized()
     const body = document.body
-    const setAttr = (name: string, v: string | null) => {
-      if (
-        v &&
-        v !== 'none' &&
-        !(name === 'data-theme-accent' && v === 'violet') &&
-        !(name === 'data-ui-style' && v === 'glass') &&
-        !(name === 'data-card-style' && v === 'shadow') &&
-        !(name === 'data-wallpaper-mask' && v === 'standard')
-      ) {
-        body.setAttribute(name, v)
-      } else {
-        body.removeAttribute(name)
-      }
-    }
-    setAttr('data-theme-accent', p.accent)
-    setAttr('data-ui-style', p.uiStyle)
-    setAttr('data-card-style', p.cardStyle)
-    // 壁纸：bing=必应每日（当日缓存 URL），url/local=直接用 wallpaperUrl（local 走 base64/对象URL 由调用方注入）
-    if (p.wallpaperKind === 'none' || (p.wallpaperKind !== 'bing' && !p.wallpaperUrl)) {
-      body.removeAttribute('data-wallpaper')
-      body.style.removeProperty('--wallpaper-image')
-    } else {
-      const url = p.wallpaperKind === 'bing' ? bingFetchedToday || p.wallpaperUrl : p.wallpaperUrl
-      if (url) {
-        body.setAttribute('data-wallpaper', p.wallpaperKind)
-        body.style.setProperty('--wallpaper-image', `url("${url}")`)
-      } else {
-        body.removeAttribute('data-wallpaper')
-      }
-      if (p.wallpaperKind === 'bing') void fetchBingDaily()
-    }
-    setAttr('data-wallpaper-mask', p.mask)
-  }
-
-  // 必应每日壁纸：官方 API 取当日 UHD；当日只拉一次（失败回退已存 URL）。
-  async function fetchBingDaily() {
-    const today = new Date().toISOString().slice(0, 10)
-    if (bingFetchedToday && bingFetchedToday.includes(today)) return
+    // 主题明暗：与 localStorage['theme'] 保持一致（App.vue 在挂载前读取它避免首帧闪烁），
+    // 同时由 useUserPrefs 同步到服务端，实现跨浏览器一致。
+    const dark = p.theme === 'dark'
+    document.documentElement.classList.toggle('dark', dark)
     try {
-      const res = await fetch('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN')
-      const data = await res.json()
-      const path = data?.images?.[0]?.urlbase
-      if (path) {
-        bingFetchedToday = `https://www.bing.com${path}_UHD.jpg`
-        apply()
-      }
+      localStorage.setItem('theme', dark ? 'dark' : 'light')
     } catch {
-      /* 网络失败：保留现值 */
+      /* 隐私模式 / 配额不可用：DOM 类仍已生效 */
     }
+    // 默认蓝不写属性（modern.css 的语义别名已统一主色）；石墨灰保留 data 属性供过渡期样式使用。
+    if (p.accent === UI_PREF_DEFAULTS.accent) body.removeAttribute('data-theme-accent')
+    else body.setAttribute('data-theme-accent', p.accent)
+    // classic 仅作为过渡逃生开关；modern 是默认，不写属性。
+    if (p.uiStyle === 'classic') body.setAttribute('data-ui-style', 'classic')
+    else body.removeAttribute('data-ui-style')
+    // 壁纸 / 遮罩 / 卡片风格已下线：清掉历史偏好可能留在 DOM 上的残留属性。
+    body.removeAttribute('data-wallpaper')
+    body.removeAttribute('data-wallpaper-mask')
+    body.removeAttribute('data-card-style')
+    body.style.removeProperty('--wallpaper-image')
   }
 
   // 偏好到达（本地或服务端合并）即应用 + 持续响应变更
@@ -110,5 +84,5 @@ export function useUiPrefs() {
     apply()
   }
 
-  return { prefs, normalized, set, apply, fetchBingDaily }
+  return { prefs, normalized, set, apply }
 }

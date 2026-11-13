@@ -6,12 +6,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
+import { useQueryState } from '@/composables/useUrlState'
+import { useFeedback } from '@/composables/useFeedback'
 import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
 import { pluginApi, type PluginInfo } from '@/api/plugin'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
+const feedback = useFeedback()
+// 从插件列表带过来的 Tab 深链：进页面时写回，返回列表时带回。
+const tabQuery = useQueryState('tab', '')
 const plugin = ref<PluginInfo | null>(null)
 const html = ref('')
 const loading = ref(false)
@@ -140,7 +146,7 @@ async function load() {
     plugin.value = await pluginApi.get(pluginId.value)
     if (!view.value) {
       html.value = ''
-      ElMessage.warning('Plugin view not found')
+      feedback.toast(t('apiErr.notFound'), 'warning')
       return
     }
     const [, source] = await Promise.all([
@@ -150,7 +156,7 @@ async function load() {
     html.value = injectBridge(source, assetBaseURL(view.value.path))
   } catch (e: unknown) {
     html.value = ''
-    ElMessage.error((e as Error).message || 'Load plugin view failed')
+    feedback.toast((e as Error).message || t('common.loadFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -158,8 +164,13 @@ async function load() {
 
 onMounted(() => {
   window.addEventListener('message', handleBridgeMessage)
+  if (!tabQuery.value) tabQuery.value = 'installed'
   load()
 })
+
+function goBack() {
+  router.push({ name: 'plugins', query: { tab: tabQuery.value } })
+}
 onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage))
 </script>
 
@@ -167,13 +178,13 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
   <div class="page">
     <div class="head">
       <div class="title-block">
-        <el-button :icon="ArrowLeft" circle @click="router.push({ name: 'plugins' })" />
+        <el-button :icon="ArrowLeft" circle :aria-label="t('common.back')" @click="goBack" />
         <div>
           <h2 class="title">{{ title }}</h2>
           <div class="meta">{{ pluginId }} / {{ viewId }}</div>
         </div>
       </div>
-      <el-button :icon="Refresh" :loading="loading" @click="load">Refresh</el-button>
+      <el-button :icon="Refresh" :loading="loading" @click="load">{{ t('common.refresh') }}</el-button>
     </div>
 
     <div v-loading="loading" class="frame-shell">
@@ -186,7 +197,7 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
         sandbox="allow-scripts allow-forms allow-popups allow-modals"
         referrerpolicy="no-referrer"
       />
-      <el-empty v-else description="No view" />
+      <el-empty v-else :description="t('common.noData')" />
     </div>
   </div>
 </template>
@@ -196,7 +207,7 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
   display: flex;
   min-height: calc(100vh - 128px);
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--space-3);
 }
 .head {
   display: flex;
@@ -216,24 +227,24 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
 }
 .meta {
   margin-top: 3px;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: var(--fs-sm);
 }
 .frame-shell {
-  min-height: 560px;
+  min-height: 60vh;
   flex: 1;
   overflow: hidden;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
 }
 .plugin-frame {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 560px;
+  min-height: 60vh;
   border: 0;
-  background: #fff;
+  background: var(--color-surface);
 }
 @media (max-width: 720px) {
   .head {

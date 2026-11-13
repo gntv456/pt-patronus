@@ -81,13 +81,6 @@ function destroyInstance(key: string) {
   celebrationInstances.get(key)?.reset?.()
   celebrationInstances.delete(key)
 }
-function queueLoop(key: string) {
-  stopLoop(key)
-  celebrationTimers.set(
-    key,
-    setTimeout(() => startLoop(key), loopDelay()),
-  )
-}
 async function startLoop(key: string) {
   stopLoop(key)
   if (prefersReducedMotion.value || document.visibilityState === 'hidden') return
@@ -95,7 +88,7 @@ async function startLoop(key: string) {
   if (!confetti || !celebrationCanvasRefs.has(key)) return
   confetti(burstOpts('left'))
   confetti(burstOpts('right'))
-  if (!prefersReducedMotion.value && document.visibilityState === 'visible') queueLoop(key)
+  // 一次性庆祝爆发，不再无限循环（去装饰性持续动效）。
 }
 function syncCelebration() {
   if (typeof window === 'undefined') return

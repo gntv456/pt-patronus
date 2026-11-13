@@ -4,10 +4,13 @@
 -->
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useQueryState } from '@/composables/useUrlState'
+import { useFeedback } from '@/composables/useFeedback'
 import { Delete, Document, MoreFilled, Refresh, Search, Setting, VideoPlay } from '@element-plus/icons-vue'
-import type { PluginInfo } from '@/api/plugin'
+import { pluginApi, type PluginInfo } from '@/api/plugin'
 import PluginConfigDialog from './PluginConfigDialog.vue'
 import PluginActionDialog from './PluginActionDialog.vue'
 import PluginAuditDialog from './PluginAuditDialog.vue'
@@ -15,7 +18,7 @@ import PluginLogsDialog from './PluginLogsDialog.vue'
 import PluginMarketSection from './PluginMarketSection.vue'
 import { usePlugins } from './usePlugins'
 import { usePluginTrust } from './usePluginTrust'
-import { runtimeState, runtimeType, runtimeLabel } from './pluginsHelpers'
+import { runtimeState, runtimeType, runtimeLabel, confirmPermissions } from './pluginsHelpers'
 import { useAdminTabs } from '@/composables/useAdminTabs'
 
 type PluginViewContribution = NonNullable<NonNullable<PluginInfo['contributes']>['views']>[number]
@@ -25,6 +28,11 @@ const { t } = useI18n()
 // 插件市场的读侧是 GET /plugins/market（RequireAdmin）：非管理员不给这个 Tab，
 // 也就不会一点就吃 403、把市场区画成空白。
 const { canSeeTab } = useAdminTabs(['market'])
+const feedback = useFeedback()
+// Tab / 筛选 / 搜索写回 URL query，刷新与分享可恢复。
+const tabQuery = useQueryState('tab', 'installed')
+const filterQuery = useQueryState('filter', 'all')
+const searchQuery = useQueryState('q', '')
 
 const {
   plugins,
@@ -105,7 +113,7 @@ const {
   runAction,
 } = usePlugins({
   openPluginView: (p: PluginInfo, view: PluginViewContribution) => {
-    router.push({ name: 'plugin-view', params: { pluginId: p.id, viewId: view.id } })
+    router.push({ name: 'plugin-view', params: { pluginId: p.id, viewId: view.id }, query: { tab: tabQuery.value } })
   },
 })
 
@@ -120,7 +128,93 @@ const {
   saveTrust,
 } = usePluginTrust()
 
-const pluginColors = ['var(--pt-primary)', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#8b5cf6']
+const pluginColors = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--color-primary)',
+  'var(--color-success)',
+  'var(--color-warning)',
+  'var(--color-danger)',
+]
+
+watch(
+  tabQuery,
+  (v) => {
+    if (v === 'market' && !canSeeTab('market')) return
+    if (v === 'installed' || v === 'market') activeTab.value = v
+  },
+  { immediate: true },
+)
+watch(activeTab, (v) => {
+  if (v !== tabQuery.value) tabQuery.value = v
+})
+watch(
+  filterQuery,
+  (v) => {
+    if (v === 'all' || v === 'enabled' || v === 'available') filter.value = v as 'all' | 'enabled' | 'available'
+  },
+  { immediate: true },
+)
+watch(filter, (v) => {
+  if (v !== filterQuery.value) filterQuery.value = v
+})
+watch(
+  searchQuery,
+  (v) => {
+    if (v !== pluginSearch.value) pluginSearch.value = v
+  },
+  { immediate: true },
+)
+watch(pluginSearch, (v) => {
+  if (v !== searchQuery.value) searchQuery.value = v
+})
+
+// 批量启停：勾选后统一操作，避免逐个确认 / 逐个刷新。
+const selectedIds = ref<string[]>([])
+const selectedPlugins = computed(() => plugins.value.filter((p) => selectedIds.value.includes(p.id)))
+const allSelected = computed(
+  () => filteredPlugins.value.length > 0 && filteredPlugins.value.every((p) => selectedIds.value.includes(p.id)),
+)
+function toggleSelect(id: string) {
+  const i = selectedIds.value.indexOf(id)
+  if (i >= 0) selectedIds.value.splice(i, 1)
+  else selectedIds.value.push(id)
+}
+function toggleSelectAll() {
+  selectedIds.value = allSelected.value ? [] : filteredPlugins.value.map((p) => p.id)
+}
+async function batchToggle(enabled: boolean) {
+  const targets = selectedPlugins.value.filter((p) => p.can_enable && p.enabled !== enabled)
+  if (!targets.length) {
+    feedback.toast(t('subscriptions.batch.selectFirst'), 'warning')
+    return
+  }
+  const perms = Array.from(new Set(targets.flatMap((p) => p.permissions || [])))
+  if (enabled) {
+    if (!(await confirmPermissions(t('common.enabled'), perms))) return
+  } else {
+    const ok = await feedback.confirm({
+      title: t('common.confirm'),
+      detail: t('subscriptions.batch.selected', { n: targets.length }) + '，' + t('common.disabled'),
+      danger: true,
+    })
+    if (!ok) return
+  }
+  try {
+    for (const p of targets) {
+      if (enabled) await pluginApi.enable(p.id, p.permissions || [])
+      else await pluginApi.disable(p.id)
+    }
+    await load()
+    feedback.toast(t('common.actionOk'))
+  } catch (e: unknown) {
+    feedback.error((e as Error).message || t('common.actionFailed'))
+  } finally {
+    selectedIds.value = []
+  }
+}
 
 function avatarColor(name: string): string {
   let hash = 0
@@ -136,12 +230,22 @@ function pluginInitial(name: string): string {
 <template>
   <div class="page">
     <div class="head">
-      <nav class="nav-tabs">
-        <button class="nav-tab" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'">
+      <nav class="nav-tabs" role="tablist" :aria-label="t('plugins.tabInstalled')">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'installed'"
+          class="nav-tab"
+          :class="{ active: activeTab === 'installed' }"
+          @click="activeTab = 'installed'"
+        >
           {{ t('plugins.tabInstalled') }} <span class="nav-count">{{ plugins.length }}</span>
         </button>
         <button
           v-if="canSeeTab('market')"
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'market'"
           class="nav-tab"
           :class="{ active: activeTab === 'market' }"
           @click="activeTab = 'market'"
@@ -187,9 +291,32 @@ function pluginInitial(name: string): string {
       </div>
     </div>
 
+    <div
+      v-if="activeTab === 'installed' && selectedIds.length"
+      class="batch-bar solid-card"
+      role="region"
+      :aria-label="t('subscriptions.batch.button')"
+    >
+      <el-checkbox
+        :model-value="allSelected"
+        :indeterminate="selectedIds.length > 0 && !allSelected"
+        @change="toggleSelectAll"
+        >{{ t('subscriptions.batch.selectAll') }}</el-checkbox
+      >
+      <span class="batch-count">{{ t('subscriptions.batch.selected', { n: selectedIds.length }) }}</span>
+      <el-button size="small" @click="batchToggle(true)">{{ t('common.enabled') }}</el-button>
+      <el-button size="small" @click="batchToggle(false)">{{ t('common.disabled') }}</el-button>
+      <el-button size="small" plain @click="selectedIds = []">{{ t('subscriptions.batch.exit') }}</el-button>
+    </div>
+
     <div v-if="activeTab === 'installed'" v-loading="loading" class="plugin-grid">
       <div v-for="p in filteredPlugins" :key="p.id" class="plugin-card solid-card solid-card-hover">
         <div class="plugin-card-top">
+          <el-checkbox
+            :model-value="selectedIds.includes(p.id)"
+            :aria-label="p.name"
+            @change="toggleSelect(p.id)"
+          />
           <div class="plugin-avatar" :style="{ background: avatarColor(p.name) }">{{ pluginInitial(p.name) }}</div>
           <div class="plugin-title-area">
             <div class="plugin-name-row">
@@ -217,7 +344,7 @@ function pluginInitial(name: string): string {
           }}</el-button>
           <div class="foot-spacer" />
           <el-dropdown trigger="click">
-            <el-button size="small" circle plain class="more-btn"
+            <el-button size="small" circle plain class="more-btn" :aria-label="t('mediadetail.more')"
               ><el-icon><MoreFilled /></el-icon
             ></el-button>
             <template #dropdown>

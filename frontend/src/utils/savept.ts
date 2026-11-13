@@ -57,12 +57,12 @@ export function buildSiteKeywords(card: SaveptSiteCard) {
 export function getAnniversaryDisplayText(text?: string) {
   const raw = `${text || ''}`.trim()
   if (!raw) return ''
-  if (raw.includes('今天站庆') || raw === '0天') return '🎉 今天站庆！'
+  if (raw.includes('今天站庆') || raw === '0天') return '今天站庆！'
   return raw.replace(/^emoji\s*站庆\s*/i, '').trim()
 }
 
 export function isTodayAnniversaryText(text?: string) {
-  return getAnniversaryDisplayText(text) === '🎉 今天站庆！'
+  return getAnniversaryDisplayText(text) === '今天站庆！'
 }
 
 // ── 站庆日历 ──
@@ -79,7 +79,7 @@ export type AnniversaryMap = Map<string, AnniversaryEntry[]>
 export function parseAnnivCountdownDays(text?: string): number | null {
   const display = getAnniversaryDisplayText(text)
   if (!display) return null
-  if (display === '🎉 今天站庆！') return 0
+  if (display === '今天站庆！') return 0
   const match = display.match(/(\d+)\s*天/)
   return match ? Number(match[1]) : null
 }
@@ -177,10 +177,10 @@ export function buildNoticeSections(alerts: SaveptAlert[] = []): NoticeSection[]
     if (text) grouped[level].push(text)
   }
   return [
-    { key: 'critical', title: '⚠️ 病危通知', items: grouped.critical },
+    { key: 'critical', title: '病危通知', items: grouped.critical },
     { key: 'success', title: '✅ 恢复公告', items: grouped.success },
-    { key: 'info', title: '🎉 站庆预告', items: grouped.info },
-    { key: 'error', title: '🕯️ 死亡讣告', items: grouped.error },
+    { key: 'info', title: '站庆预告', items: grouped.info },
+    { key: 'error', title: '死亡讣告', items: grouped.error },
   ]
 }
 

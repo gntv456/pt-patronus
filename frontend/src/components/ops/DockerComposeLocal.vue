@@ -157,8 +157,8 @@ async function action(act: 'up' | 'down' | 'validate') {
     <div v-if="!sourceType" class="source-picker">
       <p class="source-hint">{{ t('dcl.sourceHint') }}</p>
       <div class="source-cards">
-        <div v-a11y-button class="source-card" @click="selectSource('template')">
-          <div class="source-card-icon" style="background: var(--pt-primary-bg); color: var(--pt-primary)">📋</div>
+        <button type="button" class="source-card" @click="selectSource('template')">
+          <div class="source-card-icon"><SptIcon name="package" :size="20" aria-hidden="true" /></div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcTemplate') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcTemplateDesc') }}</div>
@@ -166,10 +166,10 @@ async function action(act: 'up' | 'down' | 'validate') {
           <svg class="source-arrow" viewBox="0 0 24 24">
             <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
           </svg>
-        </div>
+        </button>
 
-        <div v-a11y-button class="source-card" @click="selectSource('manual')">
-          <div class="source-card-icon" style="background: rgba(24, 160, 88, 0.12); color: #18a058">✏️</div>
+        <button type="button" class="source-card" @click="selectSource('manual')">
+          <div class="source-card-icon"><SptIcon name="edit" :size="20" aria-hidden="true" /></div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcManual') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcManualDesc') }}</div>
@@ -177,10 +177,10 @@ async function action(act: 'up' | 'down' | 'validate') {
           <svg class="source-arrow" viewBox="0 0 24 24">
             <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
           </svg>
-        </div>
+        </button>
 
-        <div v-a11y-button class="source-card" @click="selectSource('url')">
-          <div class="source-card-icon" style="background: rgba(0, 150, 57, 0.12); color: #009639">🌐</div>
+        <button type="button" class="source-card" @click="selectSource('url')">
+          <div class="source-card-icon"><SptIcon name="globe" :size="20" aria-hidden="true" /></div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcUrl') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcUrlDesc') }}</div>
@@ -188,26 +188,26 @@ async function action(act: 'up' | 'down' | 'validate') {
           <svg class="source-arrow" viewBox="0 0 24 24">
             <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
           </svg>
-        </div>
+        </button>
       </div>
     </div>
 
     <!-- 在线拉取输入 -->
     <div v-if="sourceType === 'url' && !content" class="url-fetch-area">
-      <el-button text @click="backToSource" class="back-btn">← {{ t('dcl.backToSource') }}</el-button>
+      <el-button text @click="backToSource" class="back-btn"><SptIcon name="arrow-left" :size="14" aria-hidden="true" /> {{ t('dcl.backToSource') }}</el-button>
       <el-input v-model="urlInput" placeholder="https://raw.githubusercontent.com/.../docker-compose.yml" size="large">
         <template #prepend>URL</template>
       </el-input>
       <el-button type="primary" size="large" :loading="urlLoading" @click="fetchFromUrl" style="margin-top: 12px">{{
         t('dcl.fetchBtn')
       }}</el-button>
-      <p class="url-tip">💡 {{ t('dcl.urlTip') }}</p>
+      <p class="url-tip">{{ t('dcl.urlTip') }}</p>
     </div>
 
     <!-- 步骤二：编辑区（模板/手动/URL拉取成功后） -->
     <div v-if="sourceType && content" class="compose-editor-layout">
       <div class="editor-topbar">
-        <el-button text @click="backToSource" class="back-btn">← {{ t('common.back') }}</el-button>
+        <el-button text @click="backToSource" class="back-btn"><SptIcon name="arrow-left" :size="14" aria-hidden="true" /> {{ t('common.back') }}</el-button>
         <el-input v-model="name" :placeholder="t('dcl.namePh')" style="width: 220px" clearable size="small">
           <template #prefix
             ><span class="field-label">{{ t('dcl.nameLabel') }}</span></template
@@ -216,10 +216,10 @@ async function action(act: 'up' | 'down' | 'validate') {
         <el-button size="small" @click="templateDrawer = true">{{ t('dcl.changeTpl') }}</el-button>
         <span class="source-tag">{{
           sourceType === 'template'
-            ? '📦 ' + t('dcl.srcTemplate')
+            ? t('dcl.srcTemplate')
             : sourceType === 'url'
-              ? '🌐 ' + t('dcl.srcUrl')
-              : '✏️ ' + t('dcl.srcManual')
+              ? t('dcl.srcUrl')
+              : t('dcl.srcManual')
         }}</span>
       </div>
 
@@ -255,7 +255,7 @@ async function action(act: 'up' | 'down' | 'validate') {
       </div>
       <div class="tpl-list">
         <div v-a11y-button v-for="tpl in filteredTpls" :key="tpl.id" class="tpl-card" @click="applyTemplate(tpl)">
-          <div class="tpl-icon" :style="{ background: tpl.color + '22', color: tpl.color }">{{ tpl.icon }}</div>
+          <div class="tpl-icon"><SptIcon :name="tpl.icon" :size="18" aria-hidden="true" /></div>
           <div class="tpl-body">
             <div class="tpl-name">{{ tpl.name }}</div>
             <div class="tpl-desc">{{ tpl.description }}</div>

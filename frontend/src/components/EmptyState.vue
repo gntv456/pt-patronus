@@ -5,23 +5,24 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
-// 统一空态：图标 + 主文案 + 副文案 + 引导操作（插槽）。
-// 替代各页干瘪的「暂无数据」纯文字，给用户清晰的「为什么空 + 下一步做什么」。
+// 统一空态：单色线性图标 + 主文案 + 副文案 + 引导操作（插槽）。
+// icon prop 保留仅为兼容历史调用点（传入的是 emoji 字符串），模板统一渲染 SptIcon。
 withDefaults(
   defineProps<{
     icon?: string
     title?: string
     description?: string
   }>(),
-  { icon: '📭', title: undefined, description: '' },
+  { icon: '', title: undefined, description: '' },
 )
 </script>
 
 <template>
   <div class="empty-state">
-    <div class="es-icon">{{ icon }}</div>
+    <div class="es-icon"><SptIcon name="info" :size="24" aria-hidden="true" /></div>
     <div v-if="title ?? true" class="es-title">{{ title ?? t('common.noData') }}</div>
     <div v-if="description" class="es-desc">{{ description }}</div>
     <div v-if="$slots.default" class="es-actions">
@@ -35,44 +36,36 @@ withDefaults(
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-10) var(--sp-4);
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
   text-align: center;
 }
 .es-icon {
-  font-size: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-text-secondary);
   line-height: 1;
-  opacity: 0.7;
-  animation: es-float 3s var(--ease-in-out) infinite;
-}
-@keyframes es-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .es-icon {
-    animation: none;
-  }
 }
 .es-title {
   font-size: var(--fs-md);
   font-weight: 600;
-  color: var(--text-strong);
+  color: var(--color-text);
 }
 .es-desc {
   font-size: var(--fs-sm);
-  color: var(--text-muted);
+  color: var(--color-text-secondary);
   max-width: 340px;
   line-height: 1.5;
 }
 .es-actions {
-  margin-top: var(--sp-2);
+  margin-top: var(--space-2);
   display: flex;
-  gap: var(--sp-2);
+  gap: var(--space-2);
 }
 </style>

@@ -41,7 +41,7 @@ function top(i: number): string {
 <template>
   <aside class="side">
     <section class="glass panel">
-      <div class="sec-title">🏆 {{ tr('bss.rank') }}</div>
+      <div class="sec-title"><SptIcon name="trophy" :size="16" aria-hidden="true" /> {{ tr('bss.rank') }}</div>
       <div v-if="!state?.rankings?.length" class="empty">{{ tr('bss.noRank') }}</div>
       <template v-else>
         <div class="tabs">
@@ -69,7 +69,7 @@ function top(i: number): string {
 
     <!-- 任务 / 道具 -->
     <section v-if="state?.tasks?.length || state?.props?.length" class="glass panel">
-      <div class="sec-title">🎯 {{ tr('bss.tasksProps') }}</div>
+      <div class="sec-title"><SptIcon name="target" :size="16" aria-hidden="true" /> {{ tr('bss.tasksProps') }}</div>
       <div v-for="t in state?.tasks ?? []" :key="t.id" class="task-row">
         <div class="task-info">
           <span class="task-title">{{ t.title }}</span>
@@ -89,7 +89,7 @@ function top(i: number): string {
         class="mini warn full"
         @click="emit('useRefund')"
       >
-        💳 {{ tr('bss.refundCard') }}
+        <SptIcon name="package" :size="14" aria-hidden="true" /> {{ tr('bss.refundCard') }}
       </button>
       <!-- 熊猫道具独立使用 -->
       <div v-for="p in isHxpt ? [] : (state?.props ?? [])" :key="p.id" class="prop-row">
@@ -100,7 +100,7 @@ function top(i: number): string {
 
     <!-- 红包 -->
     <section class="glass panel">
-      <div class="sec-title">🧧 {{ tr('bg.redpack') }}</div>
+      <div class="sec-title"><SptIcon name="gift" :size="16" aria-hidden="true" /> {{ tr('bg.redpack') }}</div>
       <div class="rp-form">
         <input
           :value="rpAmount"
@@ -128,7 +128,7 @@ function top(i: number): string {
       </button>
       <div v-if="state?.redpackets?.length" class="rp-list">
         <button v-for="r in state.redpackets" :key="r.id" class="rp-item" @click="emit('claimRed', r)">
-          🧧 {{ tr('bss.redN', { n: r.count, v: fmt(r.total) }) }}
+          <SptIcon name="gift" :size="14" aria-hidden="true" /> {{ tr('bss.redN', { n: r.count, v: fmt(r.total) }) }}
         </button>
       </div>
     </section>
@@ -152,7 +152,7 @@ function top(i: number): string {
 }
 .empty {
   font-size: var(--fs-body);
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   padding: 8px 0;
 }
 /* 排行 */
@@ -163,17 +163,18 @@ function top(i: number): string {
   margin-bottom: 8px;
 }
 .tab {
+  min-height: 24px;
   padding: 4px 10px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  border: 1px solid var(--color-border);
   background: transparent;
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   cursor: pointer;
   font-size: var(--fs-xs);
 }
 .tab.on {
-  background: var(--pt-primary);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-on-accent);
   border-color: transparent;
 }
 .rank-list {
@@ -187,7 +188,7 @@ function top(i: number): string {
   gap: var(--sp-1);
   padding: 4px 0;
   font-size: var(--fs-xs);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .rank-no {
   width: 18px;
@@ -195,20 +196,21 @@ function top(i: number): string {
   line-height: 18px;
   text-align: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: var(--fs-2xs);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: 12px;
 }
 .rank-no.gold {
-  background: #f59e0b;
-  color: #fff;
+  background: var(--color-warning);
+  color: var(--color-on-accent);
 }
 .rank-no.silver {
-  background: #9ca3af;
-  color: #fff;
+  background: var(--color-text-muted);
+  color: var(--color-on-accent);
 }
 .rank-no.bronze {
-  background: #b45309;
-  color: #fff;
+  background: var(--chart-4);
+  color: var(--color-on-accent);
 }
 .rank-name {
   flex: 1;
@@ -219,7 +221,7 @@ function top(i: number): string {
   font-weight: 600;
 }
 .rank-cnt {
-  color: var(--text-muted, #999);
+  color: var(--color-text-muted);
   font-size: var(--fs-2xs);
 }
 /* 任务/道具/红包 */
@@ -231,7 +233,7 @@ function top(i: number): string {
   gap: var(--sp-2);
   padding: 6px 0;
   font-size: var(--fs-xs);
-  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--color-border);
 }
 .task-info {
   display: flex;
@@ -241,30 +243,31 @@ function top(i: number): string {
   font-weight: 600;
 }
 .task-prog {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .task-st {
-  font-size: var(--fs-2xs);
-  color: var(--text-muted, #999);
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .mini {
+  min-height: 24px;
   padding: 4px 10px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.2));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   cursor: pointer;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
 }
 .mini.ok {
-  background: #16a34a;
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-on-accent);
   border-color: transparent;
 }
 .mini.warn {
-  background: #f59e0b;
-  color: #fff;
+  background: var(--color-warning);
+  color: var(--color-on-accent);
   border-color: transparent;
 }
 .mini.full {
@@ -284,8 +287,8 @@ function top(i: number): string {
   box-sizing: border-box;
   padding: 6px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   font-size: var(--fs-xs);
 }
@@ -293,8 +296,8 @@ function top(i: number): string {
   width: 100%;
   padding: 6px;
   border-radius: var(--radius-xs);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   color: inherit;
   font-size: var(--fs-xs);
   margin-bottom: 6px;

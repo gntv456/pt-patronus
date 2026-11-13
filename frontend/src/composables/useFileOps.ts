@@ -369,8 +369,9 @@ export function useFileOps(fm: FileManager) {
     return `${n.toFixed(1)} ${u[i]}`
   }
   function itemIcon(it: StorageItem) {
-    if (it.kind === 'cloud') return '☁'
-    return { local: '📁', agent: '🖥', webdav: '🌐', alist: '🗂', smb: '💻', rclone: '🔌' }[it.fs.type] || '💾'
+    // 返回 SptIcon 的 name（FileManagerSidebar.vue 渲染为单色 SVG），不再用 emoji。
+    if (it.kind === 'cloud') return 'cloud'
+    return { local: 'folder', agent: 'server', webdav: 'globe', alist: 'grid', smb: 'terminal', rclone: 'plug' }[it.fs.type] || 'database'
   }
   function itemLabel(it: StorageItem) {
     return it.kind === 'fs' ? it.fs.type : it.drive.type

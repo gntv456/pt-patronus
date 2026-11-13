@@ -27,14 +27,14 @@ test('汇总文案分得开"生效 / 合法跳过 / 注入失败 / 后台没应�
   // 失败档必须带原因：只有计数等于没说（用户分不清该重试还是该去授权）。
   const badRes = { tried: 3, injected: 1, ready: 0, skipped: 0, failed: 2, error: 'Cannot access chrome://' }
   const bad = injectSummaryText(badRes)
-  assert.match(bad, /^⚠ 1 个页面已生效，2 个注入失败：Cannot access chrome:\/\//)
+  assert.match(bad, /^注意：1 个页面已生效，2 个注入失败：Cannot access chrome:\/\//)
   assert.equal(injectSummaryKind(badRes), 'err')
   assert.equal(injectSummaryKind({ tried: 3, injected: 3 }), 'ok')
   // 后台 resolve 成 undefined（SW 还没起来）与"真的没有可注入页面"不许同形。
   assert.equal(injectSummaryText(undefined), '补注入结果读不出来（后台没回数据）')
   assert.equal(injectSummaryKind(undefined), 'err')
   assert.equal(injectSummaryText({ tried: 0 }), '当前没有已打开的页面，刷新页面即生效')
-  assert.match(injectSummaryText({ tried: 0, error: '读标签页清单失败：x' }), /^⚠ 读标签页清单失败/)
+  assert.match(injectSummaryText({ tried: 0, error: '读标签页清单失败：x' }), /^注意：读标签页清单失败/)
   // 正控：失败档与成功档不许同形。
   assert.notEqual(bad, injectSummaryText({ tried: 3, injected: 3 }))
 })

@@ -231,7 +231,7 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('📄 ', style: TextStyle(fontSize: 12)),
+                const Icon(Icons.description_outlined, size: 14),
                 Expanded(
                   child: SelectableText(
                     files[i],

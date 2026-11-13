@@ -34,7 +34,13 @@ function kindIcon(kind: string): string {
 
 <template>
   <div v-if="activeTasks.length" class="task-indicator" role="status">
-    <div v-for="p in activeTasks" :key="p.kind" class="ti-item" :title="p.site ? `${kindLabel(p.kind)} · ${p.site}` : kindLabel(p.kind)">
+    <div
+      v-for="p in activeTasks"
+      :key="p.kind"
+      class="ti-item"
+      :title="p.site ? kindLabel(p.kind) + ' · ' + p.site : kindLabel(p.kind)"
+      :aria-label="kindLabel(p.kind) + (p.site ? ' · ' + p.site : '') + ' ' + p.done + '/' + (p.total || '?')"
+    >
       <GlassIcon :name="kindIcon(p.kind)" :size="16" class="ti-icon" />
       <span class="ti-count">{{ p.done }}/{{ p.total || '?' }}</span>
       <span class="ti-bar">
@@ -55,30 +61,31 @@ function kindIcon(kind: string): string {
   align-items: center;
   gap: var(--sp-1);
   padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
 }
 .ti-icon {
   flex: none;
 }
 .ti-count {
-  font-size: var(--fs-2xs);
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .ti-bar {
   width: 48px;
-  height: 3px;
+  height: 4px;
   border-radius: var(--radius-pill);
-  background: var(--divider);
+  background: var(--color-border);
   overflow: hidden;
 }
 .ti-bar-fill {
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
-  background: var(--pt-primary);
-  transition: width var(--dur-base) var(--ease-out-smooth);
+  background: var(--color-primary);
+  transition: width var(--dur-base) var(--ease);
 }
 </style>

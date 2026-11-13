@@ -10,23 +10,22 @@
   text-align: center;
   padding: 16px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #1f6f4a 0%, #2e8b57 50%, #3a7d44 100%);
-  border: 1px solid rgba(255, 200, 80, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .banner-title {
   display: block;
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-primary);
   letter-spacing: 4px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  
 }
 .banner-sub {
   display: block;
   margin-top: 4px;
   font-size: var(--fs-xs);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);
 }
 /* 统计栏 */
 .stat-bar {
@@ -38,24 +37,24 @@
   padding: 12px 8px;
   border-radius: var(--radius-sm);
   text-align: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 215, 106, 0.22);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
 }
 .stat-val {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: #ffd76a;
+  color: var(--color-primary);
 }
 .stat-lbl {
   margin-top: 2px;
-  font-size: var(--fs-2xs);
-  color: #9aa5b1;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 /* 区块标题 */
 .section-label {
   font-size: var(--fs-body);
   font-weight: 700;
-  color: #ffd76a;
+  color: var(--color-primary);
   margin-bottom: 8px;
 }
 /* 奖品展示 */
@@ -71,8 +70,8 @@
   gap: var(--sp-1);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 215, 106, 0.08);
-  border: 1px solid rgba(255, 215, 106, 0.18);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   min-width: 64px;
 }
 .prize-icon {
@@ -82,14 +81,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffd76a, #f59e0b);
-  color: #4a2f00;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-weight: 800;
   font-size: var(--fs-lg);
 }
 .prize-name {
-  font-size: var(--fs-2xs);
-  color: #cdd6e0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 /* 刮卡 */
 .card-zone {
@@ -103,14 +102,19 @@
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #f4d67a, #e89b3c);
-  border: 2px solid #ffd76a;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  transition: all var(--dur-slow) var(--ease-out-smooth);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+  transition: border-color var(--dur-slow) var(--ease-out-smooth), background-color var(--dur-slow) var(--ease-out-smooth), color var(--dur-slow) var(--ease-out-smooth);
 }
 .scratch-card.win {
-  background: linear-gradient(135deg, #ffd76a, #f97316);
+  background: var(--color-success-soft);
   animation: pulse 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scratch-card.win {
+    animation: none;
+  }
 }
 @keyframes pulse {
   0% {
@@ -131,8 +135,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  background: repeating-linear-gradient(45deg, #b8b8b8 0 8px, #cfcfcf 8px 16px);
-  color: #6b4a00;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 .cover-text {
   font-size: var(--fs-hero);
@@ -140,7 +144,7 @@
   letter-spacing: 6px;
 }
 .cover-hint {
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   opacity: 0.7;
 }
 .prize-reveal {
@@ -151,7 +155,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  color: #4a2f00;
+  color: var(--color-text);
   padding: 8px;
   text-align: center;
 }
@@ -168,7 +172,7 @@
 }
 .reveal-msg {
   margin-top: 4px;
-  font-size: var(--fs-2xs);
+  font-size: 12px;
   opacity: 0.8;
 }
 /* 按钮 */
@@ -185,26 +189,28 @@
   font-size: var(--fs-lg);
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
-  color: #fff;
+  transition: border-color var(--dur-fast) var(--ease-out-smooth), background-color var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth);
+  color: var(--color-on-accent);
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 .btn-gold {
-  background: linear-gradient(135deg, #ffd76a, #f59e0b);
-  color: #4a2f00;
+  background: var(--color-primary);
+  color: var(--color-on-accent);
 }
 .btn-gold:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--color-primary-hover);
 }
 .btn-auto {
-  background: linear-gradient(135deg, #1f6f4a, #2e8b57);
-  border: 1px solid rgba(255, 215, 106, 0.4);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
 }
 .btn-auto.active {
-  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  background: var(--color-danger);
+  color: var(--color-on-accent);
 }
 /* 购卡 */
 .buy-row {
@@ -213,19 +219,20 @@
   gap: var(--sp-2);
 }
 .buy-btn {
+  min-height: 24px;
   padding: 10px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 215, 106, 0.3);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
   align-items: center;
-  transition: all var(--dur-fast) var(--ease-out-smooth);
+  transition: border-color var(--dur-fast) var(--ease-out-smooth), background-color var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth);
 }
 .buy-btn:hover:not(:disabled) {
-  background: rgba(255, 215, 106, 0.12);
+  background: var(--color-primary-soft);
 }
 .buy-btn:disabled {
   opacity: 0.5;
@@ -233,11 +240,11 @@
 .buy-title {
   font-size: var(--fs-body);
   font-weight: 700;
-  color: #ffd76a;
+  color: var(--color-primary);
 }
 .buy-price {
-  font-size: var(--fs-2xs);
-  color: #9aa5b1;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 /* 历史 */
 .hist-list {
@@ -253,21 +260,21 @@
   gap: var(--sp-2);
   padding: 6px 10px;
   border-radius: var(--radius-xs);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-surface-2);
   font-size: var(--fs-xs);
 }
 .hist-prize {
   flex: 1;
-  color: #cdd6e0;
+  color: var(--color-text-secondary);
 }
 .hist-prize.miss {
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 .hist-amt {
-  color: #ffd76a;
+  color: var(--color-primary);
   font-weight: 700;
 }
 .hist-time {
-  color: #6b7280;
-  font-size: var(--fs-2xs);
+  color: var(--color-text-muted);
+  font-size: 12px;
 }

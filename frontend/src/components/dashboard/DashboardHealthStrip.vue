@@ -11,6 +11,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDashboardData } from '@/composables/useDashboardData'
 import { useDashboardActions } from '@/composables/useDashboardActions'
+import SptIcon from '@/components/SptIcon.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -66,8 +67,8 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
     </div>
   </div>
 
-  <div v-if="overview?.stat_read_error" class="statread-alert glass">
-    <span class="statread-badge">!</span>
+  <div v-if="overview?.stat_read_error" class="statread-alert solid-card">
+    <span class="statread-badge"><SptIcon name="alert-circle" :size="18" aria-hidden="true" /></span>
     <div class="statread-body">
       <div class="statread-title">
         <strong>{{ t('dhs.statReadFailed') }}</strong>
@@ -77,8 +78,8 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
     </div>
   </div>
 
-  <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert glass">
-    <span class="nodata-badge">⚠</span>
+  <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert solid-card">
+    <span class="nodata-badge"><SptIcon name="alert-triangle" :size="18" aria-hidden="true" /></span>
     <div class="nodata-body">
       <div class="nodata-title">
         <strong>{{ t('dhs.nodataN', { n: overview?.no_data_sites?.length }) }}</strong>
@@ -171,8 +172,8 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   left: 4px;
   width: 3px;
   height: 6px;
-  border-right: 2px solid #16a34a;
-  border-bottom: 2px solid #16a34a;
+  border-right: 2px solid var(--color-success);
+  border-bottom: 2px solid var(--color-success);
   content: '';
   transform: rotate(45deg);
 }
@@ -186,22 +187,23 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 .health-item b {
   margin-left: auto;
   font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
 }
 .status-dot {
   width: 8px;
   height: 8px;
   flex: 0 0 8px;
   border-radius: 50%;
-  background: #64748b;
+  background: var(--color-text-muted);
 }
 .health-item.is-danger b {
   color: var(--pt-danger);
 }
 .health-item.is-danger .status-dot {
-  background: #dc2626;
+  background: var(--color-danger);
 }
 .health-item.is-warning b {
-  color: #d97706;
+  color: var(--pt-warn-fg);
 }
 
 /* 无采集数据站点告警卡（保号可观测性：疑似 cookie 失效/未采集的 PT 站首屏红字汇总） */
@@ -211,7 +213,7 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   gap: var(--sp-3);
   padding: 14px 18px;
   margin-bottom: 16px;
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--color-warning);
 }
 /* 统计读取故障：与「站点无数据」分色（红=系统读不到，琥珀=站点侧真没采到），
    两者不会同屏——后端读失败时不再判定无数据。 */
@@ -221,7 +223,7 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   gap: var(--sp-3);
   padding: 14px 18px;
   margin-bottom: 16px;
-  border-left: 3px solid #dc2626;
+  border-left: 3px solid var(--color-danger);
 }
 .statread-badge {
   flex: 0 0 auto;
@@ -229,10 +231,10 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   font-weight: 700;
-  color: #dc2626;
-  background: var(--pt-danger-bg, rgba(220, 38, 38, 0.12));
+  color: var(--pt-danger-fg);
+  background: var(--color-danger-soft);
 }
 .statread-body {
   flex: 1 1 auto;
@@ -261,8 +263,8 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--pt-warn-bg);
-  color: var(--pt-warn);
+  background: var(--color-warning-soft);
+  color: var(--pt-warn-fg);
   font-size: var(--fs-xl);
 }
 .nodata-body {
@@ -286,10 +288,11 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   margin-top: 8px;
 }
 .nodata-chip {
-  border: 1px solid var(--pt-warn-bg);
-  background: var(--pt-warn-bg);
-  color: var(--text);
-  border-radius: var(--radius-sm);
+  min-height: 24px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-warning-soft);
+  color: var(--color-text);
+  border-radius: var(--radius-control);
   padding: 2px 10px;
   font-size: var(--fs-xs);
   cursor: pointer;
@@ -298,13 +301,13 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   background: var(--pt-warn-bg);
 }
 .health-item.is-warning .status-dot {
-  background: #d97706;
+  background: var(--pt-warn-fg);
 }
 .health-item.is-success b {
   color: var(--pt-success);
 }
 .health-item.is-success .status-dot {
-  background: #16a34a;
+  background: var(--color-success);
 }
 .health-item.is-muted b {
   color: var(--text-muted);

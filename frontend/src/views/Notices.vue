@@ -227,7 +227,7 @@ onMounted(load)
         >
       </h2>
       <div class="head-tools">
-        <div class="filter glass">
+        <div class="filter solid-card">
           <button class="filter-btn" :class="{ on: filter === 'all' }" @click="filter = 'all'">
             {{ t('notices.filter.all') }}
           </button>
@@ -250,7 +250,7 @@ onMounted(load)
     </div>
 
     <div class="groups">
-      <div v-for="g in grouped" :key="g.source" class="group glass">
+      <div v-for="g in grouped" :key="g.source" class="group solid-card">
         <div
           v-a11y-button
           class="group-head"
@@ -310,7 +310,7 @@ onMounted(load)
 
     <EmptyState
       v-if="!grouped.length && !loading"
-      icon="🔔"
+      
       :title="onlyUnread ? t('notices.emptyUnreadTitle') : t('notices.emptyTitle')"
       :description="t('notices.emptyDesc')"
     />

@@ -142,7 +142,10 @@
       font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
       border: '1px solid #3a3f4f',
     })
-    box.textContent = '⚠ ' + msg
+    box.setAttribute('role', 'status')
+    box.setAttribute('aria-live', 'polite')
+    box.classList.add('warn')
+    box.textContent = '注意：' + msg
     document.documentElement.appendChild(box)
     // 与保存气泡同：一句人话 4.5s 读不完，1.8s 太短（保存侧已因此改过）。
     setTimeout(() => box.remove(), 4500)
@@ -159,19 +162,25 @@
       font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
       border: '1px solid #3a3f4f',
     })
+    box.setAttribute('role', 'group')
+    box.setAttribute('aria-label', '保存凭据')
     const label = document.createElement('span')
     label.textContent = `保存「${username.slice(0, 18)}」到凭据库？`
     const yes = document.createElement('button')
-    yes.textContent = '💾 保存'
+    yes.textContent = '保存'
+    yes.setAttribute('aria-label', '保存到 PTPatronus 凭据库')
     Object.assign(yes.style, {
       padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-      background: 'linear-gradient(135deg,#4f7cff,#7a5cff)', color: '#fff', font: '600 12px system-ui, sans-serif',
+      background: '#4c8dff', color: '#0b1020', font: '600 12px system-ui, sans-serif',
+      minHeight: '24px',
     })
     const no = document.createElement('button')
-    no.textContent = '✕'
+    no.textContent = '忽略'
+    no.setAttribute('aria-label', '忽略本次保存')
     Object.assign(no.style, {
       padding: '5px 9px', borderRadius: '8px', border: 'none', cursor: 'pointer',
       background: '#2c3145', color: '#fff', font: '600 12px system-ui, sans-serif',
+      minHeight: '24px',
     })
     yes.addEventListener('click', (ev) => {
       ev.preventDefault()
@@ -185,10 +194,14 @@
         // 从前这里对所有失败贴同一句「请先到扩展设置页解锁凭据库」——
         // 站点被用户自己拉进凭据黑名单、或来源校验被拒时也照这句说，等于把人指向错的下一步。
         if (res && res.ok) {
-          box.textContent = '✅ 已保存'
+          box.textContent = '已保存'
+          box.classList.add('ok')
+          box.style.borderColor = '#3fb950'
         } else {
           const code = res && res.error ? String(res.error) : ''
-          box.textContent = '⚠ ' + ((res && res.message) || (code ? `保存失败：${code}` : '保存失败：未返回原因（请打开扩展设置页查看）'))
+          box.textContent = '注意：' + ((res && res.message) || (code ? `保存失败：${code}` : '保存失败：未返回原因（请打开扩展设置页查看）'))
+          box.classList.add('danger')
+          box.style.borderColor = '#f85149'
         }
         setTimeout(() => box.remove(), 4500)
       })

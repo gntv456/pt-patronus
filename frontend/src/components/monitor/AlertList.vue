@@ -14,8 +14,8 @@ defineProps<{ alerts: MonitorAlert[] }>()
 const emit = defineEmits<{ read: [MonitorAlert]; ack: [MonitorAlert]; silence: [MonitorAlert]; del: [MonitorAlert] }>()
 
 const levelColor: Record<string, string> = {
-  danger: '#e74c3c',
-  warning: '#f7971e',
+  danger: 'var(--pt-danger-fg)',
+  warning: 'var(--pt-warn-fg)',
   info: 'var(--pt-primary-2)',
 }
 </script>
@@ -24,7 +24,7 @@ const levelColor: Record<string, string> = {
   <div class="alert-list">
     <div v-if="!alerts.length" class="empty">{{ t('al.empty') }}</div>
     <div v-for="a in alerts" :key="a.id" class="alert-item" :class="{ unread: !a.read, resolved: !!a.resolved_at }">
-      <span class="dot" :style="{ background: levelColor[a.level] || '#9ca3af' }"></span>
+      <span class="dot" aria-hidden="true" :style="{ background: levelColor[a.level] || 'var(--color-text-muted)' }"></span>
       <div class="al-body">
         <div class="al-msg">{{ a.message }}</div>
         <div class="al-meta">
@@ -108,7 +108,7 @@ const levelColor: Record<string, string> = {
   margin-left: 4px;
 }
 .silence-tag {
-  color: #f7971e;
+  color: var(--pt-warn-fg);
   margin-left: 4px;
 }
 .alert-actions {

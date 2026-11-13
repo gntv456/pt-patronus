@@ -11,8 +11,11 @@ import { startTokenRefresher } from './api/http'
 import { useUiPrefs } from './composables/useUiPrefs'
 import { usePerfMode } from './composables/usePerfMode'
 import { a11yButton } from './directives/a11yButton'
+// 设计 token（唯一真源）→ 存量 glass.css（保留类名与变量）→ dialog.css → modern.css（覆盖层最后加载，压过所有液态玻璃遗留）
+import './styles/tokens.css'
 import './styles/glass.css'
 import './styles/dialog.css'
+import './styles/modern.css'
 
 // 服务式组件 ElMessageBox 的样式在 unplugin AutoImport + ElementPlusResolver 下注入不可靠
 // （JS 调用的服务式组件 CSS 常被漏掉 → 弹窗跑到左上角、半透明）。手动确保加载。
@@ -54,7 +57,8 @@ window.addEventListener('unhandledrejection', (e) => {
   showErrorOverlay(e.reason, '未处理的 Promise 错误')
 })
 
-// 玻璃性能降级（阶段 1）：默认关闭全站 backdrop-filter（187 处 blur 是 GPU 合成杀手）。
+// 现代外观为默认（tokens.css + modern.css 已把全站玻璃卡改为实色）；此处保留低端机降级开关，
+// 仅作为额外保险：默认关闭全站 backdrop-filter（历史 187 处 blur 是 GPU 合成杀手）。
 // 低端机 / perf-glass-flat=1 强制降级；用户可置 perf-glass-full=1 或调 setGlassBlur(true) 恢复。
 // 系统「减少透明度」偏好仍由 glass.css @media 自动处理。
 {

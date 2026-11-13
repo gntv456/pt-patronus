@@ -16,12 +16,15 @@ import {
   type HealthReport,
 } from '@/api/mediaServer'
 import { subtitleFixOutcome } from './subtitleFixFeedback'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useMediaServerOps, fmtDuration } from '@/composables/useMediaServerOps'
+import { useFeedback } from '@/composables/useFeedback'
 
 const { t } = useI18n()
+const feedback = useFeedback()
+const formError = ref('')
 const servers = ref<MediaServer[]>([])
 const loading = ref(false)
 const testing = ref<number | null>(null)
@@ -95,18 +98,25 @@ function defaultForm() {
 function openCreate() {
   editing.value = null
   form.value = defaultForm()
+  formError.value = ''
   showForm.value = true
 }
 
 function openEdit(s: MediaServer) {
   editing.value = s
   form.value = { ...s, token: '' } // token 空串=保留；UI 不回显秘密
+  formError.value = ''
   showForm.value = true
 }
 
 async function save() {
+  formError.value = ''
   if (!form.value.name || !form.value.url || !form.value.type) {
-    ElMessage.warning(t('mediaserver.nameTypeUrlRequired'))
+    formError.value = t('mediaserver.nameTypeUrlRequired')
+    return
+  }
+  if (!/^https?:\/\//i.test(form.value.url)) {
+    formError.value = t('common.urlFormat')
     return
   }
   try {
@@ -115,7 +125,7 @@ async function save() {
       ElMessage.success(t('common.updated'))
     } else {
       if (!form.value.token) {
-        ElMessage.warning(t('mediaserver.tokenRequired'))
+        formError.value = t('mediaserver.tokenRequired')
         return
       }
       await mediaServerApi.create(form.value)
@@ -129,11 +139,12 @@ async function save() {
 }
 
 async function remove(s: MediaServer) {
-  try {
-    await ElMessageBox.confirm(t('mediaserver.confirmDelete', { name: s.name }), t('messages.tip'), { type: 'warning' })
-  } catch {
-    return // 用户取消
-  }
+  const ok = await feedback.confirm({
+    title: t('common.delete'),
+    detail: t('mediaserver.confirmDelete', { name: s.name }),
+    danger: true,
+  })
+  if (!ok) return
   try {
     await mediaServerApi.remove(s.id)
     ElMessage.success(t('common.deleted'))
@@ -215,10 +226,11 @@ onMounted(load)
       {{ t('mediaserver.subtitle') }}
     </p>
 
-    <div v-loading="loading" class="grid">
-      <div v-for="s in servers" :key="s.id" class="glass glass-hover card">
+    <el-skeleton v-if="loading && !servers.length" :rows="6" animated />
+    <div v-else v-loading="loading" class="grid">
+      <div v-for="s in servers" :key="s.id" class="solid-card card">
         <div class="card-head">
-          <GlassIcon name="mediaserver" :size="34" from="#52b788" to="#2d6a4f" />
+          <SptIcon name="server" :size="34" aria-hidden="true" />
           <div class="card-title">
             <div class="name">
               {{ s.name }}
@@ -259,7 +271,6 @@ onMounted(load)
       </div>
       <EmptyState
         v-if="!servers.length && !loading"
-        icon="🎬"
         :title="t('mediaserver.emptyTitle')"
         :description="t('mediaserver.emptyDesc')"
       >
@@ -281,6 +292,7 @@ onMounted(load)
       :editing="!!editing"
       :form="form"
       :loading="loading"
+      :form-error="formError"
       @run-health="runHealth"
       @fix="() => fixSubtitles()"
       @save="save"

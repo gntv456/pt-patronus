@@ -29,17 +29,20 @@
   display: flex;
   gap: var(--sp-2);
   align-items: center;
+  flex-wrap: wrap;
 }
 .badge {
   display: inline-block;
   margin-left: 4px;
   min-width: 18px;
   padding: 0 5px;
-  border-radius: var(--radius-pill);
-  background: #fff;
-  color: var(--pt-danger);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--pt-danger-fg);
   font-size: var(--fs-2xs);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .np-tabs {
   padding: 0 12px;
@@ -51,10 +54,11 @@
 }
 .tab-count {
   font-size: var(--fs-xs);
-  color: var(--text-muted);
-  background: var(--glass-bg);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
   padding: 1px 7px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
+  font-variant-numeric: tabular-nums;
 }
 .card-grid {
   display: grid;
@@ -63,7 +67,7 @@
   padding-top: 12px;
 }
 .empty-state {
-  padding: 48px;
+  padding: var(--space-6);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -83,7 +87,10 @@
   gap: var(--sp-3);
 }
 .err-text {
-  color: var(--pt-danger, #e74c3c);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--pt-danger-fg);
   font-size: var(--fs-md);
 }
 
@@ -96,6 +103,40 @@
     justify-content: flex-start;
     flex-wrap: wrap;
   }
+  .np-actions .el-button {
+    min-height: 44px;
+  }
+  .card-batch-bar .el-button,
+  .card-batch-bar .el-checkbox {
+    min-height: 44px;
+  }
+}
+
+/* 卡片列表多选批量条 */
+.card-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+}
+.cb-count {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.card-select-item {
+  position: relative;
+  min-width: 0;
+}
+.card-select-cb {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
 }
 
 /* 告警记录抽屉：自定义头部 + 列表撑满剩余高度 */
@@ -109,7 +150,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 20px 12px;
-  border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.08));
+  border-bottom: 1px solid var(--color-border);
 }
 .alert-drawer-title {
   font-size: var(--fs-lg);

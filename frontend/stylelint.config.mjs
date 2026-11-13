@@ -11,18 +11,25 @@ export default {
   extends: ['stylelint-config-standard'],
   ignoreFiles: ['**/node_modules/**', 'dist/**'],
   rules: {
-    // —— 品牌 token 防回流（error）——
+    // —— 品牌 token 防回流 + 去 AI 感 / 可读性 / 动效纪律 ——
+    // advisory 级别：硬门禁由 scripts/check-ui-a11y.mjs 棘轮负责（只许减不许增）。
+    // 正则一律写成「不含反斜杠」的简单模式，避免 JS 字符串与正则两层转义踩坑。
     'declaration-property-value-disallowed-list': [
       {
         '/^color$/': ['/#6c5ce7/i', '/#4285f4/i'],
-        '/^background(-image|-color)?$/': ['/#6c5ce7/i', '/#4285f4/i'],
+        '/^background(-image|-color)?$/': ['/#6c5ce7/i', '/#4285f4/i', '/gradient/i'],
         '/^border(-color)?$/': ['/#6c5ce7/i', '/#4285f4/i'],
         '/^box-shadow$/': ['/#6c5ce7/i', '/#4285f4/i'],
+        '/^font-size$/': ['/^(9|10|11)px$/i', '/^(9|10|11)[.]5px$/i', '/^0[.]75rem$/i'],
+        '/^transition$/': ['/^all/i'],
+        '/^animation$/': ['/infinite/i'],
+        '/^backdrop-filter$/': ['/blur/i', '/saturate/i'],
+        '/^-webkit-backdrop-filter$/': ['/blur/i', '/saturate/i'],
       },
       {
-        severity: 'error',
+        severity: 'warning',
         message:
-          '品牌主色 hex 必须用 var(--pt-primary)/var(--pt-primary-2)（含渐变与阴影内的主色 hex）',
+          '品牌主色/渐变/小字号/transition:all/无限动画/装饰模糊需用语义 token 与克制样式（硬门禁见 scripts/check-ui-a11y.mjs）',
       },
     ],
     // —— 存量消化（warning）——

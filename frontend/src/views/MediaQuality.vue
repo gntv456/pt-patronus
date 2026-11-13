@@ -13,7 +13,7 @@ import {
   type MediaQualityConfig,
   type RatingSummary,
 } from '@/api/mediaQuality'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SptIcon from '@/components/SptIcon.vue'
 import { ElMessage } from 'element-plus'
 
 const { t } = useI18n()
@@ -90,7 +90,8 @@ onMounted(load)
     <p class="sub">{{ t('mediaquality.subtitle') }}</p>
 
     <!-- 配置 -->
-    <div v-loading="loading" class="glass card">
+    <el-skeleton v-if="loading" :rows="5" animated />
+    <div v-else class="solid-card card">
       <div class="card-title">{{ t('mediaquality.gateTitle') }}</div>
       <el-form label-width="140px" label-position="right">
         <el-form-item :label="t('mediaquality.f.enableGate')">
@@ -118,7 +119,7 @@ onMounted(load)
     </div>
 
     <!-- 评分预览 -->
-    <div class="glass card">
+    <div class="solid-card card">
       <div class="card-title">{{ t('mediaquality.previewTitle') }}</div>
       <div class="preview-row">
         <el-input
@@ -140,12 +141,12 @@ onMounted(load)
           <el-option :label="t('search.catMovie')" value="movie" />
           <el-option :label="t('search.catTv')" value="tv" />
         </el-select>
-        <el-button type="primary" :loading="previewing" @click="preview">{{ t('mediaquality.query') }}</el-button>
+        <el-button :loading="previewing" @click="preview">{{ t('mediaquality.query') }}</el-button>
       </div>
 
       <div v-if="summary" class="summary">
         <div class="summary-head">
-          <GlassIcon name="mediaquality" :size="34" class="summary-icon" />
+          <SptIcon name="bar-chart" :size="34" class="summary-icon" aria-hidden="true" />
           <div>
             <div class="summary-title">
               {{ summary.title }}<span v-if="summary.year" class="muted"> ({{ summary.year }})</span>
@@ -217,7 +218,7 @@ onMounted(load)
   flex-wrap: wrap;
 }
 .summary {
-  border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--color-border);
   padding-top: 14px;
   display: flex;
   flex-direction: column;
@@ -259,7 +260,7 @@ onMounted(load)
   gap: var(--sp-1);
   padding: 4px 10px;
   border-radius: var(--radius-pill);
-  background: var(--bg-soft, rgba(255, 255, 255, 0.06));
+  background: var(--color-surface-2);
   font-size: var(--fs-body);
 }
 .src-name {

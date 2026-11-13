@@ -45,25 +45,25 @@
   border-radius: 50%;
 }
 .status-pill.online {
-  color: #11998e;
-  background: rgba(17, 153, 142, 0.12);
+  color: var(--pt-success-fg);
+  background: var(--color-success-soft);
 }
 .status-pill.online i {
-  background: #11998e;
+  background: var(--pt-success-fg);
 }
 .status-pill.offline {
   color: var(--pt-danger);
   background: var(--pt-danger-bg);
 }
 .status-pill.offline i {
-  background: #ef4444;
+  background: var(--pt-danger-fg);
 }
 .status-pill.unknown {
   color: var(--text-muted);
-  background: rgba(148, 163, 184, 0.16);
+  background: var(--color-surface-2);
 }
 .status-pill.unknown i {
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 .detail {
   padding: 0 2px 18px;
@@ -88,10 +88,10 @@
 .hero-card,
 .stat-card,
 .panel {
-  border: 1px solid var(--glass-border);
-  background: color-mix(in srgb, var(--glass-bg) 86%, transparent);
-  border-radius: var(--radius-xs);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 .hero-card {
   min-height: 148px;
@@ -102,16 +102,16 @@
   overflow: hidden;
 }
 .hero-primary {
-  color: #fff;
-  border-color: rgba(20, 184, 166, 0.25);
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.92), var(--pt-primary-2-bg)), var(--glass-bg);
+  color: var(--color-on-accent);
+  border-color: var(--pt-success-fg);
+  background: var(--pt-success-fg);
 }
 .hero-label {
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .hero-primary .hero-label {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--color-on-accent);
 }
 .hero-card strong {
   margin-top: 10px;
@@ -121,7 +121,7 @@
   word-break: break-word;
 }
 .hero-primary strong {
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .hero-line {
   margin-top: 10px;
@@ -129,7 +129,7 @@
   color: var(--text-muted);
 }
 .hero-primary .hero-line {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--color-on-accent);
 }
 .hero-tags {
   display: flex;
@@ -395,7 +395,7 @@
 }
 .service-output.err,
 .cmd-error {
-  color: var(--pt-danger, #e74c3c);
+  color: var(--pt-danger, var(--pt-danger-fg));
   background: var(--pt-danger-bg);
 }
 .cmd-error {

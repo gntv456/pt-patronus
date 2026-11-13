@@ -131,7 +131,7 @@ mixin NotificationOpsMixin on State<NotificationSettingsPage> {
   Future<void> _test() async {
     setState(() => _testing = true);
     try {
-      final results = await _api.test('PTPatronus 测试通知', '看到这条消息说明通知通道工作正常 ✅');
+      final results = await _api.test('PTPatronus 测试通知', '看到这条消息说明通知通道工作正常');
       if (results.isEmpty) {
         _toast('没有已启用的通道，请先启用并保存');
         return;

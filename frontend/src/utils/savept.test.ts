@@ -79,9 +79,9 @@ describe('getAnniversaryDisplayText', () => {
     expect(getAnniversaryDisplayText('')).toBe('')
     expect(getAnniversaryDisplayText('   ')).toBe('')
   })
-  it('今天站庆 / 0天 → 🎉 今天站庆！', () => {
-    expect(getAnniversaryDisplayText('今天站庆')).toBe('🎉 今天站庆！')
-    expect(getAnniversaryDisplayText('0天')).toBe('🎉 今天站庆！')
+  it('今天站庆 / 0天 → 今天站庆！', () => {
+    expect(getAnniversaryDisplayText('今天站庆')).toBe('今天站庆！')
+    expect(getAnniversaryDisplayText('0天')).toBe('今天站庆！')
   })
   it('剥离开头 emoji 站庆 前缀', () => {
     expect(getAnniversaryDisplayText('emoji 站庆 5天')).toBe('5天')

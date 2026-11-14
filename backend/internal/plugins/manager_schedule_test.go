@@ -54,25 +54,27 @@ func TestEffectiveCron(t *testing.T) {
 	}
 }
 
-// TestPluginScheduleRegistration 用 cloudflare-subscribe（带 daily_update 调度 + cron_update 配置键）
-// 验证 refreshSchedules 在 enable/config 变更时的注册/覆盖/停用语义。
+// TestPluginScheduleRegistration 用 sched-stub 夹具（见 testfixture_plugin_test.go，
+// 带 daily_update 调度 + cron_update 配置键）验证 refreshSchedules 在 enable/config
+// 变更时的注册/覆盖/停用语义。
 func TestPluginScheduleRegistration(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	mustRegister(t, m, NewCloudflareSubscribePlugin())
+	mustRegister(t, m, schedStubPlugin{})
 	fake := &fakeScheduler{}
 	m.sched = fake // 注入假调度器（绕过 Start 里的 scheduler.New）
 
-	const job = "plugin:cloudflare-subscribe:daily_update"
+	const id = "sched-stub"
+	const job = "plugin:sched-stub:daily_update"
 
 	// 未启用 → 不登记任何 job
-	m.refreshSchedules("cloudflare-subscribe")
+	m.refreshSchedules(id)
 	if len(fake.jobs) != 0 {
 		t.Fatalf("disabled plugin should register no jobs, got %v", fake.jobs)
 	}
 
 	// 启用（默认配置 cron_update="0 6 * * *"）→ 登记一条默认 cron
-	if err := m.SetEnabled("cloudflare-subscribe", true); err != nil {
+	if err := m.SetEnabled(id, true); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
 	if got := fake.jobs[job]; got != "0 6 * * *" {
@@ -80,7 +82,7 @@ func TestPluginScheduleRegistration(t *testing.T) {
 	}
 
 	// 配置覆盖 cron → 旧 job 被替换成新 spec
-	if _, err := m.SaveConfig("cloudflare-subscribe", map[string]any{"cron_update": "*/2 * * * *"}); err != nil {
+	if _, err := m.SaveConfig(id, map[string]any{"cron_update": "*/2 * * * *"}); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 	if got := fake.jobs[job]; got != "*/2 * * * *" {
@@ -88,7 +90,7 @@ func TestPluginScheduleRegistration(t *testing.T) {
 	}
 
 	// 清空 cron 配置 → 该条调度停用
-	if _, err := m.SaveConfig("cloudflare-subscribe", map[string]any{"cron_update": ""}); err != nil {
+	if _, err := m.SaveConfig(id, map[string]any{"cron_update": ""}); err != nil {
 		t.Fatalf("clear cron config: %v", err)
 	}
 	if _, ok := fake.jobs[job]; ok {
@@ -96,7 +98,7 @@ func TestPluginScheduleRegistration(t *testing.T) {
 	}
 
 	// 重新设回 cron → 恢复登记
-	if _, err := m.SaveConfig("cloudflare-subscribe", map[string]any{"cron_update": "0 6 * * *"}); err != nil {
+	if _, err := m.SaveConfig(id, map[string]any{"cron_update": "0 6 * * *"}); err != nil {
 		t.Fatalf("restore cron: %v", err)
 	}
 	if got := fake.jobs[job]; got != "0 6 * * *" {
@@ -104,7 +106,7 @@ func TestPluginScheduleRegistration(t *testing.T) {
 	}
 
 	// 禁用插件 → 清理 job
-	if err := m.SetEnabled("cloudflare-subscribe", false); err != nil {
+	if err := m.SetEnabled(id, false); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
 	if _, ok := fake.jobs[job]; ok {
@@ -112,14 +114,14 @@ func TestPluginScheduleRegistration(t *testing.T) {
 	}
 }
 
-// TestPluginWithoutScheduleNoOp 确保无 Schedule 声明的插件（如 json-toolbox）不触发任何调度。
+// TestPluginWithoutScheduleNoOp 确保无 Schedule 声明的插件不触发任何调度。
 func TestPluginWithoutScheduleNoOp(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	mustRegister(t, m, NewJSONToolboxPlugin())
+	mustRegister(t, m, wolPlugin{})
 	fake := &fakeScheduler{}
 	m.sched = fake
-	if err := m.SetEnabled("json-toolbox", true); err != nil {
+	if err := m.SetEnabled("wol-wake", true); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
 	if len(fake.jobs) != 0 {

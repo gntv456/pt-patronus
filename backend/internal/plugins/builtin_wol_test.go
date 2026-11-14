@@ -9,6 +9,20 @@ import (
 	"testing"
 )
 
+// stubRT 仅满足 Runtime 接口的最小桩（WOL 的 unknown-action 分支不触达任何方法）。
+type stubRT struct{}
+
+func (stubRT) Config() map[string]any                          { return nil }
+func (stubRT) Log(string, string, string, map[string]any)      {}
+func (stubRT) Notice(context.Context, NoticeInput) error       { return nil }
+func (stubRT) Publish(context.Context, string, map[string]any) {}
+func (stubRT) KVGet(string, any) error                         { return nil }
+func (stubRT) KVSet(string, any) error                         { return nil }
+func (stubRT) KVDelete(string) error                           { return nil }
+func (stubRT) SiteList() []SiteRef                             { return nil }
+func (stubRT) SiteCookie(uint) (string, error)                 { return "", nil }
+func (stubRT) SetRuntimeConfig(string, any) error              { return nil }
+
 func TestParseMAC(t *testing.T) {
 	cases := map[string]bool{
 		"AA:BB:CC:DD:EE:FF": true,

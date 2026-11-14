@@ -32,8 +32,8 @@ func ptpRoot(t *testing.T) string {
 // pipeline: FetchMarket parses + computes compatibility/trust, and InstallFromMarket
 // verifies the signature, unzips, validates the manifest and registers the plugin.
 //
-// ptp-drama-scrape / ptp-playlet-category 已移植为 Go builtin（见 drama_scrape.go /
-// playlet_category.go），从市场移除；这里断言它们随 NewManager 内置注册，且不再出现在市场。
+// 全部 feature 插件都在开放市场（market-plugins/），宿主不再内置注册任何 feature 插件；
+// 这里断言 NewManager 干净启动（无内置残留），且市场条目可通过真实安装管线。
 func TestRealMarketFetchAndInstall(t *testing.T) {
 	root := ptpRoot(t)
 	marketPath := filepath.Join(root, "examples", "plugin-market", "plugin-market.json")
@@ -45,11 +45,10 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 	m := NewManager(db, event.New(), nil, nil, nil)
 	m.SetPluginRoot(filepath.Join(t.TempDir(), "plugins"))
 
-	// builtin 移植验证：drama-scrape / playlet-category 已内置注册（不再走市场安装）。
-	// Feature plugins moved to open market; should not be auto-registered.
-	for _, id := range []string{"ptp-drama-scrape", "ptp-playlet-category", "xiaomi-router"} {
+	// 干净启动：NewManager 不内置注册任何 feature 插件（全部走开放市场安装）。
+	for _, id := range []string{"ptp-drama-scrape", "ptp-playlet-category", "xiaomi-router", "json-toolbox", "event-audit"} {
 		if pl, err := m.plugin(id); err == nil && pl != nil {
-			t.Errorf("%s should not be built-in anymore (moved to market)", id)
+			t.Errorf("%s should not be built-in (lives in open market)", id)
 		}
 	}
 
@@ -68,8 +67,6 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 		"ptp-miwifi":         false,
 	}
 	for _, p := range market.Plugins {
-		// 已移植为 builtin 的两个不应再出现在市场。
-		// drama/playlet are published on the open market again.
 		if _, ok := want[p.ID]; !ok {
 			continue
 		}

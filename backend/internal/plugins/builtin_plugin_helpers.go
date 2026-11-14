@@ -6,38 +6,15 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
 
-func pluginDecodeJSON(raw string, out any) error {
-	dec := json.NewDecoder(strings.NewReader(raw))
-	dec.UseNumber()
-	if err := dec.Decode(out); err != nil {
-		return fmt.Errorf("JSON 解析失败: %w", err)
+func boolVal(v any) bool {
+	if b, ok := v.(bool); ok {
+		return b
 	}
-	return nil
-}
-
-func pluginParseHeaders(raw string) map[string]string {
-	headers := map[string]string{}
-	for _, line := range strings.Split(raw, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		k, v, ok := strings.Cut(line, ":")
-		if !ok {
-			continue
-		}
-		key := strings.TrimSpace(k)
-		if key == "" {
-			continue
-		}
-		headers[key] = strings.TrimSpace(v)
-	}
-	return headers
+	return false
 }
 
 func pluginInt(v any, fallback int) int {
@@ -111,25 +88,4 @@ func pluginSplitList(raw string) []string {
 		out = append(out, item)
 	}
 	return out
-}
-
-func pluginSortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func pluginPrettyJSON(v any, limit int) string {
-	raw, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return fmt.Sprint(v)
-	}
-	s := string(raw)
-	if limit > 0 && len(s) > limit {
-		return s[:limit] + "..."
-	}
-	return s
 }

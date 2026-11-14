@@ -1,9 +1,9 @@
 # PTPatronus Plugin Development Kit
 
-PTPatronus is **closed-source**; the plugin platform is an **open developer surface**. This directory
-is the public dev kit (PDK) — everything a third-party developer needs to build, test, and publish
-external-http plugins, with **zero host source**. Developers target the stable plugin contract
-(`api_version: "1"`).
+PTPatronus is **AGPL-3.0 open source**; the plugin platform is an **open developer surface** on top of
+it. This directory is the public dev kit (PDK) — everything a third-party developer needs to build,
+test, and publish external-http plugins, targeting the stable plugin contract (`api_version: "1"`)
+without touching host internals.
 
 ## What's here
 
@@ -33,7 +33,7 @@ curl -fsSL https://ptang.top/devkit/install.sh | sh
 ```bash
 pip install ptpatronus-plugin-sdk
 ptp-pluginctl create my-plugin --directory my-plugin
-ptp-pluginctl mock-host &              # fake Host API — no closed binary needed
+ptp-pluginctl mock-host &              # fake Host API — no running host needed
 ptp-pluginctl run my-plugin --action ping --once
 ptp-pluginctl package my-plugin --json-out dist/plugin-package.json
 ```

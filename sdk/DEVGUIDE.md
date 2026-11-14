@@ -1,8 +1,9 @@
 # PTPatronus Plugin Development Guide
 
-PTPatronus is **closed-source**, but the plugin platform is an open developer surface. You can build,
-test, and publish external plugins **without ever seeing host source or running the closed binary** —
-you target the stable **plugin contract** (`api_version: "1"`) using the public dev kit.
+PTPatronus is **AGPL-3.0 open source**, and the plugin platform is an open developer surface on top
+of it. You can build, test, and publish external plugins against the stable **plugin contract**
+(`api_version: "1"`) using the public dev kit — no need to read host internals or run the binary
+from source.
 
 This guide ships inside `ptpatronus-plugin-sdk` (pip) and `@ptpatronus/plugin-sdk` (npm), and is the
 canonical public reference. It contains no host internals.
@@ -33,7 +34,7 @@ npm install @ptpatronus/plugin-sdk
 ptp-pluginctl create my-plugin --directory my-plugin          # scaffold (+ optionally --vendor-tools to pin the tool into your repo)
 cd my-plugin
 ptp-pluginctl validate .                                       # check plugin.json
-ptp-pluginctl mock-host --port 19091 --token dev-token &       # fake Host API — no closed binary needed
+ptp-pluginctl mock-host --port 19091 --token dev-token &       # fake Host API — no running host needed
 ptp-pluginctl run . --action ping --once                       # launch plugin + invoke an action against the mock host
 ptp-pluginctl package . --json-out dist/plugin-package.json    # build zip + metadata
 ```
@@ -246,7 +247,7 @@ Declare `schedule[]` in the manifest; the host calls your action on cron. Use `c
 the user control/empty-it via config (empty = disabled). You cannot self-schedule from outside the
 manifest — but your process IS long-running, so background threads are fine.
 
-## Test without the closed binary
+## Test without a running host
 
 - `ptp-pluginctl mock-host` — a fake Host API server for local dev.
 - `ptp-pluginctl run <dir> --action <name> --once` — launches your plugin, health-checks, invokes an

@@ -29,7 +29,7 @@ func corruptConfigManager(t *testing.T) (*Manager, *gorm.DB, *fakeScheduler) {
 	t.Helper()
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	mustRegister(t, m, NewCloudflareSubscribePlugin())
+	mustRegister(t, m, schedStubPlugin{})
 	fake := &fakeScheduler{}
 	m.sched = fake
 	return m, db, fake
@@ -38,7 +38,7 @@ func corruptConfigManager(t *testing.T) (*Manager, *gorm.DB, *fakeScheduler) {
 const corruptReason = "无法解析"
 
 func TestCorruptPluginConfigIsRejectedNotDefaulted(t *testing.T) {
-	const id = "cloudflare-subscribe"
+	const id = "sched-stub"
 	m, db, _ := corruptConfigManager(t)
 	if err := m.SetEnabled(id, true); err != nil {
 		t.Fatalf("enable: %v", err)
@@ -84,7 +84,7 @@ func TestCorruptPluginConfigIsRejectedNotDefaulted(t *testing.T) {
 }
 
 func TestCorruptPluginConfigLeavesTrailOnScheduleOutlet(t *testing.T) {
-	const id = "cloudflare-subscribe"
+	const id = "sched-stub"
 	m, db, fake := corruptConfigManager(t)
 	if err := m.SetEnabled(id, true); err != nil {
 		t.Fatalf("enable: %v", err)
@@ -114,11 +114,11 @@ func TestCorruptPluginConfigLeavesTrailOnScheduleOutlet(t *testing.T) {
 }
 
 func TestCorruptPluginConfigMarksEventFailureOnEventOutlet(t *testing.T) {
-	// 出口二：事件投递用 event-audit（它声明了 plugin.test 事件）。
+	// 出口二：事件投递用 event-stub 夹具（它声明了 plugin.test 事件）。
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	const id = "event-audit"
-	mustRegister(t, m, NewEventAuditPlugin())
+	const id = "event-stub"
+	mustRegister(t, m, eventStubPlugin{})
 	if err := m.SetEnabled(id, true); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
@@ -152,12 +152,12 @@ func TestCorruptPluginConfigMarksEventFailureOnEventOutlet(t *testing.T) {
 func TestPluginListSurvivesOneCorruptConfig(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	mustRegister(t, m, NewCloudflareSubscribePlugin())
-	mustRegister(t, m, NewEventAuditPlugin())
-	if err := m.SetEnabled("cloudflare-subscribe", true); err != nil {
+	mustRegister(t, m, schedStubPlugin{})
+	mustRegister(t, m, eventStubPlugin{})
+	if err := m.SetEnabled("sched-stub", true); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
-	setRawPluginConfig(t, db, "cloudflare-subscribe", "不是 JSON")
+	setRawPluginConfig(t, db, "sched-stub", "不是 JSON")
 
 	views, err := m.List()
 	if err != nil {
@@ -165,7 +165,7 @@ func TestPluginListSurvivesOneCorruptConfig(t *testing.T) {
 	}
 	var bad, ok int
 	for _, v := range views {
-		if v.ID == "cloudflare-subscribe" {
+		if v.ID == "sched-stub" {
 			bad++
 			if !strings.Contains(v.LastError, corruptReason) {
 				t.Errorf("坏配置那行要带原因（面板渲染 last_error）, got %q", v.LastError)

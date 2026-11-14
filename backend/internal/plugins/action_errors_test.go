@@ -49,8 +49,10 @@ func TestUnknownActionSitesAllRouted(t *testing.T) {
 	if left != 0 {
 		t.Errorf("还有 %d 处自己拼「unknown action」的文案：没带哨兵就会被兜底成「参数有误」", left)
 	}
-	if routed < 20 {
-		t.Errorf("经 unknownActionErr 的出口只有 %d 处，怀疑漏改（本轮记录 21 处）", routed)
+	if routed < 3 {
+		// feature 插件已全部迁开放市场，宿主包内仅剩 wol / douban-chart / mcp-server
+		// 三个 builtin——正控阈值从 21 收敛到 3。
+		t.Errorf("经 unknownActionErr 的出口只有 %d 处，怀疑漏改（现存 3 处）", routed)
 	}
 }
 

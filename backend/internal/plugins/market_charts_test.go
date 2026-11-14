@@ -137,8 +137,8 @@ func TestMarketOperInstanceAndReorder(t *testing.T) {
 func TestManagerSingleInstance(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
-	mustRegister(t, m, NewEventAuditPlugin())
-	if !m.SingleInstance("event-audit") {
+	mustRegister(t, m, eventStubPlugin{})
+	if !m.SingleInstance("event-stub") {
 		t.Fatal("builtin plugin must be single-instance")
 	}
 	if m.SingleInstance("not-registered") {

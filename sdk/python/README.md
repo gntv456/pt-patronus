@@ -2,7 +2,7 @@
 
 Python SDK + the `pluginctl` dev tool for **PTPatronus external-http plugins**.
 
-PTPatronus is closed-source — but you don't need the host source or binary to develop plugins.
+PTPatronus is AGPL-3.0 open source — and you don't even need the host source to develop plugins.
 This package is the public developer surface: an importable Host API client + the `ptp-pluginctl`
 command (scaffold/validate/test/package/publish plugins).
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     ThreadingHTTPServer(("127.0.0.1", int(os.environ.get("PTP_PLUGIN_PORT", "19090"))), Handler).serve_forever()
 ```
 
-Scaffold + test it without the closed binary:
+Scaffold + test it without a running host:
 
 ```bash
 ptp-pluginctl create my-plugin --directory my-plugin

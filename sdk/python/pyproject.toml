@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ptpatronus-plugin-sdk"
 version = "0.1.0"
-description = "Python SDK + pluginctl CLI for PTPatronus external-http plugins (closed host, open dev kit)."
+description = "Python SDK + pluginctl CLI for PTPatronus external-http plugins (open source host, stable plugin contract)."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }

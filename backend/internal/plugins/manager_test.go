@@ -98,15 +98,15 @@ func TestManagerHandlesEnabledPluginEvent(t *testing.T) {
 
 	bus := event.New()
 	m := NewManager(db, bus, nil, nil, nil)
-	mustRegister(t, m, NewEventAuditPlugin())
+	mustRegister(t, m, eventStubPlugin{})
 	m.Start(context.Background())
 
-	if err := m.SetEnabled("event-audit", true); err != nil {
+	if err := m.SetEnabled("event-stub", true); err != nil {
 		t.Fatalf("enable plugin: %v", err)
 	}
 	bus.Publish(context.Background(), "plugin.test", map[string]any{"message": "hello"})
 
-	logs, err := m.Logs("event-audit", 20)
+	logs, err := m.Logs("event-stub", 20)
 	if err != nil {
 		t.Fatalf("list logs: %v", err)
 	}
@@ -845,7 +845,7 @@ func TestSetEnabledBlocksOnMissingDependency(t *testing.T) {
 		APIVersion:   CurrentPluginAPIVersion,
 		Runtime:      RuntimeExternalHTTP,
 		Entry:        &RuntimeEntry{BaseURL: "http://127.0.0.1:19090", Health: "/health"},
-		Dependencies: []PluginDependency{{ID: "json-toolbox", Reason: "JSON helpers are required"}},
+		Dependencies: []PluginDependency{{ID: "wol-wake", Reason: "WOL helpers are required"}},
 	}
 	raw, _ := json.Marshal(manifest)
 	if err := os.WriteFile(filepath.Join(dir, "plugin.json"), raw, 0o644); err != nil {
@@ -854,12 +854,12 @@ func TestSetEnabledBlocksOnMissingDependency(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
-	mustRegister(t, m, NewJSONToolboxPlugin())
+	mustRegister(t, m, wolPlugin{})
 	m.SetPluginRoot(pluginRoot)
 	if err := m.LoadExternal(pluginRoot); err != nil {
 		t.Fatalf("load external: %v", err)
 	}
-	if err := m.SetEnabled("dependency-demo", true); err == nil || !strings.Contains(err.Error(), "json-toolbox") {
+	if err := m.SetEnabled("dependency-demo", true); err == nil || !strings.Contains(err.Error(), "wol-wake") {
 		t.Fatalf("expected dependency enable error, got %v", err)
 	}
 	view, err := m.Get("dependency-demo")
@@ -869,16 +869,16 @@ func TestSetEnabledBlocksOnMissingDependency(t *testing.T) {
 	if view.CanEnable || len(view.DependenciesStatus) != 1 || view.DependenciesStatus[0].Satisfied {
 		t.Fatalf("expected unmet dependency status, got %#v", view)
 	}
-	if err := m.SetEnabled("json-toolbox", true); err != nil {
+	if err := m.SetEnabled("wol-wake", true); err != nil {
 		t.Fatalf("enable dependency plugin: %v", err)
 	}
 	if err := m.SetEnabled("dependency-demo", true); err != nil {
 		t.Fatalf("enable dependency demo: %v", err)
 	}
-	if err := m.SetEnabled("json-toolbox", false); err == nil || !strings.Contains(err.Error(), "dependency-demo") {
+	if err := m.SetEnabled("wol-wake", false); err == nil || !strings.Contains(err.Error(), "dependency-demo") {
 		t.Fatalf("expected dependency disable protection, got %v", err)
 	}
-	if err := m.Uninstall("json-toolbox"); err == nil || !strings.Contains(err.Error(), "dependency-demo") {
+	if err := m.Uninstall("wol-wake"); err == nil || !strings.Contains(err.Error(), "dependency-demo") {
 		t.Fatalf("expected dependency uninstall protection, got %v", err)
 	}
 	view, err = m.Get("dependency-demo")
@@ -886,7 +886,7 @@ func TestSetEnabledBlocksOnMissingDependency(t *testing.T) {
 		t.Fatalf("get dependency plugin after enable: %v", err)
 	}
 	if !view.CanEnable || !view.DependenciesStatus[0].Satisfied {
-		t.Fatalf("expected dependency satisfied after enabling json-toolbox, got %#v", view)
+		t.Fatalf("expected dependency satisfied after enabling wol-wake, got %#v", view)
 	}
 }
 
@@ -901,7 +901,7 @@ func TestMarketDependencyInstallableStatus(t *testing.T) {
 			APIVersion:   CurrentPluginAPIVersion,
 			Runtime:      RuntimeExternalHTTP,
 			Archive:      "archives/market-with-dependency.zip",
-			Dependencies: []PluginDependency{{ID: "json-toolbox", Reason: "JSON helpers are required"}},
+			Dependencies: []PluginDependency{{ID: "wol-wake", Reason: "WOL helpers are required"}},
 		}},
 	}
 	rawIndex, _ := json.Marshal(index)
@@ -912,7 +912,7 @@ func TestMarketDependencyInstallableStatus(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
-	mustRegister(t, m, NewJSONToolboxPlugin())
+	mustRegister(t, m, wolPlugin{})
 	m.SetPluginRoot(filepath.Join(root, "plugins"))
 
 	market, err := m.FetchMarket(context.Background(), indexPath)

@@ -24,7 +24,9 @@
     "log:write",
     "notice:write",
     "site:read",
-    "site:action"
+    "site:action",
+    "kv:read",
+    "kv:write"
   ],
   "events": [],
   "schedule": [

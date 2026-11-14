@@ -622,7 +622,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-site-signin-1.0.0.zip",
-      "sha256": "eea2b4e61270855be687bfa5331cfbc32acabf50a52f26fab9547f35f11e15ad",
+      "sha256": "30cc693597a0248605b58bacf88a898113fa1642dfaf9c141ef0639e5773da55",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -630,7 +630,9 @@
         "host.api.log.write",
         "host.api.notice.write",
         "host.api.site.read",
-        "host.api.tools"
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
       ],
       "author": "PTPatronus Community",
       "description": "全站定时签到 + 签到结果通知。功能对标 MoviePilot 签到类插件的独立实现：调度触发 site_checkin_all，成功/失败汇总成站内通知；可附带拉取站内消息与当前优惠。",
@@ -644,7 +646,9 @@
         "log:write",
         "notice:write",
         "site:read",
-        "site:action"
+        "site:action",
+        "kv:read",
+        "kv:write"
       ],
       "actions": [
         {
@@ -738,7 +742,7 @@
           }
         ]
       },
-      "signature": "VK8iaisE2MejSwy/VyelSlfrgRvLvzYKBwOz0xi3pef+9lCk/hGXA25cqxwhU8HjLyWQQSoEmLtpoBS7JVluDQ==",
+      "signature": "GMy5/zmSuqxXqlEMmPMacMb/rIM0IsKjLCl21NV6cG4Efxo+lzueQB5MhnyyEz/DDHO8uMzXpu2w2pF5W9MICQ==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -746,7 +750,7 @@
         "verified": true
       },
       "changelog": [
-        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+        "fix: declare kv:read/kv:write (last-result cache needs KV loopback)"
       ]
     },
     {
@@ -756,14 +760,16 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-transfer-organize-1.0.0.zip",
-      "sha256": "90b43253278748aae71876cd97241dd10c5554febfebd84bdc53d1af26433734",
+      "sha256": "dba6c03198829e6bd06a1bf348a7b9eadf74e26e240895eaf32bc29157527c48",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
         "host.schedule.cron",
         "host.api.log.write",
         "host.api.notice.write",
-        "host.api.tools"
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
       ],
       "author": "PTPatronus Community",
       "description": "下载完成自动整理（识别→重命名→硬链→刮削→入库）。功能对标 MoviePilot 自动整理类插件的独立实现：定时扫描已完成种子触发宿主整理扫描；支持按种子手动整理、查看整理历史、失败重做。",
@@ -778,7 +784,9 @@
         "notice:write",
         "downloader:read",
         "transfer:read",
-        "transfer:write"
+        "transfer:write",
+        "kv:read",
+        "kv:write"
       ],
       "actions": [
         {
@@ -856,7 +864,7 @@
           }
         ]
       },
-      "signature": "OZ4ASm+KdqIieLg58gDI4iLrViP7ATYkRtXygTJeyfZDCz1C0VnVdu2TPtCibRA12GmngWm97idYP6fNlQgTDg==",
+      "signature": "NCnVFZIqOI44N7ZBhBYwBy0rG4uVpu+mnZ6fpuJAx8h7yFggF4Yt7yQmMDxb/GsoeURWUHX/5QUQW04JWYN6Ag==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -864,7 +872,7 @@
         "verified": true
       },
       "changelog": [
-        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+        "fix: declare kv:read/kv:write (last-result cache needs KV loopback)"
       ]
     },
     {

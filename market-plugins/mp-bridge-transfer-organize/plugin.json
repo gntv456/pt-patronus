@@ -25,7 +25,9 @@
     "notice:write",
     "downloader:read",
     "transfer:read",
-    "transfer:write"
+    "transfer:write",
+    "kv:read",
+    "kv:write"
   ],
   "events": [],
   "schedule": [

@@ -2,6 +2,8 @@
 
 > 目标：在**只考虑性能和流畅**的前提下，给出 PTPatronus 的可执行重构路线。
 > 现状基线：Go 1.26 后端（~9 万行 / 47 业务域）+ Vue3 Web UI（47 views / 171 组件 / 304 站点 YAML）+ Flutter 三端 + MV3 扩展 + `go:embed` 单镜像。
+>
+> **状态注（2026-11-15）**：本文写成于插件路线演进之前。负面清单中的「动态插件加载」指**进程内动态加载**（`plugin.Open` / Go plugin .so），不适用于现在的 **external-http 独立进程插件**（宿主经 HTTP 调度、crash 隔离天然优于进程内方案，见 `sdk/DEVGUIDE.md` 与开放插件市场）。文中「内置 Module」等表述也已被「feature 插件全部迁开放市场、宿主仅保留 mcp/wol/douban-chart 三个进程内 builtin」取代。
 
 ---
 

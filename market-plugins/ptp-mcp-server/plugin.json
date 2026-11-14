@@ -5,7 +5,7 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "MCP 相关配置与工具清单查看（完整 MCP HTTP 端点仍由宿主提供；本插件承接配置与可观测动作）。",
+  "description": "MCP 配置面板与工具清单查看。注意：MCP HTTP 端点由宿主内置提供（无需安装本插件即可使用 MCP），本插件仅承接配置可视化与可观测动作。",
   "license": "MIT",
   "keywords": [
     "mcp",

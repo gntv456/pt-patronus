@@ -33,6 +33,26 @@ func (c *SiteChain) credentialWithErr(s *models.Site, def *site.SiteMetadata) (s
 	if def != nil {
 		switch def.Schema {
 		case "mteam":
+			if def.ID == "colapt" {
+				// ColaPT：兼容面（search/profile/genDlToken）用 apiKey，公告/站免走站点
+				// 原生 API 需账号密码——打包 JSON {api_key,username,password} 单串供
+				// 适配器 parseColapTCred 拆（schemas/colapt.go）。裸 apiKey 也兼容
+				// （未填账密时公告/站免报可读指引，其余链路不受影响）。
+				k, kerr := c.sites.APIKey(s)
+				if kerr != nil {
+					return "", siteCredUnreadable(s.Name, "APIKey", kerr)
+				}
+				pwd, perr := c.sites.Password(s)
+				if perr != nil {
+					return "", siteCredUnreadable(s.Name, "密码", perr)
+				}
+				b, _ := json.Marshal(map[string]string{
+					"api_key":  k,
+					"username": s.Username,
+					"password": pwd,
+				})
+				return string(b), nil
+			}
 			if k, err := c.sites.APIKey(s); err == nil {
 				return k, nil
 			}

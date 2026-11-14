@@ -19,10 +19,15 @@ import (
 // 与 NexusPHP（HTML 抓取）不同——所有数据来自 POST JSON 端点，无需选择器。
 type MTeam struct {
 	hc *httpclient.Client
+	// colapt 缓存 ColaPT 原生面（www.colapt.com/api/v1/*）会话——公告/站免走原生
+	// API（兼容面 news/list、promotion/rules 404，tracker/* 403），会话管理见 colapt.go。
+	colapt *colaptNative
 }
 
 // NewMTeam 构造适配器，注入共享 httpclient。
-func NewMTeam(hc *httpclient.Client) *MTeam { return &MTeam{hc: hc} }
+func NewMTeam(hc *httpclient.Client) *MTeam {
+	return &MTeam{hc: hc, colapt: newColaptNative()}
+}
 
 // Schema 返回平台标识。
 func (m *MTeam) Schema() string { return "mteam" }
@@ -215,7 +220,15 @@ func (m *MTeam) fetchMTBonusPerHour(ctx context.Context, baseURL, token string) 
 // FetchAnnouncement 馒头：POST /api/news/list（空 body 即可），解析新闻数组。
 // 实测端点可用（x-api-key 即可，无需更高权限）：data[] 含 subject/context/createdDate。
 // 这是馒头唯一稳定的公告 JSON 端点（其余 /api/notice* 等为 No static resource 或被 CF 挡）。
+//
+// ColaPT（def.ID=="colapt"）例外：兼容面无 news/list（404），走站点原生 API
+// /api/v1/announcements（账号密码会话，见 colapt.go）——token 为 chain 打包的
+// JSON 凭据 {api_key,username,password}。
 func (m *MTeam) FetchAnnouncement(ctx context.Context, def *site.SiteMetadata, baseURL, token string) (*site.SiteAnnouncement, error) {
+	if def != nil && def.ID == "colapt" {
+		cred := parseColapTCred(token)
+		return colaptFetchAnnouncement(ctx, m.colapt, m.hc, baseURL, cred)
+	}
 	data, err := m.mtRequest(ctx, baseURL, token, "/api/news/list", map[string]any{})
 	if err != nil {
 		return nil, err
@@ -246,7 +259,14 @@ func (m *MTeam) FetchAnnouncement(ctx context.Context, def *site.SiteMetadata, b
 // FetchFreeleech 馒头：POST /api/system/promotion/rules 取促销规则，找「全站 FREE」
 // （discount 含 FREE 且 categories/teams 空=不限分类/组=全站），按 startTime/endTime 判
 // upcoming（预告，如「【预告】全站促销 Free, 07月01日 開始」）/ active（进行中）。
+//
+// ColaPT（def.ID=="colapt"）例外：兼容面无 promotion/rules（404），走站点原生 API
+// /api/v1/promotions（账号密码会话，见 colapt.go）——token 为 chain 打包的 JSON 凭据。
 func (m *MTeam) FetchFreeleech(ctx context.Context, def *site.SiteMetadata, baseURL, token string) ([]site.SiteFreeleech, error) {
+	if def != nil && def.ID == "colapt" {
+		cred := parseColapTCred(token)
+		return colaptFetchFreeleech(ctx, m.colapt, m.hc, baseURL, cred)
+	}
 	data, err := m.mtRequest(ctx, baseURL, token, "/api/system/promotion/rules", map[string]any{})
 	if err != nil {
 		return nil, err

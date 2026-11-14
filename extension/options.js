@@ -8,7 +8,7 @@ import { getConfig, saveConfig, api, localLogin, clearSession, isConfigured } fr
 import { readSecret, writeSecret, setSealsPin } from './secrets.js'
 import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieHeader } from './cookies.js'
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
-import { ACCENT_GROUPS, loadAccent, saveAccent, applyAccent } from './accent.js'
+import { ACCENT_GROUPS, loadAccent, saveAccent, applyAccent, pushServerAccent } from './accent.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud, cookieHeaderToEntries, entriesToHeader,
@@ -56,6 +56,17 @@ async function initAccentPalette() {
         applyAccent(p.value)
         for (const d of host.querySelectorAll('.accent-dot')) d.classList.remove('on')
         dot.classList.add('on')
+        // 服务端同步：Web/其他设备随之跟随（离线时本地已生效，静默失败）。
+        try {
+          const cfg = await getConfig()
+          if (isConfigured(cfg)) {
+            await pushServerAccent(
+              (path, options) => api(cfg, path, options),
+              (path) => api(cfg, path),
+              p.value,
+            )
+          }
+        } catch { /* 未登录：仅本地 */ }
       })
       dots.appendChild(dot)
     }

@@ -55,6 +55,50 @@ export async function saveAccent(key) {
   }
 }
 
+// —— 服务端偏好同步：与 Web /auth/preferences/ui 同一域，三端跨设备跟随 ——
+// 读写都走带凭据的 api()（未配置/未登录时静默降级为纯本地模式）。
+// 需要调用方注入 api 函数与 getConfig（避免 accent.js 反向依赖 api.js 造成循环）。
+
+/**
+ * 拉取服务端 ui 偏好里的 accent（登录态）。失败返回 null（调用方沿用本地）。
+ * @param {(path: string) => Promise<any>} apiGet 带凭据的 GET（返回解析后的 JSON）
+ */
+export async function fetchServerAccent(apiGet) {
+  try {
+    const r = await apiGet('/auth/preferences/ui')
+    const raw = r && r.value
+    if (!raw) return null
+    const ui = JSON.parse(raw)
+    return typeof ui.accent === 'string' && ui.accent ? ui.accent : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 把 accent 合并写回服务端 ui 域（保留 Web 存的 uiStyle/sidebar 等字段）。
+ * @param {(path: string, options?: object) => Promise<any>} apiCall 带凭据的调用器
+ * @param {(path: string) => Promise<any>} apiGet 带凭据的 GET
+ * @param {string} key 预设 key
+ */
+export async function pushServerAccent(apiCall, apiGet, key) {
+  try {
+    let ui = {}
+    try {
+      const r = await apiGet('/auth/preferences/ui')
+      const raw = r && r.value
+      if (raw) {
+        const decoded = JSON.parse(raw)
+        if (decoded && typeof decoded === 'object') ui = decoded
+      }
+    } catch { /* 无现成域：从空开始 */ }
+    ui.accent = key
+    await apiCall('/auth/preferences/ui', { method: 'PUT', body: JSON.stringify(ui) })
+  } catch {
+    /* 离线：本地已生效，联网后收敛 */
+  }
+}
+
 /** 把当前 accent 应用到 document 的 CSS 变量（popup / options 共用）。 */
 export function applyAccent(key) {
   const preset = ACCENT_GROUPS.flatMap((g) => g.presets).find((p) => p.value === key)

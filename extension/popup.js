@@ -7,7 +7,7 @@ import { getConfig, isConfigured, api, searchTorrentsStream, searchMedia, create
 import { overview, fmtBonus } from './dashboard.js'
 import { listDownloaders, listTorrents, pauseTorrent, resumeTorrent, globalStats } from './downloads.js'
 import { esc, $, fmtBytes, pushFailed, pushResultLabel } from './util.js'
-import { loadAccent, applyAccent } from './accent.js'
+import { loadAccent, applyAccent, fetchServerAccent } from './accent.js'
 
 async function currentSelection() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -439,8 +439,19 @@ function renderQuick(cfg) {
 
 // ============ 启动 ============
 document.addEventListener('DOMContentLoaded', async () => {
-  // 主题色：先应用上次的调色盘选择再初始化界面（避免闪默认色）。
+  // 主题色：先应用上次的调色盘选择再初始化界面（避免闪默认色）；
+  // 已配置且已登录时跟随服务端偏好（Web 换色 → 扩展自动跟随）。
   applyAccent(await loadAccent())
+  try {
+    const cfg = await getConfig()
+    if (isConfigured(cfg) && cfg.token) {
+      const remote = await fetchServerAccent((path) => api(cfg, path))
+      if (remote) {
+        applyAccent(remote)
+        await saveAccent(remote)
+      }
+    }
+  } catch { /* 未登录：本地色即可 */ }
   $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
   const cfg = await getConfig()
 

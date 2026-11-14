@@ -6,6 +6,9 @@
 // PTColors.primary 等 getter 依据本文件的 accentNotifier 取值。
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:ptpatronus/core/api_client.dart';
 
 /// 主题调色盘预设 —— 与 Web useUiPrefs ACCENT_GROUPS 同源（三端同一套色值）。
 /// 每预设带浅/深双态主色：浅色 600-700 阶（白字 ≥4.5:1），深色 300-400 阶（暗底可读）。
@@ -45,14 +48,55 @@ final accentNotifier = ValueNotifier<String>('blue');
 
 const _accentPrefsKey = 'accent';
 
-/// 启动时恢复上次选择的主题预设（key 与 Web ACCENT_GROUPS 同源）。
+/// 启动时恢复：先取本地缓存即时上色，再拉服务端偏好（登录态）覆盖——
+/// Web 端换的主题色在手机上自动跟随（服务端为真源，本地为离线兜底）。
 Future<void> loadAccentPrefs() async {
   final prefs = await SharedPreferences.getInstance();
   accentNotifier.value = prefs.getString(_accentPrefsKey) ?? 'blue';
+  try {
+    final r = await ApiClient().get('/auth/preferences/ui');
+    final raw = r['value'] as String?;
+    if (raw == null || raw.isEmpty) return;
+    final ui = jsonDecode(raw);
+    final accent = ui is Map ? ui['accent'] : null;
+    if (accent is String && accent.isNotEmpty) {
+      final key = accent;
+      if (PTAccents.presets.any((p) => p.key == key) &&
+          key != accentNotifier.value) {
+        accentNotifier.value = key;
+        await prefs.setString(_accentPrefsKey, key);
+      }
+    }
+  } catch (_) {
+    /* 未登录/网络不可用：沿用本地缓存 */
+  }
 }
 
+/// 选定主题色：本地即时生效 + 写服务端偏好（Web/其他设备随之跟随）。
+/// 服务端写入失败不阻断本地切换（下次启动会再试本地值的同步由 Web 域覆盖——
+/// 这里只保证「至少本地生效」，跨设备最终一致）。
 Future<void> setAccent(String key) async {
   accentNotifier.value = key;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_accentPrefsKey, key);
+  unawaited(_pushAccentToServer(key));
+}
+
+Future<void> _pushAccentToServer(String key) async {
+  try {
+    // 读出 ui 域现状合并（不踩 Web 存的 uiStyle/sidebar 等字段），整域 PUT。
+    Map<String, dynamic> ui = {};
+    try {
+      final r = await ApiClient().get('/auth/preferences/ui');
+      final raw = r['value'] as String?;
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) ui = Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    ui['accent'] = key;
+    await ApiClient().put('/auth/preferences/ui', ui);
+  } catch (_) {
+    /* 离线：本地已生效，联网后由下次读取/覆盖收敛 */
+  }
 }

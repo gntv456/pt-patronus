@@ -653,7 +653,7 @@
 6	backend/internal/site/schemas/nexusphp_seeding.go
 6	backend/internal/site/schemas/nexusphp_uploads.go
 6	backend/internal/site/schemas/nexusphp_userinfo.go
-16	backend/internal/site/schemas/piggo.go
+13	backend/internal/site/schemas/piggo.go
 15	backend/internal/site/schemas/piggo_srp.go
 11	backend/internal/site/schemas/pussytorrents.go
 13	backend/internal/site/schemas/rousi.go

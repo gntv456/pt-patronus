@@ -14,19 +14,29 @@
 # ⚠ 新账号首次使用须在网页端完成一次「Wiki 已读确认」（/wiki/rules-general
 #   页点「确认已阅读」），否则种子端点全部 403 wiki_unread（站点强制闸门）。
 #
-# 实测端点（2026-11-07）：
-#   ✅ GET  /v1/web/torrents?page=&keyword=   搜索（promotion.label 免费/全局促销）
-#   ✅ GET  /v1/web/torrents/{id}             详情
-#   ✅ GET  /v1/web/me                        用户资料（stats.uploaded 为格式化串）
-#   ✅ POST /v1/web/torrents/{id}/download-link → 签名直链（GET 即 .torrent）
+# 改版口径（2026-11 逆向，站内 API 文档 + SPA chunks）：
+#   搜索   GET /v1/web/torrents?q=&section=&page=&per_page=（keyword→q，
+#          /torrents/movie 路由→section 参数；条目含 media/tags 字段）
+#   促销   条目 promotion{id:2-7,label,promotion_until}（2=免费 3=2x上传
+#          4=2x免费 5=50% 6=2x50% 7=30%）；兼容旧 label 文本
+#   站免   /v1/web/me 顶层 global_promotion{phase:none|preview|active,
+#          title,label,ends_at}（适配器 FetchFreeleech 已实现）
+#   详情   GET /v1/web/torrents/{id}（同列表字段 + page_url/tag_ids）
+#   下载   POST /v1/web/torrents/{id}/download-link → 24h 签名直链
+#   资料   GET /v1/web/me（stats.uploaded 格式化串；notice_gate/wiki_gate 闸门）
+#
+# 登录链路改版未变：SRP-6a challenge→login + 失败回退明文 /login；
+# 多次失败会触发站点人机验证（turnstile/aliyun，浏览器内完成），适配器侧
+# 遇「请填写验证码」报错即需网页登录一次解锁。
 id: piggo
 name: 猪猪
 schema: piggo
 urls:
   - https://piggo.me
-# 公告/站免端点站点未开放（改版后无对应 API），关闭避免快照报错；
-# 单种促销（免费/全局首免）由搜索结果 promotion 正常下发，不受影响。
+# 公告：改版无 REST 公告端点（仅 banners 横幅位 + WS notice 事件），关闭；
+# 站免：global_promotion 走适配器 FetchFreeleech（/v1/web/me）。
+# 单种促销由搜索结果 promotion{id} 正常下发，不受影响。
 announcement:
   enabled: false
 freeleech:
-  enabled: false
+  enabled: true

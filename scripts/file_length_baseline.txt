@@ -11,7 +11,7 @@
 561	backend/internal/entertainment/games_gobang_mcts.go
 476	backend/internal/entertainment/games_gobang_search.go
 807	backend/internal/entertainment/games_hdblue_gobang_ai.go
-439	backend/internal/site/schemas/piggo.go
+355	backend/internal/site/schemas/piggo.go
 401	backend/internal/subtitle/automation/automation.go
 514	frontend/src/api/entertainmentTypes.ts
 401	frontend/src/components/CommandPalette.vue

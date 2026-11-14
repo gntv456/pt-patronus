@@ -30,7 +30,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,89 +197,6 @@ func (p *Piggo) signedJSON(ctx context.Context, s *piggoSession, baseURL, method
 		return nil
 	}
 	return json.Unmarshal(env.Data, out)
-}
-
-// ── 搜索 ──
-
-func (p *Piggo) Search(ctx context.Context, def *site.SiteMetadata, baseURL, token, keyword, category string, page int) ([]site.Torrent, error) {
-	if page < 1 {
-		page = 1
-	}
-	cred := parsePiggoCred(token)
-	s, err := p.sessionFor(ctx, baseURL, cred)
-	if err != nil {
-		return nil, err
-	}
-	// category → section 路由（电影/剧集有独立分区；其余走综合 + keyword）
-	path := fmt.Sprintf("/v1/web/torrents?page=%d", page)
-	switch category {
-	case "movie":
-		path = fmt.Sprintf("/v1/web/torrents/movie?page=%d", page)
-	case "tv":
-		path = fmt.Sprintf("/v1/web/torrents/tv?page=%d", page)
-	}
-	if kw := strings.TrimSpace(keyword); kw != "" {
-		path += "&keyword=" + url.QueryEscape(kw)
-	}
-	var data struct {
-		Items []map[string]any `json:"items"`
-	}
-	if err := p.signedJSON(ctx, s, baseURL, "GET", path, nil, &data); err != nil {
-		if errors.Is(err, site.ErrNotLoggedIn) {
-			p.invalidate(baseURL, cred)
-		}
-		return nil, err
-	}
-	out := make([]site.Torrent, 0, len(data.Items))
-	for _, it := range data.Items {
-		out = append(out, parsePiggoTorrent(it, baseURL))
-	}
-	return out, nil
-}
-
-// parsePiggoTorrent 列表项 → site.Torrent。
-// promotion.label「免费」→ FREE（up/down 因子：up=1/down=0 即免费档；倍数字段站点未给数值档）。
-func parsePiggoTorrent(it map[string]any, baseURL string) site.Torrent {
-	id := fmt.Sprint(it["id"])
-	t := site.Torrent{
-		ID:        id,
-		Title:     pgStr(it, "name"),
-		SubTitle:  pgStr(it, "small_descr"),
-		Size:      formatMTBytes(pgInt(it, "size")),
-		Seeders:   int(pgInt(it, "seeders")),
-		Leechers:  int(pgInt(it, "leechers")),
-		Completed: int(pgInt(it, "times_completed")),
-	}
-	if id != "" {
-		web := strings.TrimRight(baseURL, "/")
-		t.DetailURL = web + "/detail/" + id
-		// 下载走 POST download-link 换签名直链（FetchTorrentFile piggo 分支按此 URL 抽 id），
-		// 这里合成带标记的下载占位 URL（同注册域，满足同站守卫）。
-		t.DownloadURL = web + "/v1/web/torrents/" + id + "/dl"
-	}
-	// 促销：promotion.label 含「免费」→ FREE；全局促销同判（新窝首免等）。
-	if pgIsFree(pgMap(it, "promotion")) || pgIsFree(pgMap(it, "global_promotion")) {
-		t.Free = true
-		t.DownloadVolumeFactor = 0
-	} else {
-		t.DownloadVolumeFactor = 1
-	}
-	if pr := pgMap(it, "promotion"); pr != nil {
-		if up := pgInt(pr, "up"); up > 1 {
-			t.UploadVolumeFactor = float64(up)
-		}
-	}
-	if sec := pgMap(it, "section"); sec != nil {
-		t.Category = pgStr(sec, "name")
-	}
-	return t
-}
-
-func pgIsFree(m map[string]any) bool {
-	if m == nil {
-		return false
-	}
-	return strings.Contains(pgStr(m, "label"), "免费") || strings.Contains(strings.ToUpper(pgStr(m, "label")), "FREE")
 }
 
 // ── 用户资料 ──

@@ -2469,6 +2469,7 @@ export default {
     darkTheme: 'Dark theme',
     darkHint: 'Toggle light/dark UI',
     accent: 'Theme colors',
+    customColor: 'Custom color',
     accentHint: 'Primary / gradient / accent in one click',
     uiStyle: 'UI style',
     uiStyleHint: 'Glass (frosted) / Modern (flat solid)',

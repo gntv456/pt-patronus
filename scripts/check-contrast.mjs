@@ -64,5 +64,31 @@ for (const [themeName, vars] of [['light', light], ['dark', dark]]) {
     console.log(`  ${ok ? 'PASS' : 'FAIL'} ${label.padEnd(22)} ${r.toFixed(2)}:1  ${fg} on ${bg}`)
   }
 }
+// —— 主题调色盘预设校验：modern.css 里每个 body[data-theme-accent] 的主色 ——
+//   浅色：主色上放白字（on-accent）需 >= 4.5:1；深色：页面底上放主色文字需 >= 4.5:1。
+const modern = readFileSync(join(root, 'frontend', 'src', 'styles', 'modern.css'), 'utf8')
+for (const m of modern.matchAll(/^body\[data-theme-accent='([a-z]+)'\]\s*\{([^}]*)\}/gm)) {
+  const name = m[1]
+  // k 里没有正则元字符，直接拼；行尾断言防 --color-primary 命中 --color-primary-hover
+  const get = (k) => m[2].match(new RegExp(k + ': (#' + '[0-9a-fA-F]{6})'))?.[1]?.trim()
+  const lightPrimary = get('--color-primary')
+  if (lightPrimary && isHex(lightPrimary)) {
+    const r = ratio('#ffffff', lightPrimary)
+    const ok = r >= 4.5
+    if (!ok) failed++
+    console.log(`  ${ok ? 'PASS' : 'FAIL'} 预设[${name}]浅色 白字/主色 ${r.toFixed(2)}:1`)
+  }
+  if (name === 'graphite') continue // 深色块与浅色块同名，只取下一个 :root.dark 块
+}
+for (const m of modern.matchAll(/:root\.dark body\[data-theme-accent='([a-z]+)'\]\s*\{([^}]*)\}/g)) {
+  const name = m[1]
+  const primary = m[2].match(/--color-primary:\s*(#[0-9a-fA-F]{6})/)?.[1]
+  if (!primary) continue
+  // 深色态页面底 #0f1115 上放主色文字
+  const r = ratio(primary, '#0f1115')
+  const ok = r >= 4.5
+  if (!ok) failed++
+  console.log(`  ${ok ? 'PASS' : 'FAIL'} 预设[${name}]深色 主色文字/暗底 ${r.toFixed(2)}:1  ${primary}`)
+}
 if (failed) { console.error(`[contrast] FAIL：${failed} 组低于 4.5:1`); process.exit(1) }
 console.log('[contrast] PASS：全部 token 组合 >= 4.5:1')

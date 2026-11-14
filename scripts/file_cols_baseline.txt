@@ -979,7 +979,6 @@
 11	frontend/src/components/search/TorrentPushDialog.vue
 1	frontend/src/components/searchFilterConstants.ts
 24	frontend/src/components/settings/CookieCloudPanel.vue
-13	frontend/src/components/settings/GeneralPanel.vue
 6	frontend/src/components/settings/LlmGatewayPanel.vue
 8	frontend/src/components/settings/LogsPanel.vue
 23	frontend/src/components/settings/NotificationChannelsMore.vue
@@ -1063,7 +1062,6 @@
 3	frontend/src/composables/useSubscriptionToggles.ts
 5	frontend/src/composables/useTorrentFindCards.ts
 2	frontend/src/composables/useTorrentFindPush.ts
-3	frontend/src/composables/useUiPrefs.ts
 6	frontend/src/composables/useWorkflowEditor.ts
 3	frontend/src/composables/useWorkflowEditorRun.ts
 5	frontend/src/composables/useWs.test.ts

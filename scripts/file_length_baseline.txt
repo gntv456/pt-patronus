@@ -16,8 +16,8 @@
 514	frontend/src/api/entertainmentTypes.ts
 401	frontend/src/components/CommandPalette.vue
 408	frontend/src/composables/useFileOps.ts
-4804	frontend/src/i18n/locales/en-US.ts
-4768	frontend/src/i18n/locales/zh-CN.ts
+4805	frontend/src/i18n/locales/en-US.ts
+4769	frontend/src/i18n/locales/zh-CN.ts
 446	frontend/src/views/Assistant.vue
 445	frontend/src/views/Cloud.vue
 442	frontend/src/views/Entertainment.vue

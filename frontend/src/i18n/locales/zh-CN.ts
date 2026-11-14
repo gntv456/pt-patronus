@@ -2454,6 +2454,7 @@ export default {
     darkTheme: '深色主题',
     darkHint: '切换界面明暗',
     accent: '主题配色',
+    customColor: '自选颜色',
     accentHint: '主色 / 渐变 / 强调色一键切换',
     uiStyle: '界面风格',
     uiStyleHint: '玻璃（磨砂通透）/ 现代（实体扁平）',

@@ -139,3 +139,49 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* 调色盘：分组呈现（预设组 + 自选颜色），对齐 QQ「超级调色盘」的分组浏览模式 */
+.palette-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  margin-top: var(--space-2);
+}
+.palette-group {
+  min-width: 120px;
+}
+.palette-group-label {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+.palette-dots {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+/* 自选颜色：原生 color input 铺满圆形色块（透明化原生外观），点击即弹系统取色器 */
+.accent-dot.custom-dot {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(#ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+.accent-dot.custom-dot input[type='color'] {
+  position: absolute;
+  inset: -8px;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.accent-dot.chip {
+  pointer-events: none;
+  border-radius: 50%;
+}

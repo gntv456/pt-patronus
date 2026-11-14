@@ -8,12 +8,18 @@
 // 状态与逻辑来自 useGeneralSettings 组合式函数（与 Settings.vue 共享单例）。
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
 import { useI18n } from 'vue-i18n'
+import { ref } from 'vue'
 import SptIcon from '@/components/SptIcon.vue'
 // #405 下载地址来自环境变量/更新接口，仍走协议白名单（收口一致，勿让某处裸绑 href）。
 import { safeUrl } from '@/utils/safeUrl'
 
 const { t } = useI18n()
-import { useUiPrefs, ACCENT_PRESETS } from '@/composables/useUiPrefs'
+import {
+  useUiPrefs,
+  ACCENT_GROUPS,
+  getCustomAccent,
+  setCustomAccent,
+} from '@/composables/useUiPrefs'
 
 const {
   dark,
@@ -29,8 +35,22 @@ const {
   openChangelog,
 } = useGeneralSettings()
 
-// 界面定制：仅保留主题色与侧栏默认态（偏好随账号同步）。
+// 界面定制：主题调色盘（预设分组 + 自选颜色）与侧栏默认态（偏好随账号同步）。
 const { normalized, set } = useUiPrefs()
+
+// 自选颜色输入态：色板 change 即应用；非法值不动偏好。
+const customColor = ref(normalized().accentCustom || getCustomAccent())
+function onCustomColor(v: string) {
+  customColor.value = v
+  if (/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(v)) {
+    set({ accentCustom: v.toUpperCase() })
+  }
+}
+function pickPreset(value: string) {
+  // 点预设 = 清自选色（useUiPrefs.apply 里空 accentCustom 走 data 属性路径）
+  setCustomAccent('')
+  set({ accentCustom: '', accent: value })
+}
 </script>
 
 <template>
@@ -42,23 +62,56 @@ const { normalized, set } = useUiPrefs()
       </div>
       <el-switch :model-value="dark" @change="toggleTheme" />
     </div>
-    <div class="row">
+    <div class="row palette-row">
       <div class="row-label">
         <span class="row-title">{{ t('gp.accent') }}</span>
         <span class="text-muted row-hint">{{ t('gp.accentHint') }}</span>
       </div>
-      <div class="accent-picker">
-        <button
-          v-for="p in ACCENT_PRESETS"
-          :key="p.value"
-          class="accent-dot"
-          :class="{ active: normalized().accent === p.value }"
-          :style="{ background: p.color }"
-          :title="p.label"
-          :aria-label="p.label"
-          :aria-pressed="normalized().accent === p.value"
-          @click="set({ accent: p.value })"
-        />
+      <div class="palette">
+        <div v-for="g in ACCENT_GROUPS" :key="g.key" class="palette-group">
+          <div class="palette-group-label">{{ g.label }}</div>
+          <div class="palette-dots">
+            <button
+              v-for="p in g.presets"
+              :key="p.value"
+              class="accent-dot"
+              :class="{
+                active:
+                  !normalized().accentCustom &&
+                  normalized().accent === p.value,
+              }"
+              :style="{ background: p.color }"
+              :title="p.label"
+              :aria-label="p.label"
+              :aria-pressed="
+                !normalized().accentCustom && normalized().accent === p.value
+              "
+              @click="pickPreset(p.value)"
+            />
+          </div>
+        </div>
+        <div class="palette-group">
+          <div class="palette-group-label">{{ t('gp.customColor') }}</div>
+          <div class="palette-dots">
+            <label class="accent-dot custom-dot" :title="t('gp.customColor')">
+              <input
+                type="color"
+                :value="customColor"
+                :aria-label="t('gp.customColor')"
+                @input="
+                  onCustomColor(($event.target as HTMLInputElement).value)
+                "
+              />
+              <span
+                class="accent-dot chip"
+                :class="{ active: !!normalized().accentCustom }"
+                :style="{
+                  background: normalized().accentCustom || customColor,
+                }"
+              />
+            </label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -68,7 +121,9 @@ const { normalized, set } = useUiPrefs()
       </div>
       <el-switch
         :model-value="normalized().sidebarCollapsed"
-        @change="(v: string | number | boolean) => set({ sidebarCollapsed: !!v })"
+        @change="
+          (v: string | number | boolean) => set({ sidebarCollapsed: !!v })
+        "
       />
     </div>
   </div>
@@ -82,10 +137,17 @@ const { normalized, set } = useUiPrefs()
         <el-tag size="small" type="info" effect="plain">v{{ version }}</el-tag>
         <!-- 浏览器扩展包：后端 embed 分发（/system/extension.zip），Docker 用户
              无需进仓库找 extension/ 目录；下载后解压按快速开始加载。 -->
-        <el-button size="small" tag="a" href="/api/v1/system/extension.zip" download="ptpatronus-extension.zip">
+        <el-button
+          size="small"
+          tag="a"
+          href="/api/v1/system/extension.zip"
+          download="ptpatronus-extension.zip"
+        >
           {{ t('gp.downloadExtension') }}
         </el-button>
-        <el-button size="small" :loading="updateChecking" @click="checkUpdate">{{ t('gp.checkUpdate') }}</el-button>
+        <el-button size="small" :loading="updateChecking" @click="checkUpdate">
+          {{ t('gp.checkUpdate') }}
+        </el-button>
       </div>
     </div>
   </div>
@@ -97,21 +159,36 @@ const { normalized, set } = useUiPrefs()
         <span class="row-title">{{ t('gp.help') }}</span>
         <span class="text-muted row-hint">{{ t('gp.helpHint') }}</span>
       </span>
-      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+      <SptIcon
+        name="chevron-right"
+        :size="16"
+        class="help-arrow"
+        aria-hidden="true"
+      />
     </button>
     <button type="button" class="help-row" @click="openIssues">
       <span class="row-label">
         <span class="row-title">{{ t('gp.feedback') }}</span>
         <span class="text-muted row-hint">{{ t('gp.feedbackHint') }}</span>
       </span>
-      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+      <SptIcon
+        name="chevron-right"
+        :size="16"
+        class="help-arrow"
+        aria-hidden="true"
+      />
     </button>
     <button type="button" class="help-row" @click="openChangelog">
       <span class="row-label">
         <span class="row-title">{{ t('gp.changelog') }}</span>
         <span class="text-muted row-hint">{{ t('gp.changelogHint') }}</span>
       </span>
-      <SptIcon name="chevron-right" :size="16" class="help-arrow" aria-hidden="true" />
+      <SptIcon
+        name="chevron-right"
+        :size="16"
+        class="help-arrow"
+        aria-hidden="true"
+      />
     </button>
   </div>
 
@@ -126,19 +203,36 @@ const { normalized, set } = useUiPrefs()
   >
     <div v-if="updateInfo" class="update-body">
       <p class="update-ver">
-        {{ t('gp.versionLine', { cur: updateInfo.currentVersion, latest: updateInfo.latestVersion })
-        }}<span v-if="updateInfo.isBelowMin" class="update-forced">{{ t('gp.versionTooLow') }}</span>
+        {{
+          t('gp.versionLine', {
+            cur: updateInfo.currentVersion,
+            latest: updateInfo.latestVersion,
+          })
+        }}<span v-if="updateInfo.isBelowMin" class="update-forced">{{
+          t('gp.versionTooLow')
+        }}</span>
       </p>
-      <div v-if="updateInfo.releaseName" class="update-name">{{ updateInfo.releaseName }}</div>
-      <div v-if="updateInfo.releaseNotes" class="update-notes">{{ updateInfo.releaseNotes }}</div>
+      <div v-if="updateInfo.releaseName" class="update-name">
+        {{ updateInfo.releaseName }}
+      </div>
+      <div v-if="updateInfo.releaseNotes" class="update-notes">
+        {{ updateInfo.releaseNotes }}
+      </div>
       <template v-if="updateInfo.instructions">
         <div class="update-cmd-label">{{ t('gp.upgradeCmd') }}</div>
         <pre class="update-cmd">{{ updateInfo.instructions }}</pre>
-        <el-button size="small" @click="copyUpgradeCmd">{{ t('gp.copyCmd') }}</el-button>
+        <el-button size="small" @click="copyUpgradeCmd">
+          {{ t('gp.copyCmd') }}
+        </el-button>
       </template>
-      <el-link v-else-if="updateInfo.downloadUrl" type="primary" :href="safeUrl(updateInfo.downloadUrl)" target="_blank">{{
-        t('gp.downloadUpdate')
-      }}</el-link>
+      <el-link
+        v-else-if="updateInfo.downloadUrl"
+        type="primary"
+        :href="safeUrl(updateInfo.downloadUrl)"
+        target="_blank"
+      >
+        {{ t('gp.downloadUpdate') }}
+      </el-link>
     </div>
     <template #footer>
       <el-button @click="updateDlgVisible = false">{{
@@ -148,7 +242,14 @@ const { normalized, set } = useUiPrefs()
   </el-dialog>
 
   <!-- 使用帮助 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="helpVisible" :title="t('gp.help')" width="560px">
+  <el-dialog
+    class="pt-dialog"
+    append-to-body
+    align-center
+    v-model="helpVisible"
+    :title="t('gp.help')"
+    width="560px"
+  >
     <div class="help-body">
       <h4>{{ t('gp.coreValue') }}</h4>
       <p>{{ t('gp.intro') }}</p>

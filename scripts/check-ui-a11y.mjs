@@ -23,7 +23,8 @@ const PATTERNS = [
   ['emoji', (t) => (t.match(EMOJI) || []).length],
   ['outlineNone', (t) => (t.match(/outline\s*:\s*none/gi) || []).length],
   ['tinyFont', (t) => (t.match(/font-size\s*:\s*(?:9|10|11)(?:\.\d+)?px/gi) || []).length],
-  ['gradient', (t) => (t.match(/(?:linear|radial|conic)-gradient\(/gi) || []).length],
+  // conic-gradient 全彩虹环 = 取色器色轮（功能性控件），不计入装饰渐变
+  ['gradient', (t) => (t.match(/(?:linear|radial)-gradient\(/gi) || []).length + (t.match(/conic-gradient\((?![^)]*#ef4444.*#a855f7)/gi) || []).length],
   ['decorativeBlur', (t) => (t.match(/(?:-webkit-)?backdrop-filter\s*:\s*[^;]*blur\(/gi) || []).length],
   ['infiniteAnim', (t) => (t.match(/animation\s*:[^;]*infinite/gi) || []).length],
   ['transitionAll', (t) => (t.match(/transition\s*:\s*all\b/gi) || []).length],
@@ -47,11 +48,22 @@ const files = [...walk(srcRoot), ...walk(extRoot)]
 const counts = Object.fromEntries(PATTERNS.map(([k]) => [k, 0]))
 let epStaticInViews = 0
 
+// token 真源/预设表：裸 hex 的合法居所（组件仍一律走语义变量）。
+// rawHex 统计跳过它们——门禁目标是「组件内不写死颜色」，不是消灭样式表里的定义。
+const RAW_HEX_EXEMPT = [
+  'frontend/src/styles/tokens.css',
+  'frontend/src/styles/modern.css',
+  'frontend/src/composables/useUiPrefs.ts',
+]
+
 for (const file of files) {
   let text
   try { text = readFileSync(file, 'utf8') } catch { continue }
-  for (const [key, fn] of PATTERNS) counts[key] += fn(text)
   const rel = file.slice(root.length + 1).replace(/\\/g, '/')
+  for (const [key, fn] of PATTERNS) {
+    if (key === 'rawHex' && RAW_HEX_EXEMPT.includes(rel)) continue
+    counts[key] += fn(text)
+  }
   if (rel.startsWith('frontend/src/views/') && rel.endsWith('.vue') && /from\s+['"]element-plus['"]/.test(text)) {
     epStaticInViews += 1
   }

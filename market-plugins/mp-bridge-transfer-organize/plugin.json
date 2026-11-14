@@ -1,0 +1,116 @@
+{
+  "id": "mp-bridge-transfer-organize",
+  "name": "下载整理助手",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "下载完成自动整理（识别→重命名→硬链→刮削→入库）。功能对标 MoviePilot 自动整理类插件的独立实现：定时扫描已完成种子触发宿主整理扫描；支持按种子手动整理、查看整理历史、失败重做。",
+  "license": "MIT",
+  "keywords": [
+    "transfer",
+    "organize",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "downloader:read",
+    "transfer:read",
+    "transfer:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "periodic_sweep",
+      "label": "定时整理扫描",
+      "action": "sweep",
+      "cron": "*/30 * * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-transfer-organize.sweep",
+        "label": "下载整理：立即扫描",
+        "action": "sweep"
+      },
+      {
+        "id": "mp-bridge-transfer-organize.organize",
+        "label": "下载整理：整理指定种子",
+        "action": "organize"
+      },
+      {
+        "id": "mp-bridge-transfer-organize.history",
+        "label": "下载整理：查看整理历史",
+        "action": "history"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "mp-bridge-transfer-organize.sweep"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "sweep",
+      "label": "立即扫描",
+      "description": "触发宿主全量整理扫描（后台异步），完成后看整理历史。"
+    },
+    {
+      "name": "completed_torrents",
+      "label": "已完成种子",
+      "description": "列出各下载器中 state=completed 的种子（整理候选）。"
+    },
+    {
+      "name": "organize",
+      "label": "整理指定种子",
+      "description": "按 downloader_id + hash 手动触发单种子整理。"
+    },
+    {
+      "name": "history",
+      "label": "整理历史",
+      "description": "查看整理/转移历史（成功/失败）。"
+    },
+    {
+      "name": "redo",
+      "label": "重做整理",
+      "description": "按 history_id 重做一次失败的整理。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "notify",
+      "label": "扫描触发后发通知",
+      "type": "switch",
+      "default": false,
+      "help": "每次 cron 扫描都通知较吵；默认只在手动整理时给结果。"
+    },
+    {
+      "key": "completed_states",
+      "label": "完成态关键字",
+      "type": "text",
+      "default": "completed,seeding,uploading",
+      "help": "逗号分隔；torrents_list 的 state 命中任一即视为已完成候选。"
+    },
+    {
+      "key": "cron",
+      "label": "扫描定时 cron",
+      "type": "text",
+      "default": "*/30 * * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每 30 分钟。"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "id": "mp-bridge-site-signin",
+  "name": "站点签到助手",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "全站定时签到 + 签到结果通知。功能对标 MoviePilot 签到类插件的独立实现：调度触发 site_checkin_all，成功/失败汇总成站内通知；可附带拉取站内消息与当前优惠。",
+  "license": "MIT",
+  "keywords": [
+    "site",
+    "checkin",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "site:read",
+    "site:action"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "daily_checkin",
+      "label": "每日签到",
+      "action": "run_checkin",
+      "cron": "0 9 * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-site-signin.run",
+        "label": "站点签到：立即签到",
+        "action": "run_checkin"
+      },
+      {
+        "id": "mp-bridge-site-signin.messages",
+        "label": "站点签到：拉取站内消息",
+        "action": "fetch_messages"
+      },
+      {
+        "id": "mp-bridge-site-signin.freeleech",
+        "label": "站点签到：查看当前优惠",
+        "action": "fetch_freeleech"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "mp-bridge-site-signin.run"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "run_checkin",
+      "label": "立即签到",
+      "description": "调用宿主 site_checkin_all 全站签到，汇总成功/失败并按配置发通知。"
+    },
+    {
+      "name": "fetch_messages",
+      "label": "拉取站内消息",
+      "description": "读取全站站内信（inbox/sent/system），返回最近消息列表。"
+    },
+    {
+      "name": "fetch_freeleech",
+      "label": "查看当前优惠",
+      "description": "读取全站当前优惠（freeleech/2xfree 等）。"
+    },
+    {
+      "name": "last_result",
+      "label": "查看上次签到结果",
+      "description": "返回 KV 中缓存的最近一次签到汇总。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "notify",
+      "label": "签到后发通知",
+      "type": "switch",
+      "default": true,
+      "help": "汇总成功/失败站点数并发站内通知。"
+    },
+    {
+      "key": "notify_level",
+      "label": "通知级别",
+      "type": "select",
+      "default": "info",
+      "options": [
+        {
+          "label": "信息",
+          "value": "info"
+        },
+        {
+          "label": "成功",
+          "value": "success"
+        },
+        {
+          "label": "警告",
+          "value": "warning"
+        }
+      ],
+      "help": "全部成功时用 info/success；存在失败时自动升为 warning。"
+    },
+    {
+      "key": "notify_on_success",
+      "label": "全部成功也通知",
+      "type": "switch",
+      "default": false,
+      "help": "关闭时仅在存在失败站点时通知。"
+    },
+    {
+      "key": "cron",
+      "label": "签到定时 cron",
+      "type": "text",
+      "default": "0 9 * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每天 09:00。"
+    }
+  ]
+}

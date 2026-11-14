@@ -616,6 +616,258 @@
       ]
     },
     {
+      "id": "mp-bridge-site-signin",
+      "name": "站点签到助手",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-site-signin-1.0.0.zip",
+      "sha256": "eea2b4e61270855be687bfa5331cfbc32acabf50a52f26fab9547f35f11e15ad",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.site.read",
+        "host.api.tools"
+      ],
+      "author": "PTPatronus Community",
+      "description": "全站定时签到 + 签到结果通知。功能对标 MoviePilot 签到类插件的独立实现：调度触发 site_checkin_all，成功/失败汇总成站内通知；可附带拉取站内消息与当前优惠。",
+      "license": "MIT",
+      "keywords": [
+        "site",
+        "checkin",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "site:read",
+        "site:action"
+      ],
+      "actions": [
+        {
+          "name": "run_checkin",
+          "label": "立即签到",
+          "description": "调用宿主 site_checkin_all 全站签到，汇总成功/失败并按配置发通知。"
+        },
+        {
+          "name": "fetch_messages",
+          "label": "拉取站内消息",
+          "description": "读取全站站内信（inbox/sent/system），返回最近消息列表。"
+        },
+        {
+          "name": "fetch_freeleech",
+          "label": "查看当前优惠",
+          "description": "读取全站当前优惠（freeleech/2xfree 等）。"
+        },
+        {
+          "name": "last_result",
+          "label": "查看上次签到结果",
+          "description": "返回 KV 中缓存的最近一次签到汇总。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "notify",
+          "label": "签到后发通知",
+          "type": "switch",
+          "default": true,
+          "help": "汇总成功/失败站点数并发站内通知。"
+        },
+        {
+          "key": "notify_level",
+          "label": "通知级别",
+          "type": "select",
+          "default": "info",
+          "options": [
+            {
+              "label": "信息",
+              "value": "info"
+            },
+            {
+              "label": "成功",
+              "value": "success"
+            },
+            {
+              "label": "警告",
+              "value": "warning"
+            }
+          ],
+          "help": "全部成功时用 info/success；存在失败时自动升为 warning。"
+        },
+        {
+          "key": "notify_on_success",
+          "label": "全部成功也通知",
+          "type": "switch",
+          "default": false,
+          "help": "关闭时仅在存在失败站点时通知。"
+        },
+        {
+          "key": "cron",
+          "label": "签到定时 cron",
+          "type": "text",
+          "default": "0 9 * * *",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每天 09:00。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-site-signin.run",
+            "label": "站点签到：立即签到",
+            "action": "run_checkin"
+          },
+          {
+            "id": "mp-bridge-site-signin.messages",
+            "label": "站点签到：拉取站内消息",
+            "action": "fetch_messages"
+          },
+          {
+            "id": "mp-bridge-site-signin.freeleech",
+            "label": "站点签到：查看当前优惠",
+            "action": "fetch_freeleech"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "mp-bridge-site-signin.run"
+          }
+        ]
+      },
+      "signature": "VK8iaisE2MejSwy/VyelSlfrgRvLvzYKBwOz0xi3pef+9lCk/hGXA25cqxwhU8HjLyWQQSoEmLtpoBS7JVluDQ==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+      ]
+    },
+    {
+      "id": "mp-bridge-transfer-organize",
+      "name": "下载整理助手",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-transfer-organize-1.0.0.zip",
+      "sha256": "90b43253278748aae71876cd97241dd10c5554febfebd84bdc53d1af26433734",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.tools"
+      ],
+      "author": "PTPatronus Community",
+      "description": "下载完成自动整理（识别→重命名→硬链→刮削→入库）。功能对标 MoviePilot 自动整理类插件的独立实现：定时扫描已完成种子触发宿主整理扫描；支持按种子手动整理、查看整理历史、失败重做。",
+      "license": "MIT",
+      "keywords": [
+        "transfer",
+        "organize",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "downloader:read",
+        "transfer:read",
+        "transfer:write"
+      ],
+      "actions": [
+        {
+          "name": "sweep",
+          "label": "立即扫描",
+          "description": "触发宿主全量整理扫描（后台异步），完成后看整理历史。"
+        },
+        {
+          "name": "completed_torrents",
+          "label": "已完成种子",
+          "description": "列出各下载器中 state=completed 的种子（整理候选）。"
+        },
+        {
+          "name": "organize",
+          "label": "整理指定种子",
+          "description": "按 downloader_id + hash 手动触发单种子整理。"
+        },
+        {
+          "name": "history",
+          "label": "整理历史",
+          "description": "查看整理/转移历史（成功/失败）。"
+        },
+        {
+          "name": "redo",
+          "label": "重做整理",
+          "description": "按 history_id 重做一次失败的整理。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "notify",
+          "label": "扫描触发后发通知",
+          "type": "switch",
+          "default": false,
+          "help": "每次 cron 扫描都通知较吵；默认只在手动整理时给结果。"
+        },
+        {
+          "key": "completed_states",
+          "label": "完成态关键字",
+          "type": "text",
+          "default": "completed,seeding,uploading",
+          "help": "逗号分隔；torrents_list 的 state 命中任一即视为已完成候选。"
+        },
+        {
+          "key": "cron",
+          "label": "扫描定时 cron",
+          "type": "text",
+          "default": "*/30 * * * *",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每 30 分钟。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-transfer-organize.sweep",
+            "label": "下载整理：立即扫描",
+            "action": "sweep"
+          },
+          {
+            "id": "mp-bridge-transfer-organize.organize",
+            "label": "下载整理：整理指定种子",
+            "action": "organize"
+          },
+          {
+            "id": "mp-bridge-transfer-organize.history",
+            "label": "下载整理：查看整理历史",
+            "action": "history"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "mp-bridge-transfer-organize.sweep"
+          }
+        ]
+      },
+      "signature": "OZ4ASm+KdqIieLg58gDI4iLrViP7ATYkRtXygTJeyfZDCz1C0VnVdu2TPtCibRA12GmngWm97idYP6fNlQgTDg==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+      ]
+    },
+    {
       "id": "notice-forwarder",
       "name": "事件通知桥",
       "version": "1.0.0",

@@ -181,7 +181,7 @@ class _BigSmallViewState extends State<BigSmallView> with BigSmallOpsMixin {
                 Container(width: 20, height: 20, alignment: Alignment.center, decoration: BoxDecoration(color: _dotColor(r), shape: BoxShape.circle), child: Text(_label(r), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
             ]),
           ],
-          if (s?.trendText.isNotEmpty == true) ...[const SizedBox(height: 6), Center(child: Text(s!.trendText, style: const TextStyle(fontSize: 12, color: PTColors.primary)))],
+          if (s?.trendText.isNotEmpty == true) ...[SizedBox(height: 6), Center(child: Text(s!.trendText, style: TextStyle(fontSize: 12, color: PTColors.primary)))],
         ]),
       );
 
@@ -385,7 +385,7 @@ class _BigSmallViewState extends State<BigSmallView> with BigSmallOpsMixin {
               itemBuilder: (_, i) {
                 final m = _chat[i];
                 return Padding(padding: const EdgeInsets.symmetric(vertical: 1), child: Text.rich(TextSpan(children: [
-                  TextSpan(text: m.username, style: const TextStyle(fontWeight: FontWeight.bold, color: PTColors.primary, fontSize: 12)),
+                  TextSpan(text: m.username, style: TextStyle(fontWeight: FontWeight.bold, color: PTColors.primary, fontSize: 12)),
                   TextSpan(text: '  ${m.message}', style: const TextStyle(fontSize: 12)),
                 ])));
               },

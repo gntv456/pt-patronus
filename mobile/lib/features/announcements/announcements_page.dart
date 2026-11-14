@@ -154,7 +154,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   ),
                   child: Text(
                     '${r.items.length} 条',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: PTColors.primary,
                       fontSize: 12,
                     ),

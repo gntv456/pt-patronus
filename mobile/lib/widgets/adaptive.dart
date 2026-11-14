@@ -328,7 +328,7 @@ void showFilterSheet<T>(
                   ),
                 if (o.value == selected) ...[
                   if (o.count != null) const SizedBox(width: 8),
-                  const Icon(Icons.check, color: PTColors.primary, size: 20),
+                  Icon(Icons.check, color: PTColors.primary, size: 20),
                 ],
               ],
             ),

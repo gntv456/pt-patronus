@@ -8,6 +8,7 @@ import { getConfig, saveConfig, api, localLogin, clearSession, isConfigured } fr
 import { readSecret, writeSecret, setSealsPin } from './secrets.js'
 import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieHeader } from './cookies.js'
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
+import { ACCENT_GROUPS, loadAccent, saveAccent, applyAccent } from './accent.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud, cookieHeaderToEntries, entriesToHeader,
@@ -28,6 +29,42 @@ import { initTotpPage } from './options_totp.js'
 
 // —— 通用轻反馈 ——
 let toastTimer = null
+// 主题调色盘：渲染分组色卡并应用上次选择（popup 与 options 共享同一存储 key）。
+async function initAccentPalette() {
+  const current = await loadAccent()
+  applyAccent(current)
+  const host = document.getElementById('accentGroups')
+  if (!host) return
+  for (const g of ACCENT_GROUPS) {
+    const group = document.createElement('div')
+    group.className = 'accent-group'
+    const label = document.createElement('div')
+    label.className = 'accent-group-label'
+    label.textContent = g.label
+    const dots = document.createElement('div')
+    dots.className = 'accent-dots'
+    for (const p of g.presets) {
+      const dot = document.createElement('button')
+      dot.type = 'button'
+      dot.className = 'accent-dot' + (p.value === current ? ' on' : '')
+      dot.style.background = p.color
+      dot.title = p.label
+      dot.setAttribute('aria-label', p.label)
+      dot.setAttribute('aria-pressed', String(p.value === current))
+      dot.addEventListener('click', async () => {
+        await saveAccent(p.value)
+        applyAccent(p.value)
+        for (const d of host.querySelectorAll('.accent-dot')) d.classList.remove('on')
+        dot.classList.add('on')
+      })
+      dots.appendChild(dot)
+    }
+    group.appendChild(label)
+    group.appendChild(dots)
+    host.appendChild(group)
+  }
+}
+
 function toast(text, kind = 'ok') {
   let el = document.querySelector('.toast')
   if (el) el.remove()
@@ -51,6 +88,7 @@ function feedback(text, kind) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await initAccentPalette()
   const cfg = await getConfig()
   $('server').value = cfg.server || ''
 

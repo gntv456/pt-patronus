@@ -2,20 +2,60 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import 'package:flutter/foundation.dart';
+import 'package:ptpatronus/theme/accent.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 设计 token —— 与前端 styles/tokens.css 语义层对齐，三端唯一真源。
 /// 组件内禁止裸 hex，一律引用本类常量。
 class PTColors {
-  /// 交互主色（浅 #2563EB / 暗 #4C8DFF）。
-  static const primary = Color(0xFF2563EB);
-  static const primaryDark = Color(0xFF4C8DFF);
-  /// 旧双色渐变副色：收敛为主色悬停态，避免紫→蓝对撞。
-  static const primary2 = Color(0xFF1D4ED8);
-  static const primaryHover = Color(0xFF1D4ED8);
-  static const primarySoft = Color(0xFFEFF6FF);
+  /// 交互主色：按当前 accent 预设 + 明暗态运行时取值。
+  /// （原 static const 只支持默认蓝；调色盘改版后主色是可变值，
+  /// 引用处若在 const 上下文需去掉 const——已随改版清理。）
+  static Color get primary {
+    final p = PTAccents.byKey(accentNotifier.value);
+    return _isAppDark ? p.dark : p.light;
+  }
+
+  static Color get primaryDark {
+    final p = PTAccents.byKey(accentNotifier.value);
+    return _isAppDark ? _mix(p.dark, const Color(0xFFFFFFFF), 0.18) : p.dark;
+  }
+
+  /// 旧双色渐变副色：收敛为主色悬停态。
+  static Color get primary2 {
+    final p = PTAccents.byKey(accentNotifier.value);
+    return _mix(_isAppDark ? p.dark : p.light, const Color(0xFF000000), 0.15);
+  }
+
+  static Color get primaryHover => primary2;
+
+  static Color get primarySoft =>
+      _isAppDark
+          ? _mix(
+              PTAccents.byKey(accentNotifier.value).dark,
+              const Color(0xFF0F1115),
+              0.86,
+            )
+          : _mix(
+              PTAccents.byKey(accentNotifier.value).light,
+              const Color(0xFFFFFFFF),
+              0.9,
+            );
+
+  // 历史引用兜底，逐步退役
   static const primarySoftDark = Color(0x244C8DFF);
+
+  /// 当前 app 是否处于暗色（由 buildAppTheme 每次 build 回写）。
+  static bool _isAppDark = false;
+  static void setDarkContext(bool dark) => _isAppDark = dark;
+
+  static Color _mix(Color a, Color b, double t) => Color.fromARGB(
+    ((a.a + (b.a - a.a) * t) * 255).round(),
+    ((a.r + (b.r - a.r) * t) * 255).round(),
+    ((a.g + (b.g - a.g) * t) * 255).round(),
+    ((a.b + (b.b - a.b) * t) * 255).round(),
+  );
 
   /// 语义状态色（浅色底 >= 4.5:1）。
   static const success = Color(0xFF15803D);
@@ -93,9 +133,11 @@ class PTRadius {
   static const double pill = 999; // 仅状态点，不用于按钮/徽章
 }
 
-/// 应用主题（Material 3，seed 自品牌主色）。
+/// 应用主题（Material 3，seed 自当前调色盘主色——accentNotifier 驱动）。
 ThemeData buildAppTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
+  // 回写明暗上下文：PTColors.primary 等 getter 据此取预设的浅/深色阶。
+  PTColors.setDarkContext(isDark);
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
@@ -289,7 +331,6 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
-
 
 /// 平台标准页面转场：iOS/macOS 用 Cupertino 侧滑，其余用 Material M3 默认。
 /// 显式读取 MediaQuery.disableAnimations（系统「减少动态效果」）并短路为静态切换。

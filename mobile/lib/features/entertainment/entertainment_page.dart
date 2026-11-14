@@ -272,7 +272,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.casino_outlined,
                   color: PTColors.primary,
                   size: 20,
@@ -354,7 +354,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
               if (r.prize.isNotEmpty)
                 Text(
                   r.prize,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: PTColors.primary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,

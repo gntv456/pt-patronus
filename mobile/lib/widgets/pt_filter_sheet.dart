@@ -136,7 +136,7 @@ class _MultiFilterBodyState extends State<_MultiFilterBody> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text(opt.label, style: const TextStyle(fontSize: 14)),
                 trailing: opt.value == _sel[i]
-                    ? const Icon(Icons.check, color: PTColors.primary, size: 20)
+                    ? Icon(Icons.check, color: PTColors.primary, size: 20)
                     : null,
                 onTap: () => _onChoice(i, opt.value),
               )
@@ -176,7 +176,7 @@ class _MultiFilterBodyState extends State<_MultiFilterBody> {
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           color: PTColors.primary,

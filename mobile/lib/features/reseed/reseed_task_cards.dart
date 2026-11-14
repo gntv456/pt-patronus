@@ -47,7 +47,7 @@ extension on _ReseedPageState {
                 )
               : InkWell(
                   onTap: () => _copyLink(t.candidateUrl),
-                  child: const Text(
+                  child: Text(
                     '复制链接',
                     style: TextStyle(
                       fontSize: 12,
@@ -169,7 +169,7 @@ extension on _ReseedPageState {
               padding: const EdgeInsets.only(top: 4),
               child: GestureDetector(
                 onTap: () => _copyLink(t.candidateUrl),
-                child: const Text(
+                child: Text(
                   '复制下载链接',
                   style: TextStyle(
                     fontSize: 12,

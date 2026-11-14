@@ -153,7 +153,7 @@ extension on _SaveptPageState {
                       ),
                       child: Text(
                         e.key,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: PTColors.primary,

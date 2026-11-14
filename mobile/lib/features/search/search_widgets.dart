@@ -147,7 +147,7 @@ extension on _SearchPageState {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(5),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [PTColors.primary, PTColors.primary2],
         ),
       ),

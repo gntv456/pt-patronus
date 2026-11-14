@@ -10,7 +10,7 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   @override
   Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.fromLTRB(2, 6, 0, 6), child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: PTColors.primary)));
+      Padding(padding: EdgeInsets.fromLTRB(2, 6, 0, 6), child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: PTColors.primary)));
 }
 
 /// rule_string 语法帮助卡。
@@ -38,7 +38,7 @@ class _HelpCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(6)),
-          child: const Text('例：4K & !BLU > 1080P', style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: PTColors.primary)),
+          child: Text('例：4K & !BLU > 1080P', style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: PTColors.primary)),
         ),
       ]),
     );

@@ -42,7 +42,7 @@ extension _RssItemsSheet on _RssPageState {
                             it.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               color: PTColors.primary2,
                               decoration: TextDecoration.underline,
@@ -96,7 +96,7 @@ extension _RssItemsSheet on _RssPageState {
                         onTap: () => _launchUrl(it.link),
                         child: Text(
                           it.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: PTColors.primary2,

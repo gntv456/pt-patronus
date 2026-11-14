@@ -161,7 +161,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(
                           Icons.shield_outlined,

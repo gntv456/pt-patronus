@@ -9,6 +9,8 @@ import 'package:ptpatronus/core/version.dart';
 import 'package:ptpatronus/core/update_checker.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/theme/accent.dart';
+import 'package:ptpatronus/features/account/accent_dot.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../login/login_page.dart';
@@ -174,7 +176,7 @@ class _AccountPageState extends State<AccountPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.shield_outlined,
@@ -307,6 +309,41 @@ class _AccountPageState extends State<AccountPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // 主题调色盘：与 Web ACCENT_GROUPS 同源（三端同一套色值）。
+                  ListenableBuilder(
+                    listenable: accentNotifier,
+                    builder: (context, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            '主题色',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              for (final p in PTAccents.presets)
+                                AccentDot(
+                                  preset: p,
+                                  selected: accentNotifier.value == p.key,
+                                  onTap: () => setAccent(p.key),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: _busy ? null : _logout,
@@ -322,3 +359,4 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 }
+

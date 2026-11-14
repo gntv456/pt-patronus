@@ -185,7 +185,7 @@ class _SiteCardState extends State<_SiteCard> {
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
                                 c.localSiteName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: PTColors.primary,
                                 ),

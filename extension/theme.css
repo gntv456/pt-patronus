@@ -427,3 +427,41 @@ kbd {
 ::-webkit-scrollbar-track { background: transparent; }
 
 ::selection { background: rgba(76, 141, 255, 0.35); }
+
+/* 主题调色盘：分组色卡（与 Web/Flutter 同源预设，见 accent.js） */
+.accent-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-6);
+}
+.accent-group {
+  min-width: 110px;
+}
+.accent-group-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.accent-dots {
+  display: flex;
+  gap: 8px;
+}
+.accent-dot {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.accent-dot:hover {
+  border-color: var(--border-strong);
+}
+.accent-dot.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}

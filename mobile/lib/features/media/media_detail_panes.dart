@@ -214,7 +214,7 @@ extension on _MediaDetailPageState {
 
                             _chip(_typeBadge(m.type),
 
-                                const LinearGradient(colors: [PTColors.primary, PTColors.primary2]),
+                                LinearGradient(colors: [PTColors.primary, PTColors.primary2]),
 
                                 Colors.white),
 

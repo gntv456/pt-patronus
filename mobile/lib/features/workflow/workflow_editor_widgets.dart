@@ -138,7 +138,7 @@ extension on _WorkflowEditorPageState {
 
   Color _catColor(String type) {
     final info = _infos[type];
-    const m = {
+    final m = {
       '资源': PTColors.primary2,
       '过滤': PTColors.warn,
       '下载': PTColors.success,

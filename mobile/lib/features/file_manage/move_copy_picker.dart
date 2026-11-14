@@ -93,7 +93,7 @@ class _MoveCopyPickerState extends State<_MoveCopyPicker> {
                   itemBuilder: (_, i) {
                     final d = _dirs[i];
                     return ListTile(
-                      leading: const Icon(Icons.folder, color: PTColors.primary2),
+                      leading: Icon(Icons.folder, color: PTColors.primary2),
                       title: Text(d.name),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       onTap: () => _cd(d.path),

@@ -167,7 +167,7 @@ extension on _BrushFlowPageState {
         children: [
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
               color: PTColors.primary,

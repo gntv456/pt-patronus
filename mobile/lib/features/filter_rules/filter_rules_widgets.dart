@@ -91,7 +91,7 @@ extension on _FilterRulesPageState {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(4)),
-            child: Text(r.id, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: PTColors.primary)),
+            child: Text(r.id, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: PTColors.primary)),
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(r.name.isEmpty ? '(未命名)' : r.name, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),

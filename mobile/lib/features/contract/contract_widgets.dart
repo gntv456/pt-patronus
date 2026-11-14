@@ -79,7 +79,7 @@ extension on _ContractPageState {
           // 头部：图标 + 站点名 + 下限 meta + 启用开关。
           Row(
             children: [
-              const GlassIcon(
+              GlassIcon(
                 glyph: 'contract',
                 from: PTColors.primary,
                 to: PTColors.primary2,
@@ -178,7 +178,7 @@ extension on _ContractPageState {
         children: [
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
               color: PTColors.primary,

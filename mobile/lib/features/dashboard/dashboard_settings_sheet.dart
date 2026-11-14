@@ -49,7 +49,7 @@ class _DashboardSettingsSheetState
             children: [
               Row(
                 children: [
-                  const Icon(Icons.tune, color: PTColors.primary, size: 20),
+                  Icon(Icons.tune, color: PTColors.primary, size: 20),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -202,7 +202,7 @@ class _DashboardSettingsSheetState
       padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           color: PTColors.primary,
           fontWeight: FontWeight.w700,
           fontSize: 13,
@@ -235,7 +235,7 @@ class _DashboardSettingsSheetState
               ),
               Text(
                 value == 0 ? '全部' : '$value',
-                style: const TextStyle(
+                style: TextStyle(
                   color: PTColors.primary,
                   fontWeight: FontWeight.w700,
                 ),

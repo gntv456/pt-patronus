@@ -108,8 +108,10 @@ extension on _MonitorDetailPageState {
   Widget _trend(
     String label,
     List<double?> data, {
-    Color color = PTColors.primary,
+    Color? color,
   }) {
+    // 主色是运行时调色盘值，不能作默认参数；null = 取当前 accent 主色。
+    final effectiveColor = color ?? PTColors.primary;
     final runs = trendRuns(data);
     final avail = runs.fold<int>(0, (a, r) => a + r.values.length);
     if (data.length < 2 || avail == 0) {
@@ -159,12 +161,12 @@ extension on _MonitorDetailPageState {
                         for (var j = 0; j < r.values.length; j++)
                           FlSpot((r.start + j).toDouble(), r.values[j]),
                       ],
-                      color: color,
+                      color: effectiveColor,
                       barWidth: r.values.length < 2 ? 0 : 2,
                       dotData: FlDotData(show: r.values.length < 2),
                       belowBarData: BarAreaData(
                         show: r.values.length >= 2,
-                        color: color.withValues(alpha: 0.12),
+                        color: effectiveColor.withValues(alpha: 0.12),
                       ),
                     ),
                 ],

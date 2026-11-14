@@ -119,7 +119,7 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
                         )
                       : null,
                   trailing: d.id == widget.selected.id
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_circle,
                           color: PTColors.primary,
                           size: 20,

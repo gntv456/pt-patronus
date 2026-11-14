@@ -54,6 +54,7 @@ const RAW_HEX_EXEMPT = [
   'frontend/src/styles/tokens.css',
   'frontend/src/styles/modern.css',
   'frontend/src/composables/useUiPrefs.ts',
+  'extension/accent.js',
 ]
 
 for (const file of files) {

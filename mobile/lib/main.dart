@@ -7,6 +7,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/theme/accent.dart';
 import 'features/home/home_shell.dart';
 import 'features/login/login_page.dart';
 import 'features/login/server_config_page.dart';
@@ -30,6 +31,7 @@ void main() async {
   // 主题模式偏好（跟随系统 / 浅色 / 深色）
   try {
     await loadThemeModePrefs();
+    await loadAccentPrefs();
   } catch (_) {}
   // media_kit（摄像头 RTSP→HLS 预览）；鸿蒙无原生实现时跳过，播放器运行时降级提示。
   try {
@@ -71,9 +73,13 @@ class _PTPatronusAppState extends State<PTPatronusApp> {
     } else {
       home = const LoginPage();
     }
+    // 双 notifier 监听：明暗（themeMode）与调色盘（accent）任一变更都重建
+    // MaterialApp，buildAppTheme/PTColors 运行时主色随之刷新。
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeModeNotifier,
-      builder: (context, mode, _) => MaterialApp(
+      builder: (context, mode, _) => ValueListenableBuilder<String>(
+        valueListenable: accentNotifier,
+        builder: (context, accent, app) => MaterialApp(
         title: 'PTPatronus',
         debugShowCheckedModeBanner: false,
         // i18n：业务文案为中文硬编码（产品定位中文用户），这里固定 zh locale 让
@@ -90,6 +96,7 @@ class _PTPatronusAppState extends State<PTPatronusApp> {
         darkTheme: buildAppTheme(Brightness.dark),
         themeMode: mode,
         home: home,
+      ),
       ),
     );
   }

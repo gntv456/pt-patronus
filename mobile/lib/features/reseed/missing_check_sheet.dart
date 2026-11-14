@@ -273,7 +273,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: PTColors.primary,

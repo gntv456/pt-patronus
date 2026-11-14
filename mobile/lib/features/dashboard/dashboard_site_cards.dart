@@ -79,7 +79,7 @@ extension on _DashboardPageState {
               _displayUserIdentity(s),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: PTColors.primary, fontSize: 11),
+              style: TextStyle(color: PTColors.primary, fontSize: 11),
             ),
           ],
           const SizedBox(height: 8),
@@ -334,7 +334,7 @@ extension on _DashboardPageState {
             minHeight: wide ? 40 : 34,
           ),
           onPressed: () => _viewHistory(s),
-          icon: const Icon(Icons.history, color: PTColors.primary2),
+          icon: Icon(Icons.history, color: PTColors.primary2),
         ),
         IconButton(
           tooltip: refreshing ? '刷新中…' : '刷新数据',

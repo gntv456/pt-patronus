@@ -261,7 +261,7 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
                                 ),
                                 child: Text(
                                   _triggerText(w.triggerType),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: PTColors.primary,
                                     fontSize: 12,
                                   ),

@@ -144,7 +144,7 @@ extension on _MedalWallPageState {
               child: (m.originalImageUrl.isEmpty && m.imageSmall.isEmpty)
                   ? Text(
                       m.name.isNotEmpty ? m.name.substring(0, 1) : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: PTColors.primary,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,

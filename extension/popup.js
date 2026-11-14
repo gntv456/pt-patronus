@@ -7,6 +7,7 @@ import { getConfig, isConfigured, api, searchTorrentsStream, searchMedia, create
 import { overview, fmtBonus } from './dashboard.js'
 import { listDownloaders, listTorrents, pauseTorrent, resumeTorrent, globalStats } from './downloads.js'
 import { esc, $, fmtBytes, pushFailed, pushResultLabel } from './util.js'
+import { loadAccent, applyAccent } from './accent.js'
 
 async function currentSelection() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -438,6 +439,8 @@ function renderQuick(cfg) {
 
 // ============ 启动 ============
 document.addEventListener('DOMContentLoaded', async () => {
+  // 主题色：先应用上次的调色盘选择再初始化界面（避免闪默认色）。
+  applyAccent(await loadAccent())
   $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
   const cfg = await getConfig()
 

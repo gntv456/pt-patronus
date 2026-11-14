@@ -248,7 +248,7 @@ extension on _DashboardPageState {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.rocket_launch,
                 color: PTColors.primary,
                 size: 20,
@@ -312,7 +312,7 @@ extension on _DashboardPageState {
                 ),
                 child: Text(
                   no,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: PTColors.primary,
                     fontWeight: FontWeight.w700,
                   ),

@@ -27,6 +27,7 @@ import { injectSummaryText, injectSummaryKind } from './inject_report.js'
 import { initStatsPage } from './options_stats.js'
 import { initDownloadsPage } from './options_downloads.js'
 import { initTotpPage } from './options_totp.js'
+import { initAboutPage } from './options_about.js'
 
 // —— 通用轻反馈 ——
 let toastTimer = null
@@ -129,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (key === 'plugins') loadPlugins()
         else if (key === 'creds') initCredsPage()
         else if (key === 'ai') initAiPage()
+        else if (key === 'about') initAboutPage($, feedback)
       }
     }
   })

@@ -54,7 +54,7 @@ test('host_permissions / content_scripts 不得声明全站通配', () => {
 //   esc(...) / 纯数字 / 常量字符串，或整段无插值的静态 HTML。
 // 这是 XSS 的静态门禁——新增 innerHTML 拼接不转义会在此处红灯。
 const JS_FILES = [
-  'options.js', 'options_stats.js', 'options_downloads.js', 'options_totp.js', 'popup.js', 'background.js', 'content_torrent.js',
+  'options.js', 'options_stats.js', 'options_downloads.js', 'options_totp.js', 'options_about.js', 'popup.js', 'background.js', 'content_torrent.js',
   'content_totp.js', 'content_ocr.js', 'content_creds.js',
 ]
 

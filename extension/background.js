@@ -12,8 +12,10 @@ import { initAutosync, maybeSyncOnWake, syncNow } from './autosync.js'
 import { getSiteHosts, isSiteHost, canonicalHost } from './sitelist.js'
 import { isBlocked, credAllowed } from './siteblock.js'
 import { correctOcrText } from './ocr_corrections.js'
+import { initExtensionUpdate, checkNow } from './extension_update.js'
 
 initAutosync()
+initExtensionUpdate()
 injectAllTabs().catch(() => {})
 
 // openSearch 打开 Web 搜索页（右键菜单/快捷键/omnibox/媒体页注入共用路径）。
@@ -247,6 +249,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       armVaultAutolockInBg()
       sendResponse({ ok: true })
       return false
+    // 关于页「检查扩展更新」：手动触发一轮检查并回结果（结果同时落 storage，
+    // popup 顶条读同一份）。失败也回调——界面按 error 文案提示，而不是「点了没反应」。
+    case 'ptp-ext-update-check':
+      getConfig()
+        .then((cfg) => checkNow(cfg, api))
+        .then(sendResponse)
+        .catch((e) => sendResponse({ error: (e && e.message) || String(e) }))
+      return true
     // options 页「授予全部站点权限」成功后：对已打开页补注入（新授权的站点立即生效）。
     case 'ptp-inject-all-tabs':
       // 两个分支都要回调，并把汇总带回设置页（#362 同族：只挂成功分支 ⇒ 页面等不到回音）。

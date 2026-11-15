@@ -562,12 +562,17 @@
       <section class="glass panel">
         <div class="panel-title">PTPatronus 助手</div>
         <p class="hint" style="margin:0">
-          v1.03.19 · Chrome/Edge MV3<br />
+          <span id="aboutVersion">v—</span> · Chrome/Edge MV3<br />
           跨站流式搜索/订阅、站点数据仪表、下载任务管理、Cookie 台账与自动保活、TOTP 验证器、
           验证码 OCR、跨站找同种（辅种）、WebDAV/CookieCloud 备份、收藏与历史、隐私模式、
           豆瓣/IMDb 注入、omnibox（地址栏 ptp + Tab）。<br />
           数据只在你自己的服务器与本机浏览器之间流转。
         </p>
+        <div class="actions" style="margin-top:8px">
+          <button class="btn-ghost" id="checkExtUpdate">检查扩展更新</button>
+          <span id="extUpdateStatus" class="hint" style="flex:1" role="status" aria-live="polite"></span>
+        </div>
+        <div id="extUpdateBox" class="hint" style="display:none; margin-top:8px"></div>
       </section>
       <section class="glass panel">
         <div class="panel-title">快捷键</div>

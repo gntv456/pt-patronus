@@ -8,6 +8,7 @@ import { overview, fmtBonus } from './dashboard.js'
 import { listDownloaders, listTorrents, pauseTorrent, resumeTorrent, globalStats } from './downloads.js'
 import { esc, $, fmtBytes, pushFailed, pushResultLabel } from './util.js'
 import { loadAccent, applyAccent, fetchServerAccent } from './accent.js'
+import { KEY_UPDATE } from './extension_update.js'
 
 async function currentSelection() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -454,6 +455,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch { /* 未登录：本地色即可 */ }
   $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
   const cfg = await getConfig()
+
+  // 扩展更新条：background 每 24h 自动检查的结果落在 storage，这里只读不查——
+  // popup 打开是高频动作，检查（网络请求）留给 background。点击进设置页「关于」。
+  try {
+    const { [KEY_UPDATE]: st } = await chrome.storage.local.get(KEY_UPDATE)
+    if (st && st.hasUpdate && st.latest) {
+      const bar = $('extUpdateBar')
+      bar.textContent = `⬆ 扩展有新版本 ${st.latest}（当前 ${st.version}）——点击去更新`
+      bar.style.display = ''
+      bar.onclick = () => chrome.runtime.openOptionsPage()
+    }
+  } catch { /* 无结果不显示 */ }
 
   // 交互绑定前置：不等任何网络请求——网络慢时 Tab/搜索也应立即响应。
   $('tabHome').onclick = () => switchTab('home')

@@ -121,7 +121,9 @@ jobs:
         with: { flutter-version: '3.41.x', cache: true }
       # Flutter Linux 桌面构建链：GTK3 头文件 + ninja + clang；media_kit 桌面端走 libmpv（包内自带，
       # media_kit_libs_* 视平台——Linux 无官方 libs 包，运行时依赖系统 mpv，构建只需 flutter linux 工具链）。
-      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      # libsecret/jsoncpp/ssl：flutter_secure_storage_linux 的 pkg_check_modules 硬依赖，
+      # 缺则 CMake generate 失败（1.03.31 首次 CI Linux 构建踩坑）。
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev libssl-dev
       - run: flutter pub get
       - run: flutter config --enable-linux-desktop && flutter build linux --release
       - name: Zip linux bundle

@@ -1,16 +1,16 @@
 name: Flutter Release
 
-# 打 tag (v*) 时构建客户端产物：Android APK（签名）/ macOS / Windows / iOS（未签名 ipa,用户 AltStore/TrollStore 自签）。
-# 鸿蒙需华为 flutter 分支 + DevEco，CI 无 runner，手动构建（见 README/各端发布步骤.md）。
-# 客户端（Android/iOS/macOS/Windows）改为本地打包，CI 不再构建。
-# 此 workflow 保留备用（workflow_dispatch 手动验证），打 tag (v*) 不触发。
+# 打 tag (v*) 时构建客户端产物：Android APK（签名）/ macOS / Windows / Linux / iOS（未签名 ipa,用户 AltStore/TrollStore 自签）/ Web（Vue dist zip）。
+# 鸿蒙需华为 flutter 分支 + DevEco，CI 无 runner，本地构建（build_ohos.ps1 + sign-official-hap.ps1）后 gh release upload。
+# 1.03.31 恢复 tag 触发的全端 GitHub 构建（1.03.26 起为省额度本地打包，现按发布策略切回）。
 on:
   workflow_dispatch:
+  push:
+    tags: ['v*']
 
 jobs:
   android:
     name: Android APK
-    if: false   # 临时关闭（省 Actions 额度，只保留 iOS）
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: mobile } }
     steps:
@@ -46,7 +46,6 @@ jobs:
 
   macos:
     name: macOS
-    if: false   # 临时关闭（macOS runner 10× 计费）
     runs-on: macos-latest
     defaults: { run: { working-directory: mobile } }
     steps:
@@ -71,7 +70,6 @@ jobs:
 
   windows:
     name: Windows
-    if: false   # 临时关闭（Windows runner 2× 计费）
     runs-on: windows-latest
     defaults: { run: { working-directory: mobile } }
     steps:
@@ -113,11 +111,51 @@ jobs:
           name: ptpatronus-ios
           path: mobile/ptpatronus-ios-unsigned.ipa
 
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with: { flutter-version: '3.41.x', cache: true }
+      # Flutter Linux 桌面构建链：GTK3 头文件 + ninja + clang；media_kit 桌面端走 libmpv（包内自带，
+      # media_kit_libs_* 视平台——Linux 无官方 libs 包，运行时依赖系统 mpv，构建只需 flutter linux 工具链）。
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop && flutter build linux --release
+      - name: Zip linux bundle
+        run: |
+          # bundle 目录是 flutter linux 的可分发形态（runner 可执行 + lib/*.so + data/flutter_assets）
+          cd build/linux/x64/release/bundle || { echo "bundle missing"; ls -R build/linux 2>/dev/null; exit 1; }
+          zip -r "$GITHUB_WORKSPACE/ptpatronus-linux-x64.zip" .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ptpatronus-linux
+          path: ptpatronus-linux-x64.zip
+
+  web:
+    name: Web (Vue dist zip)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: '20', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run build
+      - name: Zip dist
+        run: cd .. && zip -r ptpatronus-web-dist.zip frontend/dist -x "frontend/dist/.vite/*"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ptpatronus-web
+          path: ptpatronus-web-dist.zip
+
   # tag 触发时把各端产物挂到 GitHub Release，方便汇总后转到网盘/TG 群分发。
   # 注意：Private 仓库的 Release 资产外部无法直链下载，本步是给仓库 owner 批量取产物用的。
   publish-release:
     name: Publish to Release
-    needs: [android, macos, windows]   # 不含 ios：ios 失败不卡核心发版（best-effort 进 Release）
+    needs: [android, macos, windows, linux, web]   # 不含 ios：ios 失败不卡核心发版（best-effort 进 Release）
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -134,6 +172,10 @@ jobs:
         with: { name: ptpatronus-macos, path: macos }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with: { name: ptpatronus-windows, path: windows }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: { name: ptpatronus-linux, path: linux }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: { name: ptpatronus-web, path: web }
       - name: Download iOS (best-effort)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with: { name: ptpatronus-ios, path: ios }
@@ -146,6 +188,8 @@ jobs:
           rm -f android/*-x86_64-release.apk
           mv macos/ptpatronus-macos.zip "ptpatronus-${VERSION}-macos.zip"
           cd windows && zip -r "../ptpatronus-${VERSION}-windows-x64.zip" . && cd ..
+          mv linux/ptpatronus-linux-x64.zip "ptpatronus-${VERSION}-linux-x64.zip"
+          mv web/ptpatronus-web-dist.zip "ptpatronus-${VERSION}-web-dist.zip"
           if [ -f ios/*.ipa ]; then mv ios/*.ipa "ptpatronus-${VERSION}-ios-unsigned.ipa"; else echo "ios 缺失,跳过"; fi
       - name: Write checksums
         run: |
@@ -154,6 +198,8 @@ jobs:
             ptpatronus-${VERSION}-android-*.apk
             ptpatronus-${VERSION}-macos.zip
             ptpatronus-${VERSION}-windows-x64.zip
+            ptpatronus-${VERSION}-linux-x64.zip
+            ptpatronus-${VERSION}-web-dist.zip
             ptpatronus-${VERSION}-ios-unsigned.ipa
           )
           sha256sum "${files[@]}" > SHA256SUMS-clients.txt
@@ -164,6 +210,8 @@ jobs:
             ptpatronus-${{ env.VERSION }}-android-armv7a.apk
             ptpatronus-${{ env.VERSION }}-macos.zip
             ptpatronus-${{ env.VERSION }}-windows-x64.zip
+            ptpatronus-${{ env.VERSION }}-linux-x64.zip
+            ptpatronus-${{ env.VERSION }}-web-dist.zip
             ptpatronus-${{ env.VERSION }}-ios-unsigned.ipa
             SHA256SUMS-clients.txt
           fail_on_unmatched_files: false   # ios 可能缺失（best-effort）
@@ -180,6 +228,8 @@ jobs:
             ptpatronus-${VERSION}-android-*.apk
             ptpatronus-${VERSION}-macos.zip
             ptpatronus-${VERSION}-windows-x64.zip
+            ptpatronus-${VERSION}-linux-x64.zip
+            ptpatronus-${VERSION}-web-dist.zip
             ptpatronus-${VERSION}-ios-unsigned.ipa
             SHA256SUMS-clients.txt
           )

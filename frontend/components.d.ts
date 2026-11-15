@@ -34,6 +34,7 @@ declare module 'vue' {
     DashboardAutomationCard: typeof import('./src/components/dashboard/DashboardAutomationCard.vue')['default']
     DashboardExportDialog: typeof import('./src/components/dashboard/DashboardExportDialog.vue')['default']
     DashboardHealthStrip: typeof import('./src/components/dashboard/DashboardHealthStrip.vue')['default']
+    DashboardNextAction: typeof import('./src/components/dashboard/DashboardNextAction.vue')['default']
     DashboardQuickTools: typeof import('./src/components/dashboard/DashboardQuickTools.vue')['default']
     DashboardRealtimeCard: typeof import('./src/components/dashboard/DashboardRealtimeCard.vue')['default']
     DashboardResourceCard: typeof import('./src/components/dashboard/DashboardResourceCard.vue')['default']

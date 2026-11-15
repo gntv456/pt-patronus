@@ -1,13 +1,13 @@
 {
-  "latestVersion": "1.03.30",
+  "latestVersion": "1.03.31",
   "minVersion": "0.60.00",
-  "releaseName": "本地账号升级无感版",
-  "releaseNotes": "1.03.30：插件平台生态化收官（#34/#36）——MoviePilot 热门功能移植 6 插件（站点签到/下载整理/订阅增强/媒体库刷新/做种规则/网盘 STRM）；核心功能出墙 4 模块（Trakt 同步 device-code 授权、目录监视、CookieCloud 调度、TG Bot 桥接）；宿主新增 6 个插件工具（transfer_discovered/site_sync_cookies/agent_chat 等）；KV legacy 环回兼容垫；builtin 死代码清理 -8700 行。全站 UI 改版随版发布（中性工具型外观，功能不变，旧观感可 classic-ui 临时恢复）。升级务必保留 ./data 卷。",
+  "releaseName": "体验优化与扩展分发修复",
+  "releaseNotes": "1.03.31：侧栏行动角标（站免/辅种/考核/订阅/站点/运维六类入口实时计数，语义色分级）；工作台下一最佳行动卡（加站点→接下载器→配订阅 数据驱动引导，可关闭）；指标等宽数字；侧栏分组再平衡（站点活动拆出站点趣味）。浏览器扩展分发包过期修复（重要）：1.03.21 后关于页下载的扩展 zip 一直是旧代码——已重打并对齐 1.03.30，装过扩展的请重新下载并在浏览器重载。恢复全端 GitHub 构建（Android/macOS/Windows/Linux/iOS/Web），鸿蒙仍本地构建。升级务必保留 ./data 卷。",
   "isForced": false,
-  "publishedAt": "2026-11-15T14:30:00+08:00",
+  "publishedAt": "2026-11-15T19:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.29",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.31",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {

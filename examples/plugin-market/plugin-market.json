@@ -616,6 +616,136 @@
       ]
     },
     {
+      "id": "mp-bridge-media-refresh",
+      "name": "媒体库刷新助手",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-media-refresh-1.0.0.zip",
+      "sha256": "e04e0f4abd9fd26fa94dfa077e597e3282ec5ac8660bd4b8ed274ef28b198c0f",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
+      ],
+      "author": "PTPatronus Community",
+      "description": "媒体库巡检：定时全库扫描 + 元数据刷新 + 重复项检测报告。功能对标 MoviePilot 媒体库刷新类插件的独立实现：cron 触发 Emby/Plex/Jellyfin 全库扫描；可指定库做元数据刷新；巡检重复项并发报告。",
+      "license": "MIT",
+      "keywords": [
+        "mediaserver",
+        "refresh",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "mediaserver:read",
+        "mediaserver:write",
+        "kv:read",
+        "kv:write"
+      ],
+      "actions": [
+        {
+          "name": "scan_all",
+          "label": "全库扫描",
+          "description": "对所有已配置媒体服务器触发库扫描（library_id 为空=扫全部库）。"
+        },
+        {
+          "name": "servers",
+          "label": "媒体服务器列表",
+          "description": "列出已配置的 Emby/Plex/Jellyfin 及其库清单。"
+        },
+        {
+          "name": "refresh_library",
+          "label": "刷新库元数据",
+          "description": "按 server_id + library_id 刷新指定库的元数据。"
+        },
+        {
+          "name": "dup_report",
+          "label": "重复项报告",
+          "description": "逐服务器逐库检测重复媒体项，汇总并发报告通知。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "scan_notify",
+          "label": "扫描后发通知",
+          "type": "switch",
+          "default": false,
+          "help": "夜间扫描默认静音；失败时会通知。"
+        },
+        {
+          "key": "dup_notify",
+          "label": "有重复项才通知",
+          "type": "switch",
+          "default": true
+        },
+        {
+          "key": "exclude_libraries",
+          "label": "排除库（名称）",
+          "type": "textarea",
+          "default": "",
+          "help": "逗号/换行分隔；命中名称的库不参与扫描与重复检测。"
+        },
+        {
+          "key": "cron",
+          "label": "全库扫描 cron",
+          "type": "text",
+          "default": "0 4 * * *",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每天 04:00。"
+        },
+        {
+          "key": "report_cron",
+          "label": "重复项报告 cron",
+          "type": "text",
+          "default": "30 4 * * 1",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每周一 04:30。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-media-refresh.scan",
+            "label": "媒体库刷新：立即全库扫描",
+            "action": "scan_all"
+          },
+          {
+            "id": "mp-bridge-media-refresh.refresh",
+            "label": "媒体库刷新：刷新指定库元数据",
+            "action": "refresh_library"
+          },
+          {
+            "id": "mp-bridge-media-refresh.dups",
+            "label": "媒体库刷新：重复项检测",
+            "action": "dup_report"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "mp-bridge-media-refresh.scan"
+          }
+        ]
+      },
+      "signature": "BHrd+UyDPXAvKVoKXWntpDR6WH1tfO9yfnXtaaKkBCYTieA+YuJM+W8pm2ZptyrACYxAPXSJZKweVUa92wxbDA==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+      ]
+    },
+    {
       "id": "mp-bridge-site-signin",
       "name": "站点签到助手",
       "version": "1.0.0",
@@ -751,6 +881,137 @@
       },
       "changelog": [
         "fix: declare kv:read/kv:write (last-result cache needs KV loopback)"
+      ]
+    },
+    {
+      "id": "mp-bridge-subscribe-enhance",
+      "name": "订阅增强助手",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-subscribe-enhance-1.0.0.zip",
+      "sha256": "3b2ac2d47f8f97ab1631056572ca7bf45334a0662d85a04f8a0c020a2f8d7a35",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
+      ],
+      "author": "PTPatronus Community",
+      "description": "订阅增强：热榜一键订阅 + 订阅批量检查 + 订阅周报。功能对标 MoviePilot 订阅增强类插件的独立实现：从豆瓣/TMDB 热榜挑条目直接建订阅；定时批量 force-check 全部订阅并汇总新增命中；生成订阅状态周报。",
+      "license": "MIT",
+      "keywords": [
+        "subscribe",
+        "recommend",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "media:read",
+        "subscribe:read",
+        "subscribe:write",
+        "kv:read",
+        "kv:write"
+      ],
+      "actions": [
+        {
+          "name": "check_all",
+          "label": "批量检查订阅",
+          "description": "逐个 force-check 全部订阅（搜索+推送下载器），汇总各订阅新增命中数并发通知。"
+        },
+        {
+          "name": "hot_feeds",
+          "label": "热榜速览",
+          "description": "拉取豆瓣/TMDB/Bangumi 热榜条目，标注哪些已在订阅中。"
+        },
+        {
+          "name": "subscribe_from_feed",
+          "label": "从热榜订阅",
+          "description": "按热榜条目（title/type/source/source_id/year）创建订阅；已存在则跳过。"
+        },
+        {
+          "name": "report",
+          "label": "订阅报告",
+          "description": "汇总当前订阅状态（总数/进行中/已完成/各类型分布），发周报通知。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "check_notify",
+          "label": "检查后发通知",
+          "type": "switch",
+          "default": true,
+          "help": "有新增命中才通知；零命中静默。"
+        },
+        {
+          "key": "report_notify",
+          "label": "周报发通知",
+          "type": "switch",
+          "default": true
+        },
+        {
+          "key": "check_concurrency_note",
+          "label": "检查间隔秒",
+          "type": "text",
+          "default": "3",
+          "help": "逐个检查之间的间隔秒数，减轻站点与下载器压力。"
+        },
+        {
+          "key": "cron",
+          "label": "批量检查 cron",
+          "type": "text",
+          "default": "0 7 * * *",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每天 07:00。"
+        },
+        {
+          "key": "report_cron",
+          "label": "周报 cron",
+          "type": "text",
+          "default": "0 8 * * 1",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每周一 08:00。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-subscribe-enhance.check",
+            "label": "订阅增强：批量检查",
+            "action": "check_all"
+          },
+          {
+            "id": "mp-bridge-subscribe-enhance.hot",
+            "label": "订阅增强：热榜速览",
+            "action": "hot_feeds"
+          },
+          {
+            "id": "mp-bridge-subscribe-enhance.report",
+            "label": "订阅增强：生成报告",
+            "action": "report"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "mp-bridge-subscribe-enhance.check"
+          }
+        ]
+      },
+      "signature": "Q7dU4PoIXScofOUUoNat+ss2WiWeeTJ6f2XanONSBRe3ikDlmSkqqime6t0K3lqaduafumbxtDCKFDFAJay0Cw==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
       ]
     },
     {

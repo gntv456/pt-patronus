@@ -1,0 +1,134 @@
+{
+  "id": "mp-bridge-subscribe-enhance",
+  "name": "订阅增强助手",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "订阅增强：热榜一键订阅 + 订阅批量检查 + 订阅周报。功能对标 MoviePilot 订阅增强类插件的独立实现：从豆瓣/TMDB 热榜挑条目直接建订阅；定时批量 force-check 全部订阅并汇总新增命中；生成订阅状态周报。",
+  "license": "MIT",
+  "keywords": [
+    "subscribe",
+    "recommend",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "media:read",
+    "subscribe:read",
+    "subscribe:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "daily_check_all",
+      "label": "每日批量检查订阅",
+      "action": "check_all",
+      "cron": "0 7 * * *",
+      "cron_config_key": "cron"
+    },
+    {
+      "id": "weekly_report",
+      "label": "每周订阅报告",
+      "action": "report",
+      "cron": "0 8 * * 1",
+      "cron_config_key": "report_cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-subscribe-enhance.check",
+        "label": "订阅增强：批量检查",
+        "action": "check_all"
+      },
+      {
+        "id": "mp-bridge-subscribe-enhance.hot",
+        "label": "订阅增强：热榜速览",
+        "action": "hot_feeds"
+      },
+      {
+        "id": "mp-bridge-subscribe-enhance.report",
+        "label": "订阅增强：生成报告",
+        "action": "report"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "mp-bridge-subscribe-enhance.check"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "check_all",
+      "label": "批量检查订阅",
+      "description": "逐个 force-check 全部订阅（搜索+推送下载器），汇总各订阅新增命中数并发通知。"
+    },
+    {
+      "name": "hot_feeds",
+      "label": "热榜速览",
+      "description": "拉取豆瓣/TMDB/Bangumi 热榜条目，标注哪些已在订阅中。"
+    },
+    {
+      "name": "subscribe_from_feed",
+      "label": "从热榜订阅",
+      "description": "按热榜条目（title/type/source/source_id/year）创建订阅；已存在则跳过。"
+    },
+    {
+      "name": "report",
+      "label": "订阅报告",
+      "description": "汇总当前订阅状态（总数/进行中/已完成/各类型分布），发周报通知。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "check_notify",
+      "label": "检查后发通知",
+      "type": "switch",
+      "default": true,
+      "help": "有新增命中才通知；零命中静默。"
+    },
+    {
+      "key": "report_notify",
+      "label": "周报发通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "check_concurrency_note",
+      "label": "检查间隔秒",
+      "type": "text",
+      "default": "3",
+      "help": "逐个检查之间的间隔秒数，减轻站点与下载器压力。"
+    },
+    {
+      "key": "cron",
+      "label": "批量检查 cron",
+      "type": "text",
+      "default": "0 7 * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每天 07:00。"
+    },
+    {
+      "key": "report_cron",
+      "label": "周报 cron",
+      "type": "text",
+      "default": "0 8 * * 1",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每周一 08:00。"
+    }
+  ]
+}

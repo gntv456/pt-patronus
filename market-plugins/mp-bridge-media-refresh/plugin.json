@@ -1,0 +1,133 @@
+{
+  "id": "mp-bridge-media-refresh",
+  "name": "媒体库刷新助手",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "媒体库巡检：定时全库扫描 + 元数据刷新 + 重复项检测报告。功能对标 MoviePilot 媒体库刷新类插件的独立实现：cron 触发 Emby/Plex/Jellyfin 全库扫描；可指定库做元数据刷新；巡检重复项并发报告。",
+  "license": "MIT",
+  "keywords": [
+    "mediaserver",
+    "refresh",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "mediaserver:read",
+    "mediaserver:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "nightly_scan",
+      "label": "每日全库扫描",
+      "action": "scan_all",
+      "cron": "0 4 * * *",
+      "cron_config_key": "cron"
+    },
+    {
+      "id": "weekly_dup_report",
+      "label": "每周重复项报告",
+      "action": "dup_report",
+      "cron": "30 4 * * 1",
+      "cron_config_key": "report_cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-media-refresh.scan",
+        "label": "媒体库刷新：立即全库扫描",
+        "action": "scan_all"
+      },
+      {
+        "id": "mp-bridge-media-refresh.refresh",
+        "label": "媒体库刷新：刷新指定库元数据",
+        "action": "refresh_library"
+      },
+      {
+        "id": "mp-bridge-media-refresh.dups",
+        "label": "媒体库刷新：重复项检测",
+        "action": "dup_report"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "mp-bridge-media-refresh.scan"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "scan_all",
+      "label": "全库扫描",
+      "description": "对所有已配置媒体服务器触发库扫描（library_id 为空=扫全部库）。"
+    },
+    {
+      "name": "servers",
+      "label": "媒体服务器列表",
+      "description": "列出已配置的 Emby/Plex/Jellyfin 及其库清单。"
+    },
+    {
+      "name": "refresh_library",
+      "label": "刷新库元数据",
+      "description": "按 server_id + library_id 刷新指定库的元数据。"
+    },
+    {
+      "name": "dup_report",
+      "label": "重复项报告",
+      "description": "逐服务器逐库检测重复媒体项，汇总并发报告通知。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "scan_notify",
+      "label": "扫描后发通知",
+      "type": "switch",
+      "default": false,
+      "help": "夜间扫描默认静音；失败时会通知。"
+    },
+    {
+      "key": "dup_notify",
+      "label": "有重复项才通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "exclude_libraries",
+      "label": "排除库（名称）",
+      "type": "textarea",
+      "default": "",
+      "help": "逗号/换行分隔；命中名称的库不参与扫描与重复检测。"
+    },
+    {
+      "key": "cron",
+      "label": "全库扫描 cron",
+      "type": "text",
+      "default": "0 4 * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每天 04:00。"
+    },
+    {
+      "key": "report_cron",
+      "label": "重复项报告 cron",
+      "type": "text",
+      "default": "30 4 * * 1",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每周一 04:30。"
+    }
+  ]
+}

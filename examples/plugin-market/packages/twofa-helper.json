@@ -5,7 +5,7 @@
   "api_version": "1",
   "runtime": "external-http",
   "archive": "archives/twofa-helper-1.2.7.zip",
-  "sha256": "06656e2a22acb9e776de35826e817208087e3c4fda45482ba05ac8c33636b76f",
+  "sha256": "a90d6f27de5a8783f0afe07b146102c9e4fa75c0ec58bfb992d08c2eaaa5f775",
   "app_version": ">=0.1.0",
   "host_capabilities": [
     "host.runtime.external-http.command",
@@ -43,7 +43,7 @@
       "help": "每行 name|BASE32_SECRET 或 otpauth uri"
     }
   ],
-  "signature": "DIHtO5lRxodrzq3f3o9OpjpJzDr1jJPl1r5XWku8KguvSCTrKN3JKkjFKJZVfShVZWS9CiTr+LBuLRbdz4C2Aw==",
+  "signature": "S0ujqbyPRiQpX0bD30GSMwkizWoLD+EB1I6pQ3a0rPsRdWFKCS5YZ55oWQ1Uuv0fvFyRxyMDdqZROfr5hsBUCA==",
   "publisher": {
     "id": "ptpatronus",
     "name": "PTPatronus Official",

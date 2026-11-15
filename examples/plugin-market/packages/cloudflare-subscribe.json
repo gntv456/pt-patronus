@@ -5,7 +5,7 @@
   "api_version": "1",
   "runtime": "external-http",
   "archive": "archives/cloudflare-subscribe-1.0.5.zip",
-  "sha256": "95d175b5acb0602873daacff22a2eb75ee2512a5d2509043c97d590e41e3d245",
+  "sha256": "59c54286301e09e690a254ae4632b413ef2c02dbc8746b0db24283b74bd26eb8",
   "app_version": ">=0.1.0",
   "host_capabilities": [
     "host.runtime.external-http.command",
@@ -78,7 +78,7 @@
       "订阅 URL"
     ]
   },
-  "signature": "8nViF0bpDfdaEpUcUevByuxJlIF5ikXTbpNKscHK7oUwOK50w8W6cBLGbOZTFz0GRycUG66R3RicNK9csLEuAw==",
+  "signature": "zTi7SzoQd/8ZU/gpRWq8jaAJcViAd81kz87usJ12XUE6GhkgUsi0QtJ5wg7klgk+gWBomtcV+g4xe75EkokFCw==",
   "publisher": {
     "id": "ptpatronus",
     "name": "PTPatronus Official",

@@ -5,7 +5,7 @@
   "api_version": "1",
   "runtime": "external-http",
   "archive": "archives/ptp-mcp-server-1.0.0.zip",
-  "sha256": "6f66b82f36f4393675053f83ce6663a82335d8c07e3c069d32111e442537024f",
+  "sha256": "88f949610c17b3686f9cd2162394222345b0c9c2f43bffad2f986937000f7502",
   "app_version": ">=0.1.0",
   "host_capabilities": [
     "host.runtime.external-http.command",
@@ -63,7 +63,7 @@
       }
     ]
   },
-  "signature": "G9sf5ndSPlZtDqRtYypce1gbcb5aGL/TaQyUKzliI8okcsCDIqdbJxvA58+em7o7zTXekvwXzxAXppVl9WOgCQ==",
+  "signature": "2sOcRJl8dfglS1Se+PL4xeNKCtifHun/d7P/l6Yiem/mlqbtTtScqp4T2azFbNRQUI9qGJuTpaIYZf3NLmwZBw==",
   "publisher": {
     "id": "ptpatronus",
     "name": "PTPatronus Official",

@@ -7,6 +7,7 @@
 import { Star, StarFilled, ArrowRight } from '@element-plus/icons-vue'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { navDesc, type NavItem, type NavGroup } from '@/layouts/navConfig'
+import type { NavBadge } from '@/api/navBadge'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -19,6 +20,8 @@ const props = defineProps<{
   favorites: string[]
   noticeUnread?: number
   noticeUrgent?: number
+  /** 侧栏微角标：入口行动计数（key 对齐 nav item name；无数据不渲染） */
+  navBadges?: Record<string, NavBadge>
 }>()
 
 const mobileNavOpen = defineModel<boolean>('mobileNavOpen', { required: true })
@@ -44,6 +47,20 @@ function isFav(name: string) {
 function noticeBadge(name: string): number {
   if (name === 'notices') return props.noticeUnread ?? 0
   return 0
+}
+// 微角标（行动计数）：通知未读与微角标同占一格时未读优先（通知是最直接的行动召唤）。
+function actionBadge(name: string): NavBadge | undefined {
+  if (name === 'notices') return undefined
+  return props.navBadges?.[name]
+}
+// 角标文本：999 封顶显示 999+（等宽数字由 .nav-badge 的 tabular-nums 保证）。
+function badgeText(b?: NavBadge): string {
+  if (!b) return ''
+  return b.count > 999 ? '999+' : String(b.count)
+}
+// 角标悬浮提示：说明计数的行动含义（利益点：点进去有 N 件事等我）。
+function badgeTitle(b?: NavBadge): string {
+  return b ? t('nav.badgeTip', { n: b.count }) : ''
 }
 </script>
 
@@ -120,6 +137,13 @@ function noticeBadge(name: string): number {
               class="nav-badge"
               :class="{ 'nav-badge--urgent': noticeUnread && noticeUrgent }"
               >{{ noticeBadge(item.name) > 999 ? '999+' : noticeBadge(item.name) }}</span
+            >
+            <span
+              v-else-if="actionBadge(item.name)"
+              class="nav-badge"
+              :class="`nav-badge--${actionBadge(item.name)!.tone}`"
+              :title="badgeTitle(actionBadge(item.name))"
+              >{{ badgeText(actionBadge(item.name)) }}</span
             >
             <span v-if="!sidebarCollapsed" class="nav-label">{{ t('nav.items.' + item.name, item.label) }}</span>
             <button

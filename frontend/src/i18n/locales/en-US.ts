@@ -78,6 +78,7 @@ export default {
   nav: {
     favorites: 'Favorites',
     favHint: 'Pin favorites here via ⌘K or the page star',
+    badgeTip: '{n} items pending, click to review',
     clearFavorites: 'Clear favorites',
     unfavorite: 'Unfavorite',
     favorite: 'Favorite',
@@ -85,6 +86,7 @@ export default {
       overview: 'Overview',
       activity: 'Activity',
       site: 'Site Activity',
+      fun: 'Site Extras',
       infra: 'Infrastructure',
       automation: 'Automation',
       content: 'Content',
@@ -2742,6 +2744,14 @@ export default {
     loadFailed: 'Failed to load workbench data',
     incomplete: 'Some sections could not be read — numbers and to-dos below may be incomplete',
     friend: 'friend',
+    next: {
+      title: 'Next best action',
+      sites: 'Add your first PT site to start aggregating data',
+      downloaders: 'Connect qB/TR/Deluge/Aria2 to complete the pipeline',
+      subscriptions: 'Set up subscriptions for automatic TV/movie tracking',
+      go: 'Set up',
+      dismiss: 'Dismiss guide',
+    },
     g: {
       night: 'Up late',
       morning: 'Good morning',

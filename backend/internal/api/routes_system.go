@@ -20,6 +20,8 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 	guarded.GET("/dashboard/trend", dashH.Trend)
 	// 工作台聚合：今日流转/待办/动态/摘要 + 媒体库态势 + 体检分
 	guarded.GET("/dashboard/workbench", v1.NewDashboardHandler2(d.Dashboard, d.MediaServer).Workbench)
+	// 侧栏微角标：高频入口的行动计数（纯 DB 聚合，侧栏 60s 轮询）
+	guarded.GET("/nav/badges", v1.NewNavBadgeHandler(d.Dashboard).Badges)
 
 	// 浏览器扩展包下载（关于页「下载扩展 zip」按钮）：embed 进二进制，
 	// Docker 用户无需进仓库找 extension/ 目录。

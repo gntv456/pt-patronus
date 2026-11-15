@@ -43,15 +43,21 @@ export const navGroups: NavGroup[] = [
     key: 'site',
     title: '站点活动',
     items: [
-      { name: 'entertainment', label: '娱乐', icon: 'entertainment' },
-      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall' },
-      { name: 'harem', label: '后宫', icon: 'harem' },
       { name: 'reseed', label: '辅种', icon: 'seeding' },
+      { name: 'brushflow', label: '刷流', icon: 'brushflow' },
       { name: 'assessment', label: '考核', icon: 'assessment' },
       { name: 'freeleech', label: '站免', icon: 'freeleech' },
       { name: 'savept', label: '监护室', icon: 'savept' },
-      { name: 'brushflow', label: '刷流', icon: 'brushflow' },
       { name: 'contract', label: '保种契约', icon: 'contract' },
+    ],
+  },
+  {
+    key: 'fun',
+    title: '站点趣味',
+    items: [
+      { name: 'entertainment', label: '娱乐', icon: 'entertainment' },
+      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall' },
+      { name: 'harem', label: '后宫', icon: 'harem' },
     ],
   },
   {

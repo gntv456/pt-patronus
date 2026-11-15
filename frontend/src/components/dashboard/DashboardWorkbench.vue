@@ -19,6 +19,7 @@ const { t } = useI18n()
 import { fmtBytes } from '@/utils/format'
 import { registerPolling } from '@/composables/usePolling'
 import SptIcon from '@/components/SptIcon.vue'
+import DashboardNextAction from './DashboardNextAction.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -202,6 +203,9 @@ function timeAgo(iso: string): string {
         <span class="score-label">{{ t('wb.score') }}</span>
       </button>
     </div>
+
+    <!-- 下一最佳行动：按数据派生的中段引导（可关闭，三步走完自动消失） -->
+    <DashboardNextAction :wb="wb" />
 
     <!-- 今日流转节点 -->
     <div class="wb-flow" v-if="wb?.nodes?.length">

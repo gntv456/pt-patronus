@@ -78,6 +78,7 @@ export default {
   nav: {
     favorites: '收藏',
     favHint: '收藏常用功能到此处：⌘K 或页面星标',
+    badgeTip: '{n} 项待查看，点进处理',
     clearFavorites: '清空收藏',
     unfavorite: '取消收藏',
     favorite: '收藏',
@@ -85,6 +86,7 @@ export default {
       overview: '概览',
       activity: '动态',
       site: '站点活动',
+      fun: '站点趣味',
       infra: '基础设施',
       automation: '自动化',
       content: '内容获取',
@@ -2727,6 +2729,14 @@ export default {
   wb: {
     loadFailed: '工作台数据加载失败',
     friend: '朋友',
+    next: {
+      title: '下一最佳行动',
+      sites: '添加第一个 PT 站点，开始聚合你的数据',
+      downloaders: '接入下载器（qB/TR/Deluge/Aria2），打通下载链路',
+      subscriptions: '配置订阅，让追剧追片自动推送',
+      go: '去配置',
+      dismiss: '关闭引导',
+    },
     g: { night: '夜深了', morning: '早上好', am: '上午好', noon: '中午好', pm: '下午好', evening: '晚上好' },
     i: {
       uploaded: '今日上传 {v}',

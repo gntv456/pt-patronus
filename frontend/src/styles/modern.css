@@ -440,6 +440,21 @@ html { scroll-padding-top: var(--header-height); }
 
 /* ── 7. 密度与可读性基线 ── */
 .metric-value { font-size: var(--fs-2xl) !important; letter-spacing: 0 !important; }
+/* 等宽数字：指标值/徽标/时间戳/表格数字列宽稳定，刷新跳动时不对齐抖动。
+   只对数字容器生效（不含正文文本），编辑器/输入框排除。 */
+.metric-value,
+.metric,
+.wb-node-count,
+.wb-score .score-num,
+.nav-badge,
+.stat-num,
+.updated-at,
+.el-progress__text,
+.el-table .cell,
+.el-pagination__total,
+.el-pagination__jump {
+  font-variant-numeric: tabular-nums !important;
+}
 :where(.head, .page-head, .header) { gap: var(--space-2); }
 :where(.title, .page-title) { font-size: var(--fs-xl) !important; }
 :where(.sub, .subtitle, .page-subtitle) { font-size: var(--fs-sm) !important; }

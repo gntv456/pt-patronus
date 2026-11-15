@@ -215,6 +215,18 @@
 .nav-badge--urgent {
   outline: 2px solid var(--color-danger-soft);
 }
+/* 微角标语义色变体（tone）：danger 为基座默认；info=机会型蓝、warning=待处理橙。
+   全部用语义 soft 底 + 实色边，对比度走 tokens 既有校验。 */
+.nav-badge--info {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--pt-info-fg);
+}
+.nav-badge--warning {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--pt-warn-fg);
+}
 .sidebar.collapsed .nav-badge {
   top: 2px;
   left: 38px;

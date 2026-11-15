@@ -35,6 +35,7 @@ const {
   passwordDialogOpen,
   noticeUnread,
   noticeUrgent,
+  navBadges,
   navGroups,
   favoriteItems,
   paletteItems,
@@ -86,6 +87,7 @@ function onSetupDone() {
       :favorites="favorites"
       :notice-unread="noticeUnread"
       :notice-urgent="noticeUrgent"
+      :nav-badges="navBadges"
       @toggle-group="toggleGroup"
       @on-toggle-fav="onToggleFav"
       @clear-favorites="clearFavorites"

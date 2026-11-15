@@ -18,6 +18,7 @@ import type { PaletteItem } from '@/components/CommandPalette.vue'
 import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/layouts/navConfig'
 import { useI18n } from 'vue-i18n'
 import { useNotices } from '@/composables/useNotices'
+import { useNavBadges } from '@/composables/useNavBadges'
 import { useUiPrefs } from '@/composables/useUiPrefs'
 import { useFeedback } from '@/composables/useFeedback'
 
@@ -37,6 +38,8 @@ export function useMainLayout() {
   const auth = useAuthStore()
   const { connect, disconnect } = useWs()
   const { unread: noticeUnread, urgentUnread: noticeUrgent, load: loadNotices } = useNotices()
+  // 侧栏微角标：入口行动计数，60s 轮询（MainLayout 装载期启动/卸载期注销）。
+  const { badges: navBadges, stop: stopNavBadges } = useNavBadges()
   const collapsed = ref(false)
   const isMobile = ref(false)
   const mobileNavOpen = ref(false)
@@ -72,6 +75,7 @@ export function useMainLayout() {
   })
   onUnmounted(() => {
     disconnect()
+    stopNavBadges()
     window.removeEventListener('resize', syncCollapsed)
   })
 
@@ -226,6 +230,7 @@ export function useMainLayout() {
     favorites,
     noticeUnread,
     noticeUrgent,
+    navBadges,
     isGroupCollapsed,
     toggleGroup,
     isFav,

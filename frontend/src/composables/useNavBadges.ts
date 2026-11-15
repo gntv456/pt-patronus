@@ -23,6 +23,9 @@ async function refresh() {
 
 export function useNavBadges() {
   // immediate 首载；返回 stop 供 MainLayout onUnmounted 注销。
-  const stop = registerPolling(() => void refresh(), 60_000, { runOnShow: true, immediate: true })
+  const stop = registerPolling(() => void refresh(), 60_000, {
+    runOnShow: true,
+    immediate: true,
+  })
   return { badges, refresh, stop }
 }

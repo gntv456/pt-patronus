@@ -56,7 +56,12 @@ function dismiss() {
 </script>
 
 <template>
-  <div v-if="current" class="next-action" role="region" :aria-label="t('wb.next.title')">
+  <div
+    v-if="current"
+    class="next-action"
+    role="region"
+    :aria-label="t('wb.next.title')"
+  >
     <SptIcon name="arrow-right" :size="16" class="na-ico" aria-hidden="true" />
     <div class="na-body">
       <span class="na-title">{{ t('wb.next.title') }}</span>
@@ -65,7 +70,12 @@ function dismiss() {
     <el-button size="small" type="primary" @click="router.push(current.route)">
       {{ t('wb.next.go') }}
     </el-button>
-    <button type="button" class="na-close" :aria-label="t('wb.next.dismiss')" @click="dismiss">
+    <button
+      type="button"
+      class="na-close"
+      :aria-label="t('wb.next.dismiss')"
+      @click="dismiss"
+    >
       <SptIcon name="x" :size="14" aria-hidden="true" />
     </button>
   </div>

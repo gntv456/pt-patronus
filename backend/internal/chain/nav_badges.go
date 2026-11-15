@@ -39,11 +39,13 @@ type NavBadges struct {
 func (c *DashboardChain) NavBadges() *NavBadges {
 	now := time.Now()
 	out := &NavBadges{GeneratedAt: now, Badges: []NavBadge{}}
-	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	y, m, d := now.Date()
+	dayStart := time.Date(y, m, d, 0, 0, 0, 0, now.Location())
 	db := c.db
 	add := func(key string, n int64, tone string) {
 		if n > 0 {
-			out.Badges = append(out.Badges, NavBadge{Key: key, Count: int(n), Tone: tone})
+			b := NavBadge{Key: key, Count: int(n), Tone: tone}
+			out.Badges = append(out.Badges, b)
 		}
 	}
 
@@ -56,7 +58,9 @@ func (c *DashboardChain) NavBadges() *NavBadges {
 
 	// 辅种：pending 候选数。
 	var reseedPending int64
-	db.Model(&models.CrossSeedTask{}).Where("status = ?", "pending").Count(&reseedPending)
+	db.Model(&models.CrossSeedTask{}).
+		Where("status = ?", "pending").
+		Count(&reseedPending)
 	add("reseed", reseedPending, "warning")
 
 	// 考核：ACTIVE 任务覆盖站点数（去重 site 维度，多任务同站只算一次）。
@@ -67,9 +71,11 @@ func (c *DashboardChain) NavBadges() *NavBadges {
 
 	// 订阅：今日检查失败/列表读失败 notice 数（可行动：去看哪部剧被拦了）。
 	var subFail int64
+	subSources := []string{
+		notice.SourceSubscribeCheckFail, notice.SourceSubscribeListFail,
+	}
 	db.Model(&models.Notice{}).
-		Where("source IN ? AND created_at >= ?",
-			[]string{notice.SourceSubscribeCheckFail, notice.SourceSubscribeListFail}, dayStart).
+		Where("source IN ? AND created_at >= ?", subSources, dayStart).
 		Count(&subFail)
 	add("subscriptions", subFail, "warning")
 
@@ -77,7 +83,8 @@ func (c *DashboardChain) NavBadges() *NavBadges {
 	var sites []models.Site
 	if err := db.Find(&sites).Error; err == nil && len(sites) > 0 {
 		var latest []models.SiteStat
-		err := db.Where("id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)").Find(&latest).Error
+		snapQ := "id IN (SELECT MAX(id) FROM site_stats GROUP BY site_id)"
+		err := db.Where(snapQ).Find(&latest).Error
 		if err == nil { // 读失败跳过：缺数据不能凭空造角标
 			statMap := make(map[uint]models.SiteStat, len(latest))
 			for _, st := range latest {
@@ -88,7 +95,9 @@ func (c *DashboardChain) NavBadges() *NavBadges {
 				if !s.IsActive || isForumPlatform(s.Platform) {
 					continue
 				}
-				if st, ok := statMap[s.ID]; ok && (st.Uploaded > 0 || st.Downloaded > 0 || st.Seeding > 0) {
+				st, ok := statMap[s.ID]
+				hasData := ok && (st.Uploaded > 0 || st.Downloaded > 0 || st.Seeding > 0)
+				if hasData {
 					continue
 				}
 				noData++

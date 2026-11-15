@@ -17,5 +17,6 @@ export interface NavBadgesResponse {
 }
 
 export const navBadgeApi = {
-  get: () => http.get<NavBadgesResponse>('/nav/badges').then((r) => r.data.badges ?? []),
+  get: () =>
+    http.get<NavBadgesResponse>('/nav/badges').then((r) => r.data.badges ?? []),
 }

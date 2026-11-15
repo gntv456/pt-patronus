@@ -7,8 +7,10 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/tgbot"
 )
 
 // errTgConvCreate 是 TG 会话创建失败的统一用户可见文案（原始错误只进日志，避免英文原文进聊天）。
@@ -49,4 +51,19 @@ func (s *tgChatSessions) clear(chatKey string) {
 	s.mu.Lock()
 	delete(s.convs, chatKey)
 	s.mu.Unlock()
+}
+
+// tgBotStatusView 组装 tgbot_status 工具的三态视图（config_enabled/running/safe_mode）。
+// tgRunning 由 app_runtime 的 startTgBot/tgCancel 维护；本函数迁出 runtime 以控行数（#34）。
+func tgBotStatusView(
+	cfgOp tgbot.KVStore, cfgSafe bool, tgRunning *atomic.Bool,
+) func() map[string]any {
+	return func() map[string]any {
+		tgc := tgbot.Load(cfgOp)
+		return map[string]any{
+			"config_enabled": tgc.Enabled && tgc.BotTokenEnc != "",
+			"running":        tgRunning.Load(),
+			"safe_mode":      cfgSafe,
+		}
+	}
 }

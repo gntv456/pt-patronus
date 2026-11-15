@@ -258,14 +258,6 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	var tgCancel context.CancelFunc
 	tgRunning := atomic.Bool{}
 	sessions := newTgChatSessions()
-	tgBotStatus := func() map[string]any {
-		tgc := tgbot.Load(cfgOp)
-		return map[string]any{
-			"config_enabled": tgc.Enabled && tgc.BotTokenEnc != "",
-			"running":        tgRunning.Load(),
-			"safe_mode":      cfg.SafeMode,
-		}
-	}
 	talk := func(ctx context.Context, chatKey, text string) (<-chan llm.Event, error) {
 		// 与 HTTP 面同款预检：AI 未就绪时不建会话（否则未配置期间每条 TG 消息都留一条空会话）。
 		switch agentSvc.Ready() {
@@ -318,7 +310,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 
 	// 插件工具面（TG bridge），须在 agentSvc/startTgBot 闭包之后。
 	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh, cookieCloudCh,
-		agentSvc, tgBotStatus, func() { startTgBot() })
+		agentSvc, tgBotStatusView(cfgOp, cfg.SafeMode, &tgRunning), func() { startTgBot() })
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
 	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
 

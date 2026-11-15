@@ -6,10 +6,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { siteApi, type Site, type SiteDef, type DefinitionDiagnostic } from '@/api/site'
 import SiteDefinitionDiagnostics from '@/components/sites/SiteDefinitionDiagnostics.vue'
-import { fmtTime } from '@/utils/format'
+import SitesRecordsDrawer from '@/components/sites/SitesRecordsDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
 import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
@@ -88,11 +88,7 @@ async function load() {
     // 诊断单独读、读失败要标出来：静默退回空数组＝把「有 N 条规则没生效」这件事再丢一次。
     const nextDiags = await siteApi
       .definitionDiagnostics()
-      .then((d) => {
-        defDiagsFailed.value = false
-        defDiagsErrText.value = ''
-        return d
-      })
+      .then((d) => ((defDiagsFailed.value = false), (defDiagsErrText.value = ''), d))
       .catch((e) => {
         defDiagsFailed.value = true
         defDiagsErrText.value = String((e as Error)?.message ?? e)
@@ -156,7 +152,22 @@ async function submitValidated() {
   // 直接出现在行内徽标，省一步操作）。
   if (!dialogVisible.value) void refreshConnectivity(true)
 }
-onMounted(load)
+// 移动断点与矩阵卡片分支（matrixLayout 'mobile'）同口径：panelWidth < 560。
+const isMobile = ref(window.innerWidth < 560)
+const onViewportChange = () => {
+  isMobile.value = window.innerWidth < 560
+}
+const staleVisitLabel = computed(() =>
+  staleVisitLoading.value && staleVisitProgress.value
+    ? t('sites.visiting', { n: staleVisitProgress.value })
+    : t('sites.visitStale', { count: inactiveSiteCount.value ? ` (${inactiveSiteCount.value})` : '' }),
+)
+
+onMounted(() => {
+  load()
+  window.addEventListener('resize', onViewportChange, { passive: true })
+})
+onBeforeUnmount(() => window.removeEventListener('resize', onViewportChange))
 </script>
 
 <template>
@@ -165,27 +176,47 @@ onMounted(load)
     <div class="head">
       <h2 class="page-title">{{ t('sites.title') }}</h2>
       <div class="head-actions">
-        <el-button text @click="openRecords()">{{ t('sites.records') }}</el-button>
-        <el-tooltip :content="t('sites.checkinAllHint')" placement="bottom" :disabled="!checkinAllLoading">
-          <el-button text :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
-        </el-tooltip>
-        <el-button text :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
-          t('sites.refreshStatus')
-        }}</el-button>
-        <el-button
-          text
-          :loading="staleVisitLoading"
-          :disabled="!inactiveSiteCount || staleVisitLoading"
-          :title="t('sites.staleVisitTitle')"
-          @click="visitStaleSites"
-        >
-          {{
-            staleVisitLoading && staleVisitProgress
-              ? t('sites.visiting', { n: staleVisitProgress })
-              : t('sites.visitStale', { count: inactiveSiteCount ? ` (${inactiveSiteCount})` : '' })
-          }}
-        </el-button>
-        <el-button type="primary" @click="openCreate">{{ t('sites.addSite') }}</el-button>
+        <!-- 移动端（<560px）：低频动作收进 ⋯ 下拉，只留「+ 添加站点」常驻（UX 实测桌面工具条占近一整屏）。 -->
+        <template v-if="isMobile">
+          <el-dropdown trigger="click">
+            <el-button text aria-label="更多站点操作">⋯</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :disabled="checkinAllLoading" @click="checkinAll">{{
+                  t('sites.checkinAll')
+                }}</el-dropdown-item>
+                <el-dropdown-item :disabled="refreshing" @click="refreshConnectivity(true)">{{
+                  t('sites.refreshStatus')
+                }}</el-dropdown-item>
+                <el-dropdown-item
+                  :disabled="!inactiveSiteCount || staleVisitLoading"
+                  @click="visitStaleSites"
+                >{{ staleVisitLabel }}</el-dropdown-item>
+                <el-dropdown-item divided @click="openRecords()">{{ t('sites.records') }}</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button type="primary" @click="openCreate">{{ t('sites.addSite') }}</el-button>
+        </template>
+        <template v-else>
+          <el-button text @click="openRecords()">{{ t('sites.records') }}</el-button>
+          <el-tooltip :content="t('sites.checkinAllHint')" placement="bottom" :disabled="!checkinAllLoading">
+            <el-button text :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
+          </el-tooltip>
+          <el-button text :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
+            t('sites.refreshStatus')
+          }}</el-button>
+          <el-button
+            text
+            :loading="staleVisitLoading"
+            :disabled="!inactiveSiteCount || staleVisitLoading"
+            :title="t('sites.staleVisitTitle')"
+            @click="visitStaleSites"
+          >
+            {{ staleVisitLabel }}
+          </el-button>
+          <el-button type="primary" @click="openCreate">{{ t('sites.addSite') }}</el-button>
+        </template>
       </div>
     </div>
 
@@ -297,37 +328,12 @@ onMounted(load)
       </template>
     </el-dialog>
 
-    <el-drawer v-model="recordsDrawer" :title="t('sites.records')" size="600">
-      <div v-loading="recordsLoading">
-        <div v-if="recordsWindow.truncated" class="text-muted" style="margin-bottom: 8px">
-          {{
-            recordsWindow.total == null
-              ? t('sites.recordsTruncatedUnknown', { n: recordsWindow.shown })
-              : t('sites.recordsTruncated', { n: recordsWindow.shown, total: recordsWindow.total })
-          }}
-        </div>
-        <el-table :data="records" style="width: 100%" max-height="100%">
-          <el-table-column :label="t('sites.rec.time')" width="150">
-            <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
-          </el-table-column>
-          <el-table-column prop="site_name" :label="t('sites.rec.site')" min-width="100" />
-          <el-table-column :label="t('sites.rec.result')" min-width="160">
-            <template #default="{ row }">
-              <span v-if="row.success" class="pill on">
-                {{ row.bonus > 0 ? t('sites.rec.bonus', { n: row.bonus }) : row.message || t('sites.rec.success') }}
-              </span>
-              <span v-else class="pill off">{{ row.error || row.message || t('sites.rec.failed') }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column :label="t('sites.rec.source')" width="80">
-            <template #default="{ row }">{{
-              row.source === 'cron' ? t('sites.rec.auto') : t('sites.rec.manual')
-            }}</template>
-          </el-table-column>
-        </el-table>
-        <div v-if="!records.length && !recordsLoading" class="empty text-muted">{{ t('sites.rec.empty') }}</div>
-      </div>
-    </el-drawer>
+    <SitesRecordsDrawer
+      v-model="recordsDrawer"
+      :records="records"
+      :records-window="recordsWindow"
+      :records-loading="recordsLoading"
+    />
   </div>
 </template>
 

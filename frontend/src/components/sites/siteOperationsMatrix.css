@@ -382,3 +382,33 @@
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
 }
+
+/* ── 移动卡片布局（matrixLayout === 'mobile'，panelWidth < 560）──
+   痛点（UX 实测 390px）：桌面工具条两行 + 面板头占 2/3 屏，表格只露一行半。
+   目标：数据为主，控件收敛——标题降级小字、计数隐藏、chips 横滚、按钮瘦身。 */
+.operations-matrix.is-mobile {
+  padding: var(--sp-3);
+}
+.operations-matrix.is-mobile .matrix-head {
+  margin-bottom: var(--sp-2);
+}
+.operations-matrix.is-mobile .matrix-head h3 {
+  font-size: var(--fs-sm);
+}
+.operations-matrix.is-mobile .matrix-head p {
+  font-size: var(--fs-xs);
+}
+.operations-matrix.is-mobile .matrix-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.operations-matrix.is-mobile .matrix-tools .el-button {
+  padding: 4px 8px;
+  font-size: var(--fs-xs);
+  min-height: 26px;
+}
+.operations-matrix.is-mobile .matrix-filter button {
+  padding: 3px 10px;
+  font-size: var(--fs-xs);
+}

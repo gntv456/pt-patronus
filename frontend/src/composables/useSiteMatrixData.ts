@@ -13,7 +13,7 @@ import type { Site, SiteConnectivityStatus } from '@/api/site'
 import { safeUrl } from '@/utils/safeUrl'
 
 export type MatrixFilter = 'all' | 'issues' | 'connected' | 'disabled'
-export type MatrixLayout = 'wide' | 'balanced' | 'compact'
+export type MatrixLayout = 'wide' | 'balanced' | 'compact' | 'mobile'
 
 const t = (k: string) => i18n.global.t(k)
 

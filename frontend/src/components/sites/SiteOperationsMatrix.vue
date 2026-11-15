@@ -12,6 +12,7 @@ import type { Site, SiteConnectivityStatus } from '@/api/site'
 import type { SiteStatItem } from '@/api/dashboard'
 import { dashboardApi } from '@/api/dashboard'
 import SiteMatrixTable from './SiteMatrixTable.vue'
+import SiteMobileCards from './SiteMobileCards.vue'
 import SiteMatrixHistoryDialog from './SiteMatrixHistoryDialog.vue'
 import { useSiteMatrixData, type MatrixFilter, type MatrixLayout } from '@/composables/useSiteMatrixData'
 import { useInactiveSiteVisit } from '@/composables/useInactiveSiteVisit'
@@ -52,11 +53,34 @@ const route = useRoute()
 const panelRef = ref<HTMLElement | null>(null)
 const panelWidth = ref(0)
 const matrixLayout = computed<MatrixLayout>(() => {
+  // 手机宽度用卡片列表（SiteMobileCards）替换表格：表格在 <560px 只能露几列
+  // 还要横向滚动，一屏几乎全是框架元素（UX 实测：390px 下数据区不足 1/3）。
+  if (isMobileViewport.value) return 'mobile'
   if (panelWidth.value >= 1450) return 'wide'
   if (panelWidth.value >= 1050) return 'balanced'
   return 'compact'
 })
 let resizeObserver: ResizeObserver | null = null
+
+// 移动档判定用 matchMedia（viewport 变化可靠触发）；ResizeObserver 在内嵌浏览器
+// 的 viewport 切换下实测可能不回调（残留旧宽度导致分支卡死）。
+const mobileMq =
+  typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(max-width: 560px)')
+    : null
+const isMobileViewport = ref(!!mobileMq?.matches)
+if (mobileMq) {
+  const onMq = (e: MediaQueryListEvent) => {
+    isMobileViewport.value = e.matches
+  }
+  if (mobileMq.addEventListener) mobileMq.addEventListener('change', onMq)
+  else mobileMq.addListener(onMq)
+  onBeforeUnmount(() => {
+    if (mobileMq.removeEventListener) {
+      mobileMq.removeEventListener('change', onMq)
+    } else mobileMq.removeListener(onMq)
+  })
+}
 
 const { t } = useI18n()
 const {
@@ -216,7 +240,11 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
 </script>
 
 <template>
-  <section ref="panelRef" class="operations-matrix glass">
+  <section
+    ref="panelRef"
+    class="operations-matrix glass"
+    :class="{ 'is-mobile': matrixLayout === 'mobile' }"
+  >
     <div class="matrix-head">
       <div>
         <h3>{{ t('som.title') }}</h3>
@@ -259,7 +287,28 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
       <button type="button" @click="reload">{{ t('common.retry') }}</button>
     </div>
 
+    <SiteMobileCards
+      v-if="matrixLayout === 'mobile'"
+      :data="matrixRows"
+      :connectivity="connectivity"
+      :connectivity-loading="connectivityLoading"
+      :cookie-alerts="cookieAlerts"
+      :can-delete="canDelete"
+      :refreshing="refreshing"
+      :testing-site-id="testingSiteId"
+      :checkining-site-id="checkiningSiteId"
+      :site-base-url="siteBaseUrl"
+      :site-config="siteConfig"
+      @detail="openDetail"
+      @refresh="(r) => void syncOne(r)"
+      @history="viewHistory"
+      @command="handleRowCommand"
+      @reason="showConnectivityReason"
+      @create="emit('create')"
+    />
+
     <SiteMatrixTable
+      v-else
       :data="pagedRows"
       :layout="matrixLayout"
       :connectivity="connectivity"
@@ -281,7 +330,10 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
       @create="emit('create')"
     />
 
-    <div v-if="matrixRows.length > 8" class="matrix-pagination">
+    <div
+      v-if="matrixLayout !== 'mobile' && matrixRows.length > 8"
+      class="matrix-pagination"
+    >
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"

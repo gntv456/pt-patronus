@@ -5,6 +5,7 @@ package plugins
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -85,7 +86,93 @@ func (h *externalHostServer) handleRuntimeConfig(w http.ResponseWriter, r *http.
 	writeHostJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// legacyKVValueKey 是 legacy 改写路径在 request context 里缓存 Value 的键。
+type legacyKVValueKey struct{}
+
+func legacyKVValueFrom(r *http.Request) (any, bool) {
+	v := r.Context().Value(legacyKVValueKey{})
+	if v == nil {
+		return nil, false
+	}
+	return v, true
+}
+
+// legacyKVRewrite 识别 legacy KV 调用形状（键名在 Body 里）并返回真实键名。
+// 返回 (key, ok, handled)：handled=true 表示命中 legacy 形状；ok=false 表示
+// Body 解析失败且响应已写出，调用方应直接返回。
+// legacyKVRewrite 识别 legacy KV 调用形状（键名在 Body 里）并返回真实键名。
+func (h *externalHostServer) legacyKVRewrite(
+	w http.ResponseWriter, r *http.Request,
+) (string, bool, bool) {
+	readKey := func() (string, bool) {
+		var in struct {
+			Key string `json:"key"`
+		}
+		if !decodeHostJSON(w, r, &in) {
+			return "", false
+		}
+		return strings.TrimSpace(in.Key), true
+	}
+	switch {
+	case r.Method == http.MethodPost && r.URL.Path == "/kv/set":
+		var in struct {
+			Key   string `json:"key"`
+			Value any    `json:"value"`
+		}
+		if !decodeHostJSON(w, r, &in) {
+			return "", true, false
+		}
+		// Value 缓存进 context（Body 已被消费，不能二次读）。
+		ctx := context.WithValue(r.Context(), legacyKVValueKey{}, in.Value)
+		*r = *r.WithContext(ctx)
+		h.logLegacyKV()
+		return strings.TrimSpace(in.Key), true, true
+	case r.Method == http.MethodPost && r.URL.Path == "/kv/get":
+		key, ok := readKey()
+		if !ok {
+			return "", true, false
+		}
+		h.logLegacyKV()
+		r.Method = http.MethodGet // legacy 用 POST 携带键名；契约读取是 GET
+		return key, true, true
+	case r.Method == http.MethodPost && r.URL.Path == "/kv/delete":
+		key, ok := readKey()
+		if !ok {
+			return "", true, false
+		}
+		h.logLegacyKV()
+		r.Method = http.MethodDelete
+		return key, true, true
+	}
+	return "", false, false
+}
+
+// logLegacyKV 每 100 次至多打 1 条 deprecation 提示（落插件日志，作者能看到）。
+func (h *externalHostServer) logLegacyKV() {
+	if h.legacyKVCount.Add(1)%100 != 1 {
+		return
+	}
+	h.plugin.manager.log(h.plugin.manifest.ID, logWarning, "host.api",
+		"legacy /kv/set|get|delete 已兼容，下个 api_version 移除；"+
+			"请改用 PUT/GET/DELETE /kv/{key}（SDK kv_get/kv_set 即契约写法）", nil)
+}
+
 func (h *externalHostServer) handleKV(w http.ResponseWriter, r *http.Request, rt Runtime) {
+	// legacy 兼容：旧式插件用 POST /kv/set {"key","value"}、POST /kv/get {"key"}、
+	// POST /kv/delete {"key"}（键名在 Body 里）。契约写法是 PUT/GET/DELETE /kv/{key}
+	// （SDK client.py 同形）。识别三个保留字路径，改写成契约形状并打节流 deprecation
+	// 日志引导迁移；api_version "1" 内不删除。
+	// 改写命中时 legacyKVRewrite 已消费 Body，这里把 Value 存入 context 供写分支复用
+	//（避免二次读 Body 得 EOF）。
+	if key, ok, handled := h.legacyKVRewrite(w, r); handled {
+		if !ok {
+			return // 改写阶段已写过错误响应
+		}
+		r.URL.Path = "/kv/" + key
+		if v, has := legacyKVValueFrom(r); has {
+			r = r.WithContext(context.WithValue(r.Context(), legacyKVValueKey{}, v))
+		}
+	}
 	key, err := hostPathValue(r.URL.Path, "/kv/")
 	if err != nil || key == "" {
 		writeHostJSON(w, http.StatusBadRequest, map[string]any{"error": "key is required"})
@@ -109,6 +196,16 @@ func (h *externalHostServer) handleKV(w http.ResponseWriter, r *http.Request, rt
 		writeHostJSON(w, http.StatusOK, map[string]any{"found": true, "value": value})
 	case http.MethodPut, http.MethodPost:
 		if !h.requirePermission(w, "kv:write") {
+			return
+		}
+		// legacy 改写路径：Value 已在改写时读出，从 context 取，不二次读 Body。
+		if v, has := legacyKVValueFrom(r); has {
+			if err := rt.KVSet(key, v); err != nil {
+				writeHostJSON(w, http.StatusInternalServerError,
+					map[string]any{"error": err.Error()})
+				return
+			}
+			writeHostJSON(w, http.StatusOK, map[string]any{"ok": true})
 			return
 		}
 		var in struct {

@@ -130,7 +130,7 @@ Validate against the schema: `ptp-pluginctl validate .`. The full JSON schema is
 | `log(level,event,msg,data)` | `log:write` | structured log |
 | `notice(title,body,level)` | `notice:write` | push a notification |
 | `publish(type,data)` | `event:publish` | emit an event |
-| `kv_get/set/delete(key)` | `kv:read/write/delete` | persistent key-value |
+| `kv_get/set/delete(key)` | `kv:read/write/delete` | persistent key-value. Wire format is **`GET`/`PUT`/`DELETE /kv/{key}`** (value as `{"value": …}` body) — NOT a `POST /kv/set` style call. (The host tolerates the legacy `POST /kv/{set,get,delete}` shape with a deprecation warning; it goes away in the next api_version.) |
 | `config()` / `set_runtime_config(k,v)` | `config:read` / `config:write` | read/merge config |
 | `sites()` / `site_cookie(id)` | `site:read` / `site:cookie` | configured PT sites + decrypted cookie |
 | `media_search(keyword,year)` | `media:search` | reuse host TMDB/豆瓣/寸光集 metadata |

@@ -1,0 +1,151 @@
+{
+  "id": "ptp-trakt-sync",
+  "name": "Trakt 同步",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "Trakt.tv watchlist → 宿主订阅同步。Device-code 授权（无需回调地址）；Trakt 条目经 Trakt Search 映射到 TMDB ID 后建订阅（source=tmdb），已存在按 tmdb+tmdb_id 去重跳过；增量同步只处理上次之后新增的 watchlist 条目。",
+  "license": "MIT",
+  "keywords": [
+    "trakt",
+    "subscribe",
+    "sync"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "subscribe:read",
+    "subscribe:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "periodic_sync",
+      "label": "定时增量同步",
+      "action": "sync",
+      "cron": "0 */6 * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "ptp-trakt-sync.auth",
+        "label": "Trakt：开始设备授权",
+        "action": "auth_start"
+      },
+      {
+        "id": "ptp-trakt-sync.sync",
+        "label": "Trakt：立即同步 watchlist",
+        "action": "sync"
+      },
+      {
+        "id": "ptp-trakt-sync.status",
+        "label": "Trakt：同步状态",
+        "action": "status"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "ptp-trakt-sync.sync"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "auth_start",
+      "label": "开始设备授权",
+      "description": "向 Trakt 申请 device code，返回 user_code 与验证 URL；用户在浏览器输入后用 auth_check 完成换取。"
+    },
+    {
+      "name": "auth_check",
+      "label": "检查授权结果",
+      "description": "用 device code 换取 access/refresh token；成功后 token 存 KV 并回显账号信息。"
+    },
+    {
+      "name": "auth_status",
+      "label": "授权状态",
+      "description": "返回是否已授权、token 剩余有效期、到期时间。"
+    },
+    {
+      "name": "sync",
+      "label": "同步 watchlist",
+      "description": "拉取 watchlist，映射 TMDB ID，增量建订阅（已存在跳过）。"
+    },
+    {
+      "name": "status",
+      "label": "同步状态",
+      "description": "上次同步时间/新增数/跳过数/失败清单。"
+    },
+    {
+      "name": "unlink",
+      "label": "解除授权",
+      "description": "清空 KV 中的 token 与同步锚点。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "client_id",
+      "label": "Trakt Client ID",
+      "type": "password",
+      "default": "",
+      "help": "trakt.tv/settings/applications 新建应用（无回调要求）取 Client ID。"
+    },
+    {
+      "key": "client_secret",
+      "label": "Trakt Client Secret",
+      "type": "password",
+      "default": ""
+    },
+    {
+      "key": "sync_movies",
+      "label": "同步电影",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "sync_shows",
+      "label": "同步剧集",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "resolution",
+      "label": "订阅分辨率",
+      "type": "select",
+      "default": "",
+      "options": [
+        {"label": "不限", "value": ""},
+        {"label": "1080p", "value": "1080p"},
+        {"label": "4K", "value": "2160p"}
+      ]
+    },
+    {
+      "key": "notify",
+      "label": "同步后发通知",
+      "type": "switch",
+      "default": true,
+      "help": "有新增订阅才通知。"
+    },
+    {
+      "key": "cron",
+      "label": "同步 cron",
+      "type": "text",
+      "default": "0 */6 * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每 6 小时。"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/safego"
@@ -21,6 +22,9 @@ type externalHostServer struct {
 	server  *http.Server
 	baseURL string
 	token   string
+
+	// legacyKVCount 节流 legacy KV deprecation 日志（每 100 次至多 1 条）。
+	legacyKVCount atomic.Uint64
 }
 
 func newExternalHostServer(plugin *externalHTTPPlugin) (*externalHostServer, error) {

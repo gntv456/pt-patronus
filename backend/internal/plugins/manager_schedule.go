@@ -124,6 +124,11 @@ func (m *Manager) runtime(id string, cfg map[string]any) Runtime {
 }
 
 func (m *Manager) log(pluginID, level, eventName, message string, data map[string]any) {
+	// nil 接收者防护：externalHostServer 的测试桩/降级路径可能没有 Manager 或 oper；
+	// 日志是尽力而为的旁路，不该把主链路带崩。
+	if m == nil || m.op == nil {
+		return
+	}
 	raw, _ := json.Marshal(data)
 	if len(raw) > 8000 {
 		raw = raw[:8000]

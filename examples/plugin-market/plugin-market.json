@@ -616,13 +616,146 @@
       ]
     },
     {
+      "id": "mp-bridge-cloud-strm",
+      "name": "网盘 STRM 助手",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-cloud-strm-1.0.0.zip",
+      "sha256": "e9e0cc65d5fdbd80e57b3e0e7feeae0f35305736dd418f13592ceb5fa9da08e2",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
+      ],
+      "author": "PTPatronus Community",
+      "description": "网盘 STRM 生成联动：定时按全部启用规则生成 .strm；规则健康巡检（规则数/生成数/失败数汇总）；最近生成记录查询。功能对标 MoviePilot 网盘 STRM 类插件的独立实现。",
+      "license": "MIT",
+      "keywords": [
+        "cloud",
+        "strm",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "cloud:read",
+        "cloud:write",
+        "kv:read",
+        "kv:write"
+      ],
+      "actions": [
+        {
+          "name": "generate_all",
+          "label": "生成全部",
+          "description": "按全部启用规则同步生成 .strm，返回跨规则汇总（rules/generated/failed）。"
+        },
+        {
+          "name": "generate_rule",
+          "label": "按规则生成",
+          "description": "按单个规则 id 生成 .strm。"
+        },
+        {
+          "name": "rules",
+          "label": "规则列表",
+          "description": "列出 STRM 生成规则。"
+        },
+        {
+          "name": "drives",
+          "label": "网盘列表",
+          "description": "列出已配置网盘（115/夸克/123/Alist）。"
+        },
+        {
+          "name": "records",
+          "label": "生成记录",
+          "description": "查询最近生成的 STRM 记录（可按网盘过滤）。"
+        },
+        {
+          "name": "health_report",
+          "label": "巡检报告",
+          "description": "规则数/启用数/上次生成汇总/失败告警，发巡检通知。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "generate_notify",
+          "label": "生成失败才通知",
+          "type": "switch",
+          "default": true,
+          "help": "夜间生成默认静音；failed>0 时升 warning。"
+        },
+        {
+          "key": "health_notify",
+          "label": "巡检报告通知",
+          "type": "switch",
+          "default": true
+        },
+        {
+          "key": "cron",
+          "label": "生成 cron",
+          "type": "text",
+          "default": "0 3 * * *",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每天 03:00。"
+        },
+        {
+          "key": "report_cron",
+          "label": "巡检 cron",
+          "type": "text",
+          "default": "0 5 * * 1",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。默认每周一 05:00。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-cloud-strm.generate",
+            "label": "网盘 STRM：立即生成（全部规则）",
+            "action": "generate_all"
+          },
+          {
+            "id": "mp-bridge-cloud-strm.rules",
+            "label": "网盘 STRM：查看规则",
+            "action": "rules"
+          },
+          {
+            "id": "mp-bridge-cloud-strm.health",
+            "label": "网盘 STRM：巡检报告",
+            "action": "health_report"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "mp-bridge-cloud-strm.generate"
+          }
+        ]
+      },
+      "signature": "p1ipwcmleG+kZ8kN3KWVCAWQFk/P1XMAm3/U+/ww/RVboCDL6ZMLSfIP/PHTBePtuh6+CZs74YYXN1fkKHoADw==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
+      ]
+    },
+    {
       "id": "mp-bridge-media-refresh",
       "name": "媒体库刷新助手",
       "version": "1.0.0",
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-media-refresh-1.0.0.zip",
-      "sha256": "e04e0f4abd9fd26fa94dfa077e597e3282ec5ac8660bd4b8ed274ef28b198c0f",
+      "sha256": "a4a6f00ec705f0f5ca45bafd252cc2491d66fe5df7407252fe15f0d3614faf63",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -734,7 +867,7 @@
           }
         ]
       },
-      "signature": "BHrd+UyDPXAvKVoKXWntpDR6WH1tfO9yfnXtaaKkBCYTieA+YuJM+W8pm2ZptyrACYxAPXSJZKweVUa92wxbDA==",
+      "signature": "+/s6vPiVrDJ5aI6PFZ1Ss6CdIv6Kw+1XPowgKhCImcg8s4tZot+aLBb/0btoRqx0QLCPc56UkcRG+f2Ybo6xBg==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -742,7 +875,7 @@
         "verified": true
       },
       "changelog": [
-        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
       ]
     },
     {
@@ -752,7 +885,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-site-signin-1.0.0.zip",
-      "sha256": "30cc693597a0248605b58bacf88a898113fa1642dfaf9c141ef0639e5773da55",
+      "sha256": "b571301fb0e38d45e9a7891b2edd2b48b509a5d6a645a2fbbd876fd5ed081c05",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -872,7 +1005,7 @@
           }
         ]
       },
-      "signature": "GMy5/zmSuqxXqlEMmPMacMb/rIM0IsKjLCl21NV6cG4Efxo+lzueQB5MhnyyEz/DDHO8uMzXpu2w2pF5W9MICQ==",
+      "signature": "X++7Wp+U5YqsYvtWYuMLOLQdumn7IQjzfDWDI3G84AZ+7Ahe72M8zHwupBoppyKavZFPc99IUbYVnNCCSsT2AA==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -880,7 +1013,7 @@
         "verified": true
       },
       "changelog": [
-        "fix: declare kv:read/kv:write (last-result cache needs KV loopback)"
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
       ]
     },
     {
@@ -890,7 +1023,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-subscribe-enhance-1.0.0.zip",
-      "sha256": "3b2ac2d47f8f97ab1631056572ca7bf45334a0662d85a04f8a0c020a2f8d7a35",
+      "sha256": "68ff2a875edb3515fa27d74e8cc2ddf76170b5581b3c0dcb0ed32e960c36db6c",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -1003,7 +1136,7 @@
           }
         ]
       },
-      "signature": "Q7dU4PoIXScofOUUoNat+ss2WiWeeTJ6f2XanONSBRe3ikDlmSkqqime6t0K3lqaduafumbxtDCKFDFAJay0Cw==",
+      "signature": "4cG6nKEoPYixPBAyWPczLjaFcOZDQiHGhBdNB9CTBqlv7SjJl/8+vYuTdYYSZxbTsVZJr74TkD2DR1BAC2FXDQ==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -1011,7 +1144,126 @@
         "verified": true
       },
       "changelog": [
-        "initial release: MoviePilot-equivalent feature as independent external-http plugin"
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
+      ]
+    },
+    {
+      "id": "mp-bridge-torrent-editor",
+      "name": "做种规则编辑器",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "archives/mp-bridge-torrent-editor-1.0.0.zip",
+      "sha256": "f5959311a9c06067d5cb42745ca52ea944d2637bc81c3b23e44be17cca8e508f",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.schedule.cron",
+        "host.api.log.write",
+        "host.api.notice.write",
+        "host.api.tools",
+        "host.api.kv.read",
+        "host.api.kv.write"
+      ],
+      "author": "PTPatronus Community",
+      "description": "批量编辑做种规则：按分类/标签/状态圈选种子，批量改分享率/做种时长限制与标签集，支持预览圈选与规则模板。功能对标 MoviePilot 批量改做种类插件的独立实现。",
+      "license": "MIT",
+      "keywords": [
+        "downloader",
+        "seeding",
+        "moviepilot-bridge"
+      ],
+      "permissions": [
+        "log:write",
+        "notice:write",
+        "downloader:read",
+        "downloader:write",
+        "kv:read",
+        "kv:write"
+      ],
+      "actions": [
+        {
+          "name": "select",
+          "label": "预览圈选",
+          "description": "按条件（分类/标签/状态关键字）圈选种子，只列出 hash/name/state，不改任何东西。"
+        },
+        {
+          "name": "set_limits",
+          "label": "批量改分享限制",
+          "description": "对圈选种子批量设置分享率与做种时长限制（ratio_limit：-2 无限 / -1 跟随全局 / >=0 数值；seeding_time_limit 单位分钟，同约定）。"
+        },
+        {
+          "name": "set_tags",
+          "label": "批量改标签",
+          "description": "对圈选种子整体替换标签集（set 语义）。"
+        },
+        {
+          "name": "save_template",
+          "label": "保存规则模板",
+          "description": "把条件+动作存成命名模板（KV），供定时任务或手动应用。"
+        },
+        {
+          "name": "list_templates",
+          "label": "模板列表",
+          "description": "列出已保存的规则模板。"
+        },
+        {
+          "name": "apply_template",
+          "label": "应用模板",
+          "description": "按模板圈选并执行（limit 或 tags，二选一按模板定义）。"
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "template_name",
+          "label": "默认模板名",
+          "type": "text",
+          "default": "default",
+          "help": "定时任务应用哪个模板（KV 中的模板名）。"
+        },
+        {
+          "key": "notify",
+          "label": "批量操作后发通知",
+          "type": "switch",
+          "default": true
+        },
+        {
+          "key": "cron",
+          "label": "定时应用 cron",
+          "type": "text",
+          "default": "",
+          "group": "定时",
+          "help": "5 段 cron；留空=不定时。到点应用默认模板。"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "mp-bridge-torrent-editor.preview",
+            "label": "做种编辑：预览圈选",
+            "action": "select"
+          },
+          {
+            "id": "mp-bridge-torrent-editor.limits",
+            "label": "做种编辑：批量改分享限制",
+            "action": "set_limits"
+          },
+          {
+            "id": "mp-bridge-torrent-editor.tags",
+            "label": "做种编辑：批量改标签",
+            "action": "set_tags"
+          }
+        ]
+      },
+      "signature": "oJc+0kUOSdA7oE3YLBfcR19/EcloEEflX2EIK8WdVOtAfTE54RNFTV5ltEjMjpqTKGL96knrEqiMv5FlHyOBCA==",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Official",
+        "website": "https://ptang.top",
+        "verified": true
+      },
+      "changelog": [
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
       ]
     },
     {
@@ -1021,7 +1273,7 @@
       "api_version": "1",
       "runtime": "external-http",
       "archive": "archives/mp-bridge-transfer-organize-1.0.0.zip",
-      "sha256": "dba6c03198829e6bd06a1bf348a7b9eadf74e26e240895eaf32bc29157527c48",
+      "sha256": "9bd6e6e9f9486cc663d6c9b6ffd643a30ba3f5c01c11490d839b7697da98b654",
       "app_version": ">=0.1.0",
       "host_capabilities": [
         "host.runtime.external-http.command",
@@ -1125,7 +1377,7 @@
           }
         ]
       },
-      "signature": "NCnVFZIqOI44N7ZBhBYwBy0rG4uVpu+mnZ6fpuJAx8h7yFggF4Yt7yQmMDxb/GsoeURWUHX/5QUQW04JWYN6Ag==",
+      "signature": "/UJsY5gQXy5v/iVCpsCub4ukDWmCFJB2XhoOuCWGhE09XUs2ooi5bAn8Sl7E4fXKW9i7SfaPoDpH9dL+fktnDA==",
       "publisher": {
         "id": "ptpatronus",
         "name": "PTPatronus Official",
@@ -1133,7 +1385,7 @@
         "verified": true
       },
       "changelog": [
-        "fix: declare kv:read/kv:write (last-result cache needs KV loopback)"
+        "fix: KV loopback contract PUT/GET /kv/{key} (was legacy /kv/set)"
       ]
     },
     {

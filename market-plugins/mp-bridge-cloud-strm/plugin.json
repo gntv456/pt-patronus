@@ -1,0 +1,136 @@
+{
+  "id": "mp-bridge-cloud-strm",
+  "name": "网盘 STRM 助手",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "网盘 STRM 生成联动：定时按全部启用规则生成 .strm；规则健康巡检（规则数/生成数/失败数汇总）；最近生成记录查询。功能对标 MoviePilot 网盘 STRM 类插件的独立实现。",
+  "license": "MIT",
+  "keywords": [
+    "cloud",
+    "strm",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "cloud:read",
+    "cloud:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "nightly_generate",
+      "label": "每日生成 STRM",
+      "action": "generate_all",
+      "cron": "0 3 * * *",
+      "cron_config_key": "cron"
+    },
+    {
+      "id": "weekly_health",
+      "label": "每周规则巡检报告",
+      "action": "health_report",
+      "cron": "0 5 * * 1",
+      "cron_config_key": "report_cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-cloud-strm.generate",
+        "label": "网盘 STRM：立即生成（全部规则）",
+        "action": "generate_all"
+      },
+      {
+        "id": "mp-bridge-cloud-strm.rules",
+        "label": "网盘 STRM：查看规则",
+        "action": "rules"
+      },
+      {
+        "id": "mp-bridge-cloud-strm.health",
+        "label": "网盘 STRM：巡检报告",
+        "action": "health_report"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "mp-bridge-cloud-strm.generate"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "generate_all",
+      "label": "生成全部",
+      "description": "按全部启用规则同步生成 .strm，返回跨规则汇总（rules/generated/failed）。"
+    },
+    {
+      "name": "generate_rule",
+      "label": "按规则生成",
+      "description": "按单个规则 id 生成 .strm。"
+    },
+    {
+      "name": "rules",
+      "label": "规则列表",
+      "description": "列出 STRM 生成规则。"
+    },
+    {
+      "name": "drives",
+      "label": "网盘列表",
+      "description": "列出已配置网盘（115/夸克/123/Alist）。"
+    },
+    {
+      "name": "records",
+      "label": "生成记录",
+      "description": "查询最近生成的 STRM 记录（可按网盘过滤）。"
+    },
+    {
+      "name": "health_report",
+      "label": "巡检报告",
+      "description": "规则数/启用数/上次生成汇总/失败告警，发巡检通知。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "generate_notify",
+      "label": "生成失败才通知",
+      "type": "switch",
+      "default": true,
+      "help": "夜间生成默认静音；failed>0 时升 warning。"
+    },
+    {
+      "key": "health_notify",
+      "label": "巡检报告通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "cron",
+      "label": "生成 cron",
+      "type": "text",
+      "default": "0 3 * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每天 03:00。"
+    },
+    {
+      "key": "report_cron",
+      "label": "巡检 cron",
+      "type": "text",
+      "default": "0 5 * * 1",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每周一 05:00。"
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "id": "mp-bridge-torrent-editor",
+  "name": "做种规则编辑器",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus Community",
+  "description": "批量编辑做种规则：按分类/标签/状态圈选种子，批量改分享率/做种时长限制与标签集，支持预览圈选与规则模板。功能对标 MoviePilot 批量改做种类插件的独立实现。",
+  "license": "MIT",
+  "keywords": [
+    "downloader",
+    "seeding",
+    "moviepilot-bridge"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "downloader:read",
+    "downloader:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "apply_template",
+      "label": "定时应用规则模板",
+      "action": "apply_template",
+      "cron": "",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "mp-bridge-torrent-editor.preview",
+        "label": "做种编辑：预览圈选",
+        "action": "select"
+      },
+      {
+        "id": "mp-bridge-torrent-editor.limits",
+        "label": "做种编辑：批量改分享限制",
+        "action": "set_limits"
+      },
+      {
+        "id": "mp-bridge-torrent-editor.tags",
+        "label": "做种编辑：批量改标签",
+        "action": "set_tags"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "select",
+      "label": "预览圈选",
+      "description": "按条件（分类/标签/状态关键字）圈选种子，只列出 hash/name/state，不改任何东西。"
+    },
+    {
+      "name": "set_limits",
+      "label": "批量改分享限制",
+      "description": "对圈选种子批量设置分享率与做种时长限制（ratio_limit：-2 无限 / -1 跟随全局 / >=0 数值；seeding_time_limit 单位分钟，同约定）。"
+    },
+    {
+      "name": "set_tags",
+      "label": "批量改标签",
+      "description": "对圈选种子整体替换标签集（set 语义）。"
+    },
+    {
+      "name": "save_template",
+      "label": "保存规则模板",
+      "description": "把条件+动作存成命名模板（KV），供定时任务或手动应用。"
+    },
+    {
+      "name": "list_templates",
+      "label": "模板列表",
+      "description": "列出已保存的规则模板。"
+    },
+    {
+      "name": "apply_template",
+      "label": "应用模板",
+      "description": "按模板圈选并执行（limit 或 tags，二选一按模板定义）。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "template_name",
+      "label": "默认模板名",
+      "type": "text",
+      "default": "default",
+      "help": "定时任务应用哪个模板（KV 中的模板名）。"
+    },
+    {
+      "key": "notify",
+      "label": "批量操作后发通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "cron",
+      "label": "定时应用 cron",
+      "type": "text",
+      "default": "",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。到点应用默认模板。"
+    }
+  ]
+}

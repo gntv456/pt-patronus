@@ -52,16 +52,24 @@ def notice(title, body, level="info"):
 
 
 def kv_set(key, value):
-    host_call("/kv/set", {"key": key, "value": value})
+    """宿主契约：PUT /kv/{key}，body={"value":...}（SDK client.py 同形）。"""
+    host_call(f"/kv/{key}", {"value": value}, method="PUT")
 
 
 def kv_get_json(key):
-    r = host_call("/kv/get", {"key": key}) or {}
-    raw = r.get("value", "")
-    try:
-        return json.loads(raw) if raw else None
-    except Exception:
+    """宿主契约：GET /kv/{key} → {"found":bool,"value":...}。"""
+    r = host_call(f"/kv/{key}", method="GET") or {}
+    if not r.get("found"):
         return None
+    val = r.get("value")
+    if isinstance(val, (dict, list, bool, int, float)):
+        return val
+    if isinstance(val, str) and val.strip():
+        try:
+            return json.loads(val)
+        except Exception:
+            return None
+    return None
 
 
 def as_bool(v, default=False):

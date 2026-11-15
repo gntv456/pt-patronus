@@ -31,7 +31,8 @@ func registerTgBotTools(
 	}
 	reg.Register(plugins.HostTool{
 		Name: "agent_chat", Category: "agent", Permission: "agent:read",
-		Description: "Send a text to the built-in AI agent (single-shot, non-streaming aggregated reply). Requires AI configured.",
+		Description: "Send a text to the built-in AI agent (single-shot, " +
+			"aggregated non-streaming reply). Requires AI configured.",
 		InputSchema: objSchema(map[string]any{
 			"text": strProp("user message"),
 		}, []string{"text"}),
@@ -68,7 +69,8 @@ func registerTgBotTools(
 	if tgReload != nil {
 		reg.Register(plugins.HostTool{
 			Name: "tgbot_reload", Category: "notify", Permission: "notify:write",
-			Description: "Apply TG bot config changes (stop+restart the polling loop; no-op when disabled).",
+			Description: "Apply TG bot config changes (stop+restart " +
+				"polling; no-op when disabled).",
 			InputSchema: noArgsSchema(),
 		}, func(ctx context.Context, _ map[string]any) (any, error) {
 			tgReload()

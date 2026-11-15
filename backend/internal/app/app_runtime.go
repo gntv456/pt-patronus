@@ -260,13 +260,10 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	sessions := newTgChatSessions()
 	tgBotStatus := func() map[string]any {
 		tgc := tgbot.Load(cfgOp)
-		enabled := tgc.Enabled && tgc.BotTokenEnc != ""
-		cfgSafe := cfg.SafeMode
 		return map[string]any{
-			"config_enabled": enabled,
+			"config_enabled": tgc.Enabled && tgc.BotTokenEnc != "",
 			"running":        tgRunning.Load(),
-			"safe_mode":      cfgSafe,
-			"note":           "bot 轮询本体在宿主进程；本状态经 tgbot_status 工具暴露给 ptp-tgbot-bridge 插件",
+			"safe_mode":      cfg.SafeMode,
 		}
 	}
 	talk := func(ctx context.Context, chatKey, text string) (<-chan llm.Event, error) {
@@ -319,8 +316,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	startTgBot()
 	tgBotH := v1.NewTgBotHandler(cfgOp, crypto, func() { startTgBot() })
 
-	// 插件工具面：TG bridge（agent_chat / tgbot_status / tgbot_reload）。
-	// 必须在 agentSvc 与 startTgBot 闭包定义之后。
+	// 插件工具面（TG bridge），须在 agentSvc/startTgBot 闭包之后。
 	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh, cookieCloudCh,
 		agentSvc, tgBotStatus, func() { startTgBot() })
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。

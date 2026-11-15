@@ -221,6 +221,33 @@
           <button type="submit" class="btn-primary">添 加</button>
         </form>
       </section>
+
+      <section class="glass panel">
+        <div class="panel-title">站点域名别名</div>
+        <div class="hint">
+          同一站点的多个域名（典型：站点换域后新旧域名并存）。TOTP/凭据匹配、Cookie 台账/自动同步、
+          黑名单都会把别名当作同一站点处理——禁用主域即禁用全部别名，换域后登录/填码不断档。
+        </div>
+        <form id="addAliasForm" style="display:flex; gap:8px; margin-top:10px">
+          <input id="addAliasInput" placeholder="空格分隔，首个是主域：如 hkpt.fun hkpt.com（回车保存）" style="flex:1" />
+          <button type="submit" class="btn-primary">保存别名</button>
+        </form>
+        <div id="aliasList" style="margin-top:8px; display:flex; flex-direction:column; gap:8px"></div>
+      </section>
+
+      <section class="glass panel">
+        <div class="panel-title">验证码纠错词表</div>
+        <div class="hint">
+          服务端 OCR 对某字形稳定误读时（0↔O、8↔B 这类），把「识别成 → 实际是」记一条，
+          之后登录该类验证码自动纠正。仅字母数字，统一按大写匹配。
+        </div>
+        <form id="addOcrForm" style="display:flex; gap:8px; margin-top:10px">
+          <input id="ocrWrong" placeholder="识别成（如 08O）" style="width:180px" />
+          <input id="ocrRight" placeholder="实际是（如 0BQ）" style="flex:1" />
+          <button type="submit" class="btn-primary">记一条</button>
+        </form>
+        <div id="ocrList" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px"></div>
+      </section>
     </section>
 
     <!-- ============ 站点数据 ============ -->
@@ -477,6 +504,28 @@
         <div class="actions">
           <button class="btn-primary" id="wdPush">推送备份</button>
           <button class="btn-ghost" id="wdPull">拉取恢复</button>
+        </div>
+      </section>
+
+      <section class="glass panel">
+        <div class="panel-title">备份恢复密钥</div>
+        <div class="hint">
+          与口令解耦的备份密钥（格式 PTP-RK1.…）。生成后备份自动改用它加密：本机恢复不再问口令；
+          换设备时把导出的密钥文本粘贴到新机器的「导入」框即可解开 WebDAV 上的备份。
+          密钥文本请自行妥善保存——它不出本机，丢了就解不开用旧密钥加密的备份。
+        </div>
+        <div class="actions" style="margin-top:8px">
+          <button class="btn-ghost" id="rkGen">生成恢复密钥</button>
+          <span id="rkStatus" class="hint" style="flex:1" role="status" aria-live="polite"></span>
+        </div>
+        <textarea id="rkText" readonly style="display:none; width:100%; margin-top:8px; font-family:var(--mono, ui-monospace, monospace); font-size:12px"></textarea>
+        <div class="actions" id="rkCopyRow" style="display:none">
+          <button class="btn-ghost" id="rkCopy">复制密钥文本</button>
+        </div>
+        <label for="rkImport" style="margin-top:10px">导入已有恢复密钥（换设备场景）</label>
+        <div style="display:flex; gap:8px">
+          <input id="rkImport" placeholder="粘贴 PTP-RK1.<指纹>.<密钥>" style="flex:1" />
+          <button class="btn-ghost" id="rkImportSave">导入并启用</button>
         </div>
       </section>
 

@@ -49,6 +49,29 @@ export async function browserCookieHeader(baseURL) {
   return parts.join('; ')
 }
 
+// browserCookieHeaderMulti 多域取 cookie：主域优先，空则试该站点的别名域。
+// 场景：站点换域后服务器 base_url 还是旧域、浏览器已在新域登录——单域读法
+// 台账永远显示「浏览器无 cookie」且上行推不出去（指纹为空被判 dead）。
+// 动态 import sitelist：避免 cookies.js ← autosync.js 与 sitelist 依赖被测试环境
+// 的模块解析顺序绊住（sitelist 本身零依赖，动态加载失败时退回单域行为）。
+export async function browserCookieHeaderMulti(baseURL) {
+  const primary = registeredDomain(baseURL)
+  const header = primary ? await browserCookieHeader(primary) : ''
+  if (header) return header
+  if (!primary) return ''
+  try {
+    const { getSiteAliases, aliasMainOf } = await import(chrome.runtime.getURL('sitelist.js'))
+    const map = await getSiteAliases()
+    const main = aliasMainOf(map, primary) || primary
+    const cands = [main, ...(map[main] || [])].filter((d) => d && d !== primary)
+    for (const d of cands) {
+      const h = await browserCookieHeader(d)
+      if (h) return h
+    }
+  } catch { /* 别名表不可用：维持单域语义 */ }
+  return ''
+}
+
 // pushBrowserToServer 把浏览器侧 cookie 覆盖写入服务器指定站点。
 export async function pushBrowserToServer(cfg, site, header) {
   return api(cfg, `/api/v1/sites/${site.id}/cookie`, {

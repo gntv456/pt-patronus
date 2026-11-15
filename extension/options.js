@@ -13,6 +13,7 @@ import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud, cookieHeaderToEntries, entriesToHeader,
 } from './backup.js'
+import { RECOVERY_SECRET_KEY, packWithRootKeyText, unpackAuto } from './recovery_key.js'
 import { overview, syncAll, fmtBytes, fmtBonus, fmtRatio } from './dashboard.js'
 import {
   listDownloaders, listTorrents, pauseTorrent, resumeTorrent, removeTorrent, addByUrl, globalStats,
@@ -751,6 +752,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderHosts()
   })
 
+  // ================= 站点域名别名（换域共存） =================
+  const renderAliases = async () => {
+    const { getSiteAliases } = await import('./sitelist.js')
+    const map = await getSiteAliases()
+    const box = $('aliasList')
+    const mains = Object.keys(map)
+    if (!mains.length) {
+      box.innerHTML = '<span class="hint">（空——同一站点的新旧域名在此归组）</span>'
+      return
+    }
+    box.innerHTML = mains.map((m) =>
+      `<div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center"><span class="tag-pill pill-ok" style="cursor:default" title="主域">${esc(m)}</span>` +
+      map[m].map((a) =>
+        `<span class="tag-pill pill-dim" data-amain="${esc(m)}" data-ahost="${esc(a)}" style="cursor:pointer" title="点击移除该别名" role="button" tabindex="0" aria-label="移除别名 ${esc(a)}">${esc(a)} <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`).join('') +
+      '</div>').join('')
+    for (const p of box.querySelectorAll('[data-ahost]')) {
+      p.onclick = async () => {
+        const { getSiteAliases: get2, setSiteAliases: set2 } = await import('./sitelist.js')
+        const cur = await get2()
+        const main = p.dataset.amain
+        await set2({ ...cur, [main]: (cur[main] || []).filter((x) => x !== p.dataset.ahost) })
+        renderAliases()
+      }
+      p.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); p.click() } }
+    }
+  }
+  renderAliases()
+
+  $('addAliasForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault()
+    const parts = $('addAliasInput').value.trim().split(/\s+/).filter(Boolean)
+    if (parts.length < 2) { feedback('至少要「主域 别名」两项，空格分隔', 'err'); return }
+    const { getSiteAliases, setSiteAliases } = await import('./sitelist.js')
+    const [main, ...aliases] = parts
+    const cur = await getSiteAliases()
+    // 别名先从其它主域名下摘掉再并进来：setSiteAliases 对跨主域冲突按「先到先得」处理，
+    // 不先摘的话这次保存里挪过来的别名会被静默丢弃。
+    const merged = { ...cur }
+    for (const [m, list] of Object.entries(merged)) {
+      if (m !== main) merged[m] = list.filter((x) => !aliases.includes(x))
+    }
+    merged[main] = [...new Set([...(merged[main] || []), ...aliases])]
+    await setSiteAliases(merged)
+    $('addAliasInput').value = ''
+    feedback(`已保存：${esc(main)} + ${aliases.length} 个别名`)
+    renderAliases()
+  })
+
+  // ================= 验证码纠错词表（OCR 正交增强） =================
+  const renderOcrCorr = async () => {
+    const { loadCorrections, removeCorrection } = await import('./ocr_corrections.js')
+    const map = await loadCorrections()
+    const box = $('ocrList')
+    const keys = Object.keys(map).sort()
+    if (!keys.length) {
+      box.innerHTML = '<span class="hint">（空——识别不满意时记一条「识别成 → 实际是」，下次自动纠正）</span>'
+      return
+    }
+    box.innerHTML = keys.map((k) =>
+      `<span class="tag-pill pill-dim" data-ocrw="${esc(k)}" style="cursor:pointer" title="点击移除" role="button" tabindex="0" aria-label="移除纠错 ${esc(k)}">${esc(k)}→${esc(map[k])} <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`).join('')
+    for (const p of box.querySelectorAll('[data-ocrw]')) {
+      p.onclick = async () => { await removeCorrection(p.dataset.ocrw); renderOcrCorr() }
+      p.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); p.click() } }
+    }
+  }
+  renderOcrCorr()
+
+  $('addOcrForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault()
+    const wrong = $('ocrWrong').value.trim()
+    const right = $('ocrRight').value.trim()
+    if (!wrong || !right) { feedback('两栏都要填：识别成了什么、实际是什么', 'err'); return }
+    try {
+      const { upsertCorrection } = await import('./ocr_corrections.js')
+      const act = await upsertCorrection(wrong, right)
+      $('ocrWrong').value = ''
+      $('ocrRight').value = ''
+      feedback(act === 'removed' ? '识别与正确相同——已移除该条' : act === 'updated' ? '已更新该条纠错' : '已记一条纠错')
+    } catch (e) {
+      feedback(`没记上：${e.message}`, 'err')
+    }
+    renderOcrCorr()
+  })
+
   $('save').onclick = async () => {
     await saveConfig({ server: $('server').value.trim() })
     feedback('已保存')
@@ -1256,29 +1341,103 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadOnce.stats = false // 下次进入站点数据页重新按隐私态渲染
   }
 
+  // —— 备份恢复密钥（recovery_key.js）：生成/导入/密封在本机（secrets.js 设备档）——
+  // 密封用设备密钥档而非 PIN：备份推送/恢复不能每次都要求先解锁凭据库 PIN。
+  const readSealedRk = async () => {
+    const r = await readSecret(RECOVERY_SECRET_KEY)
+    return r.ok ? r.value : null // {text, keyId} | null
+  }
+  const renderRk = async () => {
+    const rk = await readSealedRk()
+    if (rk && rk.text) {
+      $('rkStatus').textContent = `已启用（指纹 ${rk.keyId}）`
+      $('rkGen').textContent = '重新生成'
+      $('rkText').value = rk.text
+      $('rkText').style.display = ''
+      $('rkCopyRow').style.display = ''
+    } else {
+      $('rkStatus').textContent = '未启用——备份仍用口令加密'
+      $('rkGen').textContent = '生成恢复密钥'
+      $('rkText').style.display = 'none'
+      $('rkCopyRow').style.display = 'none'
+    }
+  }
+  renderRk()
+  $('rkGen').onclick = async () => {
+    const had = await readSealedRk()
+    if (had && had.text && !confirm('重新生成后，旧密钥加密的备份只能用旧密钥文本解开。继续？')) return
+    const { createRecoveryKey } = await import('./recovery_key.js')
+    const rk = await createRecoveryKey()
+    await writeSecret(RECOVERY_SECRET_KEY, { text: rk.text, keyId: rk.keyId })
+    feedback('恢复密钥已生成并密封在本机——请复制保存下方文本')
+    renderRk()
+  }
+  $('rkCopy').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText($('rkText').value)
+      feedback('已复制')
+    } catch { feedback('复制失败——请手动全选复制', 'err') }
+  }
+  $('rkImportSave').onclick = async () => {
+    const text = $('rkImport').value.trim()
+    if (!text) { feedback('先粘贴密钥文本', 'err'); return }
+    try {
+      // parseRecoveryKey 校验格式与 keyId 自洽——贴错/截断在这里就拦下，不落库。
+      const { parseRecoveryKey } = await import('./recovery_key.js')
+      const { keyId } = await parseRecoveryKey(text)
+      await writeSecret(RECOVERY_SECRET_KEY, { text, keyId })
+      $('rkImport').value = ''
+      feedback(`恢复密钥已导入并启用（指纹 ${keyId}）`)
+      renderRk()
+    } catch (e) { feedback(`导入失败：${e.message}`, 'err') }
+  }
+
   const backupFile = 'ptpatronus-backup.json'
   $('wdPush').onclick = async () => {
-    const pass = prompt('设置本次备份的加密口令（恢复时需输入）') || ''
-    if (!pass) return
+    // 有恢复密钥 → 自动改用它加密（免口令、新设备粘贴密钥即可解）；否则维持口令备份。
+    const rk = await readSealedRk()
+    let packed
+    if (rk && rk.text) {
+      packed = await packWithRootKeyText(await collectLocal(), rk.text)
+    } else {
+      const pass = prompt('设置本次备份的加密口令（恢复时需输入）') || ''
+      if (!pass) return
+      packed = await packBackup(await collectLocal(), pass)
+    }
     $('wdPush').disabled = true; $('wdPush').textContent = '推送中…'
     try {
-      const packed = await packBackup(await collectLocal(), pass)
       await putWebDAV({ url: $('wdUrl').value, username: $('wdUser').value, password: $('wdPass').value }, backupFile, JSON.stringify(packed))
-      feedback('备份已推送 WebDAV')
+      feedback(rk && rk.text ? '备份已推送 WebDAV（恢复密钥加密）' : '备份已推送 WebDAV')
     } catch (e) { feedback(`推送失败：${e.message}`, 'err') }
     $('wdPush').disabled = false; $('wdPush').textContent = '推送备份'
   }
   $('wdPull').onclick = async () => {
-    const pass = prompt('备份加密口令') || ''
-    if (!pass) return
     $('wdPull').disabled = true; $('wdPull').textContent = '拉取中…'
     try {
       const text = await getWebDAV({ url: $('wdUrl').value, username: $('wdUser').value, password: $('wdPass').value }, backupFile)
-      const data = await unpackBackup(JSON.parse(text), pass)
+      const blob = JSON.parse(text)
+      // rk 备份：优先本机密封密钥（本机恢复零输入）；新设备没有 → 粘贴导出的密钥文本。
+      // 口令备份（ver1）：维持原 prompt 流程。
+      let data
+      if (blob.rk) {
+        const rk = await readSealedRk()
+        const rkText = rk && rk.text ? rk.text : (prompt('该备份用恢复密钥加密——粘贴恢复密钥文本（PTP-RK1.…）') || '')
+        data = await unpackAuto(blob, '', rkText)
+      } else {
+        const pass = prompt('备份加密口令') || ''
+        if (!pass) {
+          $('wdPull').disabled = false; $('wdPull').textContent = '拉取恢复'
+          return
+        }
+        data = await unpackAuto(blob, pass)
+      }
       if (data.sync) await chrome.storage.sync.set(data.sync)
       if (data.local) await chrome.storage.local.set(data.local)
       feedback('已恢复（刷新本页生效）')
-    } catch (e) { feedback(`恢复失败：${e.message.includes('operation failed') ? '口令错误' : e.message}`, 'err') }
+    } catch (e) {
+      const raw = String((e && e.message) || e)
+      feedback(`恢复失败：${raw.includes('operation failed') ? '口令错误' : raw}`, 'err')
+    }
     $('wdPull').disabled = false; $('wdPull').textContent = '拉取恢复'
   }
 

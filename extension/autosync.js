@@ -11,7 +11,7 @@
 //   3. 兜底通知：两侧都无 cookie 的站点提醒重新登录（当天去重，防轰炸）
 // 同步范围只限服务器已录入的站点名单（ListActive 口径），不做全浏览器 cookie 收集。
 import { getConfig, api } from './api.js'
-import { serverCookies, browserCookieHeader, pushBrowserToServer, pullServerToBrowser, registeredDomain } from './cookies.js'
+import { serverCookies, browserCookieHeaderMulti, pushBrowserToServer, pullServerToBrowser } from './cookies.js'
 
 export const ALARM_NAME = 'ptp-cookie-autosync'
 const STATE_KEY = 'autosync' // chrome.storage.local 里的开关与最近结果
@@ -47,8 +47,9 @@ export async function syncAlarm(state) {
 }
 
 // browserFingerprint 与后端同口径：cookie 头 sha256 前 12 位 hex。
+// 用 Multi 版取 cookie：站点换域后浏览器在别名域登录也能被本轮同步覆盖。
 export async function browserFingerprint(baseURL) {
-  const header = await browserCookieHeader(baseURL)
+  const header = await browserCookieHeaderMulti(baseURL)
   if (!header) return { header: '', fp: '' }
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(header))
   const fp = [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -155,7 +156,7 @@ export async function syncNow() {
     result.dead = pass.dead
     result.failed = pass.failed
     result.detail = { pushed: pass.pushedNames, pulled: pass.pulledNames }
-    await notifyDead(deadNames)
+    await notifyDead(pass.dead)
   } catch (e) {
     result.error = e.message
   }

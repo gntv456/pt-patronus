@@ -7,6 +7,7 @@
 //   ptp_cred_blacklist   — 凭据黑名单：仅禁用「账号密码保管」（捕获/填充），其他功能不受影响
 //   ptp_scope_mode       — 'all'（默认，黑名单生效）| 'whitelist'（退回旧白名单行为，保守用户可选）
 // PT 站白名单(ptp_site_hosts)仍保留——种子页增强只需要 PT 站特征命中即可，与凭据范围解耦。
+import { aliasMainOf, getSiteAliases } from './sitelist.js'
 
 const BL_KEY = 'ptp_site_blacklist'
 const CRED_BL_KEY = 'ptp_cred_blacklist'
@@ -83,15 +84,18 @@ function hostMatches(entry, host) {
 }
 
 // isBlocked：站点是否在完全黑名单内（黑名单模型下「禁止注入」的唯一判定）。
+// 别名归一：禁主域 = 禁其全部别名域（站点换域后旧域名不再漏网），反向同理。
 export async function isBlocked(host) {
   const h = normalizeHost(host)
   if (!h) return false
   const list = await getSiteBlacklist()
-  return list.some((e) => hostMatches(e, h))
+  const main = aliasMainOf(await getSiteAliases(), h)
+  return list.some((e) => hostMatches(e, h) || (!!main && hostMatches(e, main)))
 }
 
 // credAllowed：凭据功能（捕获/填充）对该站点是否可用。
 // 全局模式 'all'：未在凭据黑名单 → 可用；'whitelist'：按白名单判定（旧行为）。
+// 别名归一与 isBlocked 同口径。
 export async function credAllowed(host) {
   const h = normalizeHost(host)
   if (!h) return false
@@ -101,5 +105,6 @@ export async function credAllowed(host) {
     return isSiteHost(h)
   }
   const bl = await getCredBlacklist()
-  return !bl.some((e) => hostMatches(e, h))
+  const main = aliasMainOf(await getSiteAliases(), h)
+  return !bl.some((e) => hostMatches(e, h) || (!!main && hostMatches(e, main)))
 }

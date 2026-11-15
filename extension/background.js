@@ -9,8 +9,9 @@
 import { addHistory, addFavorite } from './collection.js'
 import { api, getConfig, baseUrl } from './api.js'
 import { initAutosync, maybeSyncOnWake, syncNow } from './autosync.js'
-import { getSiteHosts, isSiteHost } from './sitelist.js'
+import { getSiteHosts, isSiteHost, canonicalHost } from './sitelist.js'
 import { isBlocked, credAllowed } from './siteblock.js'
+import { correctOcrText } from './ocr_corrections.js'
 
 initAutosync()
 injectAllTabs().catch(() => {})
@@ -284,10 +285,11 @@ async function totpAutofill(host) {
       entries = sess && sess.ptp_vault_entries
       if (!entries) return totpAutofillFail('locked')
     }
+    // 别名归一：站点换域后以新域名访问也能命中主域口径的条目（canonicalHost）。
     // 与 credentials.js matchCred 同口径先剥 www.，否则 www.站 取到的 label 是「www」，
     // 既填不出自己的码，又可能命中任何 label/issuer 含 www 的条目；空 host 的 label 为 ''
     // 时 includes('') 恒真，会把库里第一条的验证码发给页面。
-    const label = String(host || '').replace(/^www\./, '').split('.')[0].toLowerCase()
+    const label = (await canonicalHost(host)).replace(/^www\./, '').split('.')[0].toLowerCase()
     if (!label) return totpAutofillFail('no-match')
     const hit = (entries || []).find((e) => {
       const hay = [e.label, e.issuer].filter(Boolean).join(' ').toLowerCase()
@@ -336,7 +338,8 @@ async function credAutofill(host) {
     if (!v) return credReadFail('no-vault')
     if (!entries) return credReadFail('need-unlock') // 有信封但无明文：PIN 锁定态
     if (!entries.length) return credReadFail('no-match') // 库解锁了，确实一条没有
-    const h = String(host || '').replace(/^www\./, '')
+    // 别名归一：以换域后的新域名访问也命中主域口径的库条目。
+    const h = await canonicalHost(String(host || '').replace(/^www\./, ''))
     const hit = (await import(chrome.runtime.getURL('credentials.js'))).matchCred(entries, h)
     if (!hit) return credReadFail('no-match')
     return {
@@ -444,7 +447,7 @@ async function credCheckNew(host, username) {
     // 弹一个重复的保存气泡，用户点下去才报另一个原因。查重失败就老实说 unknown，
     // 让页面照旧弹气泡（气泡里的保存动作会给出真原因）。
     if (!Array.isArray(entries)) return { known: 'unknown' } // 锁定 / 空 / 读不到：仍让 content 弹保存气泡
-    const h = String(host || '').replace(/^www\./, '')
+    const h = await canonicalHost(String(host || '').replace(/^www\./, ''))
     const { matchCred, hostOf } = await import(chrome.runtime.getURL('credentials.js'))
     const hit = matchCred(entries, h)
     if (!hit) return { known: false }
@@ -535,7 +538,9 @@ async function ocrCaptcha(image) {
       method: 'POST',
       body: JSON.stringify({ image: String(image).slice(0, 4 * 1024 * 1024) }),
     })
-    return { ok: true, text: body.text || '' }
+    // 纠错词表应用点：服务端文本 → 用户映射（ocr_corrections.js）。
+    // 词表为空时原样透传——未用该功能的行为与从前完全一致。
+    return { ok: true, text: await correctOcrText(body.text || '') }
   } catch (e) {
     // 界面读的是 message：英文原文不许当人话直接贴页面（#314 同族），带中文前缀 + 原样留证。
     const raw = String((e && e.message) || e)

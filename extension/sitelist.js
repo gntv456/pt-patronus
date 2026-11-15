@@ -60,11 +60,14 @@ export function hostMatches(entry, host) {
 }
 
 // isSiteHost 当前页是否在白名单（content 注入/敏感消息共用的判定口径）。
+// 别名口径：host 是某主域的别名（或其子域）且主域被白名单覆盖 → 视为同一站点。
 export async function isSiteHost(host) {
   const h = normalizeHost(host)
   if (!h) return false
   const list = await getSiteHosts()
-  return list.some((e) => hostMatches(e, h))
+  if (list.some((e) => hostMatches(e, h))) return true
+  const main = aliasMainOf(await getSiteAliases(), h)
+  return !!main && list.some((e) => hostMatches(e, main))
 }
 
 // syncFromServer 从服务器站点列表刷新白名单（options「同步站点白名单」按钮）。
@@ -106,4 +109,72 @@ export async function hasCookieOrigin(host) {
   } catch {
     return false
   }
+}
+
+// —— 站点域名别名（同一站点的新旧域名并存）——
+// 动机（借鉴 MoviePilot-Tools 的主备域名）：PT 站换域名是常态，换域后 TOTP/凭据按
+// hostname 匹配、Cookie 按注册域拉取、黑名单按域禁用全部断档。别名让「禁用一个站
+// = 禁用它所有域」「匹配一个站 = 新旧域都命中」。存 { 主域: [别名…] }；
+// 主域不要求在白名单里（别名是站点级属性，不是注入白名单的一部分）。
+const ALIAS_KEY = 'ptp_site_aliases'
+
+export async function getSiteAliases() {
+  try {
+    const v = await chrome.storage.local.get(ALIAS_KEY)
+    const m = v && v[ALIAS_KEY]
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return {}
+    const out = {}
+    for (const [k, arr] of Object.entries(m)) {
+      const main = normalizeHost(k)
+      if (!main) continue
+      out[main] = [...new Set((Array.isArray(arr) ? arr : []).map(normalizeHost).filter((h) => h && h !== main))]
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+// setSiteAliases 全量写回：规范化键值；一个别名只归属一个主域（冲突时先到的赢，
+// 后到的丢弃——归一结果必须确定，不能随遍历顺序漂移）。
+export async function setSiteAliases(map) {
+  const out = {}
+  const owner = {}
+  for (const [k, arr] of Object.entries(map || {})) {
+    const main = normalizeHost(k)
+    if (!main) continue
+    const list = []
+    for (const a of Array.isArray(arr) ? arr : []) {
+      const h = normalizeHost(a)
+      if (!h || h === main) continue
+      if (owner[h] && owner[h] !== main) continue
+      if (!list.includes(h)) {
+        list.push(h)
+        owner[h] = main
+      }
+    }
+    if (list.length) out[main] = list
+  }
+  await chrome.storage.local.set({ [ALIAS_KEY]: out })
+  return out
+}
+
+// aliasMainOf 别名 → 主域（含子域口径：别名 a.com 覆盖 www.a.com）。非别名返回 ''。
+// 纯函数——调用方传 getSiteAliases() 的结果，便于测试与多处复用。
+export function aliasMainOf(map, host) {
+  if (!host) return ''
+  for (const [main, list] of Object.entries(map || {})) {
+    for (const a of list) {
+      if (host === a || host.endsWith('.' + a)) return main
+    }
+  }
+  return ''
+}
+
+// canonicalHost host 归一到主域口径：别名（或其子域）命中 → 主域；否则原样返回。
+// TOTP/凭据匹配、Cookie 拉取的统一入口——站点新旧域名经此归一后同一判定。
+export async function canonicalHost(host) {
+  const h = normalizeHost(host)
+  if (!h) return h
+  return aliasMainOf(await getSiteAliases(), h) || h
 }

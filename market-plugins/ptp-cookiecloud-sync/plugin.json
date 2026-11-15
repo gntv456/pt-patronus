@@ -1,0 +1,102 @@
+{
+  "id": "ptp-cookiecloud-sync",
+  "name": "CookieCloud 同步",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.14.0",
+  "author": "PTPatronus Community",
+  "description": "CookieCloud 定时同步调度器：cron 触发宿主 site_sync_cookies（拉取解密→更新失效站点 cookie→自动新增内置定义匹配站→可选回推），有更新/新增或失败才通知。解密与站点匹配语义留在宿主链，本插件承接原进程内 cron 与通知。",
+  "license": "MIT",
+  "keywords": [
+    "cookiecloud",
+    "cookie",
+    "sync"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "site:read",
+    "site:action",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "periodic_sync",
+      "label": "定时同步",
+      "action": "sync",
+      "cron": "*/5 * * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "ptp-cookiecloud-sync.sync",
+        "label": "CookieCloud：立即同步",
+        "action": "sync"
+      },
+      {
+        "id": "ptp-cookiecloud-sync.status",
+        "label": "CookieCloud：同步状态",
+        "action": "status"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "ptp-cookiecloud-sync.sync"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "sync",
+      "label": "立即同步",
+      "description": "触发一轮 CookieCloud 同步（可选回推），返回报告（updated/added/skipped/pushed/errors）。"
+    },
+    {
+      "name": "status",
+      "label": "同步状态",
+      "description": "上次同步结果（KV 缓存）。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "push",
+      "label": "同步时回推本地 cookie",
+      "type": "switch",
+      "default": false,
+      "help": "开启后每轮同步附带 push（本地 cookie 合并写回云端）。"
+    },
+    {
+      "key": "notify_updated",
+      "label": "有更新/新增才通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "notify_errors",
+      "label": "失败必通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "cron",
+      "label": "同步 cron",
+      "type": "text",
+      "default": "*/5 * * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每 5 分钟（原宿主软间隔 tick 语义：是否真正同步仍由宿主按 interval_min+last_sync 决定）。"
+    }
+  ]
+}

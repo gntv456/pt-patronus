@@ -94,12 +94,8 @@ func registerCronJobs(
 		}
 	})
 
-	// CookieCloud 软间隔：固定每 5 分钟 tick，链内按 DB 配置的 interval + last_sync 决定是否真正同步。
-	mustCron("cookiecloud-tick", "*/5 * * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		cookieCloudCh.MaybeSync(ctx)
-	})
+	// CookieCloud 定时同步已迁开放插件 ptp-cookiecloud-sync（#34 二梯队）：
+	// cron/触发/报告在插件，解密与站点匹配语义经 site_sync_cookies 工具留在宿主链。
 
 	// RSS 全局扫描（按各订阅 interval_min 决定是否到点抓取）。
 	mustCron("rss-check", cfg.RssCheckCron, func() {

@@ -108,6 +108,7 @@ func registerPluginHostTools(
 	subtitleCh *chain.SubtitleChain, transferCh *chain.TransferChain,
 	keepSeedCh *chain.KeepSeedChain, fileCh *chain.FileManagerChain,
 	wfCh *chain.WorkflowChain,
+	ccCh *chain.CookieCloudChain,
 ) {
 	reg := plugins.NewHostToolRegistry()
 
@@ -126,6 +127,7 @@ func registerPluginHostTools(
 	registerSubtitleTools(reg, subtitleCh)
 	registerFileTools(reg, fileCh)
 	registerWorkflowTools(reg, wfCh)
+	registerCookieCloudTools(reg, ccCh)
 
 	mgr.SetHostTools(reg)
 }

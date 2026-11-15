@@ -43,9 +43,6 @@ class PTColors {
               0.9,
             );
 
-  // 历史引用兜底，逐步退役
-  static const primarySoftDark = Color(0x244C8DFF);
-
   /// 当前 app 是否处于暗色（由 buildAppTheme 每次 build 回写）。
   static bool _isAppDark = false;
   static void setDarkContext(bool dark) => _isAppDark = dark;

@@ -36,7 +36,8 @@ class GlassIcon extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isDark ? PTColors.primarySoftDark : PTColors.primarySoft,
+        // primarySoft 已按明暗态自适应（暗色下自动混入暗底），无需分支。
+        color: PTColors.primarySoft,
         borderRadius: BorderRadius.circular(PTRadius.lg),
         border: Border.all(
           color: isDark ? PTColors.borderStrongDark : PTColors.border,

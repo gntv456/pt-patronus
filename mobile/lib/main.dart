@@ -64,14 +64,20 @@ class _PTPatronusAppState extends State<PTPatronusApp> {
   @override
   Widget build(BuildContext context) {
     final api = ApiClient();
+    // 注意：这里不能写 const。PTColors.* 是全局 getter（非 InheritedWidget），
+    // 全站 280+ 处直接引用；const 实例会被规范化为同一对象，
+    // Element.updateChild 短路跳过整棵 home 子树的 rebuild——调色盘/明暗切换后
+    // Material 组件经 Theme.of 更新了，但这些自绘颜色全部停留在旧主色。
+    // 每次 build 造新实例，让 accentNotifier/themeModeNotifier 变更穿透重建
+    // （Element/State 复用，页面状态不丢，仅多一次整树 rebuild）。
     final Widget home;
     if (!api.hasCustomBaseUrl) {
       // 首次启动：未配后端地址 → 引导配置（分发场景每个用户后端不同）
-      home = const ServerConfigPage();
+      home = ServerConfigPage();
     } else if (api.token != null && api.token!.isNotEmpty) {
-      home = const HomeShell();
+      home = HomeShell();
     } else {
-      home = const LoginPage();
+      home = LoginPage();
     }
     // 双 notifier 监听：明暗（themeMode）与调色盘（accent）任一变更都重建
     // MaterialApp，buildAppTheme/PTColors 运行时主色随之刷新。

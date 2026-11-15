@@ -192,6 +192,9 @@ jobs:
       # CookieCloud：协议派生与负载形状（钉 crypto-js 真实向量，防 AES-128 退化）
       # （显式列测试文件——node --test 传目录在部分平台会当模块解析而失败）
       - run: node --test extension/test/security.test.mjs extension/test/cookiecloud.test.mjs
+      # 分发包新鲜度：bundle embed 进后端二进制（/system/extension.zip 关于页下发）。
+      # 1.03.21 后 extension/ 连改 9 提交 bundle 没重打、无门禁拦截，用户下载到旧代码。
+      - run: python scripts/check-extension-bundle.py
 
   e2e:
     name: E2E (Playwright core flow)

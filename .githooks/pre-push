@@ -49,6 +49,16 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
 $files"
 done
 
+# 扩展分发包新鲜度：extension_bundle.zip embed 进后端（关于页下发的 zip 数据源），
+# extension/ 改动后忘重跑 pack-extension.py 时这里拦（秒级，起因见脚本头注）。
+# 必须置于下方 have_go 提前 return 之前——「只改了 extension/」正是过期高发场景。
+if command -v python >/dev/null 2>&1 && [ -d "$ROOT/extension" ]; then
+  if ! python "$ROOT/scripts/check-extension-bundle.py"; then
+    echo "✗ 扩展 bundle 过期，推送中止。（修复：python scripts/pack-extension.py）" >&2
+    exit 1
+  fi
+fi
+
 if [ "$have_go" = "0" ]; then
   echo "〔pre-push〕本次推送无后端 Go 改动，跳过。"
   exit 0

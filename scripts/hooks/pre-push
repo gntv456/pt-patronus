@@ -21,6 +21,13 @@ FAIL=0
 echo "▶ 文件行数门禁（≤400 行，棘轮 baseline）..."
 bash "$ROOT/scripts/check_file_length.sh" check || FAIL=1
 
+# 扩展分发包新鲜度：extension_bundle.zip embed 进后端（关于页下发的 zip 数据源），
+# extension/ 改动后忘重跑 pack-extension.py 时这里拦（起因见 check-extension-bundle.py 头注）。
+if command -v python >/dev/null 2>&1 && [[ -d "$ROOT/extension" ]]; then
+  echo "▶ 扩展 bundle 新鲜度..."
+  python "$ROOT/scripts/check-extension-bundle.py" || FAIL=1
+fi
+
 if command -v go >/dev/null 2>&1 && [[ -d "$ROOT/backend" ]]; then
   echo "▶ 后端 go vet + go build..."
   ( cd "$ROOT/backend" && go vet ./... && go build ./... ) || {

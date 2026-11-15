@@ -1,10 +1,10 @@
 {
-  "latestVersion": "1.03.29",
+  "latestVersion": "1.03.30",
   "minVersion": "0.60.00",
   "releaseName": "本地账号升级无感版",
-  "releaseNotes": "1.03.29：好学 VIP 账号体系下线，登录改为本地用户名密码，存量实例升级无需迁移任何配置数据。①升级迁移——compose 新增 ADMIN_USERNAME / ADMIN_PASSWORD / ADMIN_PASSWORD_FILE：空库启动即建管理员；存量账号无密码时原地补本地密码（不改 User.ID，站点 / 下载器 / 订阅 / 界面偏好全部保留）；已有密码一律忽略。活跃 Web 用户升级后自动弹「首次设置本地密码」，零终端命令；会话过期或非 Web 端可用 reset-admin --password 兜底。②compose 清理——删除 AUTH_SITE_* 死配置，修正密钥自动生成说明，补 TZ 与 agent 自更新 env。③客户端——扩展移除好学 / Cookie 旧 Tab 与已删端点调用，修复选项页既有语法错误；前端 / 移动端文案与 VIP 分支清理。④全量测试绿灯（Go 全量 / vue-tsc / 扩展 100 项 / compose config）。升级务必保留 ./data 卷：换密钥会导致已加密的站点凭据失效。",
+  "releaseNotes": "1.03.30：插件平台生态化收官（#34/#36）——MoviePilot 热门功能移植 6 插件（站点签到/下载整理/订阅增强/媒体库刷新/做种规则/网盘 STRM）；核心功能出墙 4 模块（Trakt 同步 device-code 授权、目录监视、CookieCloud 调度、TG Bot 桥接）；宿主新增 6 个插件工具（transfer_discovered/site_sync_cookies/agent_chat 等）；KV legacy 环回兼容垫；builtin 死代码清理 -8700 行。全站 UI 改版随版发布（中性工具型外观，功能不变，旧观感可 classic-ui 临时恢复）。升级务必保留 ./data 卷。",
   "isForced": false,
-  "publishedAt": "2026-11-10T12:59:02+08:00",
+  "publishedAt": "2026-11-15T14:30:00+08:00",
   "targets": {
     "docker": {
       "image": "ghcr.io/gntv456/pt-patronus:1.03.29",

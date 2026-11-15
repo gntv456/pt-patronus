@@ -19,16 +19,31 @@ func TestParsePiggoTorrentPromotionID(t *testing.T) {
 	}{
 		{"无促销", nil, false, 1, 1},
 		{"普通档1", map[string]any{"id": float64(1), "label": "普通"}, false, 1, 1},
-		{"免费档2", map[string]any{"id": float64(2), "label": "免费"}, true, 0, 1},
-		{"2x上传档3", map[string]any{"id": float64(3), "label": "2x 上传"}, false, 1, 2},
-		{"2x免费档4", map[string]any{"id": float64(4), "label": "2x 免费"}, true, 0, 2},
-		{"50%档5", map[string]any{"id": float64(5), "label": "50% 下载"}, false, 0.5, 1},
-		{"2x50%档6", map[string]any{"id": float64(6), "label": "2x 50%"}, false, 0.5, 2},
-		{"30%档7", map[string]any{"id": float64(7), "label": "30% 下载"}, false, 0.3, 1},
+		// 真机形态（2026-11-15）：{id:2,down:0,up:1,label:"免费"}
+		{"免费档2", map[string]any{
+			"id": float64(2), "label": "免费",
+			"down": float64(0), "up": float64(1)}, true, 0, 1},
+		{"2x上传档3", map[string]any{
+			"id": float64(3), "label": "2x 上传",
+			"down": float64(1), "up": float64(2)}, false, 1, 2},
+		{"2x免费档4", map[string]any{
+			"id": float64(4), "label": "2x 免费",
+			"down": float64(0), "up": float64(2)}, true, 0, 2},
+		{"50%档5", map[string]any{
+			"id": float64(5), "label": "50% 下载",
+			"down": float64(0.5), "up": float64(1)}, false, 0.5, 1},
+		{"2x50%档6", map[string]any{
+			"id": float64(6), "label": "2x 50%",
+			"down": float64(0.5), "up": float64(2)}, false, 0.5, 2},
+		{"30%档7", map[string]any{
+			"id": float64(7), "label": "30% 下载",
+			"down": float64(0.3), "up": float64(1)}, false, 0.3, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			it := map[string]any{"id": float64(123), "name": "标题", "size": float64(1 << 30)}
+			it := map[string]any{
+				"id": float64(123), "name": "标题", "size": float64(1 << 30),
+			}
 			if tc.promo != nil {
 				it["promotion"] = tc.promo
 			}
@@ -92,7 +107,8 @@ func TestPgPromotionID(t *testing.T) {
 	if got := pgPromotionID(map[string]any{"promotion": "bad"}); got != 0 {
 		t.Fatalf("non-map promotion: %d", got)
 	}
-	if got := pgPromotionID(map[string]any{"promotion": map[string]any{"label": "x"}}); got != 0 {
+	noID := map[string]any{"promotion": map[string]any{"label": "x"}}
+	if got := pgPromotionID(noID); got != 0 {
 		t.Fatalf("no id: %d", got)
 	}
 }

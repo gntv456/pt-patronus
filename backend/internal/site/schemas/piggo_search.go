@@ -103,8 +103,19 @@ func parsePiggoTorrent(it map[string]any, baseURL string) site.Torrent {
 		// 这里合成带标记的下载占位 URL（同注册域，满足同站守卫）。
 		t.DownloadURL = web + "/v1/web/torrents/" + id + "/dl"
 	}
-	// 促销：先按改版数值档 promotion.id，回退旧 label 文本（含全局促销）。
+	// 促销：先按 promotion.down/up 数值因子（真机确认 {id:2,down:0,up:1,label:"免费"}），
+	// 字段缺失时不改默认倍率；再按 id 档位映射兜底，最后回退旧 label 文本。
 	t.DownloadVolumeFactor, t.UploadVolumeFactor = 1, 1
+	if pr := pgMap(it, "promotion"); pr != nil {
+		if raw, ok := pr["down"]; ok && raw != nil {
+			t.DownloadVolumeFactor = pgFloat(raw)
+		}
+		if raw, ok := pr["up"]; ok && raw != nil {
+			if u := pgFloat(raw); u > 1 {
+				t.UploadVolumeFactor = u
+			}
+		}
+	}
 	switch pgPromotionID(it) {
 	case 2, 4: // 免费 / 2x 免费
 		t.Free = true
@@ -122,17 +133,14 @@ func parsePiggoTorrent(it map[string]any, baseURL string) site.Torrent {
 	if pgPromotionID(it) == 3 || pgPromotionID(it) == 4 || pgPromotionID(it) == 6 {
 		t.UploadVolumeFactor = 2
 	}
-	if !t.Free && (pgIsFree(pgMap(it, "promotion")) ||
-		pgIsFree(pgMap(it, "global_promotion"))) {
+	if !t.Free && t.DownloadVolumeFactor == 1 &&
+		pgIsFree(pgMap(it, "promotion")) {
 		t.Free = true
 		t.DownloadVolumeFactor = 0
 	}
-	if !t.Free && t.DownloadVolumeFactor == 1 {
-		// 无单种促销时套全局促销（站免下发在条目里的形态，兼容两代字段）
-		if gp := pgMap(it, "global_promotion"); gp != nil && pgIsFree(gp) {
-			t.Free = true
-			t.DownloadVolumeFactor = 0
-		}
+	if !t.Free && pgIsFree(pgMap(it, "global_promotion")) {
+		t.Free = true
+		t.DownloadVolumeFactor = 0
 	}
 	if pr := pgMap(it, "promotion"); pr != nil && t.UploadVolumeFactor == 1 {
 		if up := pgInt(pr, "up"); up > 1 {
@@ -158,11 +166,12 @@ func pgIsFree(m map[string]any) bool {
 
 // ── 全站促销（改版新增）──
 
-// FetchFreeleech 改版站免：GET /v1/web/me 顶层 global_promotion
+// FetchFreeleech 改版站免：GET /v1/web/boot → data.site.global_promotion
 // {state,phase:none|preview|active,title,label,task_id,starts_at,ends_at}。
+// 2026-11-15 真机确认 /me 顶层无此字段，全局促销只在 boot（页面启动加载）与
+// WS 推送下发；boot 是唯一 REST 入口（HMAC 白名单端点，登录态即可读）。
 // phase=active 且 label/title 含「免费/FREE」→ FreeleechActive；preview →
 // FreeleechUpcoming（预告）；无促销或文案非免费 → FreeleechNone。
-// 站点无独立站免端点（改版后全站促销挂在 /me + WS 推送，见主 chunk K5/aF）。
 func (p *Piggo) FetchFreeleech(
 	ctx context.Context, def *site.SiteMetadata, baseURL, token string,
 ) ([]site.SiteFreeleech, error) {
@@ -172,22 +181,24 @@ func (p *Piggo) FetchFreeleech(
 		return nil, err
 	}
 	var data struct {
-		GlobalPromotion *struct {
-			Phase    string `json:"phase"`
-			Title    string `json:"title"`
-			Label    string `json:"label"`
-			StartsAt string `json:"starts_at"`
-			EndsAt   string `json:"ends_at"`
-		} `json:"global_promotion"`
+		Site struct {
+			GlobalPromotion *struct {
+				Phase    string `json:"phase"`
+				Title    string `json:"title"`
+				Label    string `json:"label"`
+				StartsAt string `json:"starts_at"`
+				EndsAt   string `json:"ends_at"`
+			} `json:"global_promotion"`
+		} `json:"site"`
 	}
 	if err := p.signedJSON(ctx, s, baseURL, "GET",
-		"/v1/web/me", nil, &data); err != nil {
+		"/v1/web/boot", nil, &data); err != nil {
 		if errors.Is(err, site.ErrNotLoggedIn) {
 			p.invalidate(baseURL, cred)
 		}
 		return nil, err
 	}
-	gp := data.GlobalPromotion
+	gp := data.Site.GlobalPromotion
 	if gp == nil || gp.Phase == "" || gp.Phase == "none" {
 		return []site.SiteFreeleech{{
 			Status: site.FreeleechNone, Title: "暂无站免", FetchedAt: time.Now(),

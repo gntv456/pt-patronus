@@ -72,6 +72,8 @@ var permissionHostCapabilities = map[string][]string{
 	"file:write":        {HostCapabilityAPITools},
 	"workflow:read":     {HostCapabilityAPITools},
 	"workflow:write":    {HostCapabilityAPITools},
+	"agent:read":        {HostCapabilityAPITools}, // agent_chat（TG bridge 等插件用）
+	"notify:read":       {HostCapabilityAPITools}, // tgbot_status
 }
 
 func supportedHostCapabilities() []string {

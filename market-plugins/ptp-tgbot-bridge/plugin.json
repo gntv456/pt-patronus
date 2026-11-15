@@ -1,0 +1,112 @@
+{
+  "id": "ptp-tgbot-bridge",
+  "name": "TG Bot 桥接",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.14.0",
+  "author": "PTPatronus Community",
+  "description": "Telegram Bot 桥接面：bot 运行状态巡检（config_enabled/running/safe_mode）、配置变更重载、AI agent 单发对话（agent_chat）。bot 轮询本体留在宿主进程（依赖进程内 AI 流式会话），本插件承接配置后验证与健康巡检。",
+  "license": "MIT",
+  "keywords": [
+    "telegram",
+    "tgbot",
+    "agent"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "agent:read",
+    "notify:read",
+    "notify:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "health_check",
+      "label": "定时健康巡检",
+      "action": "health",
+      "cron": "*/30 * * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "ptp-tgbot-bridge.status",
+        "label": "TG Bot：运行状态",
+        "action": "status"
+      },
+      {
+        "id": "ptp-tgbot-bridge.reload",
+        "label": "TG Bot：应用配置变更",
+        "action": "reload"
+      },
+      {
+        "id": "ptp-tgbot-bridge.ask",
+        "label": "TG Bot：问一句 AI",
+        "action": "ask"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "ptp-tgbot-bridge.status"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "status",
+      "label": "运行状态",
+      "description": "返回 tgbot_status（config_enabled/running/safe_mode）。"
+    },
+    {
+      "name": "reload",
+      "label": "应用配置变更",
+      "description": "宿主 TG bot 配置改动后触发重载（stop+restart 轮询；未启用时 no-op）。"
+    },
+    {
+      "name": "health",
+      "label": "健康巡检",
+      "description": "配置已启用但 bot 未运行 → warning 通知并自动 reload；一切正常静默。"
+    },
+    {
+      "name": "ask",
+      "label": "问 AI",
+      "description": "经 agent_chat 发一条文本给内置 AI，返回聚合回复（需 AI 已配置）。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "auto_reload",
+      "label": "巡检发现停跑自动重载",
+      "type": "switch",
+      "default": true,
+      "help": "配置已启用但 bot 未运行（如改配置后忘记重启）时自动触发 reload。"
+    },
+    {
+      "key": "notify",
+      "label": "巡检异常才通知",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "key": "cron",
+      "label": "巡检 cron",
+      "type": "text",
+      "default": "*/30 * * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每 30 分钟。"
+    }
+  ]
+}

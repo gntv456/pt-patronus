@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/aiagent"
@@ -244,7 +245,6 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	agentTools := registerAgentTools(siteOp, siteCh, subCh, dlOp, dlCh, mediaCh, recommendCh, transferCh, keepSeedCh, dashCh, notifCh, filterStore, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, fileCh, wfCh)
 	// 把全部 chain 能力批量暴露给插件 Host API（GET /tools、POST /tools/{name}、Bridge tool.*）。
 	// 必须在所有 chain 构造之后调用（闭包捕获 chain 指针）。
-	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh, cookieCloudCh)
 	// 单 Agent 实例同时服务内置助手聊天 / LLM 网关两协议端点 / TG bot；Prometheus 来源
 	// 标签统一记 assistant（细分入口留后续按 handler 各自实例化时再拆）。
 	agentSvc := aiagent.New(bizmetrics.LLMSourceAssistant, llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
@@ -256,7 +256,19 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	// safe-mode 下不启；配置保存后热重载（停旧 goroutine、按新配置再起），无需重启进程。
 	var tgMu sync.Mutex
 	var tgCancel context.CancelFunc
+	tgRunning := atomic.Bool{}
 	sessions := newTgChatSessions()
+	tgBotStatus := func() map[string]any {
+		tgc := tgbot.Load(cfgOp)
+		enabled := tgc.Enabled && tgc.BotTokenEnc != ""
+		cfgSafe := cfg.SafeMode
+		return map[string]any{
+			"config_enabled": enabled,
+			"running":        tgRunning.Load(),
+			"safe_mode":      cfgSafe,
+			"note":           "bot 轮询本体在宿主进程；本状态经 tgbot_status 工具暴露给 ptp-tgbot-bridge 插件",
+		}
+	}
 	talk := func(ctx context.Context, chatKey, text string) (<-chan llm.Event, error) {
 		// 与 HTTP 面同款预检：AI 未就绪时不建会话（否则未配置期间每条 TG 消息都留一条空会话）。
 		switch agentSvc.Ready() {
@@ -297,11 +309,20 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 		}
 		bot := tgbot.New(token, tgc.APIURL, tgc.AllowedUserIDs, tgc.AllowGroupChat, talk, clear)
 		tgCtx, cancel := context.WithCancel(context.Background())
-		tgCancel = cancel
+		tgCancel = func() {
+			tgRunning.Store(false)
+			cancel()
+		}
+		tgRunning.Store(true)
 		go bot.Run(tgCtx)
 	}
 	startTgBot()
 	tgBotH := v1.NewTgBotHandler(cfgOp, crypto, func() { startTgBot() })
+
+	// 插件工具面：TG bridge（agent_chat / tgbot_status / tgbot_reload）。
+	// 必须在 agentSvc 与 startTgBot 闭包定义之后。
+	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh, cookieCloudCh,
+		agentSvc, tgBotStatus, func() { startTgBot() })
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
 	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
 

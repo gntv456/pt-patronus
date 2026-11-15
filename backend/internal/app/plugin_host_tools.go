@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hxpt/ptpatronus/internal/aiagent"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/plugins"
@@ -109,6 +110,8 @@ func registerPluginHostTools(
 	keepSeedCh *chain.KeepSeedChain, fileCh *chain.FileManagerChain,
 	wfCh *chain.WorkflowChain,
 	ccCh *chain.CookieCloudChain,
+	agent *aiagent.Agent,
+	tgStatus tgBotStatusFn, tgReload tgBotReloadFn,
 ) {
 	reg := plugins.NewHostToolRegistry()
 
@@ -128,6 +131,7 @@ func registerPluginHostTools(
 	registerFileTools(reg, fileCh)
 	registerWorkflowTools(reg, wfCh)
 	registerCookieCloudTools(reg, ccCh)
+	registerTgBotTools(reg, agent, tgStatus, tgReload)
 
 	mgr.SetHostTools(reg)
 }

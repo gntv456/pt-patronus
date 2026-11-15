@@ -7,7 +7,6 @@ require (
 	github.com/bluenviron/gortsplib/v5 v5.6.0
 	github.com/bluenviron/mediacommon/v2 v2.9.0
 	github.com/cloudsoda/go-smb2 v0.0.0-20260609183447-7b96c35f5f4b
-	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-playground/validator/v10 v10.30.1

@@ -1136,7 +1136,7 @@ export default {
     categoriesTitle: '自动分类规则',
     categoriesDesc:
       '按媒体类型/国家/年份匹配，first-match-wins，命中名即库子目录名。字段：genres / countries（任一命中，"!X"排除）/ year（"2024"或"2020-2024"）。空规则=兜底。',
-    dirwatchNote: '改动需重启进程生效。监视目录应避开下载器临时目录；与下载完成钩子按源路径去重，不重复硬链。',
+    dirwatchNote: '扫描已迁「目录监视」插件（市场安装），配置同源、下轮扫描生效；目录避开下载器临时目录。',
     editCategories: '编辑分类规则',
     editIdentify: '编辑识别词（发布组前缀/自定义别名）',
     editTags: '标签 / 排序规则',

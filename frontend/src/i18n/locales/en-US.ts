@@ -1138,7 +1138,7 @@ export default {
     categoriesDesc:
       'Match by type/country/year, first-match-wins; the matched name becomes the library subfolder. Fields: genres / countries (any match, "!X" excludes) / year ("2024" or "2020-2024"). Empty rule = fallback.',
     dirwatchNote:
-      'Changes need a process restart. Watch dirs should avoid downloader temp dirs; deduped against the download-complete hook by source path.',
+      'Scanning moved to the "Dirwatch" plugin (install from the plugin market). This config shares the same storage; the plugin picks up changes on its next scan. Watch dirs should avoid downloader temp dirs.',
     editCategories: 'Edit category rules',
     editIdentify: 'Edit identify words (release-group prefixes / custom aliases)',
     editTags: 'Tags / sort rules',

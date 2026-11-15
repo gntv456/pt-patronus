@@ -24,7 +24,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
-	"github.com/hxpt/ptpatronus/internal/dirwatch"
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 	"github.com/hxpt/ptpatronus/internal/filter"
@@ -40,7 +39,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/tgbot"
-	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
 	"github.com/hxpt/ptpatronus/internal/workflow/nodes"
@@ -307,18 +305,9 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
 	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
 
-	// 目录监视：fsnotify 实时喂整理（补 DoneHook + cron 覆盖不到的手动投放 / 非托管来源）。safe-mode 下不启。
-	var dwCancel context.CancelFunc
-	if !cfg.SafeMode {
-		if dwc := dirwatch.Load(cfgOp); dwc.Enabled && len(dwc.Dirs) > 0 {
-			dw := dirwatch.New(dwc, func(ctx context.Context, srcDir string, files []transfer.FileInput) {
-				_, _ = transferCh.ProcessDiscoveredFiles(ctx, srcDir, files)
-			})
-			dwCtx, cancel := context.WithCancel(context.Background())
-			dwCancel = cancel
-			go dw.Run(dwCtx)
-		}
-	}
+	// 目录监视运行时已迁开放插件 ptp-dirwatch（#34 二梯队）：宿主只保留配置存储与
+	// API（dirwatch/config.go），扫描执行由插件经 transfer_discovered 工具完成。
+	// SystemConfig `dirwatch.config` 键不变，插件与旧配置同源；safe-mode 下插件本就不启。
 
 	registerCronJobs(sched, cfg, brushCh, contractCh, traktCh, cookieCloudCh, rssCh, wfRunOp, monOp, noticeOp, saveptSvc, notifCh, noticeSvc, medalCh, subCh, transferCh, cloudCh, oper.NewRssItemOper(database), oper.NewPluginOper(database), oper.NewTransferHistoryOper(database), backupSvc)
 	wireSiteSync(sched, cfgOp, hc, registry, cfg.DataDir)
@@ -373,7 +362,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}
 
-	return srv, monCancel, dwCancel, tgCancel
+	return srv, monCancel, nil, tgCancel
 }
 
 // Run starts the HTTP server (blocking).

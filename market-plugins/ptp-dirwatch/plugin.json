@@ -1,0 +1,97 @@
+{
+  "id": "ptp-dirwatch",
+  "name": "目录监视",
+  "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.14.0",
+  "author": "PTPatronus Community",
+  "description": "监视本地目录，发现媒体文件即喂给整理流水线（transfer_discovered），补下载完成钩子与定时扫描覆盖不到的手动投放/非托管来源。多目录轮询 + per-dir 去重锚点（KV）。",
+  "license": "MIT",
+  "keywords": [
+    "dirwatch",
+    "transfer",
+    "organize"
+  ],
+  "runtime": "external-http",
+  "entry": {
+    "command": "python",
+    "args": [
+      "plugin.py"
+    ],
+    "health": "/health"
+  },
+  "permissions": [
+    "log:write",
+    "notice:write",
+    "transfer:read",
+    "transfer:write",
+    "kv:read",
+    "kv:write"
+  ],
+  "events": [],
+  "schedule": [
+    {
+      "id": "periodic_scan",
+      "label": "定时扫描监视目录",
+      "action": "scan",
+      "cron": "*/5 * * * *",
+      "cron_config_key": "cron"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "ptp-dirwatch.scan",
+        "label": "目录监视：立即扫描",
+        "action": "scan"
+      },
+      {
+        "id": "ptp-dirwatch.reset",
+        "label": "目录监视：清空去重锚点",
+        "action": "reset_seen"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "scan",
+      "label": "立即扫描",
+      "description": "扫描全部监视目录，发现的媒体文件喂给宿主整理（transfer_discovered），按目录记去重锚点。"
+    },
+    {
+      "name": "reset_seen",
+      "label": "清空去重锚点",
+      "description": "清空全部目录的已见文件锚点（下轮扫描会重新处理全部文件——整理侧还有硬链去重兜底）。"
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "dirs",
+      "label": "监视目录（每行一条）",
+      "type": "textarea",
+      "default": "",
+      "help": "格式：本地路径[|库路径]（库路径可选，传给宿主作 src_dir 语义）。例：D:/media/inbox 或 /mnt/inbox|/mnt/library"
+    },
+    {
+      "key": "media_exts",
+      "label": "媒体扩展名",
+      "type": "text",
+      "default": ".mkv,.mp4,.avi,.ts,.wmv,.flv,.mov,.m2ts",
+      "help": "逗号分隔；命中的文件视为媒体文件。"
+    },
+    {
+      "key": "notify",
+      "label": "整理命中后发通知",
+      "type": "switch",
+      "default": false
+    },
+    {
+      "key": "cron",
+      "label": "扫描 cron",
+      "type": "text",
+      "default": "*/5 * * * *",
+      "group": "定时",
+      "help": "5 段 cron；留空=不定时。默认每 5 分钟（轮询监视语义）。"
+    }
+  ]
+}

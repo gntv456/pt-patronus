@@ -6,10 +6,12 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/plugins"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 )
 
 // ===== 媒体服务器 =====
@@ -136,6 +138,60 @@ func registerTransferTools(reg *plugins.HostToolRegistry, tr *chain.TransferChai
 		}
 		go tr.Sweep(context.Background())
 		return map[string]any{"started": true, "note": "扫描在后台进行，完成后看整理历史"}, nil
+	})
+	// transfer_discovered 喂"目录监视发现"的文件进整理流水线（无 torrent/下载器来源）。
+	// 供 dirwatch 类插件替代宿主进程内监视器（#34 二梯队打样）。
+	reg.Register(plugins.HostTool{
+		Name:     "transfer_discovered",
+		Category: "transfer", Permission: "transfer:write",
+		Description: "Feed discovered media files into the organize pipeline (no " +
+			"torrent/downloader). files: [{path, size?}]; dedupe + identify on host.",
+		InputSchema: objSchema(map[string]any{
+			"src_dir": strProp("Directory the files were found in"),
+			"files": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"path": map[string]any{"type": "string"},
+						"size": map[string]any{"type": "integer"},
+					},
+					"required": []string{"path"},
+				},
+				"minItems": 1,
+			},
+		}, []string{"src_dir", "files"}),
+		Timeout: 120 * time.Second,
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		rawFiles, _ := a["files"].([]any)
+		files := make([]transfer.FileInput, 0, len(rawFiles))
+		for _, rf := range rawFiles {
+			f, _ := rf.(map[string]any)
+			if f == nil {
+				continue
+			}
+			p := strings.TrimSpace(argString(f, "path", ""))
+			if p == "" {
+				continue
+			}
+			files = append(files, transfer.FileInput{
+				Path: p, Size: int64(argInt(f, "size")),
+			})
+		}
+		if len(files) == 0 {
+			return nil, errors.New("files 无有效条目（每项需 path）")
+		}
+		res, err := tr.ProcessDiscoveredFiles(ctx, argString(a, "src_dir", ""), files)
+		if err != nil {
+			return nil, mcpErr(err)
+		}
+		if res == nil {
+			return map[string]any{"skipped": true, "reason": "去重命中或读状态失败（详见宿主日志）"}, nil
+		}
+		return map[string]any{
+			"success": res.Success, "skipped": res.Skipped, "type": res.Type,
+			"dest_dir": res.DestDir, "files": res.Files, "error": res.ErrMsg,
+		}, nil
 	})
 }
 

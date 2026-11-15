@@ -4,7 +4,29 @@
 - **升级注意**：标注需要用户干预（改配置/改挂载/重登）的破坏性变更
 - 完整历史 releaseNotes 见 `update-manifest.json` 各版本条目
 
-## Unreleased — 全站 UI/交互改版（去 AI 感 · 大厂成熟感）
+## 1.03.30 — 2026-11-15
+
+### 插件平台：开源生态化（#34/#35/#36）
+
+- **全站 UI/交互改版**（去 AI 感 · 大厂成熟感，详见下方 Unreleased 段落——本版随 1.03.30 一并发布）
+- **MoviePilot 插件移植计划落地**（issue #36）：mp-bridge 系列 6 插件——站点签到助手、
+  下载整理助手、订阅增强助手、媒体库刷新助手、做种规则编辑器、网盘 STRM 助手
+- **核心功能出墙**（issue #34 二梯队收官）：trakt 同步（device-code OAuth）、目录监视
+  （宿主 fsnotify 运行时删除，配置存储同源保留）、CookieCloud 同步（调度出墙、解密
+  语义留宿主）、TG Bot 桥接（bot 本体留宿主，巡检/重载/AI 对话出墙）；市场 34 插件
+- **宿主新增工具**：transfer_discovered / site_sync_cookies / site_sync_settings /
+  agent_chat / tgbot_status / tgbot_reload（能力位新增 agent:read、notify:read）
+- **KV 环回契约**：legacy POST /kv/{set,get,delete} 兼容垫 + deprecation 节流日志
+  （下个 api_version 移除）；DEVGUIDE 补 wire format 标注
+- **sdk 文档口径**：closed-source → AGPL-3.0 open source（伴随 1.03.29 开源）
+- **清理**：已迁市场的 Go builtin 死代码删除（净 -8700 行）；宿主仅保留 3 个进程内
+  builtin（mcp/wol/douban-chart）
+
+### 修复
+- mp-bridge 全系 KV 环回契约（legacy /kv/set 写不进、读不到）；安装接口
+  accepted_permissions 与 manifest 不一致时 400 拒收的口径澄清
+
+## Unreleased（1.03.30 已随版发布）— 全站 UI/交互改版（去 AI 感 · 大厂成熟感）
 
 **升级注意**：默认外观由「iOS 26 液态玻璃」切换为中性实色工具型外观。功能、路由、i18n key、
 后端 API 与业务数据完全不变。存量用户若仍想查看旧观感，可在浏览器控制台执行

@@ -28,6 +28,15 @@ func registerGuardedRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler,
 	// 在线更新：客户端经本后端中转检查（不直连官方源）；管理员写自托管清单覆盖官方源
 	guarded.GET("/system/update/check", sysH.UpdateCheck)
 	guarded.POST("/admin/update/manifest", middleware.RequireAdmin(), sysH.SetManifest)
+	// 产物托管：CI scp / 管理员上传进 <DataDir>/downloads/ 后自动挂进自托管清单
+	// （sha256 服务器算、url 服务器写——人工回填网盘直链的口径退役）。
+	guarded.GET("/system/downloads/:file", sysH.Downloads)
+	guarded.GET("/admin/update/artifacts",
+		middleware.RequireAdmin(), sysH.ListArtifacts)
+	guarded.POST("/admin/update/artifacts",
+		middleware.RequireAdmin(), sysH.UploadArtifact)
+	guarded.POST("/admin/update/artifacts/scan",
+		middleware.RequireAdmin(), sysH.ScanArtifacts)
 
 	registerSiteRoutes(guarded, d)
 	registerDownloaderRoutes(guarded, d, schedH)

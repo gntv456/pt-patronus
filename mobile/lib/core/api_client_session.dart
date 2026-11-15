@@ -11,7 +11,12 @@ extension ApiClientSessionExt on ApiClient {
   /// （迁完删旧键，一次性完成），迁移失败不影响本次会话（下次启动再试）。
   Future<void> loadToken() async {
     try {
-      token = await ApiClient._secureStorage.read(key: ApiClient._kToken);
+      // ohos：flutter_secure_storage 无 ohos 实现（会抛 MissingPluginException，
+      // 从前被这里吞掉 → token 仅内存态、每次重启必重登）——降级走设备密钥加密的
+      // SharedPreferences（OhosSecureStore，语义见该文件头）。
+      token = isOhosPlatform
+          ? await OhosSecureStore.read(ApiClient._kToken)
+          : await ApiClient._secureStorage.read(key: ApiClient._kToken);
     } catch (_) {
       token = null; // 安全存储不可用（极少数定制 ROM）：本次会话无 token，重新登录
     }
@@ -80,7 +85,10 @@ extension ApiClientSessionExt on ApiClient {
     if (t != null && t.isNotEmpty) _expired = false; // 新登录：重置 401 单飞
     final p = await SharedPreferences.getInstance();
     try {
-      if (t == null || t.isEmpty) {
+      if (isOhosPlatform) {
+        // ohos 降级密封存储（AES-GCM，非明文——与「不落明文 SharedPreferences」原则一致）。
+        await OhosSecureStore.write(ApiClient._kToken, t ?? '');
+      } else if (t == null || t.isEmpty) {
         await ApiClient._secureStorage.delete(key: ApiClient._kToken);
       } else {
         await ApiClient._secureStorage.write(key: ApiClient._kToken, value: t);

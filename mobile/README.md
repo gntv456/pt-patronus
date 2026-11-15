@@ -11,6 +11,36 @@ Flutter 客户端共用 `mobile/lib`，覆盖 Android、iOS、Windows、macOS、
 
 移动端会持久化后端地址、登录 token 和用户信息；如迁移后端，可在登录页底部重新进入后端地址配置。
 
+## 平台能力取舍（有意为之，不是遗漏）
+
+以下能力**全端统一缺失**，属设计决策而非待办——PT 助手的核心交互都在前台完成，
+后台常驻/本地推送/深链带来的权限成本（电池白名单、自启动引导）大于收益：
+
+| 能力 | 现状 | 通知/替代路径 |
+|---|---|---|
+| 本地推送 | 无（不引 flutter_local_notifications） | 服务端通知渠道：Telegram/Bark/QQ/微信/Webhook + WS 站内横幅 |
+| 后台任务/前台服务 | 无（前后台切换时断/连 WS） | 服务器侧接管保活（cookie-keepalive 小时级） |
+| 深链 scheme | 无（Android 无 intent-filter、iOS 无 CFBundleURLTypes） | 手动打开应用 |
+
+## 更新机制（2026-11-15 改造后）
+
+客户端启动/设置页经后端中转检查 `GET /system/update/check`（platform 见
+`lib/core/platform/platform_caps.dart`）。产物分发走**服务器托管**：
+
+1. CI（flutter-release → GitHub Release → `upload-release-to-server`）把产物按规范名
+   `<platform>-<版本>.<后缀>`（如 `android-1.03.31.apk`、`ohos-1.03.31.hap`）镜像到服务器
+   `<DataDir>/downloads/`；
+2. 服务器启动 + 每小时扫描该目录（也可管理员调 `POST /admin/update/artifacts/scan` 或
+   Web 上传 `POST /admin/update/artifacts`），自动算 sha256 挂进自托管清单；
+3. 各端自动拿到直链：Android 应用内 OTA（sha256 校验+安装器）；其余端外链下载
+   （iOS 未签名 ipa 走 AltStore/侧载）。
+
+管理员可在 Web 界面拖拽上传产物即时生效；历史版本文件保留可回滚。
+iOS 侧载源：`mobile/altsource/`（`gen_altsource.py` 读 `config.json` 生成
+`AltSource.json`，把生成文件放到任一 HTTPS 静态地址即可被 AltStore 订阅）。
+注意：AltStore 请求源是**无鉴权**的普通 GET，拿不到服务器登录态——托管目录
+`downloads/` 是 guarded 下发，ipa 直链走网盘公开地址（`--url` 参数），二者口径不同。
+
 ## 开发运行
 
 ```bash

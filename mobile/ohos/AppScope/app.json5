@@ -1,7 +1,7 @@
 {
   "app": {
     "bundleName": "com.hxpt.ptpatronus",
-    "vendor": "example",
+    "vendor": "ptpatronus",
     "versionCode": 44,
     "versionName": "1.03.31",
     "icon": "$media:app_icon",

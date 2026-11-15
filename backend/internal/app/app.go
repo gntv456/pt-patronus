@@ -146,13 +146,13 @@ func New(cfg *config.Config) (*App, error) {
 		slog.Warn("SAFE_MODE 已启用：跳过插件/调度/监控激活（核心 HTTP + 诊断可达）")
 	}
 
-	// 在线更新：拉官方版本清单(UPDATE_MANIFEST_URL)与当前版本比较，供 Web/客户端检查；
-	// 管理员可写自托管清单(data/update-manifest.json)覆盖官方源。
+	// 在线更新：官方清单(UPDATE_MANIFEST_URL) vs 当前版本；管理员 overlay 覆盖。
 	updateSvc := update.NewService(cfg, hc)
 
-	// 媒体元数据（TMDB 主源 + 豆瓣 + Bangumi + MusicBrainz）。
-	// 凭据走 SystemConfig（UI 可热改，回退环境变量默认），由 provider 统一构建/重建，
-	// 搜索(MediaChain)与推荐(RecommendChain)共用，UI 改 key/域名/镜像即时生效。
+	startArtifactMountLoop(updateSvc, cfg.DataDir) // 产物托管自动挂载，见 artifacts_scan.go
+
+	// 媒体元数据（TMDB 主源+豆瓣+Bangumi+MusicBrainz）；凭据走 SystemConfig（UI 可热改，
+	// 回退 env 默认）由 provider 统一构建/重建，搜索与推荐共用，改 key/镜像即时生效。
 	mediaCh, recommendCh := wireMediaStack(cfg, cfgOp, base, pluginMgr, database)
 	// 文件管理（WebDAV / Alist）
 	fileOp := oper.NewFileStorageOper(database, crypto)

@@ -48,7 +48,7 @@ func bodyJSON(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
 }
 
 func TestSystemHandlerNilUpdate(t *testing.T) {
-	h := NewSystemHandler(nil, nil)
+	h := NewSystemHandler(nil, nil, t.TempDir())
 	r := gin.New()
 	r.GET("/health", h.Health)
 	r.GET("/info", h.Info)

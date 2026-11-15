@@ -4,8 +4,12 @@
 // 发版后同步 OTA update-manifest.json：latestVersion + docker image tag + 本地产物 sha256。
 // android/windows/agent 的 sha256 从 SHA256SUMS.txt 自动读；ios/macos 需把 Mac 上
 // 构建的产物拷进 dist 目录（iOS 未签名 ipa / macOS zip）才会回填。
-// url 仍需手动填网盘直链（脚本只自动填版本号 + 本地算的 sha256），填完上传到
-// UPDATE_MANIFEST_URL 指向的公开地址（gist raw / 轻量仓库 raw / 静态站）。
+// url 双轨制（2026-11-15 更新方式改造后）：
+//   ① 自托管产物直链——CI 把 Release 资产按规范名 scp 到服务器 <DataDir>/downloads/
+//      （upload-release-assets.sh），服务器扫描器自动算 sha256 挂 overlay 清单，
+//      客户端 OTA/外链自动激活；url 写相对路径 /api/v1/system/downloads/<file>，
+//      本脚本无需回填。
+//   ② 网盘直链——仅当产物不经服务器托管时才手动填（历史口径，兼容保留）。
 // 用法：node scripts/update-manifest.mjs <version> <distDir>
 import { readFileSync, writeFileSync } from 'node:fs'
 

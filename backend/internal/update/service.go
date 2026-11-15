@@ -222,3 +222,9 @@ func (s *Service) readOverlay() *Manifest {
 	}
 	return &m
 }
+
+// OverlaySnapshot 当前生效的自托管清单快照（nil = 未设置，走官方源/内置清单）。
+// 管理端展示用——只读，不触发任何拉取。
+func (s *Service) OverlaySnapshot() *Manifest {
+	return s.readOverlay()
+}

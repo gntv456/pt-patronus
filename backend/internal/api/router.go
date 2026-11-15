@@ -63,7 +63,7 @@ func Build(d *Deps) *gin.Engine {
 
 	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC,
 		strings.HasPrefix(d.Cfg.AppBaseURL, "https://"))
-	sysH := v1.NewSystemHandler(d.Update, d.DB)
+	sysH := v1.NewSystemHandler(d.Update, d.DB, d.Cfg.DataDir)
 	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron, d.Cfg.CookieKeepAliveCron)
 
 	api := engine.Group("/api/v1")

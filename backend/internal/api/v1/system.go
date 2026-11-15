@@ -22,15 +22,19 @@ import (
 
 // SystemHandler exposes health / system info / online update checks.
 type SystemHandler struct {
-	update *update.Service
-	db     *gorm.DB
+	update  *update.Service
+	db      *gorm.DB
+	dataDir string
 }
 
 // NewSystemHandler builds a SystemHandler. upd 可为 nil（禁用更新检查）。
 // db 用于 readiness 探针（/health/ready）——SQLite 场景下 DB 文件损坏/锁死时
 // 进程仍存活，仅靠 liveness 会误判健康。
-func NewSystemHandler(upd *update.Service, db *gorm.DB) *SystemHandler {
-	return &SystemHandler{update: upd, db: db}
+// dataDir 是产物托管目录（<dataDir>/downloads）的根，空串则产物端点返回 503。
+func NewSystemHandler(
+	upd *update.Service, db *gorm.DB, dataDir string,
+) *SystemHandler {
+	return &SystemHandler{update: upd, db: db, dataDir: dataDir}
 }
 
 // Health is a public liveness probe.

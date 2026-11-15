@@ -65,6 +65,8 @@ dependencies:
   open_filex: ^4.5.0
   path_provider: ^2.1.0
   crypto: ^3.0.0
+  # ohos token 密封持久化：AES-256-GCM（secure_storage 无 ohos 实现，见 secure_store_ohos.dart）
+  pointycastle: ^3.9.1
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_android_video: ^1.3.8

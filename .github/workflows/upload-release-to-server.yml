@@ -42,10 +42,22 @@ jobs:
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets
           ls -lh release-assets
 
-      - name: Write checksums
+      - name: Write checksums + release meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
           cd release-assets
           sha256sum * > SHA256SUMS-github-release.txt
+          # release.json 随产物进服务器 downloads/：扫描器读它填充清单的
+          # releaseName/releaseNotes（无它则保留现清单人工字段）。
+          {
+            echo '{'
+            echo "  \"releaseName\": $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json name -q .name | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read().strip()))'),"
+            echo "  \"releaseNotes\": $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read().strip()[:2000]))')"
+            echo '}'
+          } > release.json
+          cat release.json
 
       - name: Upload to ptang
         env:

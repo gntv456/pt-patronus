@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import 'package:ptpatronus/core/api_client.dart';
+import 'package:ptpatronus/core/update_url.dart';
 
 /// 在线更新检查结果（对应后端 GET /system/update/check 响应）。
 class UpdateCheckResult {
@@ -41,6 +42,20 @@ class UpdateCheckResult {
         isForced: j['isForced'] ?? false,
         isBelowMin: j['isBelowMin'] ?? false,
       );
+
+  /// 替换 downloadUrl 的副本（产物 url 在 API 层统一绝对化用——其余字段原样）。
+  UpdateCheckResult copyWithDownloadUrl(String url) => UpdateCheckResult(
+        hasUpdate: hasUpdate,
+        currentVersion: currentVersion,
+        latestVersion: latestVersion,
+        releaseName: releaseName,
+        releaseNotes: releaseNotes,
+        downloadUrl: url,
+        sha256: sha256,
+        instructions: instructions,
+        isForced: isForced,
+        isBelowMin: isBelowMin,
+      );
 }
 
 /// 系统级 API：在线更新检查等。客户端经所连后端中转（/system/update/check），
@@ -56,7 +71,11 @@ class SystemApi {
       path += '&version=${Uri.encodeQueryComponent(version)}';
     }
     final m = await ApiClient().get(path);
-    return UpdateCheckResult.fromJson(m);
+    final r = UpdateCheckResult.fromJson(m);
+    // 产物 url 归一：清单支持服务器相对路径（产物托管在自建服务器 <DataDir>/downloads），
+    // 这里统一拼 baseUrl 绝对化——OTA 的 https 判据与外链对话框都吃绝对 URL。
+    return r.copyWithDownloadUrl(
+        resolveArtifactUrl(r.downloadUrl, ApiClient().baseUrl));
   }
 
   /// 诊断面板：跑健康检查。

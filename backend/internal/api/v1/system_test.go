@@ -13,7 +13,7 @@ import (
 // SystemHandler.Metrics：即时采集 gopsutil，返回本机资源快照。
 // 关键断言：online 恒为 true；disks 经 nil→空数组兜底必为数组（防前端 JSON null，记忆 [[go-nil-slice-json-null]]）。
 func TestSystemMetrics(t *testing.T) {
-	h := NewSystemHandler(nil, nil) // Metrics 不依赖 update/db
+	h := NewSystemHandler(nil, nil, t.TempDir()) // Metrics 不依赖 update/db
 	r := gin.New()
 	r.GET("/metrics", h.Metrics)
 

@@ -37,7 +37,10 @@
     "extension": {
       "sha256": "c3578fede15a8ee32ba59abdc6d841ecc2e67cf4a7e2274534cc9a5ca13363b2"
     },
-    "macos": {},
+    "macos": {
+      "url": "",
+      "sha256": ""
+    },
     "server-linux-amd64": {
       "url": "",
       "sha256": "0612a8c613a5a0d83703755d9e5cc688e9aeac7a36028e3d3f1032bcca11e7f3"
@@ -45,6 +48,10 @@
     "server-linux-arm64": {
       "url": "",
       "sha256": "393fdac10e5816c7b41ae6503918f2cb74955af8c81d6de6ad36feaf00cdd33c"
+    },
+    "linux": {
+      "url": "",
+      "sha256": ""
     }
   }
 }

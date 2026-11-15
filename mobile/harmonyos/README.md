@@ -1,8 +1,12 @@
 # 鸿蒙（HarmonyOS）端说明
 
-本目录用于 **HarmonyOS Next（鸿蒙 5+）** 平台的工程配置。
+> **状态（2026-11-15）**：鸿蒙端已实际落地——现役工程在 [`mobile/ohos/`](../ohos/)（DevEco
+> 完整工程 + 签名脚本 + vendored ohos 插件），本目录退化为历史说明文档，不再维护
+> 工程配置。构建/签名/真机验证见 `mobile/ohos/` 与 `docs/鸿蒙端完善.md`。
 
-## 现状
+本目录曾用于规划 **HarmonyOS Next（鸿蒙 5+）** 平台的工程配置。
+
+## 历史现状
 
 - 本项目主体用 **Flutter** 开发，一个代码库覆盖 Android / iOS / macOS / Windows / Linux。
 - 标准 Google Flutter SDK（含 `flutter create` 生成的 android/ios/macos/windows/linux）**不包含 ohos（鸿蒙）平台目标**。

@@ -17,7 +17,7 @@ import (
 // SQLite 场景下进程存活但 DB 损坏/锁死时编排方可摘流量（运维审计项）。
 func TestReadiness_DBDown503(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewSystemHandler(nil, nil)
+	h := NewSystemHandler(nil, nil, t.TempDir())
 	r := gin.New()
 	r.GET("/health", h.Health)
 	r.GET("/ready", h.Readiness)
@@ -41,7 +41,7 @@ func TestReadiness_DBOK200(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewSystemHandler(nil, db)
+	h := NewSystemHandler(nil, db, t.TempDir())
 	r := gin.New()
 	r.GET("/ready", h.Readiness)
 	w := httptest.NewRecorder()

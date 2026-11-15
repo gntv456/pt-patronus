@@ -34,6 +34,8 @@ String currentUpdatePlatform() {
       return 'ios';
     case TargetPlatform.macOS:
       return 'macos';
+    case TargetPlatform.linux:
+      return 'linux';
     default:
       return 'android';
   }

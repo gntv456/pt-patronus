@@ -6,6 +6,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:ptpatronus/core/platform/platform_caps.dart'
+    show isOhosPlatform;
+import 'package:ptpatronus/core/secure_store_ohos.dart' show OhosSecureStore;
 import 'package:http/http.dart' as http;
 // 连接超时需要 dart:io HttpClient + package:http 的 IOClient 包装
 // （Web 平台不可用；本项目未发 Web 端，与 features 下直接 import dart:io 的既有口径一致）。

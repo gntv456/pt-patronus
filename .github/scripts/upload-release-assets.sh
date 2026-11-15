@@ -74,3 +74,64 @@ scp_opts=(
 echo "Uploading ${#files[@]} file(s) to ${DEPLOY_USER}@${DEPLOY_HOST}:${remote_dir}/"
 ssh "${ssh_opts[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${remote_dir}'"
 scp "${scp_opts[@]}" "${files[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}:${remote_dir}/"
+
+# —— 产物托管镜像（更新方式改造）——
+# 把客户端产物按规范名 <platform>-<version>.<ext> 镜像到 <DEPLOY_DIR>/downloads/：
+# 服务器启动+每小时扫描该目录自动算 sha256 挂进自托管清单（backend/internal/update/
+# artifacts.go），各端 OTA/外链自动激活——「人工回填网盘直链」退役。
+# 同 platform 多个文件（如 split apk）只取体积最大的一个，避免规范名互相覆盖。
+map_platform() {
+  local f; f="$(basename "${1,,}")"
+  case "$f" in
+    *.apk) echo "android" ;;
+    *.hap) echo "ohos" ;;
+    *.ipa|*ios*) echo "ios" ;;
+    *macos*) echo "macos" ;;
+    *windows*) echo "windows" ;;
+    server-linux-amd64*) echo "server-linux-amd64" ;;
+    server-linux-arm64*) echo "server-linux-arm64" ;;
+    agent-linux-amd64*) echo "agent-linux-amd64" ;;
+    agent-linux-arm64*) echo "agent-linux-arm64" ;;
+    *linux-x64*|*linux*) echo "linux" ;;
+    *web-dist*) echo "web" ;;
+    *) echo "" ;;
+  esac
+}
+
+ext_of() {
+  local f; f="$(basename "${1,,}")"
+  case "$f" in
+    *.tar.gz) echo "tar.gz" ;;
+    *.apk) echo "apk" ;;
+    *.hap) echo "hap" ;;
+    *.ipa) echo "ipa" ;;
+    *.zip) echo "zip" ;;
+    *.dmg) echo "dmg" ;;
+    *.exe) echo "exe" ;;
+    *.gz) echo "gz" ;;
+    *) echo "" ;;
+  esac
+}
+
+stage="$RUNNER_TEMP/managed-artifacts"
+rm -rf "$stage"; mkdir -p "$stage"
+# ls -S：按体积降序，同 platform 只收第一个（最大）文件。
+for file in $(ls -S "${files[@]}" 2>/dev/null); do
+  [[ -f "$file" ]] || continue
+  platform="$(map_platform "$file")"
+  [[ -n "$platform" ]] || continue
+  ext="$(ext_of "$file")"
+  [[ -n "$ext" ]] || continue
+  staged="$stage/${platform}-${version}.${ext}"
+  if [[ ! -f "$staged" ]]; then
+    cp "$file" "$staged"
+    echo "managed artifact: $(basename "$staged")  ←  $(basename "$file")"
+  fi
+done
+if compgen -G "$stage/*" > /dev/null; then
+  ssh "${ssh_opts[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '//${DEPLOY_DIR%/}/downloads'"
+  scp "${scp_opts[@]}" "$stage"/* "${DEPLOY_USER}@${DEPLOY_HOST}:///${DEPLOY_DIR%/}/downloads/"
+  echo "managed artifacts mirrored to ${DEPLOY_DIR}/downloads/"
+else
+  echo "::warning::no client artifacts matched managed naming; downloads/ not updated"
+fi

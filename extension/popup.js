@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { [KEY_UPDATE]: st } = await chrome.storage.local.get(KEY_UPDATE)
     if (st && st.hasUpdate && st.latest) {
       const bar = $('extUpdateBar')
-      bar.textContent = `⬆ 扩展有新版本 ${st.latest}（当前 ${st.version}）——点击去更新`
+      bar.textContent = `扩展有新版本 ${st.latest}（当前 ${st.version}）——点击去更新`
       bar.style.display = ''
       bar.onclick = () => chrome.runtime.openOptionsPage()
     }

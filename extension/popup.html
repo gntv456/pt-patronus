@@ -138,8 +138,9 @@
     </div>
   </header>
 
-  <!-- 扩展有新版时显示（extension_update 检查结果；点击进设置页关于） -->
-  <button id="extUpdateBar" type="button" style="display:none; width:100%; text-align:left; padding:7px 12px; font-size:12px; border:none; background:rgba(124,92,255,.12); color:var(--ink, #dfe3ee); cursor:pointer; border-bottom:1px solid var(--border)"></button>
+  <!-- 扩展有新版时显示（extension_update 检查结果；点击进设置页关于）。
+       color 不带 hex 兜底：theme.css 必经 <link> 加载且 --ink 在两套主题都有定义。 -->
+  <button id="extUpdateBar" type="button" style="display:none; width:100%; text-align:left; padding:7px 12px; font-size:12px; border:none; background:rgba(124,92,255,.12); color:var(--ink); cursor:pointer; border-bottom:1px solid var(--border)"></button>
 
   <!-- 常驻搜索：种子/影视双模 -->
   <div class="searchbar">

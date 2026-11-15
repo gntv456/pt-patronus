@@ -151,6 +151,10 @@ async function submitValidated() {
     }
   }
   await submit()
+  // 新添加成功（弹窗关闭）后自动跑一轮连通检查（UX 实测 W3：用户填完 Cookie
+  // 不知道对不对，要自己发现「刷新状态」再点一次——现在保存即验证，失败原因
+  // 直接出现在行内徽标，省一步操作）。
+  if (!dialogVisible.value) void refreshConnectivity(true)
 }
 onMounted(load)
 </script>

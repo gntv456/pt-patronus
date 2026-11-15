@@ -106,7 +106,24 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
         setState(() => _msg = '✗ 后端返回 HTTP ${r.statusCode}');
       }
     } catch (e) {
-      setState(() => _msg = '✗ 连接失败：$e');
+      // 人话优先：SocketException/ClientException 这类原始异常直接展示会吓退
+      // 非技术用户（UX 实测 W10：整段堆栈贴在卡片上）。细节收敛到次要行。
+      final detail = e.toString();
+      final String friendly;
+      const refused = ['Connection refused', 'Connection timed out'];
+      const noHost = ['no such host', 'Failed host lookup'];
+      bool has(List<String> needles) => needles.any(detail.contains);
+      if (has(refused)) {
+        friendly = '连不上这台服务器——请确认服务端已启动、地址与端口正确';
+      } else if (has(noHost)) {
+        friendly = '找不到这个地址——请检查主机名/IP 是否写对';
+      } else if (detail.contains('HandshakeException') ||
+          detail.contains('certificate')) {
+        friendly = 'HTTPS 证书校验失败——自签名证书需在服务端配置受信任证书';
+      } else {
+        friendly = '连接失败，请检查地址后重试';
+      }
+      setState(() => _msg = '✗ $friendly\n技术细节：$detail');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

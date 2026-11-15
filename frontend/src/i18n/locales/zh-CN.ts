@@ -284,6 +284,8 @@ export default {
     checkinAll: '一键签到',
     checkinAllHint: '逐站签到约 1-5 分钟，勿刷新',
     refreshStatus: '刷新状态',
+    checkAllOk: '{n} 个站点全部联通',
+    checkMixed: '连通 {ok} 站 / 未联通 {bad} 站——未联通的站点行有原因',
     refreshStatusTitle: '强制重新逐站检测连通状态',
     staleVisitTitle: '依次访问最后访问时间超过 30 天的启用站点，每站停留 8 秒后自动切换并关闭',
     visiting: '访问中 {n}',

@@ -56,8 +56,8 @@ class OhosSecureStore {
         Uint8List.fromList(List<int>.generate(12, (_) => rnd.nextInt(256)));
     final cipher = GCMBlockCipher(AESEngine())
       ..init(true, ParametersWithIV(KeyParameter(await _kek()), iv));
-    final ct =
-        cipher.process(Uint8List.fromList(Uint8List.fromList(utf8.encode(value))));
+    final plain = Uint8List.fromList(utf8.encode(value));
+    final ct = cipher.process(plain);
     await p.setString(
         _prefix + key, '$_version.${_bytesToB64(iv)}.${_bytesToB64(ct)}');
   }
@@ -95,8 +95,8 @@ class OhosSecureStore {
   static Uint8List? _hexToBytes(String s) {
     if (s.length.isOdd) return null;
     try {
-      return Uint8List.fromList(List<int>.generate(
-          s.length ~/ 2, (i) => int.parse(s.substring(i * 2, i * 2 + 2), radix: 16)));
+      return Uint8List.fromList(List<int>.generate(s.length ~/ 2,
+          (i) => int.parse(s.substring(i * 2, i * 2 + 2), radix: 16)));
     } catch (_) {
       return null;
     }

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { ref, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { siteApi, type SiteConnectivityStatus } from '@/api/site'
 
 // 站点连通状态：进页面瞬时显示上次结果 + 后台 SSE 逐站刷新「检测到一个更新一个」。
@@ -39,6 +41,8 @@ export function useSiteConnectivity() {
   }
 
   // 后台流式逐站检测；force=true 跳过节流（「刷新状态」按钮用）。
+  const { t } = useI18n()
+
   async function refresh(force = false) {
     if (!force && recentlyChecked()) return
     ctrl?.abort()
@@ -52,6 +56,20 @@ export function useSiteConnectivity() {
         () => {
           refreshing.value = false
           localStorage.setItem(LAST_CHECKED_KEY, String(Date.now()))
+          // 完成汇总（UX 实测 W6：SSE 有真实工作但全程零反馈，用户像没点过）。
+          // 一句话只报结果分布，不打断操作；逐站状态本来就反映在行内徽标上。
+          const list = Object.values(connectivity.value)
+          const bad = list.filter((s) => s.status !== 'connected').length
+          const total = list.length
+          if (total > 0) {
+            if (bad === 0) {
+              ElMessage.success(t('sites.checkAllOk', { n: total }))
+            } else {
+              ElMessage.warning(
+                t('sites.checkMixed', { ok: total - bad, bad }),
+              )
+            }
+          }
         },
         ctrl.signal,
       )

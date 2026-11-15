@@ -32,7 +32,14 @@ export function fmtBytes(value: number) {
 export function fmtTime(value: string) {
   if (!value) return '-'
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
+  if (Number.isNaN(date.getTime())) {
+    // last_access_at 是站点页抓来的原始文本，解析失败时可能是零值占位串——
+    // 「1-01-01 08:05」这类 epoch 残渣不外露（UX 实测：矩阵页直出 1970 前时间）；
+    // 其余可读文本原样展示（站点侧本来就给人看的文案）。
+    if (/^(0001|1970|1-0?1)-/.test(value.trim())) return '-'
+    return value
+  }
+  if (date.getFullYear() < 1971) return '-' // Go time.Time 零值
   const pad = (part: number) => String(part).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

@@ -129,6 +129,9 @@ body[data-theme-accent='graphite'] {
 }
 
 /* ── 主题调色盘预设（参考 QQ 超级调色盘分组；浅色 600-700 阶保证白字 ≥4.5:1，深色 300-400 阶提亮） ──
+   注意：本注释必须闭合。曾因漏写注释结束符把下面 teal→ember 全部预设块
+   吞进注释，导致除 graphite 外所有预设不生效（偏好保存了、属性挂上了、变量没换）。
+*/
 body[data-theme-accent='teal'] {
   --color-primary: #0f766e;
   --color-primary-hover: #115e59;

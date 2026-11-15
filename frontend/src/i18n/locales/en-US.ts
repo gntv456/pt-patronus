@@ -300,6 +300,8 @@ export default {
     checkinAll: 'Check in all',
     checkinAllHint: 'Site-by-site, 1-5 min; keep tab open',
     refreshStatus: 'Refresh status',
+    checkAllOk: 'All {n} sites connected',
+    checkMixed: '{ok} connected / {bad} unreachable — see row badges',
     refreshStatusTitle: 'Force re-probe connectivity for every site',
     staleVisitTitle: 'Visit enabled sites idle for 30+ days, one by one, 8s each, then close',
     visiting: 'Visiting {n}',

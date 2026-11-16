@@ -12,6 +12,7 @@ import type { DashboardShareData } from '@/utils/dashboardImage'
 import { useDashboardData, type TrendMode } from '@/composables/useDashboardData'
 import { useDashboardSync } from '@/composables/useDashboardSync'
 import { useDashboardActions } from '@/composables/useDashboardActions'
+import { useMobileViewport } from '@/composables/useMobileViewport'
 // 导出对话框含 661 行 canvas 绘制逻辑，仅在用户点「导出图片」时需要 → 异步加载，不进首屏 chunk。
 const DashboardExportDialog = defineAsyncComponent(() => import('@/components/dashboard/DashboardExportDialog.vue'))
 import DashboardRealtimeCard from '@/components/dashboard/DashboardRealtimeCard.vue'
@@ -33,6 +34,17 @@ import { useQueryStates } from '@/composables/useUrlState'
 const { overview, trendDays, trendMode, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } =
   useDashboardData()
 const { syncing, syncTotal, syncDone, syncStats, abortSync } = useDashboardSync()
+// 移动断点与站点页同口径（≤560px 收敛页头）。
+const { isMobileViewport: isMobile } = useMobileViewport(560)
+// 刷新按钮文案（桌面主按钮 / 移动 tooltip 共用）。
+const syncProgressText = computed(() => {
+  if (!syncing.value) return t('dashboard.refresh')
+  if (!syncTotal.value) return t('dashboard.preparing')
+  return t('dashboard.refreshing', {
+    done: syncDone.value,
+    total: syncTotal.value,
+  })
+})
 const { refreshing, loadCached, refreshConnectivity, connectedCount, disabledCount, healthSegments, unreadCount } =
   useDashboardActions()
 
@@ -152,7 +164,56 @@ onUnmounted(() => abortSync())
 
 <template>
   <div class="dashboard">
-    <div class="page-head">
+    <!-- 移动端（≤560px）：标题+刷新/更多单行；副题/同步时间/导出/周期段全省——
+         桌面页头 4 行工具在手机上占近半屏（UX 实测），周期段属趋势区就近呈现。 -->
+    <div v-if="isMobile" class="page-head is-mobile-bar">
+      <h2 class="page-title">{{ t('dashboard.title') }}</h2>
+      <div class="head-actions">
+        <el-dropdown trigger="click">
+          <el-button text aria-label="更多仪表盘操作">⋯</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="days in [7, 30, 90] as const"
+                :key="days"
+                :disabled="trendLoading"
+                @click="changeTrendDays(days)"
+              >
+                {{ t('dashboard.trendPeriod') }}
+                {{ days }}{{ t('dashboard.daysUnit') }}
+              </el-dropdown-item>
+              <el-dropdown-item
+                divided
+                :disabled="!overview"
+                @click="openExport"
+              >
+                {{ t('dashboard.exportImage') }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-tooltip
+          :content="syncing ? syncProgressText : t('dashboard.refresh')"
+          placement="bottom"
+        >
+          <el-button
+            type="primary"
+            :loading="syncing"
+            class="mob-refresh-btn"
+            @click="() => syncStats()"
+          >
+            <SptIcon
+              v-if="!syncing"
+              name="refresh"
+              :size="16"
+              class="btn-ico"
+              aria-hidden="true"
+            />
+          </el-button>
+        </el-tooltip>
+      </div>
+    </div>
+    <div v-else class="page-head">
       <div class="page-heading">
         <h2 class="page-title">{{ t('dashboard.title') }}</h2>
         <span class="page-subtitle">{{ t('dashboard.subtitle') }}</span>
@@ -177,13 +238,7 @@ onUnmounted(() => abortSync())
         </el-button>
         <el-button type="primary" :loading="syncing" @click="() => syncStats()">
           <SptIcon name="refresh" :size="16" class="btn-ico" aria-hidden="true" />
-          <span>{{
-            syncing
-              ? syncTotal
-                ? t('dashboard.refreshing', { done: syncDone, total: syncTotal })
-                : t('dashboard.preparing')
-              : t('dashboard.refresh')
-          }}</span>
+          <span>{{ syncProgressText }}</span>
         </el-button>
       </div>
     </div>

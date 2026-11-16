@@ -230,3 +230,44 @@
   line-height: 1.6;
   word-break: break-all;
 }
+
+/* 今日上传/下载双大数（对齐 iOS 仪表盘头卡） */
+.wb-today {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.wb-today-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.wb-today-cell.up,
+.wb-today-cell.down {
+  min-width: 0;
+}
+.wb-today-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wb-today-cell.up {
+  background: rgba(59, 130, 246, 0.09);
+  color: var(--pt-primary);
+}
+.wb-today-cell.down {
+  background: rgba(16, 185, 129, 0.09);
+  color: var(--pt-success);
+}
+.wb-today-cell span {
+  color: var(--pt-text-muted);
+}
+.wb-today-cell b {
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}

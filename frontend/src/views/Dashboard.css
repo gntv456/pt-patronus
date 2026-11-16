@@ -289,3 +289,22 @@
 }
 .sk-line.w40 { width: 40%; }
 .sk-line.w60 { width: 60%; }
+
+/* ── 移动页头（≤560px，is-mobile-bar）：标题+刷新/更多单行 ──
+   桌面 4 行工具（副题/同步时间/周期段/双按钮）在手机上占近半屏（UX 实测）。 */
+.page-head.is-mobile-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.page-head.is-mobile-bar .head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.page-head.is-mobile-bar .mob-refresh-btn {
+  width: 34px;
+  padding: 8px 0;
+}

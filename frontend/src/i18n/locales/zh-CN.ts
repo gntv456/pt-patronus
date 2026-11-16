@@ -2741,6 +2741,8 @@ export default {
     killFailed: '断开失败',
   },
   wb: {
+    todayUp: '今日上传',
+    todayDown: '今日下载',
     loadFailed: '工作台数据加载失败',
     friend: '朋友',
     next: {

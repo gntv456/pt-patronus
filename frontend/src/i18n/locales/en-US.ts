@@ -2747,6 +2747,8 @@ export default {
     killFailed: 'Disconnect failed',
   },
   wb: {
+    todayUp: 'Uploaded today',
+    todayDown: 'Downloaded today',
     loadFailed: 'Failed to load workbench data',
     incomplete: 'Some sections could not be read — numbers and to-dos below may be incomplete',
     friend: 'friend',

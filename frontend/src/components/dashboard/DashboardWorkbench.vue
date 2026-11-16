@@ -177,6 +177,20 @@ function timeAgo(iso: string): string {
       <div class="wb-hello">
         <h3>{{ greeting }}，{{ auth.username || t('wb.friend') }}</h3>
         <p class="wb-insight">{{ todayInsight }}</p>
+        <!-- 今日上传/下载双大数（对齐 iOS 仪表盘头卡；零值也展示——「今天的流量」
+             本身是用户每日关心的两个数字，空态文案替代不了） -->
+        <div class="wb-today">
+          <div class="wb-today-cell up">
+            <SptIcon name="upload" :size="14" aria-hidden="true" />
+            <span>{{ t('wb.todayUp') }}</span>
+            <b>{{ fmtBytes(wb?.summary?.uploaded_delta ?? 0) }}</b>
+          </div>
+          <div class="wb-today-cell down">
+            <SptIcon name="download" :size="14" aria-hidden="true" />
+            <span>{{ t('wb.todayDown') }}</span>
+            <b>{{ fmtBytes(wb?.summary?.downloaded_delta ?? 0) }}</b>
+          </div>
+        </div>
       </div>
       <button
         type="button"

@@ -231,17 +231,16 @@ body {
 }
 
 /* ───────────────────────────────────────────────────────────
-   全局滚动条：细 / 透明轨道 / 悬停才显形
-   替代各浏览器粗壮且常驻的默认滚动条，统一玻璃风格；不交互时不占视觉。
+   全局滚动条：细 / 透明轨道
+   显形策略统一由本文件底部的 html.scrolling 段驱动（滚动中显形、
+   静止后隐没、直悬滑块可拖拽）；本段只保留尺寸与轨道的基础设定，
+   悬停显形规则已移除——悬停不滚动时滑块同样隐藏（自动隐藏诉求）。
    WebKit（Chrome/Edge/Safari）走 ::-webkit-scrollbar 系列；
    Firefox 走 scrollbar-width / scrollbar-color。
    ─────────────────────────────────────────────────────────── */
 * {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-}
-*:hover {
-  scrollbar-color: rgba(108, 92, 231, 0.4) transparent;
 }
 ::-webkit-scrollbar {
   width: 8px;
@@ -254,13 +253,6 @@ body {
 ::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 999px;
-}
-/* 悬停滚动容器才显形；进一步悬停到滑块上再加深 */
-*:hover::-webkit-scrollbar-thumb {
-  background: rgba(108, 92, 231, 0.35);
-}
-*:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(108, 92, 231, 0.55);
 }
 
 /* ── 玻璃卡片：半透明 + 背景模糊 + 大圆角 + 内高光边 ── */
@@ -691,10 +683,17 @@ body.glass-reduced .glass::before {
    全局水润增强（滚动条 / 焦点环 / 骨架屏 / 选中态 / 微交互）
    ════════════════════════════════════════════════════════════════ */
 
-/* ── 滚动条：纤细、半透明、hover 加深，呼吸感 ── */
+/* ── 滚动条：纤细、透明轨道；滚动中显形（html.scrolling），静止后隐没 ──
+   注意本段必须保持「默认透明」：上面 234-264 行的第一段滚动条规则是「悬停显形」，
+   这里的类驱动是「滚动显形」——两者取交集（悬停且滚动中才见色）。src/main.ts 的
+   installScrollbarFade 在滚动开始给 <html> 挂 scrolling 类、停止 800ms 后移除；
+   直接悬停滑块本身视为要拖拽，静止也保持可见。 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--divider) transparent;
+  scrollbar-color: transparent transparent;
+}
+html.scrolling * {
+  scrollbar-color: var(--color-text-muted) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
@@ -704,14 +703,24 @@ body.glass-reduced .glass::before {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--divider);
+  background: transparent;
   border-radius: var(--radius-pill);
   border: 2px solid transparent;
   background-clip: content-box;
   transition: background var(--dur-base) var(--ease-out-smooth);
 }
+html.scrolling *::-webkit-scrollbar-thumb {
+  /* 原 divider 灰与白底几乎同色——显形了也看不见；用 muted 灰保证可辨识 */
+  background: var(--color-text-muted);
+  background-clip: content-box;
+}
+html.scrolling *::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+  background-clip: content-box;
+}
+/* 直接悬停滑块：视为用户要操作它，滚动静止也保持可见（可拖拽） */
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--surface-border);
+  background: var(--color-text-secondary);
   background-clip: content-box;
 }
 *::-webkit-scrollbar-corner {

@@ -16,6 +16,10 @@ interface SyncState {
 
 const prefCache: Record<string, Ref<Record<string, any> | null>> = {}
 const syncState: Record<string, SyncState> = {}
+// 每域最近一次本地写入时间：loadFromServer 合并时用——晚于它启动的本地写入
+// 视为「本地比远端新」，整域保留本地值，防止用户刚改的偏好被加载中的旧远端
+// 响应回滚（实测：开深色后 100ms 内被页面初载的 GET light 响应摘掉深色类）。
+const localWrittenAt: Record<string, number> = {}
 let pushTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
 // 未登录期间的变更标记：token 到位后（登录完成）补推一次，避免偏好只在本地停留。
 const dirtyKeys = new Set<string>()
@@ -55,9 +59,17 @@ export function useUserPrefs(key: string) {
       return // 无 active Pinia（单测环境）：沿用本地偏好
     }
     if (!token) return
+    // 记录发起时刻：期间/之后发生的本地写入都算「本地更新」，不能被本次响应覆盖
+    const startedAt = Date.now()
     try {
       const res = await authApi.getPreferences(key)
       const remote = JSON.parse(res.value || '{}')
+      // 本地在拉取期间被写过（含 debounce 推送尚未落库）：本地新于远端，整域保留本地，
+      // 只刷新 syncedAt。否则远端旧值经 watch(apply) 回滚本地 UI（深色开关自动关闭）。
+      if ((localWrittenAt[key] ?? 0) >= startedAt) {
+        syncState[key].syncedAt = Date.now()
+        return
+      }
       // 合并策略：远端字段优先（服务端为真源），本地新增字段保留
       const merged = { ...(prefs.value ?? {}), ...remote }
       prefs.value = merged
@@ -109,6 +121,7 @@ export function useUserPrefs(key: string) {
 
   function update(patch: Record<string, any>) {
     prefs.value = { ...(prefs.value ?? {}), ...patch }
+    localWrittenAt[key] = Date.now()
     writeLocal(key, prefs.value)
     if (pushTimers[key]) clearTimeout(pushTimers[key])
     pushTimers[key] = setTimeout(pushToServer, 1500) // debounce：连点主题色不逐次打库

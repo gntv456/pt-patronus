@@ -8,6 +8,7 @@ import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
 import { copyText } from '@/utils/clipboard'
+import { useUiPrefs } from '@/composables/useUiPrefs'
 
 const dark = ref(false)
 // 版本号：优先读后端 /system/info（部署态真源），失败兜底构建期常量。
@@ -52,6 +53,12 @@ async function copyUpgradeCmd() {
 function toggleTheme() {
   dark.value = document.documentElement.classList.toggle('dark')
   localStorage.setItem('theme', dark.value ? 'dark' : 'light')
+  // 同步写偏好域（pref.ui.theme）：单一真源对齐。否则点调色盘等任何 pref.ui
+  // 字段变更经 update() 重写整对象时，遗留的 theme:"light" 会经 watch(apply)
+  // 把 dark 类摘掉——深色开关被调色盘「自动关闭」（实测复现）。
+  // useUiPrefs() 单例缓存，此处拿到的是同一 prefs 引用，set 内部 update+apply。
+  const { set } = useUiPrefs()
+  set({ theme: dark.value ? 'dark' : 'light' })
 }
 
 // —— 帮助 / 反馈 / 更新日志 ——

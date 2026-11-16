@@ -390,16 +390,5 @@ function relLabel(iso: string): string {
   display: inline-flex;
   align-items: center;
 }
-.smc-act.primary {
-  color: var(--pt-primary);
-  border-color: var(--pt-primary-bg, rgba(99, 102, 241, 0.25));
-}
-.smc-act:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.smc-act.ghost {
-  padding: 3px 6px;
-  color: var(--pt-text-muted);
-}
+
 </style>

@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { siteApi, type Site, type SiteDef, type DefinitionDiagnostic } from '@/api/site'
 import SiteDefinitionDiagnostics from '@/components/sites/SiteDefinitionDiagnostics.vue'
 import SitesRecordsDrawer from '@/components/sites/SitesRecordsDrawer.vue'
@@ -17,6 +17,7 @@ import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 import { useSitesForm, defUrls } from '@/composables/useSitesForm'
 import { ruleRequired, ruleURL } from '@/composables/useFormRules'
 import { useSitesActions } from '@/composables/useSitesActions'
+import { useMobileViewport } from '@/composables/useMobileViewport'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
@@ -152,22 +153,14 @@ async function submitValidated() {
   // 直接出现在行内徽标，省一步操作）。
   if (!dialogVisible.value) void refreshConnectivity(true)
 }
-// 移动断点与矩阵卡片分支（matrixLayout 'mobile'）同口径：panelWidth < 560。
-const isMobile = ref(window.innerWidth < 560)
-const onViewportChange = () => {
-  isMobile.value = window.innerWidth < 560
-}
+// 移动断点与矩阵卡片分支同口径（matchMedia，见 useMobileViewport）。
+const { isMobileViewport: isMobile } = useMobileViewport(560)
+
 const staleVisitLabel = computed(() =>
   staleVisitLoading.value && staleVisitProgress.value
     ? t('sites.visiting', { n: staleVisitProgress.value })
     : t('sites.visitStale', { count: inactiveSiteCount.value ? ` (${inactiveSiteCount.value})` : '' }),
 )
-
-onMounted(() => {
-  load()
-  window.addEventListener('resize', onViewportChange, { passive: true })
-})
-onBeforeUnmount(() => window.removeEventListener('resize', onViewportChange))
 </script>
 
 <template>

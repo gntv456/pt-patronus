@@ -389,26 +389,41 @@
 .operations-matrix.is-mobile {
   padding: var(--sp-3);
 }
-.operations-matrix.is-mobile .matrix-head {
+/* 移动单行工具条：搜索占满 + 图标钮 32px 方块，一行搞定（桌面 head 不受影响） */
+/* 移动单行工具条：搜索占满 + 图标钮 32px 方块。
+   选择器带 .operations-matrix.is-mobile 前缀且声明 flex-direction，
+   覆盖 @media(max-width:900px) 对 .matrix-head 的 column 化（同优先级靠源顺序）。 */
+.operations-matrix.is-mobile .matrix-head.is-mobile-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  gap: var(--sp-2);
   margin-bottom: var(--sp-2);
 }
-.operations-matrix.is-mobile .matrix-head h3 {
-  font-size: var(--fs-sm);
+.operations-matrix.is-mobile .matrix-head.is-mobile-bar .matrix-search {
+  flex: 1;
+  min-width: 0;
 }
-.operations-matrix.is-mobile .matrix-head p {
-  font-size: var(--fs-xs);
+.operations-matrix.is-mobile .mob-filter-btn,
+.operations-matrix.is-mobile .mob-sync-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--color-surface-2, transparent);
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
 }
-.operations-matrix.is-mobile .matrix-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+.operations-matrix.is-mobile .mob-sync-btn {
+  min-height: 32px;
 }
-.operations-matrix.is-mobile .matrix-tools .el-button {
-  padding: 4px 8px;
-  font-size: var(--fs-xs);
-  min-height: 26px;
-}
-.operations-matrix.is-mobile .matrix-filter button {
-  padding: 3px 10px;
-  font-size: var(--fs-xs);
+.operations-matrix.is-mobile .mob-sync-btn .el-icon {
+  color: inherit;
 }

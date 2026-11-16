@@ -13,6 +13,7 @@ import type { SiteStatItem } from '@/api/dashboard'
 import { dashboardApi } from '@/api/dashboard'
 import SiteMatrixTable from './SiteMatrixTable.vue'
 import SiteMobileCards from './SiteMobileCards.vue'
+import { useMobileViewport } from '@/composables/useMobileViewport'
 import SiteMatrixHistoryDialog from './SiteMatrixHistoryDialog.vue'
 import { useSiteMatrixData, type MatrixFilter, type MatrixLayout } from '@/composables/useSiteMatrixData'
 import { useInactiveSiteVisit } from '@/composables/useInactiveSiteVisit'
@@ -62,26 +63,20 @@ const matrixLayout = computed<MatrixLayout>(() => {
 })
 let resizeObserver: ResizeObserver | null = null
 
-// 移动档判定用 matchMedia（viewport 变化可靠触发）；ResizeObserver 在内嵌浏览器
-// 的 viewport 切换下实测可能不回调（残留旧宽度导致分支卡死）。
-const mobileMq =
-  typeof window !== 'undefined' && window.matchMedia
-    ? window.matchMedia('(max-width: 560px)')
-    : null
-const isMobileViewport = ref(!!mobileMq?.matches)
-if (mobileMq) {
-  const onMq = (e: MediaQueryListEvent) => {
-    isMobileViewport.value = e.matches
-  }
-  if (mobileMq.addEventListener) mobileMq.addEventListener('change', onMq)
-  else mobileMq.addListener(onMq)
-  onBeforeUnmount(() => {
-    if (mobileMq.removeEventListener) {
-      mobileMq.removeEventListener('change', onMq)
-    } else mobileMq.removeListener(onMq)
-  })
-}
+const { isMobileViewport } = useMobileViewport(560)
 
+// 移动工具条的筛选下拉项与当前档位图标（chips 收敛成一行图标钮）。
+const filterOptions = computed(() => [
+  { value: 'all' as MatrixFilter, label: t('sh.all') },
+  { value: 'issues' as MatrixFilter, label: t('som.issues') },
+  { value: 'connected' as MatrixFilter, label: t('som.connected') },
+  { value: 'disabled' as MatrixFilter, label: t('som.disabled') },
+])
+const filterIcon = computed(() => {
+  if (matrixFilter.value === 'all') return 'sites'
+  if (matrixFilter.value === 'connected') return 'shield'
+  return 'alert'
+})
 const { t } = useI18n()
 const {
   siteQuery,
@@ -245,7 +240,51 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
     class="operations-matrix glass"
     :class="{ 'is-mobile': matrixLayout === 'mobile' }"
   >
-    <div class="matrix-head">
+    <!-- 移动端单行工具条（卡片版）：标题/计数省（页面已有「站点」标题，计数看卡片
+         同步行）；筛选收 dropdown、同步/批量删除并成图标钮——桌面版工具条整块
+         在手机上占约 1/3 屏（UX 实测反馈：卡片上方仍太占空间）。 -->
+    <div v-if="matrixLayout === 'mobile'" class="matrix-head is-mobile-bar">
+      <el-input
+        v-model="siteQuery"
+        clearable
+        :placeholder="t('som.searchPh')"
+        class="matrix-search"
+        size="small"
+      />
+      <el-dropdown trigger="click" @command="matrixFilter = $event">
+        <button
+          type="button"
+          class="mob-filter-btn"
+          :aria-label="t('som.filterAria')"
+        >
+          <GlassIcon :name="filterIcon" :size="14" />
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+              v-for="opt in filterOptions"
+              :key="opt.value"
+              :command="opt.value"
+              :class="{ active: matrixFilter === opt.value }"
+            >{{ opt.label }}</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      <el-tooltip
+        :content="t('som.syncAll') + (liveSyncText || '')"
+        placement="bottom"
+      >
+        <el-button
+          size="small"
+          :loading="syncing"
+          class="mob-sync-btn"
+          @click="syncAll"
+        >
+          <GlassIcon name="refresh" :size="14" />
+        </el-button>
+      </el-tooltip>
+    </div>
+    <div v-else class="matrix-head">
       <div>
         <h3>{{ t('som.title') }}</h3>
         <p>{{ t('som.rangeInfo', { shown: pageRange, matched: matrixRows.length, total: allRows.length }) }}</p>
@@ -253,17 +292,14 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
       <div class="matrix-tools">
         <el-input v-model="siteQuery" clearable :placeholder="t('som.searchPh')" class="matrix-search" />
         <div class="matrix-filter" :aria-label="t('som.filterAria')">
-          <button type="button" :class="{ active: matrixFilter === 'all' }" @click="matrixFilter = 'all'">
-            {{ t('sh.all') }}
-          </button>
-          <button type="button" :class="{ active: matrixFilter === 'issues' }" @click="matrixFilter = 'issues'">
-            {{ t('som.issues') }}
-          </button>
-          <button type="button" :class="{ active: matrixFilter === 'connected' }" @click="matrixFilter = 'connected'">
-            {{ t('som.connected') }}
-          </button>
-          <button type="button" :class="{ active: matrixFilter === 'disabled' }" @click="matrixFilter = 'disabled'">
-            {{ t('som.disabled') }}
+          <button
+            v-for="opt in filterOptions"
+            :key="opt.value"
+            type="button"
+            :class="{ active: matrixFilter === opt.value }"
+            @click="matrixFilter = opt.value"
+          >
+            {{ opt.label }}
           </button>
         </div>
         <el-button size="small" :loading="syncing" @click="syncAll">

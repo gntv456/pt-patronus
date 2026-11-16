@@ -22,26 +22,50 @@ defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 </script>
 
 <template>
-  <el-drawer :model-value="modelValue" :title="t('sites.records')" size="600" @update:model-value="$emit('update:modelValue', $event)">
+  <el-drawer
+    :model-value="modelValue"
+    :title="t('sites.records')"
+    size="600"
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
     <div v-loading="recordsLoading">
-      <div v-if="recordsWindow.truncated" class="text-muted" style="margin-bottom: 8px">
+      <div
+        v-if="recordsWindow.truncated"
+        class="text-muted"
+        style="margin-bottom: 8px"
+      >
         {{
           recordsWindow.total == null
             ? t('sites.recordsTruncatedUnknown', { n: recordsWindow.shown })
-            : t('sites.recordsTruncated', { n: recordsWindow.shown, total: recordsWindow.total })
+            : t('sites.recordsTruncated', {
+                n: recordsWindow.shown,
+                total: recordsWindow.total,
+              })
         }}
       </div>
       <el-table :data="records" style="width: 100%" max-height="100%">
         <el-table-column :label="t('sites.rec.time')" width="150">
-          <template #default="{ row }">{{ fmtTime(row.created_at as string) }}</template>
+          <template #default="{ row }">{{
+            fmtTime(row.created_at as string)
+          }}</template>
         </el-table-column>
-        <el-table-column prop="site_name" :label="t('sites.rec.site')" min-width="100" />
+        <el-table-column
+          prop="site_name"
+          :label="t('sites.rec.site')"
+          min-width="100"
+        />
         <el-table-column :label="t('sites.rec.result')" min-width="160">
           <template #default="{ row }">
             <span v-if="row.success" class="pill on">
-              {{ row.bonus > 0 ? t('sites.rec.bonus', { n: row.bonus }) : row.message || t('sites.rec.success') }}
+              {{
+                row.bonus > 0
+                  ? t('sites.rec.bonus', { n: row.bonus })
+                  : row.message || t('sites.rec.success')
+              }}
             </span>
-            <span v-else class="pill off">{{ row.error || row.message || t('sites.rec.failed') }}</span>
+            <span v-else class="pill off">{{
+              row.error || row.message || t('sites.rec.failed')
+            }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('sites.rec.source')" width="80">
@@ -50,7 +74,9 @@ defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
           }}</template>
         </el-table-column>
       </el-table>
-      <div v-if="!records.length && !recordsLoading" class="empty text-muted">{{ t('sites.rec.empty') }}</div>
+      <div v-if="!records.length && !recordsLoading" class="empty text-muted">
+        {{ t('sites.rec.empty') }}
+      </div>
     </div>
   </el-drawer>
 </template>

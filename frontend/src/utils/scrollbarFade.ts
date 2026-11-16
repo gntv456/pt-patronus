@@ -20,5 +20,8 @@ function markScrolling(): void {
 /** 全局安装（main.ts 启动时调用一次）；capture 捕获所有容器（含无冒泡目标）的滚动。 */
 export function installScrollbarFade(): void {
   // capture：scroll 事件不冒泡，必须用捕获阶段才能覆盖页面内所有滚动容器
-  window.addEventListener('scroll', markScrolling, { capture: true, passive: true })
+  window.addEventListener('scroll', markScrolling, {
+    capture: true,
+    passive: true,
+  })
 }

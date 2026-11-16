@@ -130,16 +130,17 @@ const trendSeries = computed(() => {
   if (trendMode.value === 'traffic') {
     return [
       { label: '上传总量', color: '#0f766e', values: trend.value.map((point) => point.uploaded) },
-      { label: '下载总量', color: '#2563eb', values: trend.value.map((point) => point.downloaded) },
+      // 主系列跟随主题色（--chart-1 随 data-theme-accent/accentCustom 覆盖）
+      { label: '下载总量', color: 'var(--chart-1)', values: trend.value.map((point) => point.downloaded) },
     ]
   }
   if (trendMode.value === 'seeding') {
-    return [{ label: '做种数量', color: '#16a34a', values: trend.value.map((point) => point.seeding) }]
+    return [{ label: '做种数量', color: 'var(--chart-1)', values: trend.value.map((point) => point.seeding) }]
   }
   if (trendMode.value === 'size') {
-    return [{ label: '做种体积', color: '#0891b2', values: trend.value.map((point) => point.seeding_size) }]
+    return [{ label: '做种体积', color: 'var(--chart-1)', values: trend.value.map((point) => point.seeding_size) }]
   }
-  return [{ label: '魔力', color: '#d97706', values: trend.value.map((point) => point.bonus) }]
+  return [{ label: '魔力', color: 'var(--chart-1)', values: trend.value.map((point) => point.bonus) }]
 })
 const trendUnit = computed<'bytes' | 'count'>(() =>
   trendMode.value === 'traffic' || trendMode.value === 'size' ? 'bytes' : 'count',

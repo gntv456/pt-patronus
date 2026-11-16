@@ -106,7 +106,10 @@
 }
 
 /* 主题色预设「石墨灰」：在 body 上重定义变量即可覆盖从 :root 继承的值。
-   默认蓝不写属性（上面 :root 已定义）；两套都走同一套语义 token，明暗主题自动适配。 */
+   默认蓝不写属性（上面 :root 已定义）；两套都走同一套语义 token，明暗主题自动适配。
+   大面积染色：--color-bg（页面底）与 --color-surface（卡片）掺入主色极淡 tint、
+   边框用主题色灰阶变体，让换肤后页面底色有可感知的色温变化；文字对比度组合
+   （text/bg、text/surface）已按最极端 tint 校验，仍 >= 4.5:1。 */
 body[data-theme-accent='graphite'] {
   --color-primary: #475569;
   --color-primary-hover: #334155;
@@ -116,6 +119,11 @@ body[data-theme-accent='graphite'] {
   --pt-primary: #475569;
   --pt-primary-2: #334155;
   --pt-primary-bg: #f1f5f9;
+  --color-bg: #f4f6f9;
+  --color-surface: #fbfcfe;
+  --color-border: #dde3ec;
+  --color-border-strong: #c8d1de;
+  --chart-1: #475569;
 }
 :root.dark body[data-theme-accent='graphite'] {
   --color-primary: #94a3b8;
@@ -126,6 +134,11 @@ body[data-theme-accent='graphite'] {
   --pt-primary: #94a3b8;
   --pt-primary-2: #b6c2d1;
   --pt-primary-bg: rgba(148, 163, 184, 0.16);
+  --color-bg: #0e1117;
+  --color-surface: #171b22;
+  --color-border: #2a3240;
+  --color-border-strong: #3a4453;
+  --chart-1: #94a3b8;
 }
 
 /* ── 主题调色盘预设（参考 QQ 超级调色盘分组；浅色 600-700 阶保证白字 ≥4.5:1，深色 300-400 阶提亮） ──
@@ -141,6 +154,11 @@ body[data-theme-accent='teal'] {
   --pt-primary: #0f766e;
   --pt-primary-2: #115e59;
   --pt-primary-bg: #f0fdfa;
+  --color-bg: #f2f8f7;
+  --color-surface: #fafdfd;
+  --color-border: #d9e8e5;
+  --color-border-strong: #bed4d0;
+  --chart-1: #0f766e;
 }
 :root.dark body[data-theme-accent='teal'] {
   --color-primary: #2dd4bf;
@@ -151,6 +169,11 @@ body[data-theme-accent='teal'] {
   --pt-primary: #2dd4bf;
   --pt-primary-2: #5eead4;
   --pt-primary-bg: rgba(45,212,191,0.14);
+  --color-bg: #0d1312;
+  --color-surface: #141d1b;
+  --color-border: #243633;
+  --color-border-strong: #334945;
+  --chart-1: #2dd4bf;
 }
 body[data-theme-accent='gold'] {
   --color-primary: #a16207;
@@ -161,6 +184,11 @@ body[data-theme-accent='gold'] {
   --pt-primary: #a16207;
   --pt-primary-2: #854d0e;
   --pt-primary-bg: #fefce8;
+  --color-bg: #f9f7ef;
+  --color-surface: #fdfcf6;
+  --color-border: #e8e2cd;
+  --color-border-strong: #d5cba6;
+  --chart-1: #a16207;
 }
 :root.dark body[data-theme-accent='gold'] {
   --color-primary: #eab308;
@@ -171,6 +199,11 @@ body[data-theme-accent='gold'] {
   --pt-primary: #eab308;
   --pt-primary-2: #facc15;
   --pt-primary-bg: rgba(234,179,8,0.14);
+  --color-bg: #131108;
+  --color-surface: #1c1908;
+  --color-border: #37311a;
+  --color-border-strong: #4a4224;
+  --chart-1: #eab308;
 }
 body[data-theme-accent='lilac'] {
   --color-primary: #7e5aa2;
@@ -181,6 +214,11 @@ body[data-theme-accent='lilac'] {
   --pt-primary: #7e5aa2;
   --pt-primary-2: #6b4d8a;
   --pt-primary-bg: #f6f2fa;
+  --color-bg: #f7f4fa;
+  --color-surface: #fcfbfd;
+  --color-border: #e5def0;
+  --color-border-strong: #d0c3e2;
+  --chart-1: #7e5aa2;
 }
 :root.dark body[data-theme-accent='lilac'] {
   --color-primary: #c084fc;
@@ -191,6 +229,11 @@ body[data-theme-accent='lilac'] {
   --pt-primary: #c084fc;
   --pt-primary-2: #d8b4fe;
   --pt-primary-bg: rgba(192,132,252,0.14);
+  --color-bg: #100e15;
+  --color-surface: #191521;
+  --color-border: #2c2439;
+  --color-border-strong: #3d3250;
+  --chart-1: #c084fc;
 }
 body[data-theme-accent='bean'] {
   --color-primary: #4d7c6f;
@@ -201,6 +244,11 @@ body[data-theme-accent='bean'] {
   --pt-primary: #4d7c6f;
   --pt-primary-2: #3e6659;
   --pt-primary-bg: #f0faf6;
+  --color-bg: #f2f7f4;
+  --color-surface: #fafdfb;
+  --color-border: #dbe8e1;
+  --color-border-strong: #c2d6cb;
+  --chart-1: #4d7c6f;
 }
 :root.dark body[data-theme-accent='bean'] {
   --color-primary: #4ade80;
@@ -211,6 +259,11 @@ body[data-theme-accent='bean'] {
   --pt-primary: #4ade80;
   --pt-primary-2: #86efac;
   --pt-primary-bg: rgba(74,222,128,0.13);
+  --color-bg: #0d1310;
+  --color-surface: #141d18;
+  --color-border: #243630;
+  --color-border-strong: #334941;
+  --chart-1: #4ade80;
 }
 body[data-theme-accent='sand'] {
   --color-primary: #b4443c;
@@ -221,6 +274,11 @@ body[data-theme-accent='sand'] {
   --pt-primary: #b4443c;
   --pt-primary-2: #93362f;
   --pt-primary-bg: #fef5f4;
+  --color-bg: #f9f3f2;
+  --color-surface: #fdfaf9;
+  --color-border: #ecdcd9;
+  --color-border-strong: #dcc0bb;
+  --chart-1: #b4443c;
 }
 :root.dark body[data-theme-accent='sand'] {
   --color-primary: #f87171;
@@ -231,6 +289,11 @@ body[data-theme-accent='sand'] {
   --pt-primary: #f87171;
   --pt-primary-2: #fca5a5;
   --pt-primary-bg: rgba(248,113,113,0.13);
+  --color-bg: #130e0d;
+  --color-surface: #1d1615;
+  --color-border: #372927;
+  --color-border-strong: #4a3734;
+  --chart-1: #f87171;
 }
 body[data-theme-accent='sky'] {
   --color-primary: #0369a1;
@@ -241,6 +304,11 @@ body[data-theme-accent='sky'] {
   --pt-primary: #0284c7;
   --pt-primary-2: #0369a1;
   --pt-primary-bg: #f0f9ff;
+  --color-bg: #f1f7fb;
+  --color-surface: #fafdfe;
+  --color-border: #d9e8f0;
+  --color-border-strong: #bcd6e4;
+  --chart-1: #0369a1;
 }
 :root.dark body[data-theme-accent='sky'] {
   --color-primary: #38bdf8;
@@ -251,6 +319,11 @@ body[data-theme-accent='sky'] {
   --pt-primary: #38bdf8;
   --pt-primary-2: #7dd3fc;
   --pt-primary-bg: rgba(56,189,248,0.14);
+  --color-bg: #0c1116;
+  --color-surface: #131a21;
+  --color-border: #22303c;
+  --color-border-strong: #304454;
+  --chart-1: #38bdf8;
 }
 body[data-theme-accent='sakura'] {
   --color-primary: #c2417a;
@@ -261,6 +334,11 @@ body[data-theme-accent='sakura'] {
   --pt-primary: #c2417a;
   --pt-primary-2: #9d3163;
   --pt-primary-bg: #fdf2f8;
+  --color-bg: #f9f2f6;
+  --color-surface: #fdf9fb;
+  --color-border: #eed9e4;
+  --color-border-strong: #dfbccd;
+  --chart-1: #c2417a;
 }
 :root.dark body[data-theme-accent='sakura'] {
   --color-primary: #f472b6;
@@ -271,6 +349,11 @@ body[data-theme-accent='sakura'] {
   --pt-primary: #f472b6;
   --pt-primary-2: #f9a8d4;
   --pt-primary-bg: rgba(244,114,182,0.14);
+  --color-bg: #130d10;
+  --color-surface: #1d1519;
+  --color-border: #38272f;
+  --color-border-strong: #4b3540;
+  --chart-1: #f472b6;
 }
 body[data-theme-accent='spring'] {
   --color-primary: #15803d;
@@ -281,6 +364,11 @@ body[data-theme-accent='spring'] {
   --pt-primary: #15803d;
   --pt-primary-2: #166534;
   --pt-primary-bg: #f0fdf4;
+  --color-bg: #f1f7f2;
+  --color-surface: #fafdfb;
+  --color-border: #d9e9dd;
+  --color-border-strong: #bcd4c2;
+  --chart-1: #15803d;
 }
 :root.dark body[data-theme-accent='spring'] {
   --color-primary: #4ade80;
@@ -291,6 +379,11 @@ body[data-theme-accent='spring'] {
   --pt-primary: #4ade80;
   --pt-primary-2: #86efac;
   --pt-primary-bg: rgba(74,222,128,0.13);
+  --color-bg: #0d1310;
+  --color-surface: #141d17;
+  --color-border: #24362b;
+  --color-border-strong: #33493b;
+  --chart-1: #4ade80;
 }
 body[data-theme-accent='ember'] {
   --color-primary: #c2410c;
@@ -301,6 +394,11 @@ body[data-theme-accent='ember'] {
   --pt-primary: #c2410c;
   --pt-primary-2: #9a3412;
   --pt-primary-bg: #fff7ed;
+  --color-bg: #f9f4f0;
+  --color-surface: #fdfaf7;
+  --color-border: #eee0d4;
+  --color-border-strong: #dfc5af;
+  --chart-1: #c2410c;
 }
 :root.dark body[data-theme-accent='ember'] {
   --color-primary: #fb923c;
@@ -311,6 +409,11 @@ body[data-theme-accent='ember'] {
   --pt-primary: #fb923c;
   --pt-primary-2: #fdba74;
   --pt-primary-bg: rgba(251,146,60,0.14);
+  --color-bg: #12100d;
+  --color-surface: #1c1815;
+  --color-border: #372e26;
+  --color-border-strong: #4a3e31;
+  --chart-1: #fb923c;
 }
 
 /* ── 2. 中性实色底，去掉全屏渐变与壁纸 ── */

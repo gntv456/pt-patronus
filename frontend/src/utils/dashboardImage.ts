@@ -39,6 +39,18 @@ export async function exportDashboardImage(d: DashboardShareData, config: Dashbo
   if (!ctx) return
   ctx.scale(scale, scale)
   ctx.textBaseline = 'alphabetic'
+  // canvas 不认 CSS var()：数据里的 color 可能是 'var(--chart-1)'（随主题色），
+  // 渲染前经 getComputedStyle 解析成实际色值（share 数据多在弹窗即时构建，主题已应用）。
+  const resolveColor = (v: string): string => {
+    if (!v.startsWith('var(')) return v
+    ctx.fillStyle = v
+    const resolved = ctx.fillStyle
+    return typeof resolved === 'string' && resolved !== 'rgb(0, 0, 0)'
+      ? resolved
+      : getComputedStyle(document.documentElement)
+          .getPropertyValue(v.slice(4, -1))
+          .trim() || '#2563eb'
+  }
 
   // 1. 背景
   drawBackground(ctx, W, L.totalH, config.theme, bgImg, config.backgroundBlur, config.backgroundDim, th.base)
@@ -93,7 +105,7 @@ export async function exportDashboardImage(d: DashboardShareData, config: Dashbo
       const row = Math.floor(i / 2)
       const mx = PAD + col * (colW + 20)
       const my = L.gridY + row * L.gridRowH
-      ctx.fillStyle = m.color
+      ctx.fillStyle = resolveColor(m.color)
       roundRect(ctx, mx, my + 5, 4, 16, 2)
       ctx.fill()
       ctx.fillStyle = th.sub
@@ -119,7 +131,7 @@ export async function exportDashboardImage(d: DashboardShareData, config: Dashbo
       const my = L.rankGridY + row * L.rankRowH
       ctx.beginPath()
       ctx.arc(mx + 8, my + 14, 6, 0, Math.PI * 2)
-      ctx.fillStyle = r.def.color
+      ctx.fillStyle = resolveColor(r.def.color)
       ctx.fill()
       ctx.fillStyle = th.sub
       ctx.font = `400 12px ${FONT}`

@@ -160,6 +160,9 @@ export function useUiPrefs() {
       rs.setProperty('--el-color-primary', toHex(main))
       rs.setProperty('--pt-primary', toHex(main))
       rs.setProperty('--pt-primary-2', toHex(hover))
+      // 大面积染色：页面底/卡片/边框掺入自选色 tint，与预设块的 --color-bg/
+      // --color-surface/--color-border 覆盖同口径（浅色 6-10% 向白混、暗色 6-8%
+      // 向黑混），保证换肤后底色色温可感知；文字组合对比度仍由中性文字 token 兜底。
       const softBase: [number, number, number] = dark
         ? [15, 17, 21]
         : [255, 255, 255]
@@ -167,6 +170,22 @@ export function useUiPrefs() {
         '--color-primary-soft',
         toHex(mixToward(rgb, softBase, 0.9)),
       )
+      const bgTint = dark ? 0.94 : 0.93
+      const surfaceTint = dark ? 0.9 : 0.88
+      rs.setProperty('--color-bg', toHex(mixToward(rgb, softBase, bgTint)))
+      rs.setProperty(
+        '--color-surface',
+        toHex(mixToward(rgb, softBase, surfaceTint)),
+      )
+      rs.setProperty(
+        '--color-border',
+        toHex(mixToward(rgb, softBase, dark ? 0.82 : 0.78)),
+      )
+      rs.setProperty(
+        '--color-border-strong',
+        toHex(mixToward(rgb, softBase, dark ? 0.72 : 0.62)),
+      )
+      rs.setProperty('--chart-1', toHex(main))
       setCustomAccent(p.accentCustom)
     } else {
       // 切回预设/默认：清掉内联，交还 data 属性与样式表控制
@@ -178,6 +197,11 @@ export function useUiPrefs() {
         '--el-color-primary',
         '--pt-primary',
         '--pt-primary-2',
+        '--color-bg',
+        '--color-surface',
+        '--color-border',
+        '--color-border-strong',
+        '--chart-1',
       ]) {
         document.documentElement.style.removeProperty(k)
       }

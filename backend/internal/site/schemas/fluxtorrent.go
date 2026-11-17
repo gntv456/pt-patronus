@@ -182,11 +182,16 @@ type fluxPTPPData struct {
 	ID           json.Number `json:"id"`
 	Name         string      `json:"name"`
 	Bonus        float64     `json:"bonus"`
-	Uploaded     int64       `json:"uploaded"`
-	Downloaded   int64       `json:"downloaded"`
-	Seeding      int         `json:"seeding"`
-	Leeching     int         `json:"leeching"`
-	SeedingSize  int64       `json:"seedingSize"`
+	// BonusPerHour 是时魔（每小时魔力）：服务端 2026-11-17 起在聚合端点下发，
+	// 与站内「我的魔力」同一份预估口径（worker 结算同源）。
+	BonusPerHour float64 `json:"bonusPerHour"`
+	Uploaded     int64   `json:"uploaded"`
+	Downloaded   int64   `json:"downloaded"`
+	Seeding      int     `json:"seeding"`
+	Leeching     int     `json:"leeching"`
+	SeedingSize  int64   `json:"seedingSize"`
+	// Uploads 是发布数（本人名下种子数）：服务端 2026-11-17 起下发。
+	Uploads      int         `json:"uploads"`
 	Invites      int         `json:"invites"`
 	LevelName    string      `json:"levelName"`
 	JoinTime     fluxTime    `json:"joinTime"`
@@ -253,16 +258,18 @@ func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		return nil, fmt.Errorf("fluxtorrent userinfo: parse data: %w", err)
 	}
 	u := &site.UserInfo{
-		ID:          d.ID.String(),
-		Name:        d.Name,
-		Level:       d.LevelName,
-		Uploaded:    d.Uploaded,
-		Downloaded:  d.Downloaded,
-		Seeding:     d.Seeding,
-		Leeching:    d.Leeching,
-		SeedingSize: d.SeedingSize,
-		Bonus:       d.Bonus,
-		Invited:     d.Invites,
+		ID:           d.ID.String(),
+		Name:         d.Name,
+		Level:        d.LevelName,
+		Uploaded:     d.Uploaded,
+		Downloaded:   d.Downloaded,
+		Seeding:      d.Seeding,
+		Leeching:     d.Leeching,
+		SeedingSize:  d.SeedingSize,
+		Uploads:      d.Uploads,
+		Bonus:        d.Bonus,
+		BonusPerHour: d.BonusPerHour,
+		Invited:      d.Invites,
 	}
 	if u.ID == "" {
 		u.ID = d.Name // 兜底：聚合端点偶发缺 id 时用用户名，避免 UID 空串中断快照链

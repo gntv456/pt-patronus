@@ -21,3 +21,70 @@ urls:
   - https://www.hxpt.org
 tags:
   - 综合
+# 等级梯度（2026-11-17 补）：取自站点 class_rules（门槛四维：上传量 / 完成下载数 /
+# 做种小时 / 账龄）× user_classes（权威等级名），与站内「等级要求」页 /classes
+# 同一份数据。名字必须与接口返回的 class_name 一致，否则算不出「下一等级」。
+#
+# 「完成下载数」是**个数**不是体积，本结构没有对应字段（downloaded 语义是下载量
+# 体积），故未列出；站点另开 GET /api/v1/open/me/classes（开放 API Token 鉴权）
+# 动态下发同一份数据，门槛被站长改过时以站内为准。
+level_requirements:
+  - id: 0
+    name: Peasant
+  - id: 1
+    name: User
+  - id: 2
+    name: Power User
+    uploaded: 50GB
+    seeding_time: 240H
+    interval: P28D
+  - id: 3
+    name: LV3
+    uploaded: 120GB
+    seeding_time: 560H
+    interval: P56D
+  - id: 4
+    name: Crazy User
+    uploaded: 300GB
+    seeding_time: 1120H
+    interval: P105D
+  - id: 5
+    name: Insane User
+    uploaded: 500GB
+    seeding_time: 2000H
+    interval: P175D
+  - id: 6
+    name: Veteran User
+    uploaded: 750GB
+    seeding_time: 3360H
+    interval: P280D
+  - id: 7
+    name: Extreme User
+    uploaded: 1TB
+    seeding_time: 5280H
+    interval: P420D
+  - id: 8
+    name: Ultimate User
+    uploaded: 1.5TB
+    seeding_time: 7680H
+    interval: P560D
+  - id: 9
+    name: Nexus Master
+    uploaded: 3TB
+    seeding_time: 10000H
+    interval: P700D
+  - id: 10
+    name: Legend
+    uploaded: 6TB
+    seeding_time: 14000H
+    interval: P730D
+  - id: 11
+    name: Overseer
+    uploaded: 12TB
+    seeding_time: 18000H
+    interval: P1095D
+  - id: 12
+    name: Immortal
+    uploaded: 20TB
+    seeding_time: 22000H
+    interval: P1825D

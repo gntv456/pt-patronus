@@ -21,7 +21,8 @@
   },
   "permissions": [
     "log:write",
-    "notice:write"
+    "notice:write",
+    "kv:write"
   ],
   "events": [],
   "actions": [

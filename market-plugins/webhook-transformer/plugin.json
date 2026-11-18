@@ -20,7 +20,8 @@
   },
   "permissions": [
     "notice:write",
-    "log:write"
+    "log:write",
+    "event:publish"
   ],
   "events": [
     {

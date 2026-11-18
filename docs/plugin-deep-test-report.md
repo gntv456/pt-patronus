@@ -3,7 +3,7 @@
 测试时间：2026-11-18（Asia/Shanghai）  
 测试对象：market-plugins/ 下全部 **34** 个插件  
 测试方式：backend/tools/pluginctl.py 的 **mock-host 沙箱**（真实启动每个插件进程 → 等待 /health → 注入宿主上下文 → 调用 /action、/event），另加 manifest 校验、语法编译、静态安全审查与独立正确性复算。  
-状态：**P1–P11 已全部修复**。三轮测试分别发现 7、2、2 项缺陷，均已完成修复与复测。
+状态：**P1–P12 已全部修复**。四轮测试分别发现 7、2、2、1 项缺陷，均已完成修复与复测。
 
 ---
 
@@ -109,6 +109,19 @@
 
 外部插件 HTTP 协议约定 `GET /health`、`POST /action`、`POST /event`。该插件缺失 `/event`，收到事件推送时返回 404。已补上空实现返回 `{"ok": true}`。
 
+### P12 — 4 个插件声明的权限不足，宿主调用会被拒绝【已修复】
+
+第四轮静态核对“插件实际调用的宿主 API”与 manifest 权限声明（注意：mock host 授予 `host:*`，会掩盖此类问题，必须静态检查）。发现 4 处：
+
+- `auto-speed`：调用 `kv_set()` 但未声明 `kv:write`
+- `cloudflare-subscribe`：`hosts_path` 留空时调用 `kv_set()`，未声明 `kv:write`
+- `event-audit`：`emit_test_event` 调用 `publish_event()`，未声明 `event:publish`
+- `webhook-transformer`：事件命中时调用 `publish_event()`，未声明 `event:publish`
+
+按宿主 `external_host.go` 的权限要求补齐声明。验证：18 项回归测试中新增“权限声明覆盖实际宿主调用”检查，34 个插件全部通过。
+
+补充核对：各 manifest 的动作均未声明 `input_schema`（共 123 个动作），前端按设计使用自由 JSON 输入，不存在表单字段与代码读取不一致的问题；若干插件“声明了但看似未用”的权限实际经 `/tools/{name}` 工具 RPC 使用（如 `site_checkin_all`、`tgbot_status`），不属于过度授权。
+
 ---
 
 ## 三、观察项加固（已处理）
@@ -129,7 +142,7 @@
 
 ## 五、测试资产
 
-- **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（17 项快速回归，覆盖 P1–P11，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
+- **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（18 项快速回归，覆盖 P1–P12，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
 - 结果 JSON：tmp/plugin-deep-results.json（修复后 89 次调用）
 - 各插件运行日志：tmp/plugin-test-logs/<plugin_id>.log
 - **已固化的沙箱测试（纳入版本控制）**：`backend/tools/plugin_sandbox_smoke.py`（34 插件全量冒烟）、`backend/tools/plugin_sandbox_deep_test.py`（本地 mock 服务 + 边界输入）、`backend/tools/plugin_sandbox_protocol_test.py`（34 插件 × 6 项协议健壮性检查）
@@ -142,6 +155,6 @@
 
 34 个插件全部通过 manifest 校验、语法编译与沙箱健康检查；89 次调用中 74 次正常、15 次为预期负例，纯计算逻辑经独立复算正确。
 
-三轮测试共发现 11 项问题（P1–P11），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮 2 项（cron-helper 无效表达式挂死、text-toolbox 哈希误标），第三轮 2 项（33 个插件畸形请求体断连、ptp-ai-subtitle 缺失 /event）。当前 34 个插件全部健康，89 次冒烟调用与 204 项协议检查全部通过，无阻断问题。
+四轮测试共发现 12 项问题（P1–P12），已全部修复并复测通过：首轮 7 项，第二轮 2 项，第三轮 2 项，第四轮 1 项（权限声明缺失）。当前 34 个插件全部健康，89 次冒烟调用、204 项协议检查与 18 项回归测试全部通过，无已知阻断问题。
 
 为防止回归，已将测试能力固化：15 项快速回归测试接入 CI，两套沙箱测试脚本纳入版本控制，后续改动插件可一键复验。剩余的观察项（URL 私网校验、前端未配置定时提示、Cookie 安全说明）也已一并处理并验证。

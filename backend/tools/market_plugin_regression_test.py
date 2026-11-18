@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import shlex
 import sys
 import tempfile
@@ -202,6 +203,30 @@ class ProtocolTests(unittest.TestCase):
     def test_ai_subtitle_implements_event_endpoint(self) -> None:
         text = (PLUGINS / "ptp-ai-subtitle" / "plugin.py").read_text(encoding="utf-8")
         self.assertIn('self.path == "/event"', text)
+
+
+class PermissionTests(unittest.TestCase):
+    def test_declared_permissions_cover_host_calls(self) -> None:
+        mapping = {
+            "log": "log:write",
+            "notice": "notice:write",
+            "publish_event": "event:publish",
+            "kv_get": "kv:read",
+            "kv_set": "kv:write",
+        }
+        for plugin_dir in sorted(p for p in PLUGINS.iterdir() if p.is_dir()):
+            manifest_path = plugin_dir / "plugin.json"
+            source = plugin_dir / "plugin.py"
+            if not manifest_path.exists() or not source.exists():
+                continue
+            declared = set(json.loads(manifest_path.read_text(encoding="utf-8")).get("permissions", []))
+            text = source.read_text(encoding="utf-8")
+            for func, permission in mapping.items():
+                total = len(re.findall(r"\b" + func + r"\s*\(", text))
+                defs = len(re.findall(r"\bdef\s+" + func + r"\s*\(", text))
+                if total - defs > 0:
+                    self.assertIn(permission, declared,
+                                  f"{plugin_dir.name}: calls {func}() but lacks {permission}")
 
 
 if __name__ == "__main__":

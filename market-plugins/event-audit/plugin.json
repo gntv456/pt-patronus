@@ -20,7 +20,8 @@
     "health": "/health"
   },
   "permissions": [
-    "log:write"
+    "log:write",
+    "event:publish"
   ],
   "events": [
     {

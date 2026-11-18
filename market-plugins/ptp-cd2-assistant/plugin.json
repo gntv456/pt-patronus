@@ -1,7 +1,7 @@
 {
   "id": "ptp-cd2-assistant",
   "name": "CloudDrive2助手",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",

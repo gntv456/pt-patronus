@@ -30,8 +30,8 @@ docker compose up -d
 # 浏览器打开 http://<NAS的IP>:8088
 ```
 
-> 部署前把 compose 里的 `ADMIN_PASSWORD` 改成自己的强密码（模板已预设 admin 账号，
-> 详见 [快速开始](README/快速开始.md)）。
+> 部署前把 compose 里的 `ADMIN_PASSWORD` 占位符改成自己的强密码（未替换会拒绝启动；模板已预设 admin 账号，
+> 公网部署另建议在「设置 → OIDC」接入 SSO）。详见 [快速开始](README/快速开始.md)。
 
 ## 🖼️ 界面一览
 

@@ -126,6 +126,21 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 		if open, _ := a.store.LastOpenAlert(t.ID, metric); open == nil {
 			continue
 		}
+		// 恢复事件进通知中心，形成「掉线→持续→已恢复」闭环（此前只静默 Resolve）。
+		if metric == "offline" && a.notice != nil {
+			src := notice.SourceHostOffline
+			switch t.Type {
+			case "nas":
+				src = notice.SourceNASOffline
+			case "camera":
+				src = notice.SourceCameraOffline
+			}
+			_ = a.notice.Recover(ctx, notice.Input{
+				Source: src,
+				Key:    fmt.Sprintf("offline:%d", t.ID),
+				Title:  t.Name + " 掉线",
+			})
+		}
 		if e := a.store.ResolveOpenAlerts(t.ID, metric); e != nil {
 			slog.Warn("monitor alert resolve failed", "target", t.Name, "metric", metric, "err", e)
 		}

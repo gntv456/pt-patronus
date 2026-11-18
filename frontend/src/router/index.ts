@@ -141,6 +141,11 @@ const router = createRouter({
           component: () => import('@/views/Savept.vue'),
         },
         {
+          path: 'adapter-health',
+          name: 'adapter-health',
+          component: () => import('@/views/AdapterHealth.vue'),
+        },
+        {
           path: 'brushflow',
           name: 'brushflow',
           component: () => import('@/views/BrushFlow.vue'),

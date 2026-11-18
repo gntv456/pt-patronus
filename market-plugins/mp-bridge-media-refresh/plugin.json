@@ -1,7 +1,7 @@
 {
   "id": "mp-bridge-media-refresh",
   "name": "媒体库刷新助手",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",

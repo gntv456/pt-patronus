@@ -1,7 +1,7 @@
 {
   "id": "ptp-miwifi",
   "name": "小米路由器助手",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",

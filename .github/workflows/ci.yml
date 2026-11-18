@@ -134,6 +134,8 @@ jobs:
           done
       - name: Market plugin regression tests
         run: python backend/tools/market_plugin_regression_test.py
+      - name: Market plugin protocol robustness
+        run: python backend/tools/plugin_sandbox_protocol_test.py
           python -m ptpatronus_plugin_sdk.pluginctl market aggregate \
             --packages-dir examples/plugin-market/packages \
             --public-key examples/plugin-market/keys/plugin-market.public.key \

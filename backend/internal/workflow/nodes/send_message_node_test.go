@@ -28,6 +28,9 @@ func (s stubNoticeStore) ClearAll() (int64, error)                { return 0, ni
 func (s stubNoticeStore) ExistsSince(string, string, time.Time) (bool, error) {
 	return false, nil
 }
+func (s stubNoticeStore) LastSince(string, string, time.Time) (*models.Notice, error) {
+	return nil, nil
+}
 func (s stubNoticeStore) CountUnread() (int64, error)      { return 0, nil }
 func (s stubNoticeStore) Cleanup(time.Time) (int64, error) { return 0, nil }
 

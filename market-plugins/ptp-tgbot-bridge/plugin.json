@@ -1,7 +1,7 @@
 {
   "id": "ptp-tgbot-bridge",
   "name": "TG Bot 桥接",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "api_version": "1",
   "app_version": ">=0.14.0",
   "author": "PTPatronus Community",

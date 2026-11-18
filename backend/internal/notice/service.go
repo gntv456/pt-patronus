@@ -29,6 +29,7 @@ type Store interface {
 	Delete(id uint) error
 	ClearAll() (int64, error)
 	ExistsSince(source, key string, since time.Time) (bool, error)
+	LastSince(source, key string, since time.Time) (*models.Notice, error)
 	CountUnread() (int64, error)
 	Cleanup(before time.Time) (int64, error)
 }
@@ -123,6 +124,35 @@ func NewService(store Store, bcast Broadcaster, outbox *notification.Manager) *S
 // noticeSeq 为空 Key 合成唯一键的进程内序号（UnixNano 在 Windows 分辨率粗，单靠它可能撞）。
 var noticeSeq atomic.Uint64
 
+// 持续告警状态机：掉线类事件按天去重会吞掉「一直没恢复」的恶化信号。
+// 超过 2 小时仍未恢复时，按小时步进补发「持续」通知；恢复时由 Recover 发成功通知。
+const (
+	alertEscalateAfter  = 2 * time.Hour
+	alertEscalateWindow = 7 * 24 * time.Hour
+)
+
+var persistentAlertSources = map[string]bool{
+	SourceHostOffline:   true,
+	SourceNASOffline:    true,
+	SourceCameraOffline: true,
+	SourceSiteOffline:   true,
+}
+
+// Recover 发一条「已恢复」通知（与触发 Key 配对，按天去重）。
+// 调用方应在告警状态机确认恢复时调用，让收件箱形成「触发→持续→恢复」闭环。
+func (s *Service) Recover(ctx context.Context, in Input) error {
+	if in.Source == "" || in.Title == "" {
+		return nil
+	}
+	return s.Notice(ctx, Input{
+		Source: in.Source,
+		Key:    "recover:" + in.Key,
+		Title:  in.Title + " 已恢复",
+		Body:   "设备/站点已恢复，告警解除。",
+		Level:  "success",
+	}, true)
+}
+
 // Notice 发一条通知。dedup=true 时按 Source+Key 当天去重（周期事件，避免 cron 刷屏）；
 // false 时一次性（备份完成/辅种完成等）。始终写库 + WS 广播 + 外发。
 func (s *Service) Notice(ctx context.Context, in Input, dedup bool) error {
@@ -130,17 +160,36 @@ func (s *Service) Notice(ctx context.Context, in Input, dedup bool) error {
 		return nil
 	}
 	if dedup {
-		ok, err := s.store.ExistsSince(in.Source, in.Key, startOfToday())
-		if err != nil {
-			// 调用点几乎全是 `_ = svc.Notice(...)`（本仓 20+ 处，且多半是「读不出来要出声」
-			// 那类自曝通知）。错误只回不记就等于什么都没发生：提醒丢了，日志里也找不到。
-			// 判据修在这一处，胜过逐个调用点补日志。
-			slog.Warn("通知去重查询失败，这条提醒没有发出",
-				"source", in.Source, "key", in.Key, "title", in.Title, "err", err)
-			return err
-		}
-		if ok {
-			return nil
+		// 持续告警独立于「当天去重」处理：唯一索引 (source,key) 会让稳定 Key 永远只能写一次，
+		// 跨天再触发也会被 Create 的 DoNothing 吞掉。因此按 7 天窗口找上一条同键通知，
+		// 超过升级间隔就用带步进后缀的新 Key 发「持续」通知。
+		if persistentAlertSources[in.Source] && in.Key != "" {
+			last, err := s.store.LastSince(in.Source, in.Key, time.Now().Add(-alertEscalateWindow))
+			if err != nil {
+				slog.Warn("持续告警查询失败，本轮跳过升级", "source", in.Source, "key", in.Key, "err", err)
+				return err
+			}
+			if last != nil {
+				elapsed := time.Since(last.CreatedAt)
+				if elapsed >= alertEscalateAfter {
+					step := int(elapsed / alertEscalateAfter)
+					in.Key = fmt.Sprintf("%s:persist:%d", in.Key, step)
+					in.Title = fmt.Sprintf("%s（持续 %s）", in.Title, elapsed.Round(time.Minute).String())
+					in.Body = strings.TrimSpace(in.Body + "；告警仍在持续，请及时处理。")
+				} else {
+					return nil
+				}
+			}
+		} else {
+			ok, err := s.store.ExistsSince(in.Source, in.Key, startOfToday())
+			if err != nil {
+				slog.Warn("通知去重查询失败，这条提醒没有发出",
+					"source", in.Source, "key", in.Key, "title", in.Title, "err", err)
+				return err
+			}
+			if ok {
+				return nil
+			}
 		}
 	}
 	// 空 Key 是「无去重键」语义（ExistsSince 同样按空 Key 跳过 key 过滤），但唯一索引

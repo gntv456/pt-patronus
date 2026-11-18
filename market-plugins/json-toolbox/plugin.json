@@ -1,7 +1,7 @@
 {
   "id": "json-toolbox",
   "name": "JSON 工具箱",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",

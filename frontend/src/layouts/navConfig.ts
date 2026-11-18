@@ -48,6 +48,7 @@ export const navGroups: NavGroup[] = [
       { name: 'assessment', label: '考核', icon: 'assessment' },
       { name: 'freeleech', label: '站免', icon: 'freeleech' },
       { name: 'savept', label: '监护室', icon: 'savept' },
+      { name: 'adapter-health', label: '适配器健康', icon: 'stethoscope' },
       { name: 'contract', label: '保种契约', icon: 'contract' },
     ],
   },

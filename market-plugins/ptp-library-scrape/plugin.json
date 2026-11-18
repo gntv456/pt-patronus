@@ -1,7 +1,7 @@
 {
   "id": "ptp-library-scrape",
   "name": "媒体库刮削",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",

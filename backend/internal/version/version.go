@@ -3,7 +3,7 @@
 
 // Package version 持有应用版本号（三端单一权威来源）。
 //
-// 当前版本 1.03.29。发布构建时可用 ldflags 覆盖：
+// 当前版本以本文件 Version 变量为单一真源（文档不要硬编码版本号）。发布构建时可用 ldflags 覆盖：
 //
 //	go build -ldflags "-X github.com/hxpt/ptpatronus/internal/version.Version=1.2.3" ./cmd/ptpatronus
 //

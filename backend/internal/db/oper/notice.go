@@ -119,6 +119,26 @@ func (o *NoticeOper) ExistsSince(source, key string, since time.Time) (bool, err
 	return cnt > 0, err
 }
 
+// LastSince 取 source(+key) 在 since 之后最新一条通知（告警状态机用）。
+func (o *NoticeOper) LastSince(source, key string, since time.Time) (*models.Notice, error) {
+	if source == "" {
+		return nil, nil
+	}
+	q := o.db.Where("source = ? AND created_at >= ?", source, since)
+	if key != "" {
+		q = q.Where("key = ?", key)
+	}
+	var n models.Notice
+	err := q.Order("created_at desc").First(&n).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
+}
+
 // CountUnread 未读数（铃铛角标）。
 func (o *NoticeOper) CountUnread() (int64, error) {
 	return o.Count(true)

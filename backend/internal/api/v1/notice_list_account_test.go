@@ -51,6 +51,9 @@ func (s *stubNoticeStore) Cleanup(before time.Time) (int64, error) { return 0, n
 func (s *stubNoticeStore) ExistsSince(source, key string, since time.Time) (bool, error) {
 	return false, nil
 }
+func (s *stubNoticeStore) LastSince(source, key string, since time.Time) (*models.Notice, error) {
+	return nil, nil
+}
 
 func callNoticeList(t *testing.T, st *stubNoticeStore, query string) map[string]any {
 	t.Helper()

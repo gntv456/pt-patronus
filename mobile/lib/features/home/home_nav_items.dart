@@ -19,6 +19,7 @@ import '../medal_wall/medal_wall_page.dart';
 import '../messages/messages_page.dart';
 import '../monitor/monitor_page.dart';
 import '../notification/notification_settings_page.dart';
+import '../plugin/plugin_page.dart';
 import '../recommend/recommend_page.dart';
 import '../reseed/reseed_page.dart';
 import '../rss/rss_page.dart';
@@ -137,6 +138,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
     title: '自动化',
     items: [
       NavItem(label: '工作流', glyph: 'workflow', from: const Color(0xFF6C5CE7), to: const Color(0xFF00B894), builder: (_) => const WorkflowListPage()),
+      NavItem(label: '插件', glyph: 'workflow', from: const Color(0xFF6C5CE7), to: const Color(0xFF4285F4), builder: (_) => const PluginPage(), desc: '启停已安装插件（配置在 Web 端）'),
     ],
   ),
 ];

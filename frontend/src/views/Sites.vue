@@ -31,6 +31,8 @@ const defDiags = ref<DefinitionDiagnostic[]>([])
 const defDiagsFailed = ref(false)
 const defDiagsErrText = ref('')
 const loading = ref(false)
+// Cookie 获取引导：默认折叠，避免遮挡主表单；F12 手工方式降为兜底说明。
+const cookieHelpVisible = ref(false)
 // 站点连通状态：进页面瞬时显示上次结果 + 后台 SSE 逐站刷新（composable 封装缓存/节流/中断）。
 const { connectivity, refreshing, loadCached, refresh: refreshConnectivity } = useSiteConnectivity()
 const operationsMatrixRef = ref<InstanceType<typeof SiteOperationsMatrix> | null>(null)
@@ -297,6 +299,18 @@ const staleVisitLabel = computed(() =>
             :rows="3"
             :placeholder="isEdit ? t('sites.keepIfEdit') : t('sites.cookiePlaceholder')"
           />
+          <div class="cookie-guide">
+            <span>{{ t('sites.cookieGuide') }}</span>
+            <el-button link type="primary" size="small" @click="cookieHelpVisible = !cookieHelpVisible">
+              {{ cookieHelpVisible ? t('sites.cookieGuideHide') : t('sites.cookieGuideShow') }}
+            </el-button>
+          </div>
+          <div v-if="cookieHelpVisible" class="cookie-help">
+            <p>{{ t('sites.cookieGuideStep1') }}</p>
+            <p>{{ t('sites.cookieGuideStep2') }}</p>
+            <p>{{ t('sites.cookieGuideStep3') }}</p>
+            <router-link to="/settings?section=about">{{ t('sites.cookieGuideExtension') }}</router-link>
+          </div>
         </el-form-item>
         <el-form-item v-if="!needsApiKey" :label="t('sites.account')">
           <el-input v-model="form.username" :placeholder="t('sites.accountPlaceholder')" />
@@ -331,6 +345,26 @@ const staleVisitLabel = computed(() =>
 </template>
 
 <style scoped>
+.cookie-guide {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: 4px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--el-text-color-secondary);
+}
+.cookie-help {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.6;
+  color: var(--el-text-color-regular);
+}
+.cookie-help p {
+  margin: 0 0 4px;
+}
 .sites {
   display: flex;
   flex-direction: column;

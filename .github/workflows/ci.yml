@@ -132,6 +132,8 @@ jobs:
           for plugin in market-plugins/*; do
             python -m ptpatronus_plugin_sdk.pluginctl validate "$plugin"
           done
+      - name: Market plugin regression tests
+        run: python backend/tools/market_plugin_regression_test.py
           python -m ptpatronus_plugin_sdk.pluginctl market aggregate \
             --packages-dir examples/plugin-market/packages \
             --public-key examples/plugin-market/keys/plugin-market.public.key \

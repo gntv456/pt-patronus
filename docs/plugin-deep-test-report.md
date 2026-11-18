@@ -110,10 +110,11 @@
 
 ## 四、测试资产
 
-- 测试脚本：tmp/plugin_deep_test.py（可重复执行：python tmp/plugin_deep_test.py [plugin_id ...]）
+- **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（11 项快速回归，覆盖 P1–P9，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
 - 结果 JSON：tmp/plugin-deep-results.json（修复后 89 次调用）
 - 各插件运行日志：tmp/plugin-test-logs/<plugin_id>.log
-- 第二轮深度测试：tmp/plugin_phase2_test.py 与 tmp/plugin-phase2-results.json（本地 mock 服务 + 边界输入）
+- **已固化的沙箱测试（纳入版本控制）**：`backend/tools/plugin_sandbox_smoke.py`（34 插件全量冒烟，`python backend/tools/plugin_sandbox_smoke.py [plugin_id ...]`）与 `backend/tools/plugin_sandbox_deep_test.py`（本地 mock 服务 + 边界输入）
+- 临时运行产物：tmp/plugin_deep-results.json、tmp/plugin-phase2-results.json、tmp/plugin-test-logs/（均在 .gitignore 中）
 - 专项验证：tmp/verify_totp.py、tmp/verify_cron.py、tmp/verify_ssrf.py、tmp/verify_hosts_path.py
 
 ---
@@ -123,3 +124,5 @@
 34 个插件全部通过 manifest 校验、语法编译与沙箱健康检查；89 次调用中 74 次正常、15 次为预期负例，纯计算逻辑经独立复算正确。
 
 两轮测试共发现 9 项问题（P1–P9），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮深度复测又发现 cron-helper 无效表达式挂死与 text-toolbox 哈希算法误标两项。当前 34 个插件全部健康，无阻断问题；剩余仅为产品体验与管理面风险提醒。
+
+为防止回归，已将测试能力固化：11 项快速回归测试接入 CI，两套沙箱测试脚本纳入版本控制，后续改动插件可一键复验。

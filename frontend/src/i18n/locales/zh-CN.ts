@@ -2509,6 +2509,7 @@ export default {
     sidebarHint: '进入页面时侧边栏收起为图标栏',
     aboutHint: 'PT 守护神 · Go + Vue3 + Flutter',
     checkUpdate: '检查更新',
+    copyDiagnostics: '复制诊断信息',
     help: '使用帮助',
     helpHint: '新手引导 · PT 黑话释义',
     feedback: '问题反馈',
@@ -4462,6 +4463,8 @@ export default {
     k1: '已是最新版本',
     k2: '检查更新失败，请稍后重试',
     k3: '已复制升级命令',
+    diagCopied: '已复制脱敏诊断信息（可粘贴到 Issue）',
+    diagFailed: '生成诊断信息失败',
   },
   opuseinactivesitevisit: {
     k1: '没有最后访问超过 30 天的启用站点',

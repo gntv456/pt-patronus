@@ -2524,6 +2524,7 @@ export default {
     sidebarHint: 'Sidebar starts as icon rail',
     aboutHint: 'PT guardian · Go + Vue3 + Flutter',
     checkUpdate: 'Check update',
+    copyDiagnostics: 'Copy diagnostics',
     help: 'Help',
     helpHint: 'Onboarding · PT jargon',
     feedback: 'Feedback',
@@ -4498,6 +4499,8 @@ export default {
     k1: '已是最新版本',
     k2: '检查更新失败，请稍后重试',
     k3: '已复制升级命令',
+    diagCopied: 'Redacted diagnostics copied (paste into an issue)',
+    diagFailed: 'Failed to generate diagnostics',
   },
   opuseinactivesitevisit: {
     k1: '没有最后访问超过 30 天的启用站点',

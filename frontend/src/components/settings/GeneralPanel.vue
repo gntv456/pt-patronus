@@ -30,6 +30,8 @@ const {
   helpVisible,
   checkUpdate,
   copyUpgradeCmd,
+  diagCopying,
+  copyDiagnostics,
   toggleTheme,
   openIssues,
   openChangelog,
@@ -147,6 +149,9 @@ function pickPreset(value: string) {
         </el-button>
         <el-button size="small" :loading="updateChecking" @click="checkUpdate">
           {{ t('gp.checkUpdate') }}
+        </el-button>
+        <el-button size="small" :loading="diagCopying" @click="copyDiagnostics">
+          {{ t('gp.copyDiagnostics') }}
         </el-button>
       </div>
     </div>

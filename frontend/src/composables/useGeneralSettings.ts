@@ -7,6 +7,7 @@ import { ref } from 'vue'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
+import { dashboardApi } from '@/api/dashboard'
 import { copyText } from '@/utils/clipboard'
 import { useUiPrefs } from '@/composables/useUiPrefs'
 
@@ -47,6 +48,40 @@ async function copyUpgradeCmd() {
   if (updateInfo.value?.instructions) {
     await copyText(updateInfo.value.instructions)
     ElMessage.success(t('opusegeneralsettings.k3'))
+  }
+}
+
+// 复制脱敏诊断信息（ADR-003：不引入默认遥测，改为用户显式复制后自行粘贴到 issue）。
+// 只采集结构性计数与版本/平台，绝不收集 Cookie、站点 URL、用户名或任何凭据。
+// 纯函数：生成脱敏诊断文本（便于单测钉死脱敏契约）。
+export function buildDiagnosticsLines(
+  ver: string,
+  info: { version?: string } | null,
+  overview: { site_count?: number; downloader_count?: number } | null,
+): string[] {
+  return [
+    'PTPatronus diagnostics (redacted)',
+    'version: ' + (ver || info?.version || APP_VERSION),
+    'platform: web',
+    'site_count: ' + (overview?.site_count ?? 'n/a'),
+    'downloader_count: ' + (overview?.downloader_count ?? 'n/a'),
+    'generated_at: ' + new Date().toISOString(),
+  ]
+}
+const diagCopying = ref(false)
+async function copyDiagnostics() {
+  diagCopying.value = true
+  try {
+    const [info, overview] = await Promise.all([
+      systemApi.info().catch(() => null),
+      dashboardApi.overview().catch(() => null),
+    ])
+    await copyText(buildDiagnosticsLines(version.value, info, overview).join('\n'))
+    ElMessage.success(t('opusegeneralsettings.diagCopied'))
+  } catch {
+    ElMessage.error(t('opusegeneralsettings.diagFailed'))
+  } finally {
+    diagCopying.value = false
   }
 }
 
@@ -96,6 +131,8 @@ export function useGeneralSettings() {
     initThemeVersion,
     checkUpdate,
     copyUpgradeCmd,
+    diagCopying,
+    copyDiagnostics,
     toggleTheme,
     openIssues,
     openChangelog,

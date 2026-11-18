@@ -3,7 +3,7 @@
 测试时间：2026-11-18（Asia/Shanghai）  
 测试对象：market-plugins/ 下全部 **34** 个插件  
 测试方式：backend/tools/pluginctl.py 的 **mock-host 沙箱**（真实启动每个插件进程 → 等待 /health → 注入宿主上下文 → 调用 /action、/event），另加 manifest 校验、语法编译、静态安全审查与独立正确性复算。  
-状态：**P1–P7 已全部修复，见第二节各项的「修复/验证」说明**。
+状态：**P1–P9 已全部修复，见第二节各项的「修复/验证」说明**。第二轮深度复测（phase-2）新增了 P8、P9 两项缺陷。
 
 ---
 
@@ -16,6 +16,9 @@
 | 沙箱 /health 启动成功 | 33/34 | **34/34** |
 | 实际发起的 action/event 调用 | 85 | **89**（74 ok，15 次刻意负例） |
 | 响应体内隐藏错误 | 1（正常报错） | 1（正常报错） |
+| 第二轮深度复测（本地 mock 服务） | — | 11 个插件 / 34 次调用，全部通过 |
+
+第二轮（phase-2）补测了首轮因安全考虑跳过的动作：`cloudflare-subscribe update_hosts`（真实文件写入 + 白名单）、`ptp-plex-suite status/libraries/apply`（mock Plex）、`group-chat-zone run_main/run_zm`（mock 站点），以及各纯工具插件的边界输入。
 
 覆盖说明：为避免破坏性操作，**故意未触发**外部写操作类动作（如 reboot、port_add/delete、wifi_set、organize、add_offline、sync、auth_start 等）；这些仅做静态审查。已覆盖的动作以“读取/预览/状态/纯计算”为主，并对每个负例验证了优雅报错（无进程崩溃、无裸 traceback 外泄）。
 
@@ -78,6 +81,22 @@
 
 验证：`C:/secret/passwd` 被拒绝；配置 allowed_roots=C:/secret 后允许；系统 hosts 与插件目录内路径正常。
 
+### P8 — cron-helper 对无意义表达式会挂死到宿主超时【已修复】
+
+第二轮实测：`61 * * * *`（分钟 61 超出范围）导致 `_parse_field` 返回空集合，主循环找不到任何匹配点，仍按分钟推进 4 年（约 210 万次迭代），宿主 `/action` 调用 10s 超时。
+
+修复：解析字段后校验任一字段为空集合即直接 `raise ValueError("Cron 表达式包含无有效取值的字段（如 61 分钟、13 月）")`。
+
+验证：同一表达式现在立即返回 `ok:false` 与明确错误；合法表达式不受影响。
+
+### P9 — text-toolbox hash 对不支持算法返回错误结果且误标算法【已修复】
+
+第二轮实测：`hash` 传入 `algo=sha512` 时返回 `algo:"sha512"` 但哈希值是 **SHA-256** 的结果（`ba7816...`），属于错误结果被错误标记，用户会误以为拿到了 SHA-512。
+
+修复：显式支持 `md5/sha1/sha256/sha512`，其他值直接报错，不再静默回退。
+
+验证：`sha512` 现返回标准值 `ddaf35a1...54ca49f`；此前返回 SHA-256 值。
+
 ---
 
 ## 三、剩余观察项（非缺陷/非阻断）
@@ -94,6 +113,7 @@
 - 测试脚本：tmp/plugin_deep_test.py（可重复执行：python tmp/plugin_deep_test.py [plugin_id ...]）
 - 结果 JSON：tmp/plugin-deep-results.json（修复后 89 次调用）
 - 各插件运行日志：tmp/plugin-test-logs/<plugin_id>.log
+- 第二轮深度测试：tmp/plugin_phase2_test.py 与 tmp/plugin-phase2-results.json（本地 mock 服务 + 边界输入）
 - 专项验证：tmp/verify_totp.py、tmp/verify_cron.py、tmp/verify_ssrf.py、tmp/verify_hosts_path.py
 
 ---
@@ -102,4 +122,4 @@
 
 34 个插件全部通过 manifest 校验、语法编译与沙箱健康检查；89 次调用中 74 次正常、15 次为预期负例，纯计算逻辑经独立复算正确。
 
-首轮发现的 7 项问题（P1–P7）已全部修复并复测通过，其中阻断性的 ptp-ai-subtitle 现已可正常启动与响应。剩余为产品体验与管理面风险提醒，不阻断使用。
+两轮测试共发现 9 项问题（P1–P9），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮深度复测又发现 cron-helper 无效表达式挂死与 text-toolbox 哈希算法误标两项。当前 34 个插件全部健康，无阻断问题；剩余仅为产品体验与管理面风险提醒。

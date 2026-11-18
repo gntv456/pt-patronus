@@ -136,6 +136,8 @@ def _next_runs(expr, count, tz="Asia/Shanghai"):
     if len(parts)!=5: raise ValueError("需要标准 5 段 cron: m h dom mon dow")
     minutes=_parse_field(parts[0],0,59); hours=_parse_field(parts[1],0,23)
     doms=_parse_field(parts[2],1,31); months=_parse_field(parts[3],1,12); dows=_parse_field(parts[4],0,6)
+    if not all((minutes, hours, doms, months, dows)):
+        raise ValueError("Cron 表达式包含无有效取值的字段（如 61 分钟、13 月）")
     dom_restricted=parts[2].strip()!="*"; dow_restricted=parts[4].strip()!="*"
     # 在 UTC 时间轴上推进，再换算为目标时区的墙上时间比较
     now_utc=datetime.now(timezone.utc).replace(tzinfo=None)

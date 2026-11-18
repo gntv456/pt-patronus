@@ -98,7 +98,9 @@ def handle_action(action, inp, cfg, host):
         algo=str(inp.get("algo") or "sha256").lower(); data=text.encode("utf-8")
         if algo=="md5": h=hashlib.md5(data).hexdigest()
         elif algo=="sha1": h=hashlib.sha1(data).hexdigest()
-        else: h=hashlib.sha256(data).hexdigest()
+        elif algo=="sha256": h=hashlib.sha256(data).hexdigest()
+        elif algo=="sha512": h=hashlib.sha512(data).hexdigest()
+        else: raise ValueError("algo 应为 md5/sha1/sha256/sha512")
         return {"algo":algo,"hex":h}
     raise ValueError("unknown action")
 

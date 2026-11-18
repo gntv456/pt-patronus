@@ -58,6 +58,13 @@
       "default": "PTPATRONUS-CF"
     },
     {
+      "key": "allowed_roots",
+      "label": "允许写入的目录",
+      "type": "textarea",
+      "default": "",
+      "help": "每行一个绝对路径；留空时只允许系统 hosts 文件与插件自身目录"
+    },
+    {
       "key": "cron_update",
       "label": "定时",
       "type": "text",

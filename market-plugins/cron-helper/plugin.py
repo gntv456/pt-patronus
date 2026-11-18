@@ -90,22 +90,78 @@ def _parse_field(field, min_v, max_v):
             a,b=part.split("-",1); a=int(a); b=int(b)
             vals.update(range(a, b+1, step)); continue
         vals.add(int(part))
-    return sorted(v for v in vals if min_v <= v <= max_v)
-def _next_runs(expr, count, loc_offset_hours=8):
+    out=set()
+    for v in vals:
+        # 标准 cron 允许 7 表示周日
+        if max_v==6 and v==7: v=0
+        if min_v<=v<=max_v: out.add(v)
+    return sorted(out)
+def _nth_weekday(year, month, weekday, n):
+    first=datetime(year, month, 1)
+    return datetime(year, month, 1+((weekday-first.weekday())%7)+(n-1)*7)
+def _last_weekday(year, month, weekday):
+    nxt=datetime(year+1,1,1) if month==12 else datetime(year,month+1,1)
+    last=nxt-timedelta(days=1)
+    return last-timedelta(days=(last.weekday()-weekday)%7)
+def _zone_offset(utc_dt, tz):
+    """按 UTC 时刻返回目标时区偏移，仅用标准库；覆盖常见固定偏移与美/欧夏令时。"""
+    name=str(tz or "UTC").strip()
+    m=re.match(r"^(?:UTC|GMT)?\s*([+-])(\d{1,2})(?::?(\d{2}))?$", name, re.I)
+    if m:
+        sign=1 if m.group(1)=="+" else -1
+        return timedelta(minutes=sign*(int(m.group(2))*60+int(m.group(3) or 0)))
+    fixed={
+        "UTC":0, "GMT":0, "Z":0,
+        "Asia/Shanghai":480, "Asia/Beijing":480, "Asia/Hong_Kong":480,
+        "Asia/Singapore":480, "Asia/Tokyo":540, "CST":480,
+        "America/New_York":-300, "America/Chicago":-360,
+        "America/Denver":-420, "America/Los_Angeles":-480,
+        "Europe/London":0, "Europe/Paris":60, "Europe/Berlin":60,
+    }
+    base_min=fixed.get(name)
+    if base_min is None: return timedelta(0)  # 未识别时区退回 UTC，不再误按 UTC+8
+    base=timedelta(minutes=base_min); y=utc_dt.year
+    if name.startswith("America/"):
+        # 美国夏令时：3 月第二个周日 02:00 起，11 月第一个周日 02:00 止
+        start=_nth_weekday(y,3,6,2)+timedelta(hours=2)-base
+        end=_nth_weekday(y,11,6,1)+timedelta(hours=2)-base-timedelta(hours=1)
+        if start<=utc_dt<end: return base+timedelta(hours=1)
+    elif name.startswith("Europe/"):
+        # 欧洲夏令时：3 月最后一个周日 01:00 UTC 起，10 月最后一个周日 01:00 UTC 止
+        if _last_weekday(y,3,6)+timedelta(hours=1)<=utc_dt<_last_weekday(y,10,6)+timedelta(hours=1):
+            return base+timedelta(hours=1)
+    return base
+def _next_runs(expr, count, tz="Asia/Shanghai"):
     parts=expr.split()
     if len(parts)!=5: raise ValueError("需要标准 5 段 cron: m h dom mon dow")
     minutes=_parse_field(parts[0],0,59); hours=_parse_field(parts[1],0,23)
     doms=_parse_field(parts[2],1,31); months=_parse_field(parts[3],1,12); dows=_parse_field(parts[4],0,6)
-    # naive UTC+offset search
-    now=datetime.now(timezone.utc)+timedelta(hours=loc_offset_hours)
-    t=now.replace(second=0, microsecond=0)+timedelta(minutes=1)
-    out=[]; guard=0
-    while len(out)<count and guard<400000:
+    dom_restricted=parts[2].strip()!="*"; dow_restricted=parts[4].strip()!="*"
+    # 在 UTC 时间轴上推进，再换算为目标时区的墙上时间比较
+    now_utc=datetime.now(timezone.utc).replace(tzinfo=None)
+    t=now_utc.replace(second=0, microsecond=0)+timedelta(minutes=1)
+    out=[]; guard=0; max_guard=60*24*366*4  # 4 年，覆盖闰日等稀有表达式
+    while len(out)<count and guard<max_guard:
         guard+=1
-        if t.month in months and t.day in doms and t.hour in hours and t.minute in minutes and ((t.weekday()+1)%7) in dows:
-            out.append(t.strftime("%Y-%m-%d %H:%M:%S"))
+        off=_zone_offset(t, tz)
+        local=t+off
+        day_match=local.day in doms
+        dow_match=((local.weekday()+1)%7) in dows
+        if dom_restricted and dow_restricted:
+            day_ok=day_match or dow_match  # 标准 cron：dom 与 dow 同时受限取 OR
+        else:
+            day_ok=day_match and dow_match
+        if local.month in months and day_ok and local.hour in hours and local.minute in minutes:
+            out.append(local.strftime("%Y-%m-%d %H:%M:%S"))
             t+=timedelta(minutes=1); continue
-        t+=timedelta(minutes=1)
+        # 跳过不匹配的整天/整小时；必须在“本地时间”上推进再减回 UTC 偏移，
+        # 否则 UTC 00:00 对应东八区 08:00，会跳过当天凌晨的匹配点。
+        if local.month not in months or not day_ok:
+            t=(local+timedelta(days=1)).replace(hour=0, minute=0)-off
+        elif local.hour not in hours:
+            t=(local+timedelta(hours=1)).replace(minute=0)-off
+        else:
+            t+=timedelta(minutes=1)
     return out
 def handle_action(action, inp, cfg, host):
     if action!="next_runs": raise ValueError("unknown action")
@@ -113,10 +169,8 @@ def handle_action(action, inp, cfg, host):
     if not expr: raise ValueError("Cron 表达式不能为空")
     count=min(20, max(1, as_int(inp.get("count"),5) or 5))
     tz=str(inp.get("timezone") or "Asia/Shanghai")
-    # fixed offset map common
-    off=8 if "Shanghai" in tz or "Beijing" in tz or tz=="CST" else 0
-    runs=_next_runs(expr, count, off)
-    log("info","cron-helper","cron next runs calculated",{"expression":expr,"count":count})
+    runs=_next_runs(expr, count, tz)
+    log("info","cron-helper","cron next runs calculated",{"expression":expr,"count":count,"timezone":tz})
     return {"expression":expr,"timezone":tz,"next_runs":runs}
 
 

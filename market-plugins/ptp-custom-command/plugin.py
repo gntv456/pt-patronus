@@ -2,7 +2,7 @@
 # Copyright (C) 2026 The PTPatronus Authors
 
 # -*- coding: utf-8 -*-
-import json, os, re, time, socket, ipaddress, hashlib, base64, subprocess, urllib.request, urllib.error, urllib.parse, hmac, struct
+import json, os, re, time, socket, ipaddress, hashlib, base64, subprocess, shlex, urllib.request, urllib.error, urllib.parse, hmac, struct
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -76,8 +76,17 @@ class Handler(BaseHTTPRequestHandler):
 def handle_event(event_type, data, cfg):
     return
 def _run_cmd(cmd, workdir, timeout):
-    p=subprocess.run(cmd, shell=True, cwd=workdir or None, capture_output=True, text=True, timeout=timeout)
-    return {"cmd":cmd,"code":p.returncode,"stdout":(p.stdout or "")[:4000],"stderr":(p.stderr or "")[:4000]}
+    # 不用 shell：避免配置权直接等于主机 RCE，且防止注入元字符。
+    try:
+        argv=shlex.split(cmd)
+    except ValueError as e:
+        return {"cmd":cmd,"code":-1,"stdout":"","stderr":f"命令解析失败: {e}"}
+    if not argv:
+        return {"cmd":cmd,"code":-1,"stdout":"","stderr":"空命令"}
+    p=subprocess.run(argv, shell=False, cwd=workdir or None, capture_output=True, text=True, timeout=timeout)
+    result={"cmd":cmd,"code":p.returncode,"stdout":(p.stdout or "")[:4000],"stderr":(p.stderr or "")[:4000]}
+    log("info","ptp-custom-command.exec","command executed",{"cmd":cmd,"workdir":workdir or "","code":p.returncode})
+    return result
 def handle_action(action, inp, cfg, host):
     cmds=split_multi(cfg.get("commands")) if action=="run" else []
     if action=="run_one":

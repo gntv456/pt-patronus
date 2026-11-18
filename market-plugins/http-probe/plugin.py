@@ -104,16 +104,38 @@ def handle_action(action, inp, cfg, host):
     follow=as_bool(cfg.get("follow_redirects"), True)
     class NoRedir(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *a, **k): return None
-    opener=urllib.request.build_opener() if follow else urllib.request.build_opener(NoRedir)
-    req=urllib.request.Request(raw_url, data=body, headers=headers, method=method)
+    # 始终手动处理跳转：urllib 的默认跟随不会复核 Location，
+    # 公网 URL 可 302 到 127.0.0.1 / 169.254.169.254 绕过 SSRF 防护。
+    opener=urllib.request.build_opener(NoRedir)
+    allow_private=as_bool(cfg.get("allow_private_network"), False)
+    max_hops=8 if follow else 0
+    cur=raw_url; cur_method=method; cur_body=body; hops=0; done=False
     started=time.time(); status=0; resp_headers={}; raw=b""; final=raw_url; err=None
-    try:
-        with opener.open(req, timeout=timeout) as res:
-            status=getattr(res,"status",200); resp_headers=dict(res.headers.items()); raw=res.read(); final=res.geturl()
-    except urllib.error.HTTPError as e:
-        status=e.code; resp_headers=dict(e.headers.items()) if e.headers else {}; raw=e.read() if e.fp else b""; err=str(e)
-    except Exception as e:
-        err=str(e)
+    while not done:
+        cu=urllib.parse.urlparse(cur)
+        if cu.scheme not in ("http","https") or not cu.hostname:
+            err="跳转目标不是有效 HTTP/HTTPS URL"; break
+        if not allow_private and _is_private_host(cu.hostname):
+            err="默认禁止探测内网/回环地址（含跳转目标），可在配置中允许"; break
+        req=urllib.request.Request(cur, data=cur_body, headers=headers, method=cur_method)
+        try:
+            with opener.open(req, timeout=timeout) as res:
+                status=getattr(res,"status",200); resp_headers=dict(res.headers.items()); final=res.geturl()
+                loc=resp_headers.get("Location")
+                if follow and status in (301,302,303,307,308) and loc:
+                    if hops>=max_hops: err="跳转次数超过上限"; break
+                    hops+=1
+                    cur=urllib.parse.urljoin(cur, loc)
+                    if status==303 or (status in (301,302) and cur_method=="POST"):
+                        cur_method="GET"; cur_body=None
+                    continue
+                raw=res.read()
+        except urllib.error.HTTPError as e:
+            status=e.code; resp_headers=dict(e.headers.items()) if e.headers else {}
+            raw=e.read() if e.fp else b""; err=str(e)
+        except Exception as e:
+            err=str(e)
+        done=True
     maxb=as_int(cfg.get("max_body_bytes"),2048) or 2048
     snippet=raw[:maxb].decode("utf-8","replace")
     expected=as_int(inp.get("expected_status"),200)

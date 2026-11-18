@@ -265,7 +265,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _check(self):
-        tok = self.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        # str.removeprefix 需要 Python 3.9+，宿主可能使用 3.8，改为切片兼容写法
+        raw_tok = self.headers.get("Authorization", "").strip()
+        tok = raw_tok[7:].strip() if raw_tok.startswith("Bearer ") else raw_tok
         if PLUGIN_TOKEN and tok != PLUGIN_TOKEN:
             self._json(401, {"error": "unauthorized"})
             return False
@@ -313,14 +315,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(os.environ.get("PORT", "0") or "0")
-    if not port:
-        # 宿主未指定端口则自动选一个并写 KV 供宿主读取（与 ffmpeg-thumb 范式一致）
-        port = 0
+    # 宿主注入的是 PTP_PLUGIN_PORT；PORT 仅保留给手工调试兼容。
+    # 绝不能默认为 0，否则宿主无法发现插件，健康检查必然超时。
+    raw_port = os.environ.get("PTP_PLUGIN_PORT") or os.environ.get("PORT") or "19090"
+    port = int(str(raw_port).strip() or "19090")
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    if port == 0:
-        port = srv.server_address[1]
-        kv_set("__listen_port", str(port))
     log("info", "started", f"ptp-ai-subtitle listening on 127.0.0.1:{port}")
     srv.serve_forever()
 

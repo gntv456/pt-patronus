@@ -93,6 +93,36 @@ def _fetch_lines(urls, timeout=15):
 def _wrap(marker, lines):
     begin=f"# BEGIN {marker}"; end=f"# END {marker}"
     return "\n".join([begin, *lines, end]) + "\n"
+def _resolve_hosts_path(raw_path, cfg):
+    """只写系统 hosts 文件、插件目录，或 allowed_roots 显式授权的目录。"""
+    raw=str(raw_path or "").strip()
+    if not raw: return None
+    p=Path(raw).expanduser()
+    if not p.is_absolute():
+        p=Path(os.environ.get("PTP_PLUGIN_DIR", ".")) / p
+    try:
+        rp=p.resolve(strict=False)
+    except Exception:
+        raise ValueError("hosts 路径无效")
+    if rp.exists() and rp.is_dir():
+        raise ValueError("hosts 路径不能是目录")
+    allowed=[]
+    for d in ("/etc/hosts", r"C:\Windows\System32\drivers\etc\hosts",
+              os.environ.get("PTP_PLUGIN_DIR", ".")):
+        try: allowed.append(Path(d).resolve(strict=False))
+        except Exception: pass
+    for a in split_multi(cfg.get("allowed_roots")):
+        ap=Path(a).expanduser()
+        if not ap.is_absolute():
+            ap=Path(os.environ.get("PTP_PLUGIN_DIR", ".")) / ap
+        try: allowed.append(ap.resolve(strict=False))
+        except Exception: pass
+    for root in allowed:
+        if rp==root: return rp
+        try:
+            if root in rp.parents: return rp
+        except Exception: pass
+    raise ValueError("hosts 路径不在允许范围；请在 allowed_roots 中显式授权该目录")
 def handle_action(action, inp, cfg, host):
     urls=split_multi(cfg.get("subscribe_urls"))
     if not urls: raise ValueError("未配置 subscribe_urls")
@@ -107,7 +137,7 @@ def handle_action(action, inp, cfg, host):
         kv_set("cf_hosts_block", block)
         if as_bool(cfg.get("notify"), True): notice("Cloudflare订阅", f"已保存 {len(lines)} 行到插件 KV", "info")
         return {"saved":"kv","count":len(lines)}
-    p=Path(path)
+    p=_resolve_hosts_path(path, cfg)
     old=p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
     begin=f"# BEGIN {marker}"; end=f"# END {marker}"
     if begin in old and end in old:
@@ -118,10 +148,15 @@ def handle_action(action, inp, cfg, host):
     else:
         if old and not old.endswith("\n"): old+="\n"
         new=old+"\n"+block
+    # 写入前备份，失败可回滚
+    bak=p.with_name(p.name+".ptp-bak")
+    if p.exists():
+        try: bak.write_bytes(p.read_bytes())
+        except Exception as e: raise ValueError(f"备份 hosts 文件失败: {e}")
     p.write_text(new, encoding="utf-8")
-    if as_bool(cfg.get("notify"), True): notice("Cloudflare订阅", f"已更新 {path} ({len(lines)} 行)", "info")
-    log("info","cloudflare-subscribe","hosts updated",{"path":path,"count":len(lines)})
-    return {"saved":path,"count":len(lines)}
+    if as_bool(cfg.get("notify"), True): notice("Cloudflare订阅", f"已更新 {p} ({len(lines)} 行)", "info")
+    log("info","cloudflare-subscribe","hosts updated",{"path":str(p),"count":len(lines),"backup":str(bak) if bak.exists() else None})
+    return {"saved":str(p),"count":len(lines),"backup":str(bak) if bak.exists() else None}
 
 
 if __name__ == "__main__":

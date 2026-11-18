@@ -3,7 +3,7 @@
 测试时间：2026-11-18（Asia/Shanghai）  
 测试对象：market-plugins/ 下全部 **34** 个插件  
 测试方式：backend/tools/pluginctl.py 的 **mock-host 沙箱**（真实启动每个插件进程 → 等待 /health → 注入宿主上下文 → 调用 /action、/event），另加 manifest 校验、语法编译、静态安全审查与独立正确性复算。  
-状态：**P1–P9 已全部修复，见第二节各项的「修复/验证」说明**。第二轮深度复测（phase-2）新增了 P8、P9 两项缺陷。
+状态：**P1–P11 已全部修复**。三轮测试分别发现 7、2、2 项缺陷，均已完成修复与复测。
 
 ---
 
@@ -97,6 +97,18 @@
 
 验证：`sha512` 现返回标准值 `ddaf35a1...54ca49f`；此前返回 SHA-256 值。
 
+### P10 — 33 个插件对畸形 JSON 请求体会直接断开连接【已修复】
+
+第三轮协议健壮性实测：向 `POST /action` 发送 `b'{'`，33 个插件的 handler 在 `json.loads(self.rfile.read(...))` 处抛异常并直接关闭连接（`Remote end closed connection without response`）。宿主正常调用不受影响，但这是明显的协议健壮性缺陷，也可能被本地恶意客户端用于制造异常。
+
+修复：为 33 个插件统一加入 `_safe_json_body(raw)`，解析失败返回 `{}`，handler 继续正常响应；`ptp-ai-subtitle` 原本已有 try/except，保持不变。
+
+验证：34 插件 × 6 项协议检查（无鉴权 health、未知 GET 路径、错误 token、畸形 JSON、未知 action、未知 event）共 204 项全部通过，且每次检查后插件进程仍存活。
+
+### P11 — ptp-ai-subtitle 未实现 `/event` 端点【已修复】
+
+外部插件 HTTP 协议约定 `GET /health`、`POST /action`、`POST /event`。该插件缺失 `/event`，收到事件推送时返回 404。已补上空实现返回 `{"ok": true}`。
+
 ---
 
 ## 三、观察项加固（已处理）
@@ -117,10 +129,10 @@
 
 ## 五、测试资产
 
-- **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（11 项快速回归，覆盖 P1–P9，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
+- **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（17 项快速回归，覆盖 P1–P11，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
 - 结果 JSON：tmp/plugin-deep-results.json（修复后 89 次调用）
 - 各插件运行日志：tmp/plugin-test-logs/<plugin_id>.log
-- **已固化的沙箱测试（纳入版本控制）**：`backend/tools/plugin_sandbox_smoke.py`（34 插件全量冒烟，`python backend/tools/plugin_sandbox_smoke.py [plugin_id ...]`）与 `backend/tools/plugin_sandbox_deep_test.py`（本地 mock 服务 + 边界输入）
+- **已固化的沙箱测试（纳入版本控制）**：`backend/tools/plugin_sandbox_smoke.py`（34 插件全量冒烟）、`backend/tools/plugin_sandbox_deep_test.py`（本地 mock 服务 + 边界输入）、`backend/tools/plugin_sandbox_protocol_test.py`（34 插件 × 6 项协议健壮性检查）
 - 临时运行产物：tmp/plugin_deep-results.json、tmp/plugin-phase2-results.json、tmp/plugin-test-logs/（均在 .gitignore 中）
 - 专项验证：tmp/verify_totp.py、tmp/verify_cron.py、tmp/verify_ssrf.py、tmp/verify_hosts_path.py
 
@@ -130,6 +142,6 @@
 
 34 个插件全部通过 manifest 校验、语法编译与沙箱健康检查；89 次调用中 74 次正常、15 次为预期负例，纯计算逻辑经独立复算正确。
 
-两轮测试共发现 9 项问题（P1–P9），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮深度复测又发现 cron-helper 无效表达式挂死与 text-toolbox 哈希算法误标两项。当前 34 个插件全部健康，无阻断问题；剩余仅为产品体验与管理面风险提醒。
+三轮测试共发现 11 项问题（P1–P11），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮 2 项（cron-helper 无效表达式挂死、text-toolbox 哈希误标），第三轮 2 项（33 个插件畸形请求体断连、ptp-ai-subtitle 缺失 /event）。当前 34 个插件全部健康，89 次冒烟调用与 204 项协议检查全部通过，无阻断问题。
 
 为防止回归，已将测试能力固化：15 项快速回归测试接入 CI，两套沙箱测试脚本纳入版本控制，后续改动插件可一键复验。剩余的观察项（URL 私网校验、前端未配置定时提示、Cookie 安全说明）也已一并处理并验证。

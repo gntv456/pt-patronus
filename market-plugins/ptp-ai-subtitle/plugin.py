@@ -291,6 +291,9 @@ class Handler(BaseHTTPRequestHandler):
                 payload = {}
         action = (payload.get("action") or "").strip()
         cfg = payload.get("config") or {}
+        if self.path == "/event":
+            self._json(200, {"ok": True})
+            return
         if self.path == "/action":
             if action == "status":
                 with _state_lock:

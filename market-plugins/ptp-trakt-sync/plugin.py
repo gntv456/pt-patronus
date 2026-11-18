@@ -128,6 +128,12 @@ def trakt_request(method, path, token=None, body=None, extra_headers=None):
         return json.loads(raw) if raw.strip().startswith(("{", "[")) else {}
 
 
+def _safe_json_body(raw):
+    """畸形/空请求体不应让 handler 抛异常断开连接。"""
+    try:
+        return json.loads(raw.decode("utf-8", "replace")) if raw else {}
+    except Exception:
+        return {}
 class Handler(BaseHTTPRequestHandler):
     def _json(self, s, p):
         raw = json.dumps(p, ensure_ascii=False).encode()
@@ -139,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _body(self):
         n = int(self.headers.get("Content-Length", "0") or "0")
-        return json.loads(self.rfile.read(n).decode()) if n else {}
+        return _safe_json_body(self.rfile.read(n))
 
     def _auth(self):
         return (not PLUGIN_TOKEN) or self.headers.get("Authorization") == f"Bearer {PLUGIN_TOKEN}"

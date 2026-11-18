@@ -65,11 +65,17 @@ def http_json(url, method="GET", headers=None, data=None, timeout=10, form=None)
     with urllib.request.urlopen(req, timeout=timeout) as res:
         raw=res.read().decode("utf-8","replace"); return json.loads(raw) if raw.strip().startswith(("{","[")) else {"raw":raw}
 
+def _safe_json_body(raw):
+    """畸形/空请求体不应让 handler 抛异常断开连接。"""
+    try:
+        return json.loads(raw.decode("utf-8", "replace")) if raw else {}
+    except Exception:
+        return {}
 class Handler(BaseHTTPRequestHandler):
     def _json(self,s,p):
         raw=json.dumps(p, ensure_ascii=False).encode(); self.send_response(s); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(raw))); self.end_headers(); self.wfile.write(raw)
     def _body(self):
-        n=int(self.headers.get("Content-Length","0") or "0"); return json.loads(self.rfile.read(n).decode()) if n else {}
+        n=int(self.headers.get("Content-Length","0") or "0"); return _safe_json_body(self.rfile.read(n))
     def _auth(self): return (not PLUGIN_TOKEN) or self.headers.get("Authorization")==f"Bearer {PLUGIN_TOKEN}"
     def do_GET(self):
         self._json(200,{"ok":True,"plugin":PLUGIN_ID or "plugin"}) if self.path=="/health" else self._json(404,{"error":"not found"})

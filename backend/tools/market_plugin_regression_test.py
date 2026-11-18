@@ -187,5 +187,22 @@ class NetworkGuardTests(unittest.TestCase):
                 m._assert_router_target("ftp://example.com")
 
 
+class ProtocolTests(unittest.TestCase):
+    def test_malformed_body_does_not_drop_connection(self) -> None:
+        for plugin_dir in sorted(p for p in PLUGINS.iterdir() if p.is_dir()):
+            source = plugin_dir / "plugin.py"
+            if not source.exists():
+                continue
+            text = source.read_text(encoding="utf-8")
+            if plugin_dir.name != "ptp-ai-subtitle":
+                self.assertIn("_safe_json_body", text, f"{plugin_dir.name}: safe body parser missing")
+            self.assertNotIn("return json.loads(self.rfile.read", text,
+                             f"{plugin_dir.name}: raw body parse regressed")
+
+    def test_ai_subtitle_implements_event_endpoint(self) -> None:
+        text = (PLUGINS / "ptp-ai-subtitle" / "plugin.py").read_text(encoding="utf-8")
+        self.assertIn('self.path == "/event"', text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

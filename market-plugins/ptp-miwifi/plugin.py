@@ -1328,6 +1328,12 @@ def handle_action(action, inp, cfg, host):
     return fn(cfg, inp)
 
 
+def _safe_json_body(raw):
+    """畸形/空请求体不应让 handler 抛异常断开连接。"""
+    try:
+        return json.loads(raw.decode("utf-8", "replace")) if raw else {}
+    except Exception:
+        return {}
 class Handler(BaseHTTPRequestHandler):
     def _json(self, status, payload):
         raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -1341,7 +1347,7 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0") or "0")
         if length <= 0:
             return {}
-        return json.loads(self.rfile.read(length).decode("utf-8"))
+        return _safe_json_body(self.rfile.read(length))
 
     def _auth(self):
         return (not PLUGIN_TOKEN) or self.headers.get("Authorization") == f"Bearer {PLUGIN_TOKEN}"

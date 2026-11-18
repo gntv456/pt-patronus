@@ -18,7 +18,7 @@ import PluginLogsDialog from './PluginLogsDialog.vue'
 import PluginMarketSection from './PluginMarketSection.vue'
 import { usePlugins } from './usePlugins'
 import { usePluginTrust } from './usePluginTrust'
-import { runtimeState, runtimeType, runtimeLabel, confirmPermissions } from './pluginsHelpers'
+import { runtimeState, runtimeType, runtimeLabel, confirmPermissions, scheduleNotConfigured } from './pluginsHelpers'
 import { useAdminTabs } from '@/composables/useAdminTabs'
 
 type PluginViewContribution = NonNullable<NonNullable<PluginInfo['contributes']>['views']>[number]
@@ -328,6 +328,9 @@ function pluginInitial(name: string): string {
               <span v-if="!p.can_enable" class="badge badge-danger">{{ t('plugins.depBlocked') }}</span>
               <span v-if="p.runtime_status" class="badge" :class="'badge-' + runtimeType(runtimeState(p))">{{
                 runtimeLabel(runtimeState(p))
+              }}</span>
+              <span v-if="scheduleNotConfigured(p)" class="badge badge-warning" :title="t('plugins.scheduleUnsetTip')">{{
+                t('plugins.scheduleUnset')
               }}</span>
             </div>
             <div class="plugin-sub">v{{ p.version }} · {{ p.author }}</div>

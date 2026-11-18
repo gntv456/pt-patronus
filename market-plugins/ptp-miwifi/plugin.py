@@ -14,6 +14,8 @@ import json
 import os
 import random
 import re
+import socket
+import ipaddress
 import threading
 import time
 import urllib.error
@@ -222,7 +224,23 @@ class MiWifiError(RuntimeError):
         self.payload = payload
 
 
+def _assert_router_target(url):
+    # 路由器本就在内网，不能默认拦截 RFC1918；但必须拦截云元数据等保留地址
+    u=urllib.parse.urlparse(str(url or "").strip())
+    if u.scheme not in ("http","https") or not u.hostname:
+        raise ValueError("仅支持有效 HTTP/HTTPS URL")
+    try:
+        for info in socket.getaddrinfo(u.hostname, None):
+            ip=ipaddress.ip_address(info[4][0])
+            if ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+                raise ValueError("目标为链路本地/保留地址（如 169.254.169.254），已阻止")
+    except ValueError:
+        raise
+    except Exception:
+        pass
+    return u.geturl()
 def http_json(url: str, *, method: str = "GET", params=None, form=None, timeout: float = 8.0, headers=None):
+    url=_assert_router_target(url)
     full = url
     data = None
     req_headers = {"User-Agent": "PTPatronus-miwifi/0.2.2", "Accept": "application/json,text/plain,*/*"}

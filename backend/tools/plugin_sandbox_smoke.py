@@ -29,7 +29,7 @@ E = lambda etype, data=None, cfg=None: ("event", etype, {"type": etype, "data": 
 EXTRA_URL = ""
 
 CASES = {
- "auto-speed": [A("run_speedtest", {}, {"test_url": "{HOST_URL}/health", "timeout_seconds": 5, "notify": False})],
+ "auto-speed": [A("run_speedtest", {}, {"test_url": "{HOST_URL}/health", "timeout_seconds": 5, "notify": False, "allow_private_network": True})],
  "cloudflare-subscribe": [A("preview", {}, {"subscribe_urls": "", "marker": "x", "hosts_path": ""})],
  "cron-helper": [A("next_runs", {"expression": "*/5 * * * *", "count": 3}),
                  A("next_runs", {"expression": "0 9 * * 1", "count": 2}),

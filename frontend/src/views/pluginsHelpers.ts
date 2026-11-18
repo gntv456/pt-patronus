@@ -325,3 +325,16 @@ export {
   installPlanPermissionAccepts,
   hasInstallPlanChanges,
 } from './pluginInstallHelpers'
+
+/** 插件启用了调度，但所有 cron 都为空 => 不会自动运行，UI 需要提示。 */
+export function scheduleNotConfigured(plugin: {
+  enabled: boolean
+  schedule?: Array<{ cron: string; cron_config_key?: string }>
+  config?: Record<string, unknown>
+}): boolean {
+  if (!plugin.enabled || !plugin.schedule?.length) return false
+  return plugin.schedule.every((s) => {
+    const raw = s.cron_config_key ? plugin.config?.[s.cron_config_key] : s.cron
+    return !String(raw ?? '').trim()
+  })
+}

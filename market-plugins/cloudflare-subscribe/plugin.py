@@ -75,9 +75,26 @@ class Handler(BaseHTTPRequestHandler):
 
 def handle_event(event_type, data, cfg):
     return
-def _fetch_lines(urls, timeout=15):
+def _guard_target_url(url, cfg, allow_private_default=False):
+    u=urllib.parse.urlparse(str(url or "").strip())
+    if u.scheme not in ("http","https") or not u.hostname:
+        raise ValueError("仅支持有效 HTTP/HTTPS URL")
+    if not as_bool(cfg.get("allow_private_network"), allow_private_default):
+        try:
+            for info in socket.getaddrinfo(u.hostname, None):
+                ip=ipaddress.ip_address(info[4][0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    raise ValueError("目标为内网/回环地址，如属预期请在配置中开启 allow_private_network")
+        except ValueError:
+            raise
+        except Exception:
+            pass
+    return u.geturl()
+def _fetch_lines(urls, timeout=15, cfg=None):
+    cfg=cfg or {}
     lines=[]
     for u in urls:
+        u=_guard_target_url(u, cfg)
         req=urllib.request.Request(u, headers={"User-Agent":"PTPatronus-CF/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as res:
             text=res.read().decode("utf-8","replace")
@@ -126,7 +143,7 @@ def _resolve_hosts_path(raw_path, cfg):
 def handle_action(action, inp, cfg, host):
     urls=split_multi(cfg.get("subscribe_urls"))
     if not urls: raise ValueError("未配置 subscribe_urls")
-    lines=_fetch_lines(urls)
+    lines=_fetch_lines(urls, cfg=cfg)
     marker=str(cfg.get("marker") or "PTPATRONUS-CF")
     block=_wrap(marker, lines)
     if action=="preview":

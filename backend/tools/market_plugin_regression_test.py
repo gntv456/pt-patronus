@@ -158,5 +158,34 @@ class CustomCommandTests(unittest.TestCase):
         self.assertIn("123", out["stdout"])
 
 
+class NetworkGuardTests(unittest.TestCase):
+    def _check_admin_url_guard(self, plugin_id: str) -> None:
+        m = load_plugin_module("reg_guard_" + plugin_id.replace("-", "_"), plugin_id)
+        with self.assertRaises(ValueError):
+            m._guard_target_url("http://127.0.0.1:8088/admin", {})
+        self.assertIn("127.0.0.1", m._guard_target_url(
+            "http://127.0.0.1:8088/admin", {"allow_private_network": True}))
+        with self.assertRaises(ValueError):
+            m._guard_target_url("file:///etc/passwd", {"allow_private_network": True})
+
+    def test_auto_speed_guard(self) -> None:
+        self._check_admin_url_guard("auto-speed")
+
+    def test_cloudflare_guard(self) -> None:
+        self._check_admin_url_guard("cloudflare-subscribe")
+
+    def test_plex_guard(self) -> None:
+        self._check_admin_url_guard("ptp-plex-suite")
+
+    def test_router_guards(self) -> None:
+        for plugin_id in ("ptp-miwifi", "xiaomi-router"):
+            m = load_plugin_module("reg_router_" + plugin_id.replace("-", "_"), plugin_id)
+            self.assertIn("192.168.1.1", m._assert_router_target("http://192.168.1.1/"))
+            with self.assertRaises(ValueError):
+                m._assert_router_target("http://169.254.169.254/latest/meta-data")
+            with self.assertRaises(ValueError):
+                m._assert_router_target("ftp://example.com")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -45,14 +45,14 @@ h.EXTRA_URL = "http://127.0.0.1:%d" % srv.server_address[1]
 A = lambda name, inp=None, cfg=None: ("action", name, {"action": name, "input": inp or {}, "config": cfg or {}})
 h.CASES = {
   "cloudflare-subscribe": [
-      A("preview", {}, {"subscribe_urls": "{EXTRA_URL}/cf.txt", "marker": "PTPTEST"}),
+      A("preview", {}, {"subscribe_urls": "{EXTRA_URL}/cf.txt", "marker": "PTPTEST", "allow_private_network": True}),
       A("update_hosts", {}, {"subscribe_urls": "{EXTRA_URL}/cf.txt", "marker": "PTPTEST",
-                             "hosts_path": "hosts-phase2.txt", "notify": False}),
+                             "hosts_path": "hosts-phase2.txt", "notify": False, "allow_private_network": True}),
   ],
   "ptp-plex-suite": [
-      A("status", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken"}),
-      A("libraries", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken"}),
-      A("apply", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken", "refresh_on_apply": True, "notify": False}),
+      A("status", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken", "allow_private_network": True}),
+      A("libraries", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken", "allow_private_network": True}),
+      A("apply", {}, {"base_url": "{EXTRA_URL}", "token": "mocktoken", "refresh_on_apply": True, "notify": False, "allow_private_network": True}),
   ],
   "group-chat-zone": [
       A("run_main", {}, {"targets": "mock|{EXTRA_URL}/shout|k=v|hello", "notify": False}),

@@ -42,6 +42,13 @@
   ],
   "config_schema": [
     {
+      "key": "allow_private_network",
+      "label": "允许访问内网/本机地址",
+      "type": "switch",
+      "default": false,
+      "help": "默认拦截私网/回环目标；若服务部署在局域网需手动开启"
+    },
+    {
       "key": "base_url",
       "label": "Plex 地址",
       "type": "text",

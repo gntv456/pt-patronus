@@ -2053,6 +2053,8 @@ export default {
     running: '运行中',
     notEnabled: '未启用',
     depBlocked: '依赖阻塞',
+    scheduleUnset: '未配置定时',
+    scheduleUnsetTip: '插件已启用，但所有定时任务的 cron 均为空，不会自动运行。请在配置中填写 cron。',
     config: '配置',
     reload: '重载',
     audit: '审计',

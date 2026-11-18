@@ -75,10 +75,26 @@ class Handler(BaseHTTPRequestHandler):
 
 def handle_event(event_type, data, cfg):
     return
+def _guard_target_url(url, cfg, allow_private_default=False):
+    u=urllib.parse.urlparse(str(url or "").strip())
+    if u.scheme not in ("http","https") or not u.hostname:
+        raise ValueError("仅支持有效 HTTP/HTTPS URL")
+    if not as_bool(cfg.get("allow_private_network"), allow_private_default):
+        try:
+            for info in socket.getaddrinfo(u.hostname, None):
+                ip=ipaddress.ip_address(info[4][0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    raise ValueError("目标为内网/回环地址，如属预期请在配置中开启 allow_private_network")
+        except ValueError:
+            raise
+        except Exception:
+            pass
+    return u.geturl()
 def _plex(cfg, path):
     base=str(cfg.get("base_url") or "").rstrip("/")
     token=str(cfg.get("token") or "")
     if not base or not token: raise ValueError("需要 base_url 与 token")
+    base=_guard_target_url(base, cfg)
     url=base+path+("&" if "?" in path else "?")+"X-Plex-Token="+urllib.parse.quote(token)
     req=urllib.request.Request(url, headers={"Accept":"application/json","User-Agent":"PTPatronus-Plex/1.0"})
     with urllib.request.urlopen(req, timeout=20) as res:

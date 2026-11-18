@@ -2066,6 +2066,8 @@ export default {
     running: 'Running',
     notEnabled: 'Disabled',
     depBlocked: 'Blocked by deps',
+    scheduleUnset: 'No schedule',
+    scheduleUnsetTip: 'Enabled, but every scheduled job has an empty cron expression and will not run automatically. Set a cron in Config.',
     config: 'Config',
     reload: 'Reload',
     audit: 'Audit',

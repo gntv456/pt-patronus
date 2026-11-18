@@ -39,7 +39,23 @@ def as_int(v, default=0):
     except Exception: return default
 def split_multi(raw):
     return [p.strip() for p in re.split(r"[\n,;]+", str(raw or "")) if p.strip()]
+def _assert_router_target(url):
+    # 路由器本就在内网，不能默认拦截 RFC1918；但必须拦截云元数据等保留地址
+    u=urllib.parse.urlparse(str(url or "").strip())
+    if u.scheme not in ("http","https") or not u.hostname:
+        raise ValueError("仅支持有效 HTTP/HTTPS URL")
+    try:
+        for info in socket.getaddrinfo(u.hostname, None):
+            ip=ipaddress.ip_address(info[4][0])
+            if ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+                raise ValueError("目标为链路本地/保留地址（如 169.254.169.254），已阻止")
+    except ValueError:
+        raise
+    except Exception:
+        pass
+    return u.geturl()
 def http_json(url, method="GET", headers=None, data=None, timeout=10, form=None):
+    url=_assert_router_target(url)
     body=None; hdrs=dict(headers or {}); hdrs.setdefault("User-Agent","PTPatronus-Plugin/1.0")
     if form is not None:
         body=urllib.parse.urlencode(form).encode(); hdrs["Content-Type"]="application/x-www-form-urlencoded"; method="POST"

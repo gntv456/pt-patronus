@@ -99,16 +99,23 @@
 
 ---
 
-## 三、剩余观察项（非缺陷/非阻断）
+## 三、观察项加固（已处理）
 
-- **定时默认关闭**：约 12 个插件的调度项只有 cron_config_key 且默认值为空串（如 auto-speed、ptp-custom-command、xiaomi-router、ptp-ai-subtitle 等）。按设计空串即停用，但用户不配置就“看起来没生效”，建议前端在插件卡片上明确提示“未配置定时任务”。
-- **管理员配置型 URL 无 SSRF 校验**：auto-speed（test_url）、cloudflare-subscribe（subscribe_urls）、ptp-plex-suite（base_url）、ptp-miwifi / xiaomi-router（路由器地址）都由配置直接决定目标，未做私网校验。属于管理面能力，风险低于 P5；如插件配置权限下放需重新评估。
+- **管理员配置型 URL 无私网校验**：`auto-speed`（test_url）、`cloudflare-subscribe`（subscribe_urls）、`ptp-plex-suite`（base_url）新增 `_guard_target_url()`，默认拦截私网/回环/链路本地/保留地址与非 HTTP(S) 协议；局域网部署需显式开启新增配置 `allow_private_network`。manifest 与 README 已同步。
+- **路由器类插件**：`ptp-miwifi`、`xiaomi-router` 本就面向内网路由器，保留 RFC1918 访问，但新增 `_assert_router_target()` 拦截 `169.254.169.254` 等链路本地/保留地址及非 HTTP(S) 协议。
+- **前端定时提示**：插件卡片在“插件已启用但所有调度 cron 为空”时显示黄色「未配置定时」徽标（含 tooltip）。逻辑抽到 `frontend/src/views/pluginsHelpers.ts` 并新增 5 项单测；已通过 typecheck、vitest 与 `npm run build` 重建 Web 产物。
+- **group-chat-zone**：README 补充 Cookie 明文存储与 post_url 直接 POST 的安全说明。
+
+## 四、剩余观察项（非缺陷/非阻断）
+
+- **定时默认关闭**：约 12 个插件的调度项 cron 默认为空串（按设计即停用）。前端现已显示「未配置定时」徽标提示，属预期行为而非缺陷。
+- **管理员配置型 URL**：已按上一节加固，默认拦截私网、可显式放行；路由器类保留内网能力但拦截元数据地址。
 - **文档缺失已补齐**：ptp-ai-subtitle、ptp-cd2-assistant、ptp-ffmpeg-thumb、ptp-library-scrape 4 个插件此前无 README.md，现已按各自 manifest 与实现补齐（依赖、动作、配置、权限）。
-- **版本/命名不一致**：group-chat-zone 版本 3.0.0 但 manifest 名称仍为“群聊区”，动作是向配置 URL POST 消息（name|post_url|cookie|message），建议补充说明其用途与 Cookie 明文存储风险。
+- **版本/命名不一致**：group-chat-zone 版本 3.0.0 但 manifest 名称仍为“群聊区”，动作是向配置 URL POST 消息（name|post_url|cookie|message）；README 已补充安全说明。
 
 ---
 
-## 四、测试资产
+## 五、测试资产
 
 - **已固化的回归测试（纳入版本控制）**：`backend/tools/market_plugin_regression_test.py`（11 项快速回归，覆盖 P1–P9，已接入 `.github/workflows/ci.yml` 的 plugin-sdk 任务）
 - 结果 JSON：tmp/plugin-deep-results.json（修复后 89 次调用）
@@ -119,10 +126,10 @@
 
 ---
 
-## 五、结论
+## 六、结论
 
 34 个插件全部通过 manifest 校验、语法编译与沙箱健康检查；89 次调用中 74 次正常、15 次为预期负例，纯计算逻辑经独立复算正确。
 
 两轮测试共发现 9 项问题（P1–P9），已全部修复并复测通过：首轮 7 项（含阻断性的 ptp-ai-subtitle），第二轮深度复测又发现 cron-helper 无效表达式挂死与 text-toolbox 哈希算法误标两项。当前 34 个插件全部健康，无阻断问题；剩余仅为产品体验与管理面风险提醒。
 
-为防止回归，已将测试能力固化：11 项快速回归测试接入 CI，两套沙箱测试脚本纳入版本控制，后续改动插件可一键复验。
+为防止回归，已将测试能力固化：15 项快速回归测试接入 CI，两套沙箱测试脚本纳入版本控制，后续改动插件可一键复验。剩余的观察项（URL 私网校验、前端未配置定时提示、Cookie 安全说明）也已一并处理并验证。

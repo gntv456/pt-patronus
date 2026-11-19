@@ -506,6 +506,11 @@ func TestExternalPluginReadAsset(t *testing.T) {
 }
 
 func TestExternalHTTPPluginAutoRestart(t *testing.T) {
+	// 该测试启动真实子进程并依赖固定 2.2s 的重启时序；在 -short（CI race / 高负载
+	// 全包并行）下容易 flaky，超时并不代表功能回归。完整 go test 仍覆盖此路径。
+	if testing.Short() {
+		t.Skip("skipping real subprocess + timing-sensitive auto-restart test in -short mode")
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatalf("executable: %v", err)

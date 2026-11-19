@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -29,6 +30,7 @@ func TestDoubanDetailReturnsCompleteCastAndRequestsTwentyRecommendations(t *test
 		}
 	}
 	recommendationCount := ""
+	var recMu sync.Mutex // Detail 三路子请求并发打 handler，捕获变量须持锁写
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/movie/1":
@@ -36,7 +38,9 @@ func TestDoubanDetailReturnsCompleteCastAndRequestsTwentyRecommendations(t *test
 		case "/movie/1/celebrities":
 			_ = json.NewEncoder(w).Encode(map[string]any{"actors": actors})
 		case "/movie/1/recommendations":
+			recMu.Lock()
 			recommendationCount = r.URL.Query().Get("count")
+			recMu.Unlock()
 			_ = json.NewEncoder(w).Encode(recommendations)
 		case "/movie/1/photos":
 			_, _ = w.Write([]byte(`{"photos":[]}`))
@@ -65,11 +69,16 @@ func TestDoubanDetailReturnsCompleteCastAndRequestsTwentyRecommendations(t *test
 
 // TestDoubanSearchAndDetail：canned frodo JSON 解析 + 微信 UA/apiKey 注入校验。
 func TestDoubanSearchAndDetail(t *testing.T) {
+	// Detail 内部 celebrities/recommendations/photos 三路并发子请求都打本 handler，
+	// 三个捕获变量必须持锁写（race 检测在 CI 必跑，裸写必红）。
+	var mu sync.Mutex
 	var gotUA, gotReferer, gotKey string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		gotUA = r.Header.Get("User-Agent")
 		gotReferer = r.Header.Get("Referer")
 		gotKey = r.URL.Query().Get("apiKey")
+		mu.Unlock()
 		switch r.URL.Path {
 		case "/search":
 			// 2024 起 frodo 改版：subjects.items + target_type

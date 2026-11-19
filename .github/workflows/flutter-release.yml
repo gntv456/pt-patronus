@@ -253,12 +253,12 @@ jobs:
     name: HarmonyOS HAP
     runs-on: [self-hosted, windows, ohos]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    defaults: { run: { shell: pwsh } }
+    # 自托管机只有 Windows PowerShell 5.1（无 pwsh 7），shell 显式指定 powershell。
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # 构建 + 签名一条龙（脚本自带切换/vendor/复原；签名用本机 generated/self-sign.properties）
       - name: Build & sign HAP
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           powershell -ExecutionPolicy Bypass -File scripts/build_ohos.ps1
@@ -267,7 +267,7 @@ jobs:
             -PropertiesFile "D:\PTPatronus\mobile\ohos\signing\generated\self-sign.properties"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Collect artifact
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           $hap = Get-ChildItem dist/PTPatronus-ohos-*-release-signed.hap | Select-Object -First 1

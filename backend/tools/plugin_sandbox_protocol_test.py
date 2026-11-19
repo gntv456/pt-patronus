@@ -78,5 +78,7 @@ for pid in sorted(p.name for p in PLUGINS.iterdir() if p.is_dir() and (p / "plug
     results.append(r)
     bad = [c for c in r["checks"] if isinstance(c[1], bool) and not c[1]]
     print("[%s] checks=%d bad=%d alive=%s %s" % (pid, len(r["checks"]), len(bad), r["alive_after"], r.get("error", "")), flush=True)
+# tmp/ 是本地运行时目录（gitignore），CI 全新 checkout 没有——写结果前先确保存在
+(ROOT / "tmp").mkdir(exist_ok=True)
 (ROOT / "tmp" / "plugin-phase3-results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), "utf-8")
 print("DONE phase3")

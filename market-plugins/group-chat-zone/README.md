@@ -1,4 +1,4 @@
-# group-chat-zone
+# 站点群聊喊话（group-chat-zone）
 
 按站点配置定时发送群聊/喊话消息（开源市场通用版）。
 

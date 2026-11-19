@@ -40,7 +40,7 @@ dependencies:
   # HTTP 客户端（调后端 REST API）
   http: ^1.2.2
   # 图表（看板趋势/分享率/H&R）
-  fl_chart: ^0.69.2
+  fl_chart: ^1.2.0
   # 站庆彩带动画（PT监护室今天站庆卡片撒花）
   confetti: ^0.8.0
   # 内嵌 WebView：站点登录后提取 cookie（含 HttpOnly）上传后端

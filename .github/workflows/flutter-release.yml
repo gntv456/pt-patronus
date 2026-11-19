@@ -238,6 +238,7 @@ jobs:
             SHA256SUMS-clients.txt
           fail_on_unmatched_files: false   # ios/ohos 可能缺失（best-effort）
       - name: Upload clients to ptang
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
@@ -257,6 +258,17 @@ jobs:
             SHA256SUMS-clients.txt
           )
           bash .github/scripts/upload-release-assets.sh "$VERSION" "${files[@]}"
+
+      # 发版公告自动发到 Discussions → Announcements（幂等：已有同名帖跳过；
+      # 仓库 Variables DISCUSSION_REPO_ID / DISCUSSION_ANNOUNCE_CATEGORY_ID 未配
+      # 或 CHANGELOG 无该版本段落时安静跳过，不卡发版）。
+      - name: Post release announcement
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCUSSION_REPO_ID: ${{ vars.DISCUSSION_REPO_ID }}
+          DISCUSSION_ANNOUNCE_CATEGORY_ID: ${{ vars.DISCUSSION_ANNOUNCE_CATEGORY_ID }}
+        run: bash .github/scripts/post-release-announcement.sh "$VERSION"
 
   # 鸿蒙(ohos)：华为 flutter 分支 + DevEco/ohpm 工具链 GitHub 无 hosted runner，
   # 跑在自托管 runner（本机，labels: ohos；scripts/build_ohos.ps1 一条龙 +

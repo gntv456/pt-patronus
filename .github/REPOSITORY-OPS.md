@@ -8,7 +8,8 @@
   - **Q&A**：部署/配置疑问（issue 只收 bug 与适配问题，问如何配走 Discussions）
   - **Ideas**：功能讨论（成熟了再转 issue 立项）
   - **Show and tell**：用户晒部署/工作流分享
-  - Announcements：发版公告（维护者手动发，置顶最新版）
+  - Announcements：发版公告（维护者手动发，置顶最新版；首个帖子 #38 v1.03.32。
+    GraphQL 无置顶 mutation，**置顶需网页端手动**；有自动发帖需求可挂 publish-release 后续步骤）
 - **Issue 模板**三份：Bug 报告 / 功能建议 / **站点适配问题**（site-adaptation 标签，
   带「引擎类型/症状/自检确认」结构化字段——站点定义是全实例共享热更新的，
   该类 issue 同时是 304 站适配的维护工单源）。

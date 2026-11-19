@@ -77,6 +77,15 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	}
 
+	// 迁移前为已有 SQLite 库做一致性快照（借鉴 MoviePilot V3「迁移前自动备份」）：
+	// 升级失败或迁移回退时可回滚，避免 data 目录损坏导致站点凭据全部丢失。
+	// 快照失败不阻断启动，仅告警——不让备份目录不可写把服务卡死。
+	if cfg.DBType != "postgres" && cfg.DBType != "postgresql" {
+		if err := snapshotBeforeMigration(db, cfg.DataDir, cfg.SQLitePath()); err != nil {
+			log.Printf("[WARN] 迁移前数据库快照失败（不阻断启动）: %v", err)
+		}
+	}
+
 	if err := db.AutoMigrate(
 		&models.User{}, &models.Site{}, &models.SiteStat{}, &models.SiteConnectivity{},
 		&models.Downloader{}, &models.ActivationCode{}, &models.SystemConfig{},

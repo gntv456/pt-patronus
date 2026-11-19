@@ -28,7 +28,7 @@ def sha(b: bytes) -> str:
 
 def main() -> int:
     if not os.path.exists(BUNDLE):
-        print("✗ extension_bundle.zip 不存在——跑 python scripts/pack-extension.py 生成", file=sys.stderr)
+        print("[FAIL] extension_bundle.zip missing -- run python scripts/pack-extension.py", file=sys.stderr)
         return 1
     # 期望清单：源目录排除 test/ 与 *.test.js（与 pack-extension.py 同口径）
     expected = {}
@@ -51,14 +51,14 @@ def main() -> int:
     for n in sorted(names - set(expected)):
         problems.append(f"zip 多出: {n}")
     if problems:
-        print(f"✗ extension_bundle.zip 与 extension/ 源目录不一致（{len(problems)} 项）：", file=sys.stderr)
+        print(f"[FAIL] extension_bundle.zip differs from extension/ source ({len(problems)} issues):", file=sys.stderr)
         for p in problems[:10]:
             print("  " + p, file=sys.stderr)
         if len(problems) > 10:
-            print(f"  ... 共 {len(problems)} 项", file=sys.stderr)
-        print("修复：python scripts/pack-extension.py", file=sys.stderr)
+            print(f"  ... total {len(problems)} issues", file=sys.stderr)
+        print("Fix: python scripts/pack-extension.py", file=sys.stderr)
         return 1
-    print(f"✓ extension_bundle.zip 新鲜（{len(expected)} 文件与源目录一致）")
+    print(f"[OK] extension_bundle.zip fresh ({len(expected)} files match source)")
     return 0
 
 

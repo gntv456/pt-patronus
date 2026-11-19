@@ -164,6 +164,33 @@ try {
     Add-OhosDeps
     Write-Host '[切换] pubspec.yaml += file_picker_ohos（原文件存 .bak）'
 
+    # ---- pub get 前预置插件骨架 ----
+    # ohos fork SDK 的 pub get 收尾 injectPlugins 会读 ohosBuildData，遍历
+    # .flutter-plugins-dependencies 的 ohos 插件并 resolveSymbolicLinksSync——
+    # vendor 在 pub get 之后才跑，全新 checkout（CI）plugins/ 为空即炸
+    # "Cannot resolve symbolic links ... plugins/<name>/ohos"。本地从没炸是
+    # 因为 plugins/ 有上次构建残留。此处按 build-profile.json5 已手工声明的
+    # modules 预创建骨架目录 + 最小 module.json5（vendor 随后 robocopy 覆盖
+    # 为真实文件；骨架里 name 与真实 module.json5 一致，避免解析期名字漂移）。
+    $PluginsDir = Join-Path $MobileDir ('ohos' + [char]92 + 'plugins')
+    $BuildProfilePath = Join-Path $MobileDir ('ohos' + [char]92 + 'build-profile.json5')
+    $bpText = [System.IO.File]::ReadAllText($BuildProfilePath, [System.Text.UTF8Encoding]::new($false))
+    $bpModules = [regex]::Matches(
+        $bpText,
+        '"name"\s*:\s*"([^"]+)"\s*,\s*"srcPath"\s*:\s*"\./plugins/([^"]+)/ohos"')
+    foreach ($m in $bpModules) {
+        $name = $m.Groups[1].Value
+        $dst = Join-Path $PluginsDir ($name + [char]92 + 'ohos' + [char]92 + 'src' + [char]92 + 'main')
+        New-Item -ItemType Directory -Force -Path $dst | Out-Null
+        $mj = Join-Path $dst 'module.json5'
+        if (-not (Test-Path -LiteralPath $mj)) {
+            [System.IO.File]::WriteAllText($mj,
+                "{`n  `"module`": {`n    `"name`": `"$name`",`n    `"type`": `"har`",`n    `"mainElement`": `"default`"`n  }`n}`n",
+                [System.Text.UTF8Encoding]::new($false))
+            Write-Host "[骨架] plugins/$name/ohos（pub get 前预置，vendor 覆盖）"
+        }
+    }
+
     Push-Location $MobileDir
     try {
         # 依赖解析放在切换之后：pubspec_overrides.yaml 与追加依赖必须已就位。

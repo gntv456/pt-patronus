@@ -1,13 +1,13 @@
 {
-  "latestVersion": "1.03.31",
+  "latestVersion": "1.03.32",
   "minVersion": "0.60.00",
-  "releaseName": "体验优化与扩展分发修复",
-  "releaseNotes": "1.03.31：侧栏行动角标（站免/辅种/考核/订阅/站点/运维六类入口实时计数，语义色分级）；工作台下一最佳行动卡（加站点→接下载器→配订阅 数据驱动引导，可关闭）；指标等宽数字；侧栏分组再平衡（站点活动拆出站点趣味）。浏览器扩展分发包过期修复（重要）：1.03.21 后关于页下载的扩展 zip 一直是旧代码——已重打并对齐 1.03.30，装过扩展的请重新下载并在浏览器重载。恢复全端 GitHub 构建（Android/macOS/Windows/Linux/iOS/Web），鸿蒙仍本地构建。升级务必保留 ./data 卷。",
+  "releaseName": "插件加固与数据安全",
+  "releaseNotes": "1.03.32：插件平台安全加固（HTTP 协议健壮性、配置型 URL 与定时提示加固、补齐宿主权限声明、修复深度测试发现的 9 项缺陷、回归测试接入 CI）；Agent 对标 MoviePilot v3 补齐敏感工具二次确认；数据库迁移前自动快照（防升级丢数据）；flux 真实联调修复 ptppUserInfo 契约漂移；UI：主题配色染大面积（页面底/卡片/图表随 accent 换肤）、滚动条自动隐藏、站点页移动版重设计、仪表盘移动版收敛。升级务必保留 ./data 卷。",
   "isForced": false,
-  "publishedAt": "2026-11-15T19:00:00+08:00",
+  "publishedAt": "2026-11-19T00:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.31",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.32",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {

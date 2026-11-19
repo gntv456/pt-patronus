@@ -168,6 +168,17 @@ jobs:
       # agent 二进制（release.yml）保持固定名——install.sh 依赖 releases/latest/download 固定路径自动拉取。
       - name: Compute version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      # Release 页正文：从 CHANGELOG.md 提取当前版本段落（用户在 Release 页直接
+      # 看到变更内容，而不是只有一行 compare 链接）。CHANGELOG 无该版本段落时
+      # body 为空，release step 回退 generate_release_notes。
+      - name: Extract changelog body
+        run: |
+          body="$(bash .github/scripts/extract-changelog.sh "$VERSION")"
+          {
+            echo "CHANGELOG_BODY<<CHANGELOG_EOF"
+            echo "$body"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_ENV"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with: { name: ptpatronus-android, path: android }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -213,6 +224,8 @@ jobs:
           sha256sum "${files[@]}" > SHA256SUMS-clients.txt
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
+          body: ${{ env.CHANGELOG_BODY }}   # CHANGELOG 段落；空时下方 generate 兜底
+          generate_release_notes: true      # 追加 compare 链接与贡献者段
           files: |
             ptpatronus-${{ env.VERSION }}-android-arm64.apk
             ptpatronus-${{ env.VERSION }}-android-armv7a.apk

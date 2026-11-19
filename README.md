@@ -106,7 +106,9 @@ cd mobile && flutter pub get && flutter run -d windows   # 或 android / macos
 
 - **适配新站点**：只需提交一份 YAML 定义到[站点定义仓库](https://github.com/gntv456/ptpatronus-sites)，
   全部实例自动热更新——见 [06-站点定义指南](README/06-站点定义指南.md)
-- **报问题 / 提建议**：[Issues](https://github.com/gntv456/pt-patronus/issues)
+- **报 Bug**：[Issues](https://github.com/gntv456/pt-patronus/issues)（附上「设置 → 诊断中心」体检结果）
+- **站点抓取坏了**（数据为 0 / 签到失败）：用 [站点适配问题](https://github.com/gntv456/pt-patronus/issues/new?template=site_adaptation.md) 模板——站点定义全实例共享，你的反馈会修复所有用户的同一站点
+- **部署/配置疑问**：[Discussions → Q&A](https://github.com/gntv456/pt-patronus/discussions)；功能想法去 Ideas
 - 开发环境与门禁见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [07-开发指南](README/07-开发指南.md)
 - 发现安全问题请按 [SECURITY.md](SECURITY.md) 私密报告
 
@@ -122,5 +124,7 @@ cd mobile && flutter pub get && flutter run -d windows   # 或 android / macos
 <div align="center">
 
 **⭐ 如果 PTPatronus 帮你保住了号，欢迎 Star 支持**
+
+[![Star History Chart](https://api.star-history.com/svg?repos=gntv456/pt-patronus&type=Date)](https://star-history.com/#gntv456/pt-patronus&Date)
 
 </div>

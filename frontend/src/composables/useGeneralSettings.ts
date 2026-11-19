@@ -99,8 +99,10 @@ function toggleTheme() {
 // —— 帮助 / 反馈 / 更新日志 ——
 const helpVisible = ref(false)
 
-const ISSUES_URL = 'https://github.com/hxpt/ptpatronus/issues'
-const README_URL = 'https://github.com/hxpt/ptpatronus#readme'
+// 反馈/更新日志外链必须与仓库真实地址一致（remote: gntv456/pt-patronus）。
+// 旧值 hxpt/ptpatronus 已 404，曾导致「问题反馈」跳空页（运营漏斗断点）。
+const ISSUES_URL = 'https://github.com/gntv456/pt-patronus/issues'
+const README_URL = 'https://github.com/gntv456/pt-patronus#readme'
 
 function openIssues() {
   window.open(ISSUES_URL, '_blank', 'noopener')

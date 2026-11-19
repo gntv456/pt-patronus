@@ -26,6 +26,8 @@ bash "$ROOT/scripts/check_file_length.sh" check || FAIL=1
 if command -v python >/dev/null 2>&1 && [[ -d "$ROOT/extension" ]]; then
   echo "▶ 扩展 bundle 新鲜度..."
   python "$ROOT/scripts/check-extension-bundle.py" || FAIL=1
+  echo "▶ 用户可见外链..."
+  python "$ROOT/scripts/check-user-facing-links.py" || FAIL=1
 fi
 
 if command -v go >/dev/null 2>&1 && [[ -d "$ROOT/backend" ]]; then

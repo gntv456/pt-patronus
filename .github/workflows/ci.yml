@@ -138,6 +138,8 @@ jobs:
         run: python backend/tools/plugin_sandbox_protocol_test.py
       - name: Version sync (backend/frontend/mobile/manifest)
         run: node scripts/check-version-sync.mjs
+      - name: User-facing links
+        run: python scripts/check-user-facing-links.py
           python -m ptpatronus_plugin_sdk.pluginctl market aggregate \
             --packages-dir examples/plugin-market/packages \
             --public-key examples/plugin-market/keys/plugin-market.public.key \

@@ -18,7 +18,7 @@ const (
 	bangumiAPIBase = "https://api.bgm.tv"
 	bangumiImgBase = "https://lain.bgm.tv"
 	// bgm.tv 要求 UA 带应用标识（社区规范），否则可能被限流。
-	bangumiUA = "PTPatronus/1.0 (https://github.com/hxpt/ptpatronus)"
+	bangumiUA = "PTPatronus/1.0 (https://github.com/gntv456/pt-patronus)"
 )
 
 // Bangumi 是 bgm.tv 元数据源（动漫/游戏/音乐/书籍/三次元）。

@@ -62,7 +62,7 @@ func (x *Cunguangji) get(ctx context.Context, path string, params map[string]str
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "PTPatronus/1.0 (https://github.com/hxpt/ptpatronus)")
+	req.Header.Set("User-Agent", "PTPatronus/1.0 (https://github.com/gntv456/pt-patronus)")
 	req.Header.Set("Accept", "application/json")
 	resp, err := x.hc.Do(req)
 	if err != nil {

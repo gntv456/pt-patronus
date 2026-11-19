@@ -52,7 +52,7 @@ func (m *MusicBrainz) Search(ctx context.Context, keyword string, year int) ([]M
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "PTPatronus/1.0 ( https://github.com/hxpt/ptpatronus )")
+	req.Header.Set("User-Agent", "PTPatronus/1.0 ( https://github.com/gntv456/pt-patronus )")
 	resp, err := m.hc.Do(req)
 	if err != nil {
 		return nil, err

@@ -99,14 +99,16 @@ cd mobile && flutter pub get && flutter run -d windows   # 或 android / macos
 | [07-开发指南](README/07-开发指南.md) | 架构 / 本地开发 / 测试 / 门禁 |
 | [01-架构设计](README/01-架构设计.md) · [02-技术栈](README/02-技术栈与选型.md) | 深入设计 |
 | [CHANGELOG](CHANGELOG.md) | 版本变更与升级注意 |
-| [全部文档索引](README/00-项目总览.md) | 24 篇专题文档 |
+| [隐私与数据边界](README/隐私与数据边界.md) | 什么加密存、什么发给第三方、插件边界 |
+| [全部文档索引](README/00-项目总览.md) | 专题文档（按角色分组） |
 
 ## 🤝 参与贡献
 
 - **适配新站点**：只需提交一份 YAML 定义到[站点定义仓库](https://github.com/gntv456/ptpatronus-sites)，
   全部实例自动热更新——见 [06-站点定义指南](README/06-站点定义指南.md)
 - **报问题 / 提建议**：[Issues](https://github.com/gntv456/pt-patronus/issues)
-- 开发环境与门禁（400 行/80 列棘轮、UI 可访问性、对比度）见 [07-开发指南](README/07-开发指南.md)
+- 开发环境与门禁见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [07-开发指南](README/07-开发指南.md)
+- 发现安全问题请按 [SECURITY.md](SECURITY.md) 私密报告
 
 ## 📄 许可证
 

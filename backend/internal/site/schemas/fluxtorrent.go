@@ -196,7 +196,12 @@ type fluxPTPPData struct {
 	LevelName    string      `json:"levelName"`
 	JoinTime     fluxTime    `json:"joinTime"`
 	MessageCount int         `json:"messageCount"`
-	Passkey      string      `json:"passkey"`
+	// SeedingPoints 是做种积分（1 分 = 1 小时做种），站点 2026-11 起下发；
+	// 对应 PT-Plugin-Plus / PT-depiler 用户卡的「积分」列。
+	SeedingPoints float64 `json:"seedingPoints"`
+	// Passkey 旧契约字段：站点 2026-11 起不再从本端点下发 passkey
+	// （见 FluxTorrent apps/api/src/compat_http/ptpp.rs Utoipa 注释），保留解析仅为兼容旧站点。
+	Passkey string `json:"passkey"`
 }
 
 // fluxTime 兼容 Unix 秒（数字）与 ISO8601（字符串）两种时间口径。
@@ -226,7 +231,8 @@ func (t *fluxTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// FetchUserInfo 走 PT-Plugin-Plus 聚合端点（一次请求拿全量用户数据 + passkey）。
+// FetchUserInfo 走 PT-Plugin-Plus 聚合端点（一次请求拿全量用户数据；
+// 新站点不再返回 passkey，下载凭证走临时下载键 / chain 通用补全）。
 // 发现的 passkey 挂在返回值 UserInfo.DiscoveredPasskey 上随本次调用交给 chain 落库
 // （见 chain.SiteChain.maybeAdoptPasskey）——不经实例字段中转，否则多站并发会串站。
 func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
@@ -269,6 +275,7 @@ func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		Uploads:      d.Uploads,
 		Bonus:        d.Bonus,
 		BonusPerHour: d.BonusPerHour,
+		SeedingBonus: d.SeedingPoints,
 		Invited:      d.Invites,
 	}
 	if u.ID == "" {

@@ -38,18 +38,23 @@ func TestFluxTorrentLiveE2E(t *testing.T) {
 		t.Fatalf("detail url = %q", ts[0].DetailURL)
 	}
 
-	// 2. 用户信息 + passkey 握手
+	// 2. 用户信息 + 做种积分（新契约：本端点不再下发 passkey）
 	u, err := f.FetchUserInfo(context.Background(), def, base, cred)
 	if err != nil {
 		t.Fatalf("FetchUserInfo: %v", err)
 	}
-	t.Logf("userinfo ok: id=%s name=%s level=%s up=%d down=%d bonus=%v", u.ID, u.Name, u.Level, u.Uploaded, u.Downloaded, u.Bonus)
+	t.Logf("userinfo ok: id=%s name=%s level=%s up=%d down=%d bonus=%v seed_bonus=%v",
+		u.ID, u.Name, u.Level, u.Uploaded, u.Downloaded, u.Bonus, u.SeedingBonus)
 	if u.Name == "" || u.Level == "" {
 		t.Fatalf("userinfo empty identity")
 	}
-	pk := u.DiscoveredPasskey
-	if len(pk) != 32 {
-		t.Fatalf("passkey len = %d, want 32", len(pk))
+	// 站点 2026-11 契约：ptppUserInfo 不再返回 passkey，改用做种积分字段；
+	// passkey 由 chain 的通用补全 / 临时下载键路径处理（此处只验证不再误报）。
+	if u.DiscoveredPasskey != "" {
+		t.Logf("note: endpoint still returns passkey (legacy site), len=%d", len(u.DiscoveredPasskey))
+	}
+	if u.SeedingBonus < 0 {
+		t.Fatalf("seeding bonus negative: %v", u.SeedingBonus)
 	}
 
 	// 3. 能力端点
@@ -67,16 +72,16 @@ func TestFluxTorrentLiveE2E(t *testing.T) {
 	}
 	t.Logf("capabilities ok: hr=%d seeding=%d messages=%d", len(hrs), len(items), len(msgs))
 
-	// 4. 带 passkey 的下载直链构造 + 真实下载 .torrent
-	cred2 := `{"token":"` + token + `","passkey":"` + pk + `"}`
+	// 4. 下载直链构造（无 passkey 时走无凭证模板链，由 chain 通用补全兜底）
+	cred2 := `{"token":"` + token + `"}`
 	ts2, err := f.Search(context.Background(), def, base, cred2, "demo", "", 1)
 	if err != nil || len(ts2) == 0 {
-		t.Fatalf("search with passkey: %v %d", err, len(ts2))
+		t.Fatalf("search for download: %v %d", err, len(ts2))
 	}
-	if !strings.Contains(ts2[0].DownloadURL, "passkey=") {
-		t.Fatalf("download url without passkey: %q", ts2[0].DownloadURL)
+	if !strings.Contains(ts2[0].DownloadURL, "/compat/nexusphp/download.php?id=") {
+		t.Fatalf("download url unexpected: %q", ts2[0].DownloadURL)
 	}
-	t.Logf("download url ok: %s", strings.ReplaceAll(ts2[0].DownloadURL, pk, "<passkey>"))
+	t.Logf("download url ok (no-passkey template): %s", ts2[0].DownloadURL)
 }
 
 func e2eEnv(t *testing.T, key string) string {

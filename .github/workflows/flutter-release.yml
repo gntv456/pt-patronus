@@ -157,7 +157,7 @@ jobs:
   # 注意：Private 仓库的 Release 资产外部无法直链下载，本步是给仓库 owner 批量取产物用的。
   publish-release:
     name: Publish to Release
-    needs: [android, macos, windows, linux, web]   # 不含 ios：ios 失败不卡核心发版（best-effort 进 Release）
+    needs: [android, macos, windows, linux, web]   # 不含 ios/ohos：两者失败不卡核心发版（best-effort 进 Release）
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -182,6 +182,10 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with: { name: ptpatronus-ios, path: ios }
         continue-on-error: true        # ios job 可能失败,无 artifact 时跳过
+      - name: Download ohos (best-effort)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: { name: ptpatronus-ohos, path: ohos }
+        continue-on-error: true        # self-hosted runner 离线/构建失败时跳过
       - name: Rename artifacts with version + platform
         run: |
           # Android split-per-abi：发 arm64-v8a(95% 手机)+ armeabi-v7a(老设备),x86_64 模拟器丢弃
@@ -193,6 +197,7 @@ jobs:
           mv linux/ptpatronus-linux-x64.zip "ptpatronus-${VERSION}-linux-x64.zip"
           mv web/ptpatronus-web-dist.zip "ptpatronus-${VERSION}-web-dist.zip"
           if [ -f ios/*.ipa ]; then mv ios/*.ipa "ptpatronus-${VERSION}-ios-unsigned.ipa"; else echo "ios 缺失,跳过"; fi
+          if [ -f ohos/*.hap ]; then mv ohos/*.hap "ptpatronus-${VERSION}-ohos-release-signed.hap"; else echo "ohos 缺失,跳过"; fi
       - name: Write checksums
         run: |
           shopt -s nullglob
@@ -203,6 +208,7 @@ jobs:
             ptpatronus-${VERSION}-linux-x64.zip
             ptpatronus-${VERSION}-web-dist.zip
             ptpatronus-${VERSION}-ios-unsigned.ipa
+            ptpatronus-${VERSION}-ohos-release-signed.hap
           )
           sha256sum "${files[@]}" > SHA256SUMS-clients.txt
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
@@ -215,8 +221,9 @@ jobs:
             ptpatronus-${{ env.VERSION }}-linux-x64.zip
             ptpatronus-${{ env.VERSION }}-web-dist.zip
             ptpatronus-${{ env.VERSION }}-ios-unsigned.ipa
+            ptpatronus-${{ env.VERSION }}-ohos-release-signed.hap
             SHA256SUMS-clients.txt
-          fail_on_unmatched_files: false   # ios 可能缺失（best-effort）
+          fail_on_unmatched_files: false   # ios/ohos 可能缺失（best-effort）
       - name: Upload clients to ptang
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -233,9 +240,42 @@ jobs:
             ptpatronus-${VERSION}-linux-x64.zip
             ptpatronus-${VERSION}-web-dist.zip
             ptpatronus-${VERSION}-ios-unsigned.ipa
+            ptpatronus-${VERSION}-ohos-release-signed.hap
             SHA256SUMS-clients.txt
           )
           bash .github/scripts/upload-release-assets.sh "$VERSION" "${files[@]}"
 
-  # 鸿蒙(ohos)：需华为 flutter 分支 + DevEco Studio 环境，CI 无现成 runner，
-  # 请在配置好鸿蒙 SDK 的机器上手动：flutter build hap --release（鸿蒙分支）。
+  # 鸿蒙(ohos)：华为 flutter 分支 + DevEco/ohpm 工具链 GitHub 无 hosted runner，
+  # 跑在自托管 runner（本机，labels: ohos；scripts/build_ohos.ps1 一条龙 +
+  # sign-official-hap.ps1 自签，签名材料留在本机不出网）。runner 离线时 job
+  # 排队等待机器上线，不失败。
+  ohos:
+    name: HarmonyOS HAP
+    runs-on: [self-hosted, windows, ohos]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    defaults: { run: { shell: pwsh } }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # 构建 + 签名一条龙（脚本自带切换/vendor/复原；签名用本机 generated/self-sign.properties）
+      - name: Build & sign HAP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          powershell -ExecutionPolicy Bypass -File scripts/build_ohos.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -ExecutionPolicy Bypass -File mobile/ohos/signing/sign-official-hap.ps1 `
+            -PropertiesFile "D:\PTPatronus\mobile\ohos\signing\generated\self-sign.properties"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Collect artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hap = Get-ChildItem dist/PTPatronus-ohos-*-release-signed.hap | Select-Object -First 1
+          if (-not $hap) { Write-Error "signed hap not found in dist/"; exit 1 }
+          New-Item -ItemType Directory -Force -Path _artifact | Out-Null
+          Copy-Item $hap.FullName _artifact/ptpatronus-ohos-release-signed.hap
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ptpatronus-ohos
+          path: _artifact/ptpatronus-ohos-release-signed.hap
+          retention-days: 7

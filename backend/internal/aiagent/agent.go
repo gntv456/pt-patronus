@@ -208,9 +208,9 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 				if perr != nil {
 					// 参数解析失败：回灌错误让模型重试，而非以零值参数执行副作用工具。
 					full = "ERROR: " + perr.Error()
-				} else if destructive, note := a.tools.destructiveMeta(tc.Name); destructive {
-					// 危险工具：执行前经 SSE 往返取得用户确认；未确认则不执行并回灌说明。
-					approved, reason := a.confirmDestructive(ctx, out, convID, tc, note)
+				} else if needConfirm, risk, note := a.tools.confirmMeta(tc.Name); needConfirm {
+					// 高影响工具（destructive/sensitive）：执行前经 SSE 往返取得用户确认；未确认则不执行并回灌说明。
+					approved, reason := a.confirmDestructive(ctx, out, convID, tc, risk, note)
 					if !approved {
 						if ctx.Err() != nil {
 							// 客户端断开/停止：补一条 tool 结果（保持 tool_call 序列完整，
@@ -344,7 +344,7 @@ func (a *Agent) summarizeTitle(ctx context.Context, provider llm.Provider, lc ll
 // 已 emit 一条 confirm_request 事件（携带 token/风险/摘要）；客户端弹窗后
 // POST /agent/conversations/:id/confirm → Agent.Resolve 唤醒本阻塞。
 // 返回 (approved, reason)：approved=false 时 reason 说明未执行原因（拒绝/取消/超时/冲突）。
-func (a *Agent) confirmDestructive(ctx context.Context, out chan<- llm.Event, convID uint, tc llm.ToolCall, note string) (bool, string) {
+func (a *Agent) confirmDestructive(ctx context.Context, out chan<- llm.Event, convID uint, tc llm.ToolCall, risk string, note string) (bool, string) {
 	token := fmt.Sprintf("%d:%s", convID, tc.ID)
 	ch := a.confirms.register(token)
 	if ch == nil {
@@ -354,7 +354,7 @@ func (a *Agent) confirmDestructive(ctx context.Context, out chan<- llm.Event, co
 	emit(out, llm.Event{
 		Type:     llm.EventConfirmRequest,
 		ToolCall: tc,
-		Confirm:  &llm.ConfirmRequest{Token: token, Risk: mcp.RiskDestructive, Summary: note},
+		Confirm:  &llm.ConfirmRequest{Token: token, Risk: risk, Summary: note},
 	})
 	tctx, cancel := context.WithTimeout(ctx, confirmTimeout)
 	defer cancel()

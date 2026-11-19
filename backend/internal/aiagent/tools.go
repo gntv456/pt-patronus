@@ -99,24 +99,24 @@ func toolAllowed(name string, whitelist []string) bool {
 	return false
 }
 
-// destructiveMeta 返回命名工具是否标记为 destructive 及其危险说明。
-// 说明优先用 RiskNote，为空回退 Description；未注册或非 destructive 返回 (false, "")。
-// agent 执行层据此对 destructive 工具做二次确认闸门。
-func (r *ToolRegistry) destructiveMeta(name string) (bool, string) {
+// confirmMeta 返回命名工具是否需要用户确认、风险等级与说明。
+// destructive（不可逆/高影响）与 sensitive（读敏感数据）均需确认。
+// 说明优先用 RiskNote，为空回退 Description；未注册或非确认类返回 (false, "", "")。
+func (r *ToolRegistry) confirmMeta(name string) (bool, string, string) {
 	for _, t := range r.tools {
 		if t.Name != name {
 			continue
 		}
-		if t.Risk == mcp.RiskDestructive {
+		if t.Risk == mcp.RiskDestructive || t.Risk == mcp.RiskSensitive {
 			note := t.RiskNote
 			if note == "" {
 				note = t.Description
 			}
-			return true, note
+			return true, t.Risk, note
 		}
-		return false, ""
+		return false, "", ""
 	}
-	return false, ""
+	return false, "", ""
 }
 
 // truncateResult rune 感知截断超长工具结果（dashboard/seed 列表常见）。

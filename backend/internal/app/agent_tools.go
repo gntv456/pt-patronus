@@ -46,7 +46,7 @@ func registerAgentTools(
 		payload, err := sitesListPayload(siteOp)
 		return mcpJSON(payload), mcpErr(err)
 	}})
-	reg(mcp.Tool{Name: "site_messages", Description: "Read recent PT site inbox messages across all sites.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"mailbox": map[string]any{"type": "string", "description": "inbox | sent | system (default inbox)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "site_messages", Description: "Read recent PT site inbox messages across all sites.", Risk: mcp.RiskSensitive, RiskNote: "读取 PT 站私信正文（可能含账号/交易等敏感内容），执行前需确认", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"mailbox": map[string]any{"type": "string", "description": "inbox | sent | system (default inbox)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		mb := argString(a, "mailbox", "inbox")
 		return mcpJSON(siteCh.MessagesAll(ctx, mailboxType(mb), false)), nil
 	}})

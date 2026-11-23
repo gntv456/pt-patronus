@@ -9,6 +9,7 @@
 import { useNotification } from '@/composables/useNotification'
 import { useI18n } from 'vue-i18n'
 import NotificationChannelsMore from './NotificationChannelsMore.vue'
+import DiscardChangesButton from './DiscardChangesButton.vue'
 
 const { t } = useI18n()
 
@@ -23,6 +24,7 @@ const {
   wxQrUrl,
   loadNotif,
   saveNotif,
+  guardKey,
   testNotif,
   wxLogin,
   stopWxPoll,
@@ -181,6 +183,9 @@ const {
     </div>
 
     <NotificationChannelsMore :notif-cfg="notifCfg" :notif="notif" :notif-saving="notifSaving" :test-loading="testLoading" :test-results="testResults" :wx-qr-visible="wxQrVisible" :wx-qr-url="wxQrUrl" :secret-placeholder="secretPlaceholder" @save="saveNotif" @test="testNotif" @wx-login="wxLogin" @stop-wx-poll="stopWxPoll" />
+    <div class="notif-discard">
+      <DiscardChangesButton :reload="loadNotif" :guard-key="guardKey" />
+    </div>
   </div>
 </template>
 

@@ -10,6 +10,7 @@
 import { computed } from 'vue'
 import { useCookieCloud } from '@/composables/useCookieCloud'
 import { copyText } from '@/utils/clipboard'
+import DiscardChangesButton from './DiscardChangesButton.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -23,6 +24,8 @@ const {
   ccGeneratedPassword,
   ccBuiltinEndpoint,
   saveCookieCloud,
+  guardKey,
+  loadCookieCloud,
   regenerateBuiltinCreds,
   syncCookieCloud,
   pushCookieCloud,
@@ -155,6 +158,7 @@ const isBuiltin = computed(() => ccForm.value.mode === 'builtin')
       <el-button :loading="ccSyncing" @click="syncCookieCloud">{{ t('cc.syncNow') }}</el-button>
       <el-button :loading="ccSyncing" @click="pushCookieCloud">{{ t('cc.pushOnly') }}</el-button>
       <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">{{ t('common.save') }}</el-button>
+      <DiscardChangesButton :reload="loadCookieCloud" :guard-key="guardKey" />
     </div>
   </div>
 </template>

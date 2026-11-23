@@ -7,11 +7,19 @@
 //
 // 设计要点：用「表单快照对比」而非布尔开关，避免 loadXxx() 重置表单时误判 dirty。
 // watch 触发时机与 load 完成时点可能交错，快照对比保证任何顺序下结果都正确。
-import { ref, watch, type Ref } from "vue"
+import { ref, computed, watch, type Ref } from "vue"
 
-const dirty = ref(false)
 const baselines = new Map<symbol, string>()
+const formDirty = new Map<symbol, boolean>()
+const dirtyCount = ref(0)
+const manualDirty = ref(false)
 let unloadInstalled = false
+
+const dirty = computed(() => manualDirty.value || dirtyCount.value > 0)
+
+function refreshCount(): void {
+  dirtyCount.value = [...formDirty.values()].filter(Boolean).length
+}
 
 function snapshot(v: unknown): string {
   try { return JSON.stringify(v) } catch { return "" }
@@ -21,8 +29,10 @@ function snapshot(v: unknown): string {
 export function trackForm<T>(form: Ref<T>): symbol {
   const key = Symbol("form-guard")
   baselines.set(key, snapshot(form.value))
+  formDirty.set(key, false)
   watch(form, () => {
-    dirty.value = snapshot(form.value) !== baselines.get(key)
+    formDirty.set(key, snapshot(form.value) !== baselines.get(key))
+    refreshCount()
   }, { deep: true })
   return key
 }
@@ -30,12 +40,19 @@ export function trackForm<T>(form: Ref<T>): symbol {
 /** 表单已落库（load 重置后或 save 成功后调用）：刷新基线并清除 dirty。 */
 export function markSaved(key: symbol, form: Ref<unknown>): void {
   baselines.set(key, snapshot(form.value))
-  dirty.value = false
+  formDirty.set(key, false)
+  refreshCount()
+  manualDirty.value = false
 }
 
 /** 主动标记脏（用于无 ref 托盘的临时场景）。 */
 export function markDirty(): void {
-  dirty.value = true
+  manualDirty.value = true
+}
+
+/** 查询脏状态：传 key 只看某个表单，不传看全局（任一表单脏即为真）。 */
+export function isDirty(key?: symbol): boolean {
+  return key ? !!formDirty.get(key) : dirty.value
 }
 
 /**
@@ -54,12 +71,13 @@ export function installUnloadGuard(): void {
 }
 
 export function useUnsavedGuard() {
-  return { dirty, trackForm, markSaved, markDirty, installUnloadGuard }
+  return { dirty, trackForm, markSaved, markDirty, isDirty, installUnloadGuard }
 }
 
 // 测试辅助：重置模块级状态（仅测试用）。
 export function __resetGuardForTest(): void {
-  dirty.value = false
+  formDirty.clear()
   baselines.clear()
+  manualDirty.value = false
   unloadInstalled = false
 }

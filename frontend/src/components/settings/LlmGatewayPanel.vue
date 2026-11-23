@@ -6,12 +6,14 @@
 <script setup lang="ts">
 // AI 网关配置面板。
 // 状态与逻辑来自 useLlmGateway 组合式函数。
+import DiscardChangesButton from './DiscardChangesButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useLlmGateway } from '@/composables/useLlmGateway'
 
 const { t } = useI18n()
 
-const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway } = useLlmGateway()
+const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway,
+  guardKey, loadLLMGateway } = useLlmGateway()
 </script>
 
 <template>
@@ -42,6 +44,7 @@ const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway } = useLlm
     </div>
     <div class="oidc-save">
       <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">{{ t('common.save') }}</el-button>
+      <DiscardChangesButton :reload="loadLLMGateway" :guard-key="guardKey" />
     </div>
   </div>
 </template>

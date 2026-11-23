@@ -6,12 +6,14 @@
 <script setup lang="ts">
 // 聚合快照调度配置面板。
 // 状态与逻辑来自 useSchedule 组合式函数。
+import DiscardChangesButton from './DiscardChangesButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useSchedule } from '@/composables/useSchedule'
 
 const { t } = useI18n()
 
-const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedule } = useSchedule()
+const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedule,
+  guardKey, loadSchedule } = useSchedule()
 </script>
 
 <template>
@@ -50,6 +52,7 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
         {{ t('schp.builtinDefault') }}{{ schedCfg.snapshot_default }}
       </span>
       <el-button type="primary" :loading="schedSaving" @click="saveSchedule">{{ t('common.save') }}</el-button>
+      <DiscardChangesButton :reload="loadSchedule" :guard-key="guardKey" />
     </div>
   </div>
 </template>

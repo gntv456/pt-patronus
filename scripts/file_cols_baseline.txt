@@ -9,7 +9,7 @@
 1	backend/internal/agent/upgrade.go
 2	backend/internal/agent/wsclient.go
 5	backend/internal/agentrpc/protocol.go
-32	backend/internal/aiagent/agent.go
+31	backend/internal/aiagent/agent.go
 1	backend/internal/aiagent/config.go
 1	backend/internal/aiagent/confirm.go
 5	backend/internal/aiagent/context.go
@@ -940,12 +940,12 @@
 11	frontend/src/components/search/TorrentPushDialog.vue
 1	frontend/src/components/searchFilterConstants.ts
 24	frontend/src/components/settings/CookieCloudPanel.vue
-6	frontend/src/components/settings/LlmGatewayPanel.vue
+5	frontend/src/components/settings/LlmGatewayPanel.vue
 8	frontend/src/components/settings/LogsPanel.vue
 23	frontend/src/components/settings/NotificationChannelsMore.vue
 17	frontend/src/components/settings/NotificationPanel.vue
 10	frontend/src/components/settings/OcrPanel.vue
-3	frontend/src/components/settings/OidcPanel.vue
+2	frontend/src/components/settings/OidcPanel.vue
 1	frontend/src/components/settings/SchedulePanel.test.ts
 8	frontend/src/components/settings/SchedulePanel.vue
 8	frontend/src/components/settings/TgBotPanel.vue
@@ -1034,7 +1034,7 @@
 2	frontend/src/i18n/cameraBridgeMerge.test.ts
 2	frontend/src/i18n/index.ts
 15	frontend/src/i18n/locales/cameraBridge.ts
-279	frontend/src/i18n/locales/en-US.ts
+280	frontend/src/i18n/locales/en-US.ts
 42	frontend/src/i18n/locales/zh-CN.ts
 4	frontend/src/i18n/localesConsistency.test.ts
 1	frontend/src/i18n/mergeWiring.test.ts

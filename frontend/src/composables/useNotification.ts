@@ -299,5 +299,6 @@ export function useNotification() {
     wxLogin,
     stopWxPoll,
     secretPlaceholder,
+    guardKey: __notifGuard,
   }
 }

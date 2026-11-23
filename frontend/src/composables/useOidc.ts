@@ -64,5 +64,5 @@ async function saveOIDC() {
 const t = (k: string) => i18n.global.t(k)
 
 export function useOidc() {
-  return { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, loadOIDC, saveOIDC }
+  return { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, loadOIDC, saveOIDC , guardKey: __oidcFormGuard }
 }

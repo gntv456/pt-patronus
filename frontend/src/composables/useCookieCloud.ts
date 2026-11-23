@@ -144,5 +144,6 @@ export function useCookieCloud() {
     regenerateBuiltinCreds,
     syncCookieCloud,
     pushCookieCloud,
+    guardKey: __ccFormGuard,
   }
 }

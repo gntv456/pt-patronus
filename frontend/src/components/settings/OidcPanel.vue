@@ -6,12 +6,14 @@
 <script setup lang="ts">
 // OIDC/SSO 配置面板。
 // 状态与逻辑来自 useOidc 组合式函数。
+import DiscardChangesButton from './DiscardChangesButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useOidc } from '@/composables/useOidc'
 
 const { t } = useI18n()
 
-const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = useOidc()
+const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC,
+  guardKey, loadOIDC } = useOidc()
 </script>
 
 <template>
@@ -50,6 +52,7 @@ const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = us
     </div>
     <div class="oidc-save">
       <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">{{ t('common.save') }}</el-button>
+      <DiscardChangesButton :reload="loadOIDC" :guard-key="guardKey" />
     </div>
   </div>
 </template>

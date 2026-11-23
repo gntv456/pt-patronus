@@ -6,13 +6,15 @@
 <script setup lang="ts">
 // Telegram Bot 配置面板（含 Cookie 保活频率，复用调度表单）。
 // 状态与逻辑来自 useTgBot + useSchedule 组合式函数。
+import DiscardChangesButton from './DiscardChangesButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useTgBot } from '@/composables/useTgBot'
 import { useSchedule } from '@/composables/useSchedule'
 
 const { t } = useI18n()
 
-const { tgCfg, tgForm, tgLoading, tgSaving, saveTgBot } = useTgBot()
+const { tgCfg, tgForm, tgLoading, tgSaving, saveTgBot,
+  guardKey, loadTgBot } = useTgBot()
 const { schedCfg, schedForm, keepalivePresets } = useSchedule()
 </script>
 
@@ -73,6 +75,7 @@ const { schedCfg, schedForm, keepalivePresets } = useSchedule()
     </div>
     <div class="oidc-save">
       <el-button type="primary" :loading="tgSaving" @click="saveTgBot">{{ t('common.save') }}</el-button>
+      <DiscardChangesButton :reload="loadTgBot" :guard-key="guardKey" />
     </div>
   </div>
 </template>

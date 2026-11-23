@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { ref, nextTick } from "vue"
 import {
-  trackForm, markSaved, markDirty, useUnsavedGuard, __resetGuardForTest,
+  trackForm, markSaved, markDirty, isDirty,
+  useUnsavedGuard, __resetGuardForTest,
 } from "./useUnsavedGuard"
 
 describe("useUnsavedGuard", () => {
@@ -59,4 +60,18 @@ describe("useUnsavedGuard", () => {
     markDirty()
     expect(useUnsavedGuard().dirty.value).toBe(true)
   })
+  it("按表单独立判定脏状态（A 改了不影响 B 的按钮）", async () => {
+    const formA = ref({ v: "" })
+    const formB = ref({ v: "" })
+    const keyA = trackForm(formA)
+    const keyB = trackForm(formB)
+    markSaved(keyA, formA)
+    markSaved(keyB, formB)
+    formA.value = { v: "edited" }
+    await nextTick()
+    expect(isDirty(keyA)).toBe(true)
+    expect(isDirty(keyB)).toBe(false)
+    expect(useUnsavedGuard().dirty.value).toBe(true)
+  })
+
 })

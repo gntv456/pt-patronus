@@ -66,5 +66,5 @@ async function saveLLMGateway() {
 const t = (k: string) => i18n.global.t(k)
 
 export function useLlmGateway() {
-  return { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, loadLLMGateway, saveLLMGateway }
+  return { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, loadLLMGateway, saveLLMGateway , guardKey: __gwFormGuard }
 }

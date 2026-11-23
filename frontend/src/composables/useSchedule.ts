@@ -60,5 +60,5 @@ async function saveSchedule() {
 const t = (k: string) => i18n.global.t(k)
 
 export function useSchedule() {
-  return { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, keepalivePresets, loadSchedule, saveSchedule }
+  return { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, keepalivePresets, loadSchedule, saveSchedule , guardKey: __schedFormGuard }
 }

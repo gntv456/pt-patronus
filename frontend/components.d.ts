@@ -53,6 +53,7 @@ declare module 'vue' {
     DeviceProbeFields: typeof import('./src/components/monitor/DeviceProbeFields.vue')['default']
     DeviceServiceDetail: typeof import('./src/components/monitor/DeviceServiceDetail.vue')['default']
     DeviceThresholdFields: typeof import('./src/components/monitor/DeviceThresholdFields.vue')['default']
+    DiscardChangesButton: typeof import('./src/components/settings/DiscardChangesButton.vue')['default']
     DockerAppStore: typeof import('./src/components/ops/DockerAppStore.vue')['default']
     DockerComposeLocal: typeof import('./src/components/ops/DockerComposeLocal.vue')['default']
     DockerCreateDialog: typeof import('./src/components/ops/DockerCreateDialog.vue')['default']

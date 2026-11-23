@@ -73,5 +73,8 @@ async function saveTgBot() {
 const t = (k: string) => i18n.global.t(k)
 
 export function useTgBot() {
-  return { tgCfg, tgForm, tgLoading, tgSaving, loadTgBot, saveTgBot }
+  return {
+    tgCfg, tgForm, tgLoading, tgSaving, loadTgBot, saveTgBot,
+    guardKey: __tgFormGuard,
+  }
 }

@@ -4,6 +4,7 @@
 // Telegram bot（入站 chat-ops）。
 // 从 Settings.vue 抽出：管理 bot 开关、token、白名单与保存。
 import { ref } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { tgBotApi, type TgBotConfig } from '@/api/tgbot'
@@ -25,6 +26,8 @@ const tgForm = ref<{
 const tgLoading = ref(false)
 const tgSaving = ref(false)
 
+const __tgFormGuard = trackForm(tgForm)
+
 async function loadTgBot() {
   tgLoading.value = true
   try {
@@ -36,6 +39,7 @@ async function loadTgBot() {
       allow_group_chat: tgCfg.value.allow_group_chat,
       api_url: tgCfg.value.api_url || '',
     }
+    markSaved(__tgFormGuard, tgForm)
   } catch {
     ElMessage.error(t('opusetgbot.k1'))
   } finally {

@@ -4,6 +4,7 @@
 // 通知通道设置（DB+UI 热更新；微信扫码登录）。
 // 从 Settings.vue 抽出：管理所有通知通道（19 种）的回显、表单、校验、保存、测试与微信扫码登录。
 import { ref, onBeforeUnmount } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { notificationApi, type NotifyConfig, type NotifyConfigInput, type NotifySendResult } from '@/api/notification'
@@ -13,6 +14,7 @@ import { registerPolling } from '@/composables/usePolling'
 const notifCfg = ref<NotifyConfig | null>(null)
 // 可编辑表单（秘密字段留空=不修改）
 const notif = ref<NotifyConfigInput>(emptyNotifForm())
+const __notifGuard = trackForm(notif)
 
 const notifLoading = ref(false)
 const notifSaving = ref(false)
@@ -109,6 +111,7 @@ async function loadNotif() {
       serverchan: { enabled: c.serverchan.enabled, key: '' },
     }
     testResults.value = []
+    markSaved(__notifGuard, notif)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('opusenotification.k1'))
   } finally {

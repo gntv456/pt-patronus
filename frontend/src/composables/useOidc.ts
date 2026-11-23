@@ -4,6 +4,7 @@
 // OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）。
 // 从 Settings.vue 抽出：管理 OIDC Provider 的回显、表单与保存。
 import { ref } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { oidcApi, type OIDCConfig, type OIDCConfigInput } from '@/api/oidc'
@@ -23,6 +24,8 @@ const oidcForm = ref<OIDCConfigInput>({
 const oidcLoading = ref(false)
 const oidcSaving = ref(false)
 
+const __oidcFormGuard = trackForm(oidcForm)
+
 async function loadOIDC() {
   oidcLoading.value = true
   try {
@@ -36,6 +39,7 @@ async function loadOIDC() {
       display_name: oidcCfg.value.display_name || 'OIDC / SSO',
       frontend_redirect: oidcCfg.value.frontend_redirect || '/login',
     }
+    markSaved(__oidcFormGuard, oidcForm)
   } catch {
     ElMessage.error(t('opuseoidc.k1'))
   } finally {

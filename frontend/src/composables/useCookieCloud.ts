@@ -6,6 +6,7 @@
 // mode：external=外部服务器（自建/公共 CookieCloud）；builtin=内置服务端（PTPatronus 自身
 // 充当服务器，浏览器扩展直接推到 PTPatronus，免单独部署容器）。
 import { computed, ref } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cookieCloudApi, type CookieCloudConfig, type CookieCloudConfigInput } from '@/api/cookiecloud'
@@ -31,6 +32,8 @@ const ccGeneratedPassword = ref('')
 // 浏览器扩展「服务器」一栏要填的内置端点地址
 const ccBuiltinEndpoint = computed(() => `${window.location.origin}/api/v1/cookiecloud`)
 
+const __ccFormGuard = trackForm(ccForm)
+
 async function loadCookieCloud() {
   ccLoading.value = true
   try {
@@ -45,6 +48,7 @@ async function loadCookieCloud() {
       direction: ccCfg.value.direction || 'both',
       interval_min: ccCfg.value.interval_min || 120,
     }
+    markSaved(__ccFormGuard, ccForm)
   } catch {
     ElMessage.error(t('opusecookiecloud.k1'))
   } finally {

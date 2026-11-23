@@ -2,6 +2,7 @@
 // Copyright (C) 2026 The PTPatronus Authors
 
 import { createApp } from 'vue'
+import { installUnloadGuard } from '@/composables/useUnsavedGuard'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
@@ -80,4 +81,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // 当前语言翻译表就绪后再挂载（懒加载：只载用户语言那张，另一张切换时再取）。
 // 用 then 而非顶层 await——构建目标浏览器(chrome87 等)不支持顶层 await。
-i18nBoot.then(() => app.mount('#app'))
+i18nBoot.then(() => {
+  installUnloadGuard()
+  app.mount('#app')
+})

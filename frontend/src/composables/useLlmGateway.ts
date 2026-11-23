@@ -4,6 +4,7 @@
 // LLM 网关（把 AI Agent 以 OpenAI/Anthropic 兼容协议对外暴露）。
 // 从 Settings.vue 抽出：管理网关开关、访问令牌、允许模型与并发。
 import { ref } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { llmGatewayApi, type LLMGatewayConfig } from '@/api/llmGateway'
@@ -19,6 +20,8 @@ const gwLoading = ref(false)
 const gwSaving = ref(false)
 const gwBaseURL = `${window.location.origin}/api/v1/openai/v1`
 
+const __gwFormGuard = trackForm(gwForm)
+
 async function loadLLMGateway() {
   gwLoading.value = true
   try {
@@ -29,6 +32,7 @@ async function loadLLMGateway() {
       allowed_models: (gwCfg.value.allowed_models ?? []).join(','),
       max_concurrency: gwCfg.value.max_concurrency || 4,
     }
+    markSaved(__gwFormGuard, gwForm)
   } catch {
     ElMessage.error(t('opusellmgateway.k1'))
   } finally {

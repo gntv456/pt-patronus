@@ -4,12 +4,14 @@
 // 调度频率（聚合站点快照 cron，平衡站点隐蔽性与数据时效）。
 // 从 Settings.vue 抽出：管理快照与保活 cron 预设与保存。
 import { ref } from 'vue'
+import { trackForm, markSaved } from '@/composables/useUnsavedGuard'
 import { i18n } from '@/i18n'
 import { ElMessage } from 'element-plus'
 import { scheduleApi, type ScheduleConfig } from '@/api/schedule'
 
 const schedCfg = ref<ScheduleConfig | null>(null)
 const schedForm = ref<{ snapshot_cron: string; keepalive_cron: string }>({ snapshot_cron: '', keepalive_cron: '' })
+const __schedFormGuard = trackForm(schedForm)
 const schedLoading = ref(false)
 const schedSaving = ref(false)
 const schedPresets = [
@@ -30,6 +32,7 @@ async function loadSchedule() {
     schedCfg.value = await scheduleApi.getConfig()
     schedForm.value.snapshot_cron = schedCfg.value.snapshot_cron || schedCfg.value.snapshot_default
     schedForm.value.keepalive_cron = schedCfg.value.keepalive_cron || schedCfg.value.keepalive_default
+    markSaved(__schedFormGuard, schedForm)
   } catch {
     ElMessage.error(t('opuseschedule.k1'))
   } finally {

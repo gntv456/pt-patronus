@@ -10,6 +10,7 @@ import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
 import { useLoginAuth } from '@/composables/useLoginAuth'
 import { oidcFailText } from '@/utils/oidcFail'
+import { safeRedirect } from '@/utils/safeRedirect'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
@@ -31,13 +32,15 @@ watch(err, (v) => {
   if (v) void nextTick(() => errRef.value?.focus())
 })
 
+// 会话过期（http.expireSession）会带 ?redirect=原页，登录后回原页而非一律首页。
+// router.replace 避免浏览器返回键又回到登录页。safeRedirect 防开放重定向。
 function goDashboard() {
-  router.push({ name: 'dashboard' })
+  router.replace(safeRedirect(route.query.redirect))
 }
 
 onMounted(async () => {
   if (auth.authenticated) {
-    router.push({ name: 'dashboard' })
+    router.replace(safeRedirect(route.query.redirect))
     return
   }
   // OIDC/SSO 回调：从 URL fragment(#oidc_token=) 取后端签发的 JWT（302 跳转回来）。存 token 后进首页。
@@ -48,7 +51,7 @@ onMounted(async () => {
     oidcHash.get('oidc_token') ?? (typeof route.query.oidc_token === 'string' ? route.query.oidc_token : '')
   if (oidcToken) {
     await auth.loginByToken(oidcToken)
-    router.replace({ name: 'dashboard' })
+    router.replace(safeRedirect(route.query.redirect))
     return
   }
   // SSO 失败：后端把错误码放进 fragment 回跳（整页导航下 JSON 信封会被浏览器渲染成一屏 JSON）。

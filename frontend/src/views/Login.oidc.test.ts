@@ -86,6 +86,7 @@ describe('SSO 失败回跳的界面出口', () => {
   it('成功回跳（oidc_token）不出错误文案', async () => {
     const host = await mountLogin('#oidc_token=jwt-here')
     expect(host.querySelector('.err')).toBeNull()
-    expect(lastReplace).toEqual({ name: 'dashboard' }) // 成功那条仍进首页，没被当成失败
+    // 成功回退首页（redirect 缺省）；用字符串路径，与 safeRedirect 语义一致
+    expect(lastReplace).toBe('/dashboard')
   })
 })
